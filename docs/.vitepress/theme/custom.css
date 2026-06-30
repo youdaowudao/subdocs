@@ -1,0 +1,36 @@
+.vp-doc .doc-image-link {
+  display: block;
+  margin: 24px 0 32px;
+}
+
+.vp-doc img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.14);
+  cursor: zoom-in;
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.vp-doc .doc-image-link:hover img {
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .vp-doc .doc-image-link {
+    margin: 18px 0 24px;
+  }
+
+  .vp-doc img {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 8px;
+  }
+}

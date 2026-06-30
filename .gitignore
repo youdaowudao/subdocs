@@ -21,9 +21,14 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 .idea/
+.playwright-cli/
 
 # Cloudflare Pages local state
 .wrangler/
 
 # Git metadata fallback for this sandbox
 .gitrepo/
+
+# Local Codex-only project notes, not for deploy or git transfer
+codex/
+.codex/
