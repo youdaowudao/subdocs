@@ -83,6 +83,19 @@
       text-align: center;
     }
 
+    .guide-link {
+      display: inline-block;
+      margin: 14px 0 0;
+      color: #2563eb;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .guide-link:hover {
+      text-decoration: underline;
+    }
+
     .button {
       display: inline-flex;
       align-items: center;
@@ -121,12 +134,20 @@
       line-height: 1.75;
     }
 
-    .notes p {
+    .notes ol {
       margin: 0;
+      padding-left: 22px;
     }
 
-    .notes p + p {
+    .notes li + li {
       margin-top: 6px;
+    }
+
+    .service {
+      margin: 14px 0 0;
+      color: #64748b;
+      font-size: 15px;
+      line-height: 1.7;
     }
 
     @media (max-width: 520px) {
@@ -155,11 +176,16 @@
     </div>
     <div class="actions">
       <a class="button" href="https://canvas.usegoodai.com" target="_blank" rel="noopener noreferrer">打开无线画布</a>
+      <br>
+      <a class="guide-link" href="/external/image-generation.html" target="_blank" rel="noopener noreferrer">查看生图使用说明</a>
     </div>
     <div class="notes">
-      <p>图片数据存储在用户本地浏览器。</p>
-      <p>更换浏览器会导致数据丢失，请及时保存。</p>
-      <p>生图时间一般需要 2 至 15 分钟，请耐心等候。</p>
+      <ol>
+        <li>图片数据存储在用户本地浏览器。</li>
+        <li>更换浏览器会导致数据丢失，请及时保存。</li>
+        <li>生图时间一般需要 2 至 15 分钟，请耐心等候。</li>
+      </ol>
+      <p class="service">客服：</p>
     </div>
   </main>
   <script>
