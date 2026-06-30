@@ -131,6 +131,25 @@ https://canvas.usegoodai.com?apiKey=你的Key&baseUrl=https%3A%2F%2Fapi.usegooda
 先刷新页面，再重新进入设置确认是否保存成功。  
 如果换了浏览器、清了缓存，或者使用无痕窗口，原来的配置可能不会保留。
 
+### 本地图片和生成记录在哪里
+
+无限画布的图片数据主要存在当前浏览器本地的 IndexedDB 里，不是统一保存在服务器上。项目使用的是 `localforage`，数据库名是：
+
+```text
+infinite-canvas
+```
+
+图片相关主要有两个 store：
+
+| store | 保存内容 |
+| --- | --- |
+| `image_files` | 图片文件 Blob。本地生成图、上传图等媒体文件通常会存在这里。 |
+| `image_generation_logs` | 图片生成记录，包括提示词、模型、结果引用等。 |
+
+另外，画布状态、素材列表、配置等也会通过 Zustand / localforage 存在浏览器本地，仍然属于当前浏览器、当前域名下的数据。换浏览器、清理站点数据、使用无痕窗口或更换域名，都可能导致原来的画布内容和图片记录找不到。
+
+如果需要查找未保存的图片，可以把本节内容发给 Codex，让 Codex 按 `infinite-canvas`、`image_files`、`image_generation_logs` 这些关键词，协助检查当前浏览器的 IndexedDB 数据。
+
 ### 后台没有请求记录
 
 通常说明画布还没有真正连到 UseGoodAI。
