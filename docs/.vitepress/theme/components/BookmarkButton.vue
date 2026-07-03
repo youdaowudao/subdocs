@@ -1,18 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useData } from 'vitepress'
 
 const copied = ref(false)
 const failed = ref(false)
-const { site } = useData()
-
-const siteUrl = computed(() => {
-  if (typeof window === 'undefined') {
-    return ''
-  }
-
-  return new URL(site.value.base || '/', window.location.origin).toString()
-})
+const siteUrl = 'https://www.usegoodai.com/'
 
 const shortcut = computed(() => {
   if (typeof navigator === 'undefined') {
@@ -43,7 +34,7 @@ async function copySiteUrl() {
   failed.value = false
 
   try {
-    await navigator.clipboard.writeText(siteUrl.value)
+    await navigator.clipboard.writeText(siteUrl)
     copied.value = true
   } catch {
     failed.value = true
