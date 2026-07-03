@@ -35,6 +35,7 @@ export default withSidebar(config, {
   includeFolderIndexFile: false,
   manualSortFileNameByPriority: [
     'quick-start.md',
+    'infinite-canvas.md',
     'clients',
     'codex.md',
     'vscode.md',
@@ -42,7 +43,6 @@ export default withSidebar(config, {
     'cc-switch.md',
     'jetbrains.md',
     'trae.md',
-    'infinite-canvas.md',
     'cherry-studio.md',
     'open-webui.md',
     'openclaw.md',

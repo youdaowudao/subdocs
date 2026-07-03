@@ -40,9 +40,9 @@
 ## `429 Too Many Requests` / `rate limit`
 
 - 用户看到：`429 Too Many Requests`、`rate limit`、`Rate Limit Exceeded`、`insufficient_quota`。
-- 通常表示：触发频率限制、并发限制，或额度不足。
-- 先查什么：后台额度、当前 Key 或分组限制、是否有多个客户端同时请求。
-- 怎么处理：降低并发和重试频率；等待限制窗口恢复；如果提示额度不足，先充值或换可用 Key。
+- 通常表示：触发并发/频率限制、账户余额不足，或当前 API Key 被单独设置了限额金额、速率、次数等限制。
+- 先查什么：账户余额是否充足；API Key 是否设置了限额金额、有效期、速率或次数限制；是否有多个客户端同时请求。
+- 怎么处理：如果余额不足，先充值；如果账户有余额但仍然 429，优先检查这个 API Key 的限制项是否填错；确认没有人为限制后，再降低并发和重试频率，等待限制窗口恢复。
 
 ## `500 Internal Server Error`
 
@@ -161,6 +161,24 @@
 - 通常表示：请求体不符合当前接口协议，或客户端把 Responses / Chat Completions 模式混用了。
 - 先查什么：客户端当前走的是 `/v1/responses` 还是 `/v1/chat/completions`；配置里的协议模式是否和教程一致。
 - 怎么处理：Codex 等支持 Responses 的工具优先用 Responses 配置；普通聊天客户端使用 OpenAI-compatible 配置；不要把两个协议的字段混在一起。
+
+## `cyber safety` / `safety policy` / `content blocked`
+
+用户看到 `cyber safety`、`safety policy`、`content blocked`、`request blocked`、`disallowed content` 等提示时，通常表示请求内容触发了上游网络安全策略。
+
+这类问题一般不是 API Key、额度、模型名或 Base URL 配置错误。这是 OpenAI 上游官方风控限制，中转站只能转发请求，不能绕过上游安全策略。
+
+请不要提交以下内容：
+
+- 破解账号、破解软件、绕过授权、绕过付费限制
+- 逆向破解、绕过 license、绕过风控
+- 漏洞利用、攻击步骤、提权、持久化、横向移动
+- 木马、后门、恶意脚本、免杀、绕过检测
+- 钓鱼、撞库、爆破、抓取 Cookie、Token、密码
+- 扫描、攻击、入侵不属于自己的系统
+- 生成可直接用于攻击的 payload、POC、执行命令
+
+如果是排查安全问题，请改成安全审查、风险解释、日志分析、漏洞修复或防护加固方向。
 
 ## `context_length_exceeded`
 

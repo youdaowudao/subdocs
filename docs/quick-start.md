@@ -4,6 +4,10 @@
 
 你要做的事情只有两件：先在 UseGoodAI 后台创建一个 API 密钥，再把后台自动生成的 Codex 配置复制到电脑里的配置文件中。Codex CLI 和 Codex App 使用的是同一个 Codex 配置。
 
+::: tip
+如果有看不明白的地方，可以截图发给豆包、DeepSeek 等 AI 工具，让它用更简单的话解释当前步骤。
+:::
+
 ## 第一步：进入 API 密钥页面
 
 登录 UseGoodAI 后台，左侧进入 **API 密钥**，然后点击 **创建密钥**。
@@ -18,11 +22,13 @@
 
 分组必须认真选择。这个分组决定这个 API Key 能不能使用你要接入的模型；分组选错，后面即使 Key 填对，也可能无法调用。
 
-其他限制项如果没有特殊需求，可以先不打开，直接创建即可。
-
 <a class="doc-image-link" href="/images/quick-start/create-api-key-2.jpg" target="_blank" rel="noopener">
   <img src="/images/quick-start/create-api-key-2.jpg" alt="填写密钥名称并选择正确分组">
 </a>
+
+::: warning
+除名称和分组外，其它限制项默认不要填写。限额金额是这个 API Key 的消费上限，不是账户余额；日期、速率、次数等限制项也是给特殊场景用的，普通接入保持默认即可。默认并发速率是 `20`，需要更高并发可以联系客服提升。
+:::
 
 ## 第三步：打开 Codex 配置
 
@@ -113,6 +119,7 @@ https://api.usegoodai.com/v1
 | `codex` 命令不存在 | 这是 Codex CLI 的问题；App 用户可以跳过这一项 |
 | 401 / Unauthorized | `auth.json` 里的 API Key 是否复制完整 |
 | 403 / Forbidden | API Key 选择的分组是否支持当前模型 |
+| 429 / Too Many Requests | 先看账户余额；如果明明有余额，再检查这个 API Key 是否设置了限额金额、速率或次数限制 |
 | 模型不可用 | 模型名和 Key 所属分组是否匹配 |
 | 后台没有调用记录 | `config.toml` 和 `auth.json` 是否放在正确的 `.codex` 目录 |
 | Windows 配置不生效 | 文件名不要变成 `config.toml.txt` 或 `auth.json.txt` |
