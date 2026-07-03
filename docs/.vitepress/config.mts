@@ -57,6 +57,7 @@ export default withSidebar(config, {
     'codex-skills.md',
     'codex-superpowers.md',
     'codex-advanced.md',
+    'codex-log-sqlite.md',
     'codex-tools.md',
     'errors',
     'index.md',
