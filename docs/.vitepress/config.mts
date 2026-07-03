@@ -13,7 +13,8 @@ const config = defineConfig({
         { text: '扩展说明', link: '/external/' },
         { text: '生图', link: '/external/image-generation' },
         { text: '常见错误', link: '/errors/' },
-        { text: '模型与分组', link: '/models' }
+        { text: '模型与分组', link: '/models' },
+        { text: '联系客服', link: '/contact' }
     ],
 
      search: {
@@ -59,6 +60,7 @@ export default withSidebar(config, {
     'codex-tools.md',
     'errors',
     'index.md',
-    'models.md'
+    'models.md',
+    'contact.md'
   ]
 })
