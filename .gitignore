@@ -32,3 +32,4 @@ Thumbs.db
 # Local Codex-only project notes, not for deploy or git transfer
 codex/
 .codex/
+AGENTS.md
