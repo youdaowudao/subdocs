@@ -35,6 +35,10 @@ features:
     title: Codex 周边工具
     details: 了解 Git、ripgrep、GitHub CLI、MCPHub、Superpowers 等常用工具。
     link: /external/codex-tools
+  - icon: 🗂️
+    title: Git 妙用
+    details: 复制提示词，让 AI 帮你初始化仓库、提交、推送、备份日记和知识库。
+    link: /external/git-practical
   - icon: 🔁
     title: CC Switch
     details: 统一管理 Codex、OpenClaw、Hermes 等工具的供应商配置和切换。
@@ -70,11 +74,11 @@ features:
   - icon: 🎨
     title: 无限画布
     details: 在 canvas.usegoodai.com 中接入自己的 API Key，用画布方式连续创作图片。
-    link: /clients/infinite-canvas
+    link: /images/infinite-canvas
   - icon: 🖼️
     title: 生图 API
     details: 使用 gpt-image-2 调用图片生成接口，并把返回的 Base64 保存为 PNG。
-    link: /external/image-generation
+    link: /images/image-generation
   - icon: 🧩
     title: 模型与分组
     details: 查看不同模型、分组、协议和适用场景，避免填错模型或入口。

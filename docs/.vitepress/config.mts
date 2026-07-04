@@ -4,6 +4,11 @@ import { withSidebar } from 'vitepress-sidebar'
 const config = defineConfig({
   title: 'UseGoodAI.com中转站教程',
   description: '中转站各类教程',
+  rewrites: {
+    'clients/infinite-canvas.md': 'images/infinite-canvas.md',
+    'external/image-generation.md': 'images/image-generation.md',
+    'images/codex-image-misunderstanding.md': 'images/codex-image-direct.md'
+  },
 
   themeConfig: {
     nav: [
@@ -11,7 +16,7 @@ const config = defineConfig({
         { text: '快速开始', link: '/quick-start' },
         { text: '客户端接入', link: '/clients/' },
         { text: '扩展说明', link: '/external/' },
-        { text: '生图', link: '/external/image-generation' },
+        { text: '生图', link: '/images/' },
         { text: '常见错误', link: '/errors/' },
         { text: '模型与分组', link: '/models' },
         { text: '联系客服', link: '/contact' }
@@ -35,7 +40,6 @@ export default withSidebar(config, {
   includeFolderIndexFile: false,
   manualSortFileNameByPriority: [
     'quick-start.md',
-    'infinite-canvas.md',
     'clients',
     'codex.md',
     'vscode.md',
@@ -48,11 +52,16 @@ export default withSidebar(config, {
     'openclaw.md',
     'hermes.md',
     'librechat.md',
+    'images',
+    'infinite-canvas.md',
+    'image-generation.md',
+    'codex-image.md',
+    'codex-image-direct.md',
     'external',
     'base-url.md',
     'compatibility.md',
     'user-agent.md',
-    'image-generation.md',
+    'git-practical.md',
     'codex-cli-internal-commands.md',
     'codex-skills.md',
     'codex-superpowers.md',

@@ -13,7 +13,7 @@
 | 统一管理多个 Agent / CLI 配置 | [CC Switch](/clients/cc-switch) |
 | 在 JetBrains IDE 里接入 | [JetBrains](/clients/jetbrains) |
 | 在 Trae 里接入 | [Trae](/clients/trae) |
-| 使用无限画布做图片创作 | [无限画布](/clients/infinite-canvas) |
+| 使用无限画布做图片创作 | [无限画布](/images/infinite-canvas) |
 | 用图形界面聊天、管理多个模型 | [Cherry Studio](/clients/cherry-studio) |
 | 自建一个网页聊天面板 | [Open WebUI](/clients/open-webui) |
 | 使用 OpenClaw Agent / Gateway | [OpenClaw](/clients/openclaw) |

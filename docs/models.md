@@ -19,7 +19,7 @@
 | `gpt-5.5` | 高能力通用模型，适合复杂推理、代码、Agent 工具调用和专业工作流。 |
 | `gpt-5.4` | 通用能力模型，适合代码、文本处理、工具调用和日常高质量任务。 |
 | `gpt-5.4-mini` | 轻量模型，适合明确任务、批量处理、自动化流程和对响应速度更敏感的场景。 |
-| `gpt-image-2` | 图像能力模型，用于图片生成、图片编辑和视觉创作类任务；接口调用见 [生图 API](/external/image-generation)，画布创作见 [无限画布](/clients/infinite-canvas)。 |
+| `gpt-image-2` | 图像能力模型，用于图片生成、图片编辑和视觉创作类任务；接口调用见 [图片生成 API](/images/image-generation)，画布创作见 [无限画布](/images/infinite-canvas)。 |
 
 ::: tip
 上面的模型名只用于说明常见能力。实际能不能调用，仍然以你的 UseGoodAI 后台和当前 API Key 所属分组为准。

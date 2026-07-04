@@ -3,6 +3,33 @@
   margin: 24px 0 32px;
 }
 
+.vp-doc div[class*='language-text'] {
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  background: #f4f8ff;
+}
+
+.vp-doc div[class*='language-text'] pre,
+.vp-doc div[class*='language-text'] code {
+  background: transparent;
+}
+
+.vp-doc div[class*='language-text'] code {
+  color: #1e3a8a;
+}
+
+.vp-doc div[class*='language-text'] > span.lang {
+  color: #3b82f6;
+}
+
+.dark .vp-doc div[class*='language-text'] {
+  border-color: rgba(96, 165, 250, 0.22);
+  background: rgba(30, 58, 138, 0.18);
+}
+
+.dark .vp-doc div[class*='language-text'] code {
+  color: #bfdbfe;
+}
+
 .vp-doc img {
   display: block;
   width: 100%;
