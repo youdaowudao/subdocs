@@ -10,7 +10,11 @@ Codex 是 OpenAI 的编程助手，适合阅读代码、修改文件、解释报
 
 ### Windows
 
-新手优先安装 Codex App。打开 OpenAI 官方 Codex App 页面：
+#### 安装 Codex App
+
+新手只安装 Codex App 就可以使用，不需要安装 Codex CLI、Node.js 或 npm。
+
+打开 OpenAI 官方 Codex App 页面：
 
 ```text
 https://developers.openai.com/codex/app
@@ -24,15 +28,19 @@ https://developers.openai.com/codex/app
 Codex
 ```
 
-选择 OpenAI 发布的 **Codex**，点击 **获取 / 安装**。安装完成后，从 Windows 开始菜单打开 Codex，登录 ChatGPT 账号或使用 API Key。
+选择 OpenAI 发布的 **Codex**，点击 **获取 / 安装**。
 
-不想打开 Microsoft Store 界面时，在 PowerShell 运行：
+不想打开 Microsoft Store 界面时，可以在 PowerShell 运行：
 
 ```powershell
 winget install Codex -s msstore
 ```
 
-需要在终端里使用 Codex CLI 时，再安装 Node.js 和 CLI：
+安装完成后，从 Windows 开始菜单打开 Codex，登录 ChatGPT 账号或使用 API Key。
+
+#### 只在需要终端时安装 CLI
+
+只有要在 PowerShell、CMD 或脚本里运行 `codex` 命令时，才安装 Codex CLI。只用 Codex App 的用户跳过这一段。
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
@@ -40,7 +48,7 @@ npm install -g @openai/codex
 codex --version
 ```
 
-看到版本号，就说明 CLI 安装成功。
+看到版本号，说明 CLI 安装成功。
 
 ### macOS
 
