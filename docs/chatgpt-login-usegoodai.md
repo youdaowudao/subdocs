@@ -35,7 +35,7 @@
 7. 改完后测试：
    - 能运行 codex --version 时，执行：codex exec --skip-git-repo-check "测试"
    - macOS 找不到 codex 命令时，检查 /Applications/Codex.app/Contents/Resources/codex --version；存在就用这个路径执行同样测试。
-   - 找不到可用命令时，不要安装 CLI；提醒我重启 Codex App，在 App 里发送同一句测试消息。
+   - 找不到可用命令时，不要安装 CLI；提醒我重启 Codex App，新开对话后发送同一句测试消息，不要用旧对话。
 
 model_provider = "UseGoodAI"
 model = "gpt-5.5"
@@ -76,7 +76,7 @@ image_generation = true
 
 ## 验证
 
-进入 Codex App 后，先发一句普通测试：
+进入 Codex App 后，新开对话或任务，不要继续旧对话。先发一句普通测试：
 
 ```text
 测试

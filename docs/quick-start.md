@@ -87,10 +87,10 @@ Codex CLI 用户重新打开一个终端，执行：
 codex
 ```
 
-Codex App 用户重新打开 App 后新建一个对话或任务。
+Codex App 用户重新打开 App 后新建一个对话或任务，不要继续旧对话。
 桌面版没有读取新配置时，彻底退出 Codex App 后再重新打开；Windows 用户从任务管理器结束相关进程。
 
-进入 Codex 后，发送一句测试：
+进入新的 Codex 对话后，发送一句测试：
 
 ```text
 测试
