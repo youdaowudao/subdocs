@@ -126,7 +126,7 @@ openclaw dashboard
 发送：
 
 ```text
-用一句话回复：OpenClaw 已经通过 UseGoodAI 连接成功。
+测试
 ```
 
 能正常回复，说明当前会话已使用 `usegoodai/模型名`。

@@ -57,7 +57,7 @@ Open WebUI 自动出现模型时，选择可用模型测试。
 3. 发送：
 
 ```text
-请用一句话回复：Open WebUI 已连接 UseGoodAI 成功。
+测试
 ```
 
 能正常回复，说明当前聊天已使用 UseGoodAI 连接。

@@ -49,7 +49,7 @@ gpt-5.5
 在 JetBrains 插件里选择 `UseGoodAI` provider 和刚填写的模型，发送：
 
 ```text
-请用一句话回复：JetBrains 已连接 UseGoodAI 成功。
+测试
 ```
 
 能正常回复，说明当前插件已经切到 UseGoodAI。

@@ -93,7 +93,7 @@ Codex App 用户重新打开 App 后新建一个对话或任务。
 进入 Codex 后，发送一句测试：
 
 ```text
-用一句话回复：UseGoodAI Codex 连接是否成功。
+测试
 ```
 
 能正常收到回复，就说明本机 Codex 已经通过 UseGoodAI 接入成功。

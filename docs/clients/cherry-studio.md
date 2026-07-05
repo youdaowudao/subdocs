@@ -60,7 +60,7 @@ gpt-5.5
 3. 发送：
 
 ```text
-请用一句话回复：Cherry Studio 已连接成功
+测试
 ```
 
 能正常回复，说明 Cherry Studio 已经通过 UseGoodAI 发起请求。

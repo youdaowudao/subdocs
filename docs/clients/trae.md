@@ -39,7 +39,7 @@ gpt-5.5
 发送：
 
 ```text
-请用一句话回复：Trae 已通过 UseGoodAI 连接成功。
+测试
 ```
 
 能正常回复，说明当前 Trae 功能已经切到自定义 provider。

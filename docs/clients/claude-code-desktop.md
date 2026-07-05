@@ -41,7 +41,7 @@ Base URL 只填到 `/v1`，不要追加其它路径。模型名不要填 Claude 
 在模型或 provider 选择处切到 `UseGoodAI`，选择刚才填写的模型，发送：
 
 ```text
-请用一句话回复：Claude Code Desktop 已通过 UseGoodAI 连接成功。
+测试
 ```
 
 能正常回复，说明当前桌面端已经切到 `UseGoodAI` provider。

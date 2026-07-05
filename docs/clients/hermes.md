@@ -50,7 +50,7 @@ hermes
 进入 Hermes 后发送：
 
 ```text
-用一句话回复：Hermes 已经通过 UseGoodAI 连接成功。
+测试
 ```
 
 能正常回复，说明 Hermes 已经走 UseGoodAI。

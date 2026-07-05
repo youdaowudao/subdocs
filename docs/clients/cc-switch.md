@@ -64,7 +64,7 @@ paru -S cc-switch-bin
 打开目标客户端，发送：
 
 ```text
-用一句话回复：当前客户端已经通过 UseGoodAI 连接成功。
+测试
 ```
 
 能正常回复，说明目标客户端已经读取 CC Switch 启用的配置。

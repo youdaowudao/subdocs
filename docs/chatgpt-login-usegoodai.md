@@ -17,8 +17,13 @@
 把下面这段话复制给能操作本机文件的 AI。最后只把 `experimental_bearer_token` 双引号里的内容换成自己的 API Key。
 
 ```text
-请帮我修改 Windows Codex 配置，一般是在：
-C:\Users\我的用户名\.codex\config.toml
+请帮我修改当前电脑的 Codex 配置文件。
+
+请先判断我当前使用的系统和 Codex 实际运行环境，再选择正确的 config.toml 位置：
+- Windows Codex App / PowerShell / CMD：C:\Users\我的用户名\.codex\config.toml
+- macOS / Linux / WSL：~/.codex/config.toml
+
+找不到 config.toml 时，在对应位置新建。
 
 要求：
 1. 先备份旧 config.toml。
@@ -27,6 +32,10 @@ C:\Users\我的用户名\.codex\config.toml
 4. 把下面配置放到文件开头；如已有 [features]，合并进去，不要写两个。
 5. 不要退出 ChatGPT 登录，不要删除 auth.json。
 6. 改完提醒我只替换 experimental_bearer_token 里的 API Key。
+7. 改完后测试：
+   - 能运行 codex --version 时，执行：codex exec --skip-git-repo-check "测试"
+   - macOS 找不到 codex 命令时，检查 /Applications/Codex.app/Contents/Resources/codex --version；存在就用这个路径执行同样测试。
+   - 找不到可用命令时，不要安装 CLI；提醒我重启 Codex App，在 App 里发送同一句测试消息。
 
 model_provider = "UseGoodAI"
 model = "gpt-5.5"
@@ -50,7 +59,13 @@ image_generation = true
 ## 手动配置
 
 1. 打开 Codex App，确认已经登录 ChatGPT，不要点退出登录。
-2. 打开 `C:\Users\你的用户名\.codex\config.toml`；没有就新建。
+2. 按当前运行环境打开 `config.toml`；没有就新建：
+
+| 运行环境 | 配置文件位置 |
+| --- | --- |
+| Windows Codex App / PowerShell / CMD | `C:\Users\你的用户名\.codex\config.toml` |
+| macOS / Linux / WSL | `~/.codex/config.toml` |
+
 3. 修改前先复制一份旧的 `config.toml` 作为备份。
 4. 删除旧的模型端点配置，保留本文这套 UseGoodAI 配置。
 5. 保留文件下方已有的 MCP、插件、项目权限、工作区等其它配置。
@@ -64,7 +79,7 @@ image_generation = true
 进入 Codex App 后，先发一句普通测试：
 
 ```text
-用一句话回复：UseGoodAI Codex 连接是否成功。
+测试
 ```
 
 到 UseGoodAI 后台的使用记录页面确认有调用记录后，再测试内置生图：
