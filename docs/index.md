@@ -29,7 +29,7 @@ features:
     link: /clients/vscode
   - icon: 🧪
     title: Codex 进阶
-    details: 学习 Codex Home、profile、会话管理、非交互任务和多 Codex 工作流。
+    details: 学习 Codex Home、profile、会话管理、手机连接和多 Codex 工作流。
     link: /external/codex-advanced
   - icon: 🧰
     title: Codex 周边工具
@@ -53,11 +53,11 @@ features:
     link: /clients/open-webui
   - icon: 🦾
     title: OpenClaw
-    details: 为 OpenClaw 添加 UseGoodAI provider，并完成网关验证。
+    details: 为 OpenClaw 龙虾 Gateway 添加 UseGoodAI provider，让聊天入口和 Agent 走中转站。
     link: /clients/openclaw
   - icon: 🧭
     title: Hermes
-    details: 按 Custom endpoint 和 api_mode 配置 Hermes Agent。
+    details: 在 Hermes 记忆 / Skill Agent 里按 Custom endpoint 和 api_mode 接入 UseGoodAI。
     link: /clients/hermes
   - icon: 🗂️
     title: LibreChat
@@ -76,7 +76,7 @@ features:
     details: 在 canvas.usegoodai.com 中接入自己的 API Key，用画布方式连续创作图片。
     link: /images/infinite-canvas
   - icon: 🖼️
-    title: 生图 API
+    title: 图片生成 API
     details: 使用 gpt-image-2 调用图片生成接口，并把返回的 Base64 保存为 PNG。
     link: /images/image-generation
   - icon: 🧩
@@ -85,6 +85,6 @@ features:
     link: /models
   - icon: 🛠️
     title: 常见错误
-    details: 按顺序排查 401、403、连接失败、模型不可用和上下文不生效等问题。
+    details: 按顺序排查 401、403、连接失败、模型不可用和上下文超限等问题。
     link: /errors/
 ---

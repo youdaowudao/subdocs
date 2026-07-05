@@ -40,6 +40,7 @@ export default withSidebar(config, {
   includeFolderIndexFile: false,
   manualSortFileNameByPriority: [
     'quick-start.md',
+    'chatgpt-login-usegoodai.md',
     'clients',
     'codex.md',
     'vscode.md',
@@ -55,8 +56,8 @@ export default withSidebar(config, {
     'images',
     'infinite-canvas.md',
     'image-generation.md',
-    'codex-image.md',
     'codex-image-direct.md',
+    'codex-image.md',
     'external',
     'base-url.md',
     'compatibility.md',

@@ -1,14 +1,16 @@
-# 在 Codex 里使用 UseGoodAI
+# Codex
 
-Codex 是 OpenAI 的编程助手，适合阅读代码、修改文件、解释报错、生成脚本和整理项目。相比普通聊天工具，Codex 更适合处理真实项目任务：它能看到本机文件，也能配合终端和编辑器工作。
+Codex 是 OpenAI 的编程助手，适合阅读代码、修改文件、解释报错、生成脚本和整理项目。它能看到本机文件，也能配合终端和编辑器处理真实项目任务。
 
-按照本文配置完成后，Codex App 或 Codex CLI 会使用本中转站的 API Key 发起模型请求。你只需要安装 Codex，并把本机 `config.toml` 和 `auth.json` 改成后台给出的正确内容。
+按照本文配置完成后，Codex App 或 Codex CLI 会使用本中转站的 API Key 发起模型请求。本文修改本机 `config.toml` 和 `auth.json`。
+
+需要保留 Codex App 的 ChatGPT 登录、内置生图或手机连接时，看 [保持 ChatGPT 登录同时连接中转站](/chatgpt-login-usegoodai)。
 
 ## 安装 Codex
 
 ### Windows
 
-不熟悉命令行，直接安装 Codex App。需要在终端里使用 Codex CLI，打开 PowerShell，依次执行：
+图形界面用户直接安装 Codex App。需要在终端里使用 Codex CLI 时，打开 PowerShell，依次执行：
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
@@ -38,9 +40,9 @@ npm install -g @openai/codex
 codex --version
 ```
 
-WSL 用户只记住一点：在 WSL 里运行 `codex`，配置就放进 WSL 的 `~/.codex`，不是 Windows 用户目录。
+在 WSL 里运行 `codex` 时，配置放进 WSL 的 `~/.codex`，不是 Windows 用户目录。
 
-## 把 Codex 对接到 UseGoodAI API
+## 配置 Codex
 
 先按 [快速开始](/quick-start) 在后台创建 API Key，并复制后台给出的 Codex 配置内容。这里复制的是两段文本，不是两个可下载文件：
 
@@ -58,6 +60,18 @@ WSL 用户只记住一点：在 WSL 里运行 `codex`，配置就放进 WSL 的 
 
 Windows 文件名必须正好是 `config.toml` 和 `auth.json`，不要保存成 `config.toml.txt` 或 `auth.json.txt`。
 
+## 关于 `/v1`
+
+Codex 这类后台已经生成专用配置的场景，优先使用后台复制出来的地址，不要自己额外加 `/v1`。
+
+只有普通 OpenAI-compatible 客户端手动填写 `Base URL` 时，才填写：
+
+```text
+https://api.usegoodai.com/v1
+```
+
+简单判断：有后台生成配置就复制后台配置；没有生成配置、只能手动填 OpenAI-compatible 地址时，再考虑 `/v1`。
+
 ## 启动并验证
 
 CLI 用户重新打开终端，运行：
@@ -74,7 +88,7 @@ Codex App 用户完全退出 App 后重新打开，新建一个任务。
 用一句话回复：UseGoodAI Codex 连接是否成功。
 ```
 
-然后回到后台，看这个 API Key 是否出现调用记录或用量变化。
+然后回到后台 **使用记录** 页面，确认这个 API Key 有调用记录。
 
 ## 接入常见问题
 
