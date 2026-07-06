@@ -1,20 +1,18 @@
 # 保持 ChatGPT 登录同时连接中转站
 
-本文适合已经使用 Codex App 的用户。配置完成后，Codex App 继续保持 ChatGPT 登录状态，同时模型请求走 UseGoodAI 中转站。
-
-配置后保留 Codex App 的内置生图、插件入口、手机端连接和其它设备连接。本文只修改本机 `config.toml`。
+本文适合已经安装 Codex App、并且有 ChatGPT 账号的用户。配置完成后，Codex App 继续保持 ChatGPT 登录状态，模型请求走 UseGoodAI 中转站，同时保留内置生图、插件入口、手机端连接和其它设备连接；本文只修改本机 `config.toml`。
 
 ## 适合谁
 
-| 你的目标 | 看哪里 |
+| 你的情况 | 看哪里 |
 | --- | --- |
-| 第一次跑通 Codex | 先看 [快速开始](/quick-start) |
-| 保留 ChatGPT 登录状态，同时让请求走中转站 | 看本文 |
+| 没有 ChatGPT 账号，或不想登录 ChatGPT 账号 | 先看 [快速开始](/quick-start) |
+| 有 ChatGPT 账号，并且需要保留 ChatGPT 登录状态 | 看本文 |
 | 只配置 Codex CLI，不用 App 内置能力 | 看 [Codex](/clients/codex) |
 
 ## 懒人方法：复制给 AI 帮你改
 
-把下面这段话复制给能操作本机文件的 AI。最后只把 `experimental_bearer_token` 双引号里的内容换成自己的 API Key。
+先按 [快速开始](/quick-start) 的第一步、第二步创建 UseGoodAI API Key；已经有 Key 时直接继续。把下面这段话复制给能操作本机文件的 AI。最后点开 AI 给出的 `config.toml` 路径，只把 `experimental_bearer_token` 双引号里的内容换成自己的 API Key 并保存。
 
 ```text
 请帮我修改当前电脑的 Codex 配置文件。
@@ -32,7 +30,8 @@
 4. 把下面配置放到文件开头；如已有 [features]，合并进去，不要写两个。
 5. 不要退出 ChatGPT 登录，不要删除 auth.json。
 6. 改完提醒我只替换 experimental_bearer_token 里的 API Key。
-7. 改完后测试：
+7. 在回复结尾单独写出这次实际修改的 config.toml 完整路径，提醒我点击打开该文件，把 API Key 复制进 experimental_bearer_token 双引号里并保存。
+8. 我填好 API Key 并保存后，再按下面方式测试：
    - 能运行 codex --version 时，执行：codex exec --skip-git-repo-check "测试"
    - macOS 找不到 codex 命令时，检查 /Applications/Codex.app/Contents/Resources/codex --version；存在就用这个路径执行同样测试。
    - 找不到可用命令时，不要安装 CLI；提醒我重启 Codex App，新开对话后发送同一句测试消息，不要用旧对话。
