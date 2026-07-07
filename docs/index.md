@@ -19,6 +19,10 @@ features:
     title: 快速开始
     details: 第一次使用时，按后台截图创建 API Key，并完成一次可验证的接入。
     link: /quick-start
+  - icon: 🔐
+    title: 我要继续登陆自己的 ChatGPT
+    details: 已登录 Codex App 时，用 UseGoodAI 接管模型请求，并保留生图、插件和手机连接。
+    link: /chatgpt-login-usegoodai
   - icon: ⚡
     title: Codex
     details: 适用于 Codex CLI 和 Codex App，按系统完成安装、配置和常见问题排查。

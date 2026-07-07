@@ -1,6 +1,8 @@
 # 保持 ChatGPT 登录同时连接中转站
 
-本文适合已经安装 Codex App、并且有 ChatGPT 账号的用户。配置完成后，Codex App 继续保持 ChatGPT 登录状态，模型请求走 UseGoodAI 中转站，同时保留内置生图、插件入口、手机端连接和其它设备连接；本文只修改本机 `config.toml`。
+本文适合已经安装 Codex App、并且有 ChatGPT 账号的用户。配置完成后，Codex App 继续保持 ChatGPT 登录状态，模型请求走 UseGoodAI 中转站，同时保留内置生图、插件入口、手机和其它设备连接；本文只修改本机 `config.toml`。
+
+注意：配置后原账号的对话记录将不会显示在app上（本地文件还在），有需要请提前备份或连接后叫ai整理。
 
 ## 适合谁
 
@@ -27,7 +29,7 @@
 1. 先备份旧 config.toml。
 2. 删除旧的模型端点配置：model_provider、[model_providers.xxx]、base_url。
 3. 保留 MCP、插件、项目权限、工作区信任等无关配置。
-4. 把下面配置放到文件开头；如已有 [features]，合并进去，不要写两个。
+4. 把下面配置放到文件开头；`config.toml` 全文只能有一个 [features]，已有时合并进去。
 5. 不要退出 ChatGPT 登录，不要删除 auth.json。
 6. 改完提醒我只替换 experimental_bearer_token 里的 API Key。
 7. 在回复结尾单独写出这次实际修改的 config.toml 完整路径，提醒我点击打开该文件，把 API Key 复制进 experimental_bearer_token 双引号里并保存。
@@ -69,7 +71,7 @@ image_generation = true
 4. 删除旧的模型端点配置，保留本文这套 UseGoodAI 配置。
 5. 保留文件下方已有的 MCP、插件、项目权限、工作区等其它配置。
 6. 把上面的配置放到文件开头，只改 `experimental_bearer_token` 里的 API Key。
-7. 原来已经有 `[features]` 时，把 `image_generation = true` 合并进去，不要重复创建第二个 `[features]`。
+7. 保存前检查全文只能有一个 `[features]`；原来已有时，只把 `image_generation = true` 合并进去。
 8. 保存文件。
 9. 完全退出 Codex App，再重新打开。
 
