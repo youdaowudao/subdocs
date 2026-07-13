@@ -7,7 +7,7 @@
 
 | 你要做什么 | 进入 |
 | --- | --- |
-| 用 Codex CLI / Codex App 写代码 | [Codex](/clients/codex) |
+| 用 Codex CLI / ChatGPT 桌面应用中的 Codex 写代码 | [Codex](/clients/codex) |
 | 在 VS Code 里配合 Codex 或 BYOK 使用 | [VS Code](/clients/vscode) |
 | 在 Claude Code Desktop 里接第三方 GPT | [Claude Code Desktop](/clients/claude-code-desktop) |
 | 统一管理多个 Agent / CLI 配置 | [CC Switch](/clients/cc-switch) |
@@ -35,7 +35,7 @@ https://api.usegoodai.com/v1
 | 页面 | 用途 |
 | --- | --- |
 | [Codex](/clients/codex) | 第一次安装、配置和排查基础问题 |
-| [保持 ChatGPT 登录同时连接中转站](/chatgpt-login-usegoodai) | Codex App 保留 ChatGPT 登录、内置生图和手机连接 |
+| [保持 ChatGPT 登录同时连接中转站](/chatgpt-login-usegoodai) | ChatGPT 桌面应用中的 Codex 保留 ChatGPT 登录、内置生图和手机连接 |
 | [VS Code](/clients/vscode) | 想在编辑器里配合 Codex，或了解 VS Code BYOK |
 | [Codex 进阶用法](/external/codex-advanced) | 已经跑通后，学习 profile、会话、权限、手机连接和多 Codex 工作流 |
 | [Codex 周边工具](/external/codex-tools) | 想了解 Git、ripgrep、GitHub CLI、MCPHub、Superpowers 等辅助工具 |

@@ -21,11 +21,11 @@ features:
     link: /quick-start
   - icon: 🔐
     title: 我要继续登陆自己的 ChatGPT
-    details: 已登录 Codex App 时，用 UseGoodAI 接管模型请求，并保留生图、插件和手机连接。
+    details: 已在 ChatGPT 桌面应用中登录 Codex 时，用 UseGoodAI 接管模型请求，并保留生图、插件和手机连接。
     link: /chatgpt-login-usegoodai
   - icon: ⚡
     title: Codex
-    details: 适用于 Codex CLI 和 Codex App，按系统完成安装、配置和常见问题排查。
+    details: 适用于 Codex CLI 和 ChatGPT 桌面应用中的 Codex，按系统完成安装、配置和常见问题排查。
     link: /clients/codex
   - icon: 🧑‍💻
     title: VS Code

@@ -2,7 +2,7 @@
 
 Codex 适合把生图任务整理成可复盘的项目：先把口语需求变成清晰说明，再拆出多组提示词，生成批量脚本，记录图片结果，最后整理下一轮修改方向。
 
-临时生成几张图片，优先使用 [无限画布](/images/infinite-canvas)。在程序里调用图片生成接口，看 [图片生成 API](/images/image-generation)。使用 Codex App 内置 `image_gen`，先看 [Codex 内置生图](/images/codex-image-direct)。
+临时生成几张图片，优先使用 [无限画布](/images/infinite-canvas)。在程序里调用图片生成接口，看 [图片生成 API](/images/image-generation)。使用 ChatGPT 桌面应用中 Codex 的内置 `image_gen`，先看 [Codex 内置生图](/images/codex-image-direct)。
 
 ## 工作流程
 

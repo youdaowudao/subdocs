@@ -18,7 +18,7 @@
 
 | 接入类型 | 常见工具 | `User-Agent` 处理口径 | 常见优先检查项 |
 | --- | --- | --- | --- |
-| Codex / Responses | Codex CLI、Codex App、支持 Responses API 的代码 Agent | 默认使用 Codex 自带 UA；不要改成普通聊天客户端 UA | 是否走 Responses，使用记录页面是否出现 `/v1/responses` |
+| Codex / Responses | Codex CLI、ChatGPT 桌面应用中的 Codex、支持 Responses API 的代码 Agent | 默认使用 Codex 自带 UA；不要改成普通聊天客户端 UA | 是否走 Responses，使用记录页面是否出现 `/v1/responses` |
 | 普通 OpenAI-compatible | Cherry Studio、Open WebUI、LibreChat、普通聊天客户端 | 能用就不改；需要时填写客户端名和版本 | Key、`https://api.usegoodai.com/v1`、模型名 |
 | OpenClaw / Hermes / Agent | OpenClaw、Hermes、其他 Agent CLI | 优先保留工具默认 UA；需要时填写工具真实标识 | API mode、模型名、代理是否转发 Header |
 | 自建代理 / 脚本 | Python、Node.js、curl、内部网关、反向代理 | 明确写自己的脚本或服务名，便于日志定位 | 代理最终请求是否覆盖 Authorization 和 UA |
@@ -28,7 +28,7 @@
 
 ### Codex / Responses
 
-适用于 Codex CLI、Codex App，以及明确走 OpenAI Responses API 的客户端。
+适用于 Codex CLI、ChatGPT 桌面应用中的 Codex，以及明确走 OpenAI Responses API 的客户端。
 
 优先按这个顺序看：
 

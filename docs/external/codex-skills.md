@@ -50,7 +50,7 @@ Skill 名称：docs-writer。
 3. 创建必要文件，不要创建 README、安装说明、更新日志等无关文件。
 4. Skill 内容用中文写清楚：什么时候使用、工作步骤、输出要求、验证方式。
 5. 让 Codex 以后写文档时先读附近已有文档，保持标题、语气、链接和步骤风格一致。
-6. 完成后告诉我 Skill 放在哪个目录，以及在 Codex CLI 和 Codex App 里怎么调用。
+6. 完成后告诉我 Skill 放在哪个目录，以及在 Codex CLI 和 ChatGPT 桌面应用中的 Codex 里怎么调用。
 ```
 
 ## 创建代码审查 Skill
@@ -168,8 +168,8 @@ Skill 位置：~/.codex/skills/api-debugging
 | 入口 | 调用方式 |
 | --- | --- |
 | Codex CLI | 在输入框里输入 `/skills`，从列表选择；也可以直接说“使用 docs-writer Skill 写这篇文档” |
-| Codex App | 在输入框里输入 `$`，从 Skill 列表选择；也可以直接点对应 Skill |
-| VS Code 插件 | 在输入框里输入 `$`，和 Codex App 类似 |
+| ChatGPT 桌面应用中的 Codex | 在输入框里输入 `$`，从 Skill 列表选择；也可以直接点对应 Skill |
+| VS Code 插件 | 在输入框里输入 `$`，和 ChatGPT 桌面应用中的 Codex 类似 |
 
 CLI 示例：
 

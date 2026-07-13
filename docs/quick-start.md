@@ -1,6 +1,6 @@
 # 快速开始
 
-本文适合第一次使用 UseGoodAI 的用户。按本文做完后，Codex CLI 或 Codex App 会使用本中转站的 API Key 发起请求。
+本文适合第一次使用 UseGoodAI 的用户。按本文做完后，Codex CLI 或 ChatGPT 桌面应用中的 Codex 会使用本中转站的 API Key 发起请求。
 
 你只需要完成两件事：在后台创建 API Key；把后台生成的 Codex 配置复制到本机 `.codex` 目录里的 `config.toml` 和 `auth.json`。
 
@@ -28,41 +28,9 @@
 除名称和分组外，其它限制项保持默认。
 :::
 
-## 第三步：打开后台生成配置
+## 第三步：在本机找到两个配置文件
 
-创建成功后，在密钥列表里找到刚才创建的 Key，点击右侧的 **使用密钥**。
-
-后续遇到 403 或模型不可用，回到这里确认分组是否选对。
-
-<a class="doc-image-link" href="/images/quick-start/create-api-key-3.jpg" target="_blank" rel="noopener">
-  <img src="/images/quick-start/create-api-key-3.jpg" alt="创建成功后点击使用密钥">
-</a>
-
-## 第四步：复制并保存 Codex 配置
-
-Codex 的配置文件放在用户目录下的 `.codex` 文件夹中。
-
-Windows 有两种打开方式。
-
-第一种：按 `Win + R`，输入：
-
-```text
-%userprofile%\.codex
-```
-
-第二种：打开 C 盘，依次进入：
-
-```text
-C:\Users\你的用户名\.codex
-```
-
-macOS / Linux / WSL 路径是：
-
-```text
-~/.codex
-```
-
-目录不存在就手动创建一个。
+Codex 的配置文件放在用户目录下的 `.codex` 文件夹中。先找到这两个文件，下一步再回后台复制内容。
 
 你需要在这个目录里处理两个文件：
 
@@ -71,12 +39,59 @@ macOS / Linux / WSL 路径是：
 | `config.toml` | 保存模型、接口地址、接入方式等配置 |
 | `auth.json` | 保存 API Key |
 
-在后台弹窗里选择 **Codex CLI**，再按你的系统选择 `macOS / Linux` 或 `Windows`。Codex App 也读取这份本机 `.codex` 配置。
+### Windows：按文件夹打开 `.codex`
 
-后台会分别给出 `config.toml` 和 `auth.json` 内容。把两段内容分别粘贴到本机同名文件。保存前检查 `config.toml` 只有一个 `[features]`；已有时，把后台配置里的功能项合并进去。
+1. 打开 **此电脑**，进入 **本地磁盘 (C:)**，再打开 **用户** 文件夹。
+
+<a class="doc-image-link" href="/images/连接/c盘1.jpg" target="_blank" rel="noopener">
+  <img src="/images/连接/c盘1.jpg" alt="在 Windows 的 C 盘打开用户文件夹">
+</a>
+
+2. 打开你的 Windows 用户名文件夹。不要打开 **公用** 或 `Administrator`；图中的 `ss` 只是示例用户名。
+
+<a class="doc-image-link" href="/images/连接/c盘2.jpg" target="_blank" rel="noopener">
+  <img src="/images/连接/c盘2.jpg" alt="在用户文件夹中打开自己的 Windows 用户名">
+</a>
+
+3. 打开 `.codex` 文件夹。完整位置是 `C:\Users\你的用户名\.codex`。
+
+<a class="doc-image-link" href="/images/连接/c盘3.jpg" target="_blank" rel="noopener">
+  <img src="/images/连接/c盘3.jpg" alt="在 Windows 用户目录中打开 .codex 文件夹">
+</a>
+
+4. 在 `.codex` 文件夹中找到 `auth.json` 和 `config.toml`。不要删除其它文件或文件夹。
+
+<a class="doc-image-link" href="/images/连接/c盘4.jpg" target="_blank" rel="noopener">
+  <img src="/images/连接/c盘4.jpg" alt="在 .codex 文件夹中找到 auth.json 和 config.toml">
+</a>
+
+### macOS / Linux / WSL
+
+配置目录是：
+
+```text
+~/.codex
+```
+
+两个文件不存在时，在 `.codex` 文件夹中新建同名文件。Windows 新建后确认文件名没有变成 `config.toml.txt` 或 `auth.json.txt`。
+
+## 第四步：在 API 密钥页面复制并写入配置
+
+回到 UseGoodAI 后台，左侧进入 **API 密钥**。在密钥列表里找到刚才创建的 Key，点击右侧的 **使用密钥**。
+
+<a class="doc-image-link" href="/images/quick-start/create-api-key-3.jpg" target="_blank" rel="noopener">
+  <img src="/images/quick-start/create-api-key-3.jpg" alt="在 API 密钥列表中点击使用密钥">
+</a>
+
+在弹窗里选择 **Codex CLI**，再按你的系统选择 `macOS / Linux` 或 `Windows`。ChatGPT 桌面应用中的 Codex 也读取这份本机 `.codex` 配置。
+
+### 分别写入两个文件
+
+1. 复制后台给出的 `config.toml` 内容，粘贴到本机同名文件并保存。`config.toml` 里只能有一个 `[features]`；已有时，把后台配置里的功能项合并进去。
+2. 复制后台给出的 `auth.json` 内容，粘贴到本机同名文件并保存。
 
 <a class="doc-image-link" href="/images/quick-start/create-api-key-4.jpg" target="_blank" rel="noopener">
-  <img src="/images/quick-start/create-api-key-4.jpg" alt="复制 Codex CLI 配置和 API Key">
+  <img src="/images/quick-start/create-api-key-4.jpg" alt="复制 config.toml 和 auth.json 内容并分别保存">
 </a>
 
 ## 第五步：启动 Codex 测试
@@ -87,8 +102,13 @@ Codex CLI 用户重新打开一个终端，执行：
 codex
 ```
 
-Codex App 用户重新打开 App 后新建一个对话或任务，不要继续旧对话。
-桌面版没有读取新配置时，彻底退出 Codex App 后再重新打开；Windows 用户从任务管理器结束相关进程。
+ChatGPT 桌面应用用户重新打开应用，切换到 Codex 后新建一个对话或任务，不要继续旧对话。
+
+Windows 用户修改配置前已经打开 ChatGPT 桌面应用时，先在右下角托盘找到 ChatGPT 图标，点击 **Exit** 彻底退出，再重新打开应用。这样才能读取刚保存的配置。
+
+<a class="doc-image-link" href="/images/连接/c盘5.jpg" target="_blank" rel="noopener">
+  <img src="/images/连接/c盘5.jpg" alt="从 Windows 右下角托盘退出 ChatGPT 桌面应用">
+</a>
 
 进入新的 Codex 对话后，发送一句测试：
 

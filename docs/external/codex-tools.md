@@ -99,7 +99,7 @@ MCP 的目标是让大模型应用以标准方式连接外部数据和工具。M
 | 适合解决什么问题 | 给 Codex 增加更明确的工作流程，例如先讨论需求、再写计划、再实现、再验证。 |
 | 什么时候需要 | 已经频繁让 Codex 做中等复杂度开发任务，发现它容易跳过设计、测试或验证步骤。 |
 | 安装入口 | 进入 Codex 的 `/plugins` 搜索 `superpowers` |
-| 与 Codex 的配合方式 | CLI 里用 `/brainstorming`、`/writing-plans`、`/systematic-debugging` 等命令触发；Codex App 和 VS Code 插件里用 `$brainstorming`、`$writing-plans` 等 Skill 触发；也可以用中文说“用 Superpowers 的方法解决当前问题”。 |
+| 与 Codex 的配合方式 | CLI 里用 `/brainstorming`、`/writing-plans`、`/systematic-debugging` 等命令触发；ChatGPT 桌面应用中的 Codex 和 VS Code 插件里用 `$brainstorming`、`$writing-plans` 等 Skill 触发；也可以用中文说“用 Superpowers 的方法解决当前问题”。 |
 | 使用提醒 | Superpowers 是流程约束工具，不是模型能力开关。第一次配置 Codex 时先不要同时安装，避免把简单任务变复杂。 |
 
 Superpowers 更像一套工作纪律，不是模型能力开关。它适合已经知道自己需要“流程约束”的用户；只是让 Codex 改小文件、写简单脚本时，先不用装。
