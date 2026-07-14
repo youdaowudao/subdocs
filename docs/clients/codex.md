@@ -4,7 +4,7 @@ Codex 是 OpenAI 的编程助手，适合阅读代码、修改文件、解释报
 
 按照本文配置完成后，ChatGPT 桌面应用中的 Codex 或 Codex CLI 会使用本中转站的 API Key 发起模型请求。本文修改本机 `config.toml` 和 `auth.json`。
 
-需要保留 ChatGPT 桌面应用中 Codex 的 ChatGPT 登录、内置生图或手机连接时，看 [保持 ChatGPT 登录同时连接中转站](/chatgpt-login-usegoodai)。
+需要使用 ChatGPT 桌面应用中 Codex 的内置生图时，看 [Codex 内置生图](/images/codex-image-direct)。需要保留 ChatGPT 登录或手机连接时，看 [保持 ChatGPT 登录同时连接中转站](/chatgpt-login-usegoodai)。
 
 ## 安装 Codex
 

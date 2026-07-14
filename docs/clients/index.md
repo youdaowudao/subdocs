@@ -35,7 +35,8 @@ https://api.usegoodai.com/v1
 | 页面 | 用途 |
 | --- | --- |
 | [Codex](/clients/codex) | 第一次安装、配置和排查基础问题 |
-| [保持 ChatGPT 登录同时连接中转站](/chatgpt-login-usegoodai) | ChatGPT 桌面应用中的 Codex 保留 ChatGPT 登录、内置生图和手机连接 |
+| [Codex 内置生图](/images/codex-image-direct) | 在 ChatGPT 桌面应用中的 Codex 调用内置生图工具 |
+| [保持 ChatGPT 登录同时连接中转站](/chatgpt-login-usegoodai) | ChatGPT 桌面应用中的 Codex 保留 ChatGPT 登录和手机连接 |
 | [VS Code](/clients/vscode) | 想在编辑器里配合 Codex，或了解 VS Code BYOK |
 | [Codex 进阶用法](/external/codex-advanced) | 已经跑通后，学习 profile、会话、权限、手机连接和多 Codex 工作流 |
 | [Codex 周边工具](/external/codex-tools) | 想了解 Git、ripgrep、GitHub CLI、MCPHub、Superpowers 等辅助工具 |
