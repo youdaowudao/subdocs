@@ -1,6 +1,6 @@
 # 保持 ChatGPT 登录同时连接中转站
 
-本文适合已经安装 ChatGPT 桌面应用、并且有 ChatGPT 账号的用户。配置完成后，应用中的 Codex 继续保持 ChatGPT 登录状态，模型请求走 UseGoodAI 中转站，同时保留插件入口、手机和其它设备连接；本文只修改本机 `config.toml`。
+本文适合已经安装 ChatGPT 桌面应用、并且有 ChatGPT 账号的用户。配置完成后，应用中的 Codex 继续保持 ChatGPT 登录状态，模型请求走 UseGoodAI 中转站，同时保留内置生图、插件入口、手机和其它设备连接；本文只修改本机 `config.toml`。
 
 注意：配置后原账号的对话记录将不会显示在app上（本地文件还在），有需要请提前备份或连接后叫ai整理。
 
@@ -29,7 +29,7 @@
 1. 先备份旧 config.toml。
 2. 删除旧的模型端点配置：model_provider、[model_providers.xxx]、base_url。
 3. 保留 MCP、插件、项目权限、工作区信任等无关配置。
-4. 把下面配置放到文件开头。
+4. 把下面配置放到文件开头；`config.toml` 全文只能有一个 [features]，已有时合并进去。
 5. 不要退出 ChatGPT 登录，不要删除 auth.json。
 6. 改完提醒我只替换 experimental_bearer_token 里的 API Key。
 7. 在回复结尾单独写出这次实际修改的 config.toml 完整路径，提醒我点击打开该文件，把 API Key 复制进 experimental_bearer_token 双引号里并保存。
@@ -53,6 +53,8 @@ wire_api = "responses"
 requires_openai_auth = true
 experimental_bearer_token = "这里完整填写你的中转站 API Key"
 
+[features]
+image_generation = true
 ```
 
 ## 手动配置
@@ -69,7 +71,7 @@ experimental_bearer_token = "这里完整填写你的中转站 API Key"
 4. 删除旧的模型端点配置，保留本文这套 UseGoodAI 配置。
 5. 保留文件下方已有的 MCP、插件、项目权限、工作区等其它配置。
 6. 把上面的配置放到文件开头，只改 `experimental_bearer_token` 里的 API Key。
-7. 保存前检查全文不要出现重复的 `[model_providers.UseGoodAI]`。
+7. 保存前检查全文只能有一个 `[features]`；原来已有时，只把 `image_generation = true` 合并进去。
 8. 保存文件。
 9. 完全退出 ChatGPT 桌面应用，再重新打开并切换到 Codex。
 
@@ -81,9 +83,13 @@ experimental_bearer_token = "这里完整填写你的中转站 API Key"
 测试
 ```
 
-能正常回复，并且 UseGoodAI 后台使用记录页面有调用记录，就说明配置完成。记录里的模型、分组和计费要符合预期；分组不对时到 API 密钥页面改 Key 分组，模型不对时改 `config.toml` 里的 `model` / `review_model`，计费有疑问时联系客服。
+到 UseGoodAI 后台的使用记录页面确认有调用记录后，再测试内置生图：
 
-需要测试 Codex 内置生图时，继续看 [Codex 内置生图](/images/codex-image-direct)。
+```text
+生成一张苹果图片。
+```
+
+能正常回复、使用记录页面有调用记录，并且内置生图可用，就说明配置完成。记录里的模型、分组和计费要符合预期；分组不对时到 API 密钥页面改 Key 分组，模型不对时改 `config.toml` 里的 `model` / `review_model`，计费有疑问时联系客服。
 
 ## 手机连接
 
@@ -105,6 +111,6 @@ ChatGPT 桌面应用中的 Codex 保持 ChatGPT 登录后，手机端可以在 C
 | --- | --- |
 | 修改配置后没有生效 | 保存配置后完全退出 ChatGPT 桌面应用，再重新打开并切换到 Codex。 |
 | 配置后 Codex 打不开或无法运行 | 检查 `config.toml` 里是否写了两个 `[features]`；有两个就合并成一个。 |
-| 能写代码，但不能生图 | 进入 [Codex 内置生图](/images/codex-image-direct)，按生图页修改 `config.toml`。 |
+| 能写代码，但不能生图 | 检查 `[features]` 里是否写了 `image_generation = true`。 |
 | 请求没有到达 UseGoodAI | 检查 `base_url` 是否为 `https://api.usegoodai.com/v1`，API Key 是否复制完整。 |
 | 手机端连不上 | 回到 **连接** 页面重新点击 **添加**，手机端登录 ChatGPT 后重新扫码。 |
