@@ -146,6 +146,10 @@ Windows 用户修改配置前已经打开 ChatGPT 桌面应用时，先在右下
 | 后台没有调用记录 | `config.toml` 和 `auth.json` 是否放在正确的 `.codex` 目录 |
 | Windows 配置不生效 | 文件名不要变成 `config.toml.txt` 或 `auth.json.txt` |
 
+::: warning 仍然无法使用？联系客服免费远程解决
+已经按照本文完整操作一遍，依然无法成功时，直接下载安装 [向日葵](https://sunlogin.oray.com/download) 或 [ToDesk](https://www.todesk.com/download.html)，然后进入用户群联系客服。客服会免费帮你远程检查并解决配置问题。
+:::
+
 ## 下一步
 
 - 需要看 Codex 参数含义：进入 [Codex](/clients/codex)
