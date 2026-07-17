@@ -1,85 +1,103 @@
-# 用 CC Switch 管理 UseGoodAI 配置
+# 用 CC Switch 把 UseGoodAI 接入 Claude Code
 
-CC Switch 是桌面配置管理工具，用来统一管理 Codex、Gemini CLI、OpenClaw、Hermes 等 Agent / CLI 客户端的供应商配置。它不提供模型，只负责把 UseGoodAI 的 API Key、模型名和接口地址写进目标客户端配置。
+CC Switch 是跨平台的 AI 编程工具配置管理器，可以在一个桌面界面里管理 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenClaw 和 Hermes 等工具的供应商配置。它适合不想手动编辑配置文件、需要在多个 API 供应商之间切换的用户。
 
-本文适合同时使用多个客户端、想集中切换配置的用户。只想先跑通 Codex 时，先看 [快速开始](/quick-start)。
+本文只讲 Claude Code：在 CC Switch 里新增并启用 `UseGoodAI.com` 后，Claude Code 会使用 UseGoodAI 的 API Key 和请求地址。整个过程不需要手动修改本机配置文件，只需要填写 UseGoodAI API Key。
 
 ## 安装 CC Switch
 
-官方项目地址：<https://github.com/farion1231/cc-switch>
+CC Switch 官方网站：<https://ccswitch.io>
 
-| 系统 | 安装方式 |
+官方项目和安装包：<https://github.com/farion1231/cc-switch>
+
+| 系统 | 安装方法 |
 | --- | --- |
-| Windows | 到 Releases 下载 `Windows.msi` 或 `Windows-Portable.zip` |
-| macOS | 用 Homebrew 安装，或到 Releases 下载 `.dmg` |
-| Arch Linux | 安装 AUR 包 `cc-switch-bin` |
-| 其它 Linux | 到 Releases 下载 `.deb`、`.rpm` 或 `.AppImage` |
+| Windows | 从 [Releases](https://github.com/farion1231/cc-switch/releases/latest) 下载 `.msi` 安装包或 `Windows-Portable.zip` 绿色版 |
+| macOS | 从 Releases 下载 `.dmg`，或使用下面的 Homebrew 命令 |
+| Arch Linux | 使用下面的 AUR 命令安装 |
+| 其它 Linux | 从 Releases 下载 `.deb`、`.rpm` 或 `.AppImage` |
 
-macOS 已安装 Homebrew 时运行：
+macOS 已安装 Homebrew 时执行：
 
 ```bash
 brew install --cask cc-switch
 ```
 
-Arch Linux 运行：
+Arch Linux 执行：
 
 ```bash
 paru -S cc-switch-bin
 ```
 
-## 添加 UseGoodAI 配置
+## 把 UseGoodAI 添加到 Claude Code
 
-打开 CC Switch，点击 **添加配置** 或 **添加供应商**，选择要管理的目标客户端。
+### 1. 选择 Claude Code 并新建供应商
 
-| 目标客户端 | 在 CC Switch 里对应什么 |
+打开 CC Switch，点击顶部的 **Claude Code** 图标。中间列表出现 `Claude Official` 和 `default`，说明当前管理的是 Claude Code 配置。
+
+点击右上角橙色 `+`，进入新增供应商页面。
+
+<a class="doc-image-link" href="/images/ccswitch/ccswitch1.jpg" target="_blank" rel="noopener">
+  <img src="/images/ccswitch/ccswitch1.jpg" alt="在 CC Switch 选择 Claude Code 并点击右上角加号">
+</a>
+
+顶部图标代表不同的目标工具。选错图标会把配置写到其它工具，Claude Code 不会读取。
+
+### 2. 选择 Claude 供应商的自定义配置
+
+保持顶部选中 **Claude 供应商**，在预设供应商列表中点击 **自定义配置**，再点击右下角 **添加**。
+
+<a class="doc-image-link" href="/images/ccswitch/ccswitch2.jpg" target="_blank" rel="noopener">
+  <img src="/images/ccswitch/ccswitch2.jpg" alt="在 Claude 供应商中选择自定义配置并点击添加">
+</a>
+
+本文不使用其它站点的预设，也不选择 **统一供应商**。UseGoodAI 的 Claude Code 配置只需要在这个自定义配置里填写一次。
+
+### 3. 填写四个字段并保存
+
+进入 **编辑供应商** 后，只填写下面四项：
+
+| 字段 | 填写内容 |
 | --- | --- |
-| Codex | Codex 的供应商 / API 配置 |
-| OpenClaw | OpenClaw 的 provider 配置 |
-| Hermes | Hermes Agent 的模型配置 |
-| 其它工具 | 按 CC Switch 当前支持列表选择 |
-
-没有明确写给 UseGoodAI 的模板时，选择自定义供应商或自定义接口，不要套用其它站点模板。
-
-## 填写参数
-
-| 字段 | 填写 |
-| --- | --- |
-| Provider / 供应商名称 | `UseGoodAI` |
+| 供应商名称 | `UseGoodAI.com` |
+| 官网链接 | `https://api.usegoodai.com` |
 | API Key | UseGoodAI API Key |
-| Model | 当前 Key 分组可用模型，例如 `gpt-5.5` |
-| Base URL | 普通手动配置填 `https://api.usegoodai.com/v1`；后台或工具已经生成配置时，直接用生成结果 |
+| 请求地址 | `https://api.usegoodai.com` |
 
-手动填写 Base URL 时只填到 `/v1`，不要追加其它路径。
+<a class="doc-image-link" href="/images/ccswitch/ccswitch3.jpg" target="_blank" rel="noopener">
+  <img src="/images/ccswitch/ccswitch3.jpg" alt="填写 UseGoodAI 供应商名称、官网链接、API Key 和请求地址">
+</a>
 
-## 启用并测试
+**完整 URL** 开关保持关闭。官网链接和请求地址都不要添加 `/v1`，末尾也不要添加 `/`；其它字段保持默认，不需要填写模型名。
 
-保存后，在 CC Switch 里启用刚才创建的配置。
+填写完成后，点击右下角 **保存**。
 
-| 客户端类型 | 生效方式 |
-| --- | --- |
-| CLI 工具 | 关闭并重新打开终端，再启动客户端 |
-| 桌面客户端 | 彻底退出后重新打开 |
-| 后台常驻进程 | 重启对应进程或网关 |
+### 4. 启用 UseGoodAI
 
-打开目标客户端，发送：
+回到 Claude Code 的供应商列表，找到刚保存的 `UseGoodAI.com`，点击右侧 **启用**。
+
+<a class="doc-image-link" href="/images/ccswitch/ccswitch4.jpg" target="_blank" rel="noopener">
+  <img src="/images/ccswitch/ccswitch4.jpg" alt="在 CC Switch 供应商列表启用 UseGoodAI.com">
+</a>
+
+启用后，这一行会变成当前使用中的供应商。Claude Code 支持供应商热切换，不需要关闭终端或新开对话。
+
+## 在 Claude Code 中测试
+
+回到当前 Claude Code 会话，发送：
 
 ```text
 测试
 ```
 
-能正常回复，说明目标客户端已经读取 CC Switch 启用的配置。
+需要切换模型时，在当前会话输入 `/model`。模型在 Claude Code 内选择，不在 CC Switch 的供应商页面填写；Claude 模型与 UseGoodAI 实际模型的对应关系见 [Claude Desktop 和 Claude Code CLI](/clients/claude-code-desktop#claude-模型如何映射到-gpt-5-6)。
 
-## 常见错误
+## 排查
 
-| 现象 | 处理 |
+| 现象 | 检查动作 |
 | --- | --- |
-| 客户端仍使用旧模型 | 确认 CC Switch 当前启用的是 UseGoodAI 配置，并重启目标客户端 |
-| 模型报错 | 换成当前 Key 分组里的完整模型名 |
-| `401 Unauthorized` | 重新复制 API Key，确认填在当前启用配置里 |
-| `403 Forbidden` | 先确认 Key 分组和模型名；仍失败时看 [报错与踩坑](/errors/) |
-| Base URL 路径错误 | 手动配置只填 `https://api.usegoodai.com/v1`；生成配置不要再补 `/v1` |
-| 套用了其它站点模板 | 删除这条配置，重新用自定义供应商填写 UseGoodAI 参数 |
-
-## 进阶理解
-
-CC Switch 只是写配置，不替代 Codex、OpenClaw、Hermes 等客户端。目标客户端启动后才会读取配置并向 UseGoodAI 发起请求；保存配置后没有重启客户端，是最常见的“不生效”原因。
+| 保存后 Claude Code 没有使用新配置 | 回到 CC Switch 顶部确认选中的是 Claude Code，再确认 `UseGoodAI.com` 已显示为当前使用中的供应商 |
+| `401 Unauthorized` | 重新复制 UseGoodAI API Key，替换 **API Key** 字段后保存并再次启用 |
+| 请求地址错误 | **官网链接** 和 **请求地址** 都改成 `https://api.usegoodai.com`，删除 `/v1` 和末尾 `/` |
+| 模型无法切换 | 回到 Claude Code 输入 `/model`，不要在 CC Switch 供应商页面寻找模型字段 |
+| `403 Forbidden` | 确认当前 API Key 所属分组支持所选模型；仍失败时看 [报错与踩坑](/errors/) |
