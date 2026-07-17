@@ -9,7 +9,7 @@
 | --- | --- |
 | 用 Codex CLI / ChatGPT 桌面应用中的 Codex 写代码 | [Codex](/clients/codex) |
 | 在 VS Code 里配合 Codex 或 BYOK 使用 | [VS Code](/clients/vscode) |
-| 在 Claude Code Desktop 里接第三方 GPT | [Claude Code Desktop](/clients/claude-code-desktop) |
+| 在 Claude Desktop APP 或 Claude Code CLI 中使用 GPT-5.6 | [Claude Desktop 和 Claude Code CLI](/clients/claude-code-desktop) |
 | 统一管理多个 Agent / CLI 配置 | [CC Switch](/clients/cc-switch) |
 | 在 JetBrains IDE 里接入 | [JetBrains](/clients/jetbrains) |
 | 在 Trae 里接入 | [Trae](/clients/trae) |
