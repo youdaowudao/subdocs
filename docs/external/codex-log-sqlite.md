@@ -1,4 +1,4 @@
-# Codex 日志高频写盘 bug 处理
+# Codex 日志写盘
 
 本页只处理 Windows 上 Codex 日志库高频写盘的问题。目标是阻止 `TRACE / DEBUG / INFO` 日志继续增长，不处理聊天记录。
 

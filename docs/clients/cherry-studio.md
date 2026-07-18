@@ -1,4 +1,4 @@
-# 用 Cherry Studio 接入 UseGoodAI
+# Cherry Studio 接入
 
 Cherry Studio 是桌面聊天客户端，适合想用图形界面管理模型、直接聊天的个人用户。本文在 Cherry Studio 里新增一个 `UseGoodAI` 服务商，让聊天请求走 `https://api.usegoodai.com/v1`。
 

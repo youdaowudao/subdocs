@@ -1,159 +1,115 @@
 # 快速开始
 
-本文适合第一次使用 UseGoodAI 的用户。按本文做完后，Codex CLI 或 ChatGPT 桌面应用中的 Codex 会使用本中转站的 API Key 发起请求。
+本文适合第一次使用 UseGoodAI 的用户。按顺序创建 API Key、安装 CC Switch、把配置导入 Codex；完成后，Codex CLI 或 ChatGPT 桌面应用中的 Codex 就能通过 UseGoodAI 使用模型，不需要手动修改配置文件。
 
-你只需要完成两件事：在后台创建 API Key；把后台生成的 Codex 配置复制到本机 `.codex` 目录里的 `config.toml` 和 `auth.json`。
+## 第一步：创建 API Key
 
-看不懂某一步时，把截图发给豆包、DeepSeek 等 AI 工具，让它用更简单的话解释当前步骤。
+### 1. 进入 API 密钥页面
 
-## 第一步：进入 API 密钥页面
-
-登录 UseGoodAI 后台，左侧进入 **API 密钥**，然后点击 **创建密钥**。
+注册并登录 UseGoodAI 后台，左侧进入 **API 密钥**，然后点击 **创建密钥**。
 
 <a class="doc-image-link" href="/images/quick-start/create-api-key-1.jpg" target="_blank" rel="noopener">
   <img src="/images/quick-start/create-api-key-1.jpg" alt="进入 API 密钥页面并点击创建密钥">
 </a>
 
-## 第二步：填写名称并选择分组
+### 2. 填写名称并选择分组
 
 名称写成能看懂用途的名字，例如 `编程专用`。
 
-分组必须认真选择。这个分组决定这个 API Key 能不能使用你要接入的模型；分组选错，后面即使 Key 填对，也会无法调用。
+选择需要使用的分组。分组决定这个 API Key 可以使用哪些模型和对应的计费档位。
 
 <a class="doc-image-link" href="/images/quick-start/create-api-key-2.jpg" target="_blank" rel="noopener">
   <img src="/images/quick-start/create-api-key-2.jpg" alt="填写密钥名称并选择正确分组">
 </a>
 
-::: warning
-除名称和分组外，其它限制项保持默认。
+除名称和分组外，其它限制项保持默认。创建完成后回到 API 密钥列表，继续安装 CC Switch。
+
+## 第二步：安装 CC Switch
+
+CC Switch 用来把 UseGoodAI 的地址、API Key 和模型写入 Codex。安装一次，完成导入后即可关闭。
+
+::: tip 无法下载就进客服群
+### QQ 客服群：**1020015031**
+
+官方和国内下载入口都无法打开时，进入客服群，在 **群文件** 中下载 Windows 或 Mac 安装包。
 :::
 
-## 第三步：在本机找到两个配置文件
-
-Codex 的配置文件放在用户目录下的 `.codex` 文件夹中。先找到这两个文件，下一步再回后台复制内容。
-
-你需要在这个目录里处理两个文件：
-
-| 文件 | 用途 |
+| 下载来源 | 入口 |
 | --- | --- |
-| `config.toml` | 保存模型、接口地址、接入方式等配置 |
-| `auth.json` | 保存 API Key |
+| 官方下载 | [GitHub Releases](https://github.com/farion1231/cc-switch/releases) |
+| GitCode | [国内下载](https://gitcode.com/YujinDawnlight/cc-switch-download) |
+| Gitee | [国内下载](https://gitee.com/iamzhihuix/cc-switch-mirror/releases) |
 
-### Windows：按文件夹打开 `.codex`
+Windows 用户也可以打开 PowerShell 安装：
 
-1. 打开 **此电脑**，进入 **本地磁盘 (C:)**，再打开 **用户** 文件夹。
-
-<a class="doc-image-link" href="/images/连接/c盘1.jpg" target="_blank" rel="noopener">
-  <img src="/images/连接/c盘1.jpg" alt="在 Windows 的 C 盘打开用户文件夹">
-</a>
-
-2. 打开你的 Windows 用户名文件夹。不要打开 **公用** 或 `Administrator`；图中的 `ss` 只是示例用户名。
-
-<a class="doc-image-link" href="/images/连接/c盘2.jpg" target="_blank" rel="noopener">
-  <img src="/images/连接/c盘2.jpg" alt="在用户文件夹中打开自己的 Windows 用户名">
-</a>
-
-3. 打开 `.codex` 文件夹。完整位置是 `C:\Users\你的用户名\.codex`。
-
-<a class="doc-image-link" href="/images/连接/c盘3.jpg" target="_blank" rel="noopener">
-  <img src="/images/连接/c盘3.jpg" alt="在 Windows 用户目录中打开 .codex 文件夹">
-</a>
-
-4. 在 `.codex` 文件夹中找到 `auth.json` 和 `config.toml`。不要删除其它文件或文件夹。
-
-<a class="doc-image-link" href="/images/连接/c盘4.jpg" target="_blank" rel="noopener">
-  <img src="/images/连接/c盘4.jpg" alt="在 .codex 文件夹中找到 auth.json 和 config.toml">
-</a>
-
-### macOS / Linux / WSL
-
-配置目录是：
-
-```text
-~/.codex
+```powershell
+winget install -e --id farion1231.CC-Switch
 ```
 
-两个文件不存在时，在 `.codex` 文件夹中新建同名文件。Windows 新建后确认文件名没有变成 `config.toml.txt` 或 `auth.json.txt`。
+Mac 用户已经安装 Homebrew 时，打开终端执行：
 
-## 第四步：在 API 密钥页面复制并写入配置
+```bash
+brew install --cask cc-switch
+```
 
-回到 UseGoodAI 后台，左侧进入 **API 密钥**。在密钥列表里找到刚才创建的 Key，点击右侧的 **使用密钥**。
+安装完成后打开 CC Switch。
 
-<a class="doc-image-link" href="/images/quick-start/create-api-key-3.jpg" target="_blank" rel="noopener">
-  <img src="/images/quick-start/create-api-key-3.jpg" alt="在 API 密钥列表中点击使用密钥">
+## 第三步：导入配置
+
+回到 UseGoodAI 后台的 API 密钥列表，找到刚创建的 Key，点击右侧的 **导入到 CCS**。
+
+浏览器询问是否打开 CC Switch 时，点击 **打开**。
+
+<a class="doc-image-link" href="/images/ccswitch/CCSWITCH导入1.jpg" target="_blank" rel="noopener">
+  <img src="/images/ccswitch/CCSWITCH导入1.jpg" alt="在 API 密钥页面点击导入到 CCS 并允许浏览器打开 CC Switch">
 </a>
 
-在弹窗里选择 **Codex CLI**，再按你的系统选择 `macOS / Linux` 或 `Windows`。ChatGPT 桌面应用中的 Codex 也读取这份本机 `.codex` 配置。
+## 第四步：确认导入
 
-### 分别写入两个文件
+确认应用类型是 `Codex`，然后点击 **导入**。
 
-两个文件必须一一对应，不能贴反：后台的 `config.toml` 内容只能粘贴到本机的 `config.toml`，后台的 `auth.json` 内容只能粘贴到本机的 `auth.json`。
-
-1. 打开本机的 `config.toml`，全选并彻底删除里面原有的所有文字。复制后台给出的 `config.toml` 内容，重新粘贴到这个空文件里并保存。
-2. 打开本机的 `auth.json`，全选并彻底删除里面原有的所有文字。复制后台给出的 `auth.json` 内容，重新粘贴到这个空文件里并保存。
-
-<a class="doc-image-link" href="/images/quick-start/create-api-key-4.jpg" target="_blank" rel="noopener">
-  <img src="/images/quick-start/create-api-key-4.jpg" alt="复制 config.toml 和 auth.json 内容并分别保存">
+<a class="doc-image-link" href="/images/ccswitch/CCSWITCH导入2.jpg" target="_blank" rel="noopener">
+  <img src="/images/ccswitch/CCSWITCH导入2.jpg" alt="核对 Codex 的 UseGoodAI 供应商配置并点击导入">
 </a>
 
-## 第五步：启动 Codex 测试
+## 第五步：重开 Codex 测试
 
-Codex CLI 用户重新打开一个终端，执行：
+导入完成后，确认 `UseGoodAI` 右侧显示 **使用中**。
+
+<a class="doc-image-link" href="/images/ccswitch/CCSWITCH导入3.jpg" target="_blank" rel="noopener">
+  <img src="/images/ccswitch/CCSWITCH导入3.jpg" alt="确认 UseGoodAI 供应商已在 Codex 中使用">
+</a>
+
+Codex CLI 用户退出当前 Codex，重新打开终端后执行：
 
 ```bash
 codex
 ```
 
-ChatGPT 桌面应用用户重新打开应用，切换到 Codex 后新建一个对话或任务，不要继续旧对话。
+ChatGPT 桌面应用用户在系统托盘中点击 **Exit**，彻底退出后再重新打开应用并切换到 Codex。仍未读取新配置时，在任务管理器中结束所有 ChatGPT 相关进程，或者重启电脑后再打开。
 
-Windows 用户修改配置前已经打开 ChatGPT 桌面应用时，先在右下角托盘找到 ChatGPT 图标，点击 **Exit** 彻底退出，再重新打开应用。这样才能读取刚保存的配置。
-
-点击 **Exit** 后仍无法正常进入 ChatGPT 桌面应用时，打开 Windows **任务管理器**，结束所有 ChatGPT 相关进程，再重新打开应用。
-
-<a class="doc-image-link" href="/images/连接/c盘5.jpg" target="_blank" rel="noopener">
-  <img src="/images/连接/c盘5.jpg" alt="从 Windows 右下角托盘退出 ChatGPT 桌面应用">
-</a>
-
-进入新的 Codex 对话后，发送一句测试：
+新建一个对话或任务，不要继续使用导入前的旧对话。发送：
 
 ```text
 测试
 ```
 
-能正常收到回复，就说明本机 Codex 已经通过 UseGoodAI 接入成功。
+能正常收到回复，就说明接入成功。需要核对实际请求时，进入 UseGoodAI 后台的 **使用记录** 页面查看。
 
-## 第六步：回到后台确认记录
-
-测试完成后，回到 UseGoodAI 后台的 **使用记录** 页面，确认刚才创建的 Key 有调用记录。
-
-同时核对三项：
-
-| 要核对什么 | 不对时怎么处理 |
-| --- | --- |
-| 模型 | 回到 Codex 修改配置里的模型名 |
-| 分组 | 回到 **API 密钥** 页面修改这个 Key 的分组 |
-| 计费 | 对费用有疑问时，联系客服核对 |
+重新打开 Codex，测试正常后即可关闭 CC Switch，以后也不用再打开。
 
 ## 常见问题
 
-| 现象 | 先检查这里 |
+| 现象 | 检查动作 |
 | --- | --- |
-| `codex` 命令不存在 | App 用户跳过这一项；CLI 用户重新检查 Codex 安装。 |
-| 401 / Unauthorized | `auth.json` 里的 API Key 是否复制完整 |
-| 403 / Forbidden | API Key 选择的分组是否支持当前模型 |
-| 429 / Too Many Requests | 先看账户余额；账户有余额时，再检查这个 API Key 是否设置了限额金额、速率或次数限制 |
-| 模型不可用 | 模型名和 Key 所属分组是否匹配 |
-| 后台没有调用记录 | `config.toml` 和 `auth.json` 是否放在正确的 `.codex` 目录 |
-| Windows 配置不生效 | 文件名不要变成 `config.toml.txt` 或 `auth.json.txt` |
+| 点击“导入到 CCS”没有反应 | 确认 CC Switch 已安装并打开，再允许浏览器打开外部应用 |
+| 导入窗口里的应用类型不是 Codex | 点击取消，回到同一个 API Key 后重新点击 **导入到 CCS** |
+| 导入后 Codex 仍使用旧配置 | 彻底退出 Codex，重新打开后新建对话或任务测试 |
+| `401 Unauthorized` | 回到后台重新导入当前有效的 API Key |
+| `403 Forbidden` | 确认当前 Key 所属分组支持导入的模型 |
 
-::: warning 仍然无法使用？联系客服免费远程解决
-已经按照本文完整操作一遍，依然无法成功时，直接下载安装 [向日葵](https://sunlogin.oray.com/download) 或 [ToDesk](https://www.todesk.com/download.html)，然后进入用户群联系客服。客服会免费帮你远程检查并解决配置问题。
-:::
+其它错误进入 [报错与踩坑](/errors/) 检查。
 
-## 下一步
+## 手动配置
 
-- 需要看 Codex 参数含义：进入 [Codex](/clients/codex)
-- 需要用 Codex 内置生图：进入 [Codex 内置生图](/images/codex-image-direct)
-- 需要保留 ChatGPT 登录或手机连接：进入 [保持 ChatGPT 登录同时连接中转站](/chatgpt-login-usegoodai)
-- 需要确认模型和分组：进入 [模型与分组](/models)
-- 遇到 403：进入 [报错与踩坑](/errors/)
+后台无法打开 CC Switch 时，进入 [Codex 手动接入](/clients/codex-manual-config)。

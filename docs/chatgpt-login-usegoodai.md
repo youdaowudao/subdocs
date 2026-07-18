@@ -1,4 +1,4 @@
-# 保持 ChatGPT 登录同时连接中转站
+# 保留 ChatGPT 登录
 
 本文适合已经安装 ChatGPT 桌面应用、并且有 ChatGPT 账号的用户。配置完成后，应用中的 Codex 继续保持 ChatGPT 登录状态，模型请求走 UseGoodAI 中转站，同时保留插件入口、手机和其它设备连接；本文只修改本机 `config.toml`。
 
@@ -10,7 +10,7 @@
 | --- | --- |
 | 没有 ChatGPT 账号，或不想登录 ChatGPT 账号 | 先看 [快速开始](/quick-start) |
 | 有 ChatGPT 账号，并且需要保留 ChatGPT 登录状态 | 看本文 |
-| 只配置 Codex CLI，不用 App 内置能力 | 看 [Codex](/clients/codex) |
+| 只配置 Codex CLI，不用 App 内置能力 | 看 [Codex 接入](/clients/codex) |
 
 ## 懒人方法：复制给 AI 帮你改
 

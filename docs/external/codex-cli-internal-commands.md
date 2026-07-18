@@ -1,8 +1,8 @@
-# Codex CLI 内部命令
+# Codex CLI 命令
 
 本页只讲 Codex CLI 交互界面里的 `/...` 内部命令，不讲 ChatGPT 桌面应用中的 Codex。使用桌面应用中 Codex 的用户不用看本文。
 
-还没有安装 Codex 或还没有配置 UseGoodAI，先看 [Codex](/clients/codex)。要在系统终端里运行 `codex exec`、`codex fork`、`codex mcp` 这类外部命令，看 [Codex 进阶用法](/external/codex-advanced)。
+还没有安装 Codex 或还没有配置 UseGoodAI，先看 [Codex 接入](/clients/codex)。要在系统终端里运行 `codex exec`、`codex fork`、`codex mcp` 这类外部命令，看 [Codex 进阶](/external/codex-advanced)。
 
 ## 怎么打开命令菜单
 

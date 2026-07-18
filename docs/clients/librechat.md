@@ -1,4 +1,4 @@
-# LibreChat 接入 UseGoodAI
+# LibreChat 接入
 
 LibreChat 是自部署网页聊天站，适合给自己或团队提供浏览器聊天入口。本文把 UseGoodAI 添加为 LibreChat 的自定义 endpoint，让网页聊天请求走 `https://api.usegoodai.com/v1`。
 

@@ -43,6 +43,7 @@ export default withSidebar(config, {
     'chatgpt-login-usegoodai.md',
     'clients',
     'codex.md',
+    'codex-manual-config.md',
     'vscode.md',
     'claude-code-desktop.md',
     'cc-switch.md',

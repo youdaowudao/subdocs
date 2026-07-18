@@ -17,10 +17,10 @@ hero:
 features:
   - icon: 🚀
     title: 快速开始
-    details: 第一次使用时，按后台截图创建 API Key，并完成一次可验证的接入。
+    details: 创建 API Key，通过 CC Switch 一键导入 Codex，并完成一次可验证的接入。
     link: /quick-start
   - icon: 🔐
-    title: 我要继续登陆自己的 ChatGPT
+    title: 保留 ChatGPT 登录
     details: 已在 ChatGPT 桌面应用中登录 Codex 时，用 UseGoodAI 接管模型请求，并保留生图、插件和手机连接。
     link: /chatgpt-login-usegoodai
   - icon: ⚡
@@ -45,7 +45,7 @@ features:
     link: /external/git-practical
   - icon: 🔁
     title: CC Switch
-    details: 统一管理 Codex、OpenClaw、Hermes 等工具的供应商配置和切换。
+    details: 需要手动配置 Claude Code 时，在图形界面中添加并启用 UseGoodAI 供应商。
     link: /clients/cc-switch
   - icon: 💬
     title: Cherry Studio

@@ -1,4 +1,4 @@
-# 外接兼容与 Base URL 说明
+# Base URL 与兼容模式
 
 第三方客户端、Agent 工具、配置切换器和自定义 OpenAI-compatible 客户端接入 UseGoodAI 时，先用本页判断协议和 `Base URL`。配置具体客户端时，再回到对应客户端教程填写字段。
 

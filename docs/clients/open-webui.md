@@ -1,4 +1,4 @@
-# Open WebUI 接入 UseGoodAI
+# Open WebUI 接入
 
 Open WebUI 是自建网页聊天界面，适合给自己或小团队提供浏览器聊天入口。本文在 Open WebUI 管理后台添加一个 `UseGoodAI` 连接，让聊天请求走 `https://api.usegoodai.com/v1`。
 

@@ -1,4 +1,4 @@
-# JetBrains 接入 UseGoodAI
+# JetBrains 接入
 
 JetBrains 系 IDE 包括 IntelliJ IDEA、PyCharm、WebStorm、GoLand、PhpStorm 等。本文适合在支持自定义 OpenAI 服务商的 JetBrains 插件里接入 UseGoodAI，让 IDE 插件使用 UseGoodAI 的 API Key、Base URL 和模型名发起请求。
 

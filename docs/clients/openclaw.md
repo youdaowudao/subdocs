@@ -1,4 +1,4 @@
-# OpenClaw 接入 UseGoodAI
+# OpenClaw 接入
 
 OpenClaw 官方页面里的“龙虾”指 Molty，是 OpenClaw 的产品形象；看到龙虾或 Molty，说的就是 OpenClaw。
 

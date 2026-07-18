@@ -1,4 +1,4 @@
-# VS Code 接入 UseGoodAI
+# VS Code 接入
 
 VS Code 是常用的代码编辑器，适合需要打开项目文件、看代码结构、查看修改记录的用户。相比 ChatGPT 桌面应用中的 Codex，VS Code 的优势是项目上下文更直观：文件树、代码、终端、Git 改动都在同一个窗口里，适合边看边改、边运行边验证。
 
@@ -15,7 +15,7 @@ VS Code 是常用的代码编辑器，适合需要打开项目文件、看代码
 
 ## Codex 扩展
 
-先把本中转站的模型配置填进 Codex，让 Codex 请求走中转站。已经按 [Codex](/clients/codex) 配好后，直接在 VS Code 扩展市场安装：
+先把本中转站的模型配置填进 Codex，让 Codex 请求走中转站。已经按 [Codex 接入](/clients/codex) 配好后，直接在 VS Code 扩展市场安装：
 
 ```text
 OpenAI Codex

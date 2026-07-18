@@ -1,4 +1,4 @@
-# Trae 接入 UseGoodAI
+# Trae 接入
 
 Trae 是 AI IDE。本文在 Trae 的自定义 provider / API 配置里添加 `UseGoodAI`，让当前聊天、编辑器或 Agent 功能使用 UseGoodAI 的 API Key、Base URL 和模型名发起请求。
 

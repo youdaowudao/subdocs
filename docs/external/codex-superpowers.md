@@ -1,4 +1,4 @@
-# Codex Superpowers 工作流
+# Codex Superpowers
 
 Superpowers 是给 Codex 用的一组工作流插件。它的作用不是增加一个新模型，而是让 Codex 在写代码、修 bug、做调研、写文档时按更稳的步骤工作，比如先澄清需求、先写测试、先找根因、完成前先验证。
 

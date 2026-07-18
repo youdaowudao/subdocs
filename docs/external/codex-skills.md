@@ -1,4 +1,4 @@
-# Codex Skills 使用与创建
+# Codex Skills
 
 本文适合已经在用 Codex 的用户。Skill 是给 Codex 准备的固定工作方法，适合把经常重复的写作、审查、调试、排错、批量处理流程保存下来，以后直接调用。
 

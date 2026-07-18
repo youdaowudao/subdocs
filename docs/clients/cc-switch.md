@@ -1,33 +1,8 @@
-# 用 CC Switch 把 UseGoodAI 接入 Claude Code
+# CC Switch 手动接入
 
-CC Switch 是跨平台的 AI 编程工具配置管理器，可以在一个桌面界面里管理 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenClaw 和 Hermes 等工具的供应商配置。它适合不想手动编辑配置文件、需要在多个 API 供应商之间切换的用户。
+本文用于在 CC Switch 中手动添加 UseGoodAI，供 Claude Code 使用。Codex 用户按 [快速开始](/quick-start) 从后台一键导入，不看本文。
 
-本文只讲 Claude Code：在 CC Switch 里新增并启用 `UseGoodAI.com` 后，Claude Code 会使用 UseGoodAI 的 API Key 和请求地址。整个过程不需要手动修改本机配置文件，只需要填写 UseGoodAI API Key。
-
-## 安装 CC Switch
-
-CC Switch 官方网站：<https://ccswitch.io>
-
-官方项目和安装包：<https://github.com/farion1231/cc-switch>
-
-| 系统 | 安装方法 |
-| --- | --- |
-| Windows | 从 [Releases](https://github.com/farion1231/cc-switch/releases/latest) 下载 `.msi` 安装包或 `Windows-Portable.zip` 绿色版 |
-| macOS | 从 Releases 下载 `.dmg`，或使用下面的 Homebrew 命令 |
-| Arch Linux | 使用下面的 AUR 命令安装 |
-| 其它 Linux | 从 Releases 下载 `.deb`、`.rpm` 或 `.AppImage` |
-
-macOS 已安装 Homebrew 时执行：
-
-```bash
-brew install --cask cc-switch
-```
-
-Arch Linux 执行：
-
-```bash
-paru -S cc-switch-bin
-```
+还没有安装 CC Switch 时，先进入 [快速开始的安装步骤](/quick-start#第二步安装-cc-switch)，安装完成后再返回本页。
 
 ## 把 UseGoodAI 添加到 Claude Code
 
@@ -80,17 +55,19 @@ paru -S cc-switch-bin
   <img src="/images/ccswitch/ccswitch4.jpg" alt="在 CC Switch 供应商列表启用 UseGoodAI.com">
 </a>
 
-启用后，这一行会变成当前使用中的供应商。Claude Code 支持供应商热切换，不需要关闭终端或新开对话。
+启用后，这一行会变成当前使用中的供应商。退出当前 Claude Code，再重新打开并新建一个对话或任务。
 
 ## 在 Claude Code 中测试
 
-回到当前 Claude Code 会话，发送：
+在新对话中发送：
 
 ```text
 测试
 ```
 
-需要切换模型时，在当前会话输入 `/model`。模型在 Claude Code 内选择，不在 CC Switch 的供应商页面填写；Claude 模型与 UseGoodAI 实际模型的对应关系见 [Claude Desktop 和 Claude Code CLI](/clients/claude-code-desktop#claude-模型如何映射到-gpt-5-6)。
+需要切换模型时，在当前会话输入 `/model`。模型在 Claude Code 内选择，不在 CC Switch 的供应商页面填写；Claude 模型与 UseGoodAI 实际模型的对应关系见 [Claude Code / Desktop 接入](/clients/claude-code-desktop#claude-模型如何映射到-gpt-5-6)。
+
+测试成功后可以关闭 CC Switch，不需要后台运行。不要开启 **Proxy**、本地代理或本地路由功能。
 
 ## 排查
 

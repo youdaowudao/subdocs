@@ -1,10 +1,10 @@
-# Codex
+# Codex 接入
 
 Codex 是 OpenAI 的编程助手，适合阅读代码、修改文件、解释报错、生成脚本和整理项目。它能看到本机文件，也能配合终端和编辑器处理真实项目任务。
 
-按照本文配置完成后，ChatGPT 桌面应用中的 Codex 或 Codex CLI 会使用本中转站的 API Key 发起模型请求。本文修改本机 `config.toml` 和 `auth.json`。
+按照本文安装 Codex，再按快速开始导入配置后，ChatGPT 桌面应用中的 Codex 或 Codex CLI 会使用本中转站的 API Key 发起模型请求。
 
-需要使用 ChatGPT 桌面应用中 Codex 的内置生图时，看 [Codex 内置生图](/images/codex-image-direct)。需要保留 ChatGPT 登录或手机连接时，看 [保持 ChatGPT 登录同时连接中转站](/chatgpt-login-usegoodai)。
+需要使用 ChatGPT 桌面应用中 Codex 的内置生图时，看 [Codex 内置生图](/images/codex-image-direct)。需要保留 ChatGPT 登录或手机连接时，看 [保留 ChatGPT 登录](/chatgpt-login-usegoodai)。
 
 ## 安装 Codex
 
@@ -64,23 +64,11 @@ codex --version
 
 在 WSL 里运行 `codex` 时，配置放进 WSL 的 `~/.codex`，不是 Windows 用户目录。
 
-## 配置 Codex
+## 把 Codex 接入 UseGoodAI
 
-先按 [快速开始](/quick-start) 在后台创建 API Key，并复制后台给出的 Codex 配置内容。这里复制的是两段文本，不是两个可下载文件：
+安装完成后，按 [快速开始](/quick-start) 在后台创建 API Key，再点击 **导入到 CCS**。CC Switch 会把 UseGoodAI 地址、API Key 和模型写入 Codex，不需要手动修改文件。
 
-| 文件 | 作用 |
-| --- | --- |
-| `config.toml` | 写模型、接口地址和 provider 配置 |
-| `auth.json` | 写 API Key |
-
-在本机找到或新建这两个文件，再把后台对应内容分别粘进去：
-
-| 你在哪里运行 Codex | 文件位置 |
-| --- | --- |
-| Windows ChatGPT 桌面应用中的 Codex / PowerShell / CMD | `C:\Users\你的用户名\.codex\config.toml` 和 `C:\Users\你的用户名\.codex\auth.json`；也可以在地址栏输入 `%USERPROFILE%\.codex` |
-| macOS / Linux / WSL | `~/.codex/config.toml` 和 `~/.codex/auth.json` |
-
-Windows 文件名必须正好是 `config.toml` 和 `auth.json`，不要保存成 `config.toml.txt` 或 `auth.json.txt`。
+后台无法打开 CC Switch，或需要直接管理本机配置文件时，进入 [Codex 手动接入](/clients/codex-manual-config)。
 
 ## 关于 `/v1`
 

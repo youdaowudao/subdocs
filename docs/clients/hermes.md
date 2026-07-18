@@ -1,4 +1,4 @@
-# 把 UseGoodAI 接到 Hermes Agent
+# Hermes Agent 接入
 
 Hermes Agent 是 Nous Research 的开源自主 Agent，适合在终端和聊天软件里长期处理项目、文件、工具调用和自动化任务。它的主要优点是本地记忆、Skill 沉淀、定时任务、并行子 Agent、多平台入口和 MCP 扩展。
 

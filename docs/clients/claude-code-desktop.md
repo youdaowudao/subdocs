@@ -1,4 +1,4 @@
-# 在 Claude Desktop 和 Claude Code CLI 中使用 GPT-5.6
+# Claude Code / Desktop 接入
 
 Claude Desktop 是带图形界面的 AI 工作应用，包含 Chat、Cowork 和 Code 等入口；Claude Code CLI 是在终端里运行的代码 Agent。两者都适合希望保留 Claude 操作方式、同时通过 UseGoodAI 使用 GPT-5.6 的用户。
 
