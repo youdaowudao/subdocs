@@ -30,6 +30,151 @@
   color: #bfdbfe;
 }
 
+.vp-doc .purchase-page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 52px 0 64px;
+}
+
+.vp-doc .purchase-label {
+  display: inline-flex;
+  margin: 0 0 14px;
+  padding: 5px 10px;
+  border: 1px solid #f1c777;
+  border-radius: 6px;
+  background: #fff8e8;
+  color: #87520a;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.vp-doc .purchase-page h1 {
+  margin: 0;
+  border: 0;
+  color: var(--vp-c-text-1);
+  font-size: 38px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.vp-doc .purchase-lead {
+  margin: 18px 0 26px;
+  color: var(--vp-c-text-2);
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+.vp-doc .purchase-button {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  border: 1px solid #0d4ed8;
+  border-radius: 8px;
+  background: #155eef;
+  box-shadow: 0 8px 18px rgba(21, 94, 239, 0.2);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  text-decoration: none;
+}
+
+.vp-doc .purchase-button:hover {
+  background: #0d4ed8;
+  color: #fff;
+  text-decoration: none;
+}
+
+.vp-doc .purchase-button:focus-visible {
+  outline: 3px solid rgba(21, 94, 239, 0.28);
+  outline-offset: 4px;
+}
+
+.vp-doc .purchase-url-box {
+  margin-top: 24px;
+  padding: 16px 18px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+}
+
+.vp-doc .purchase-url-box > p {
+  margin: 0 0 10px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.vp-doc .purchase-url-box > a {
+  display: block;
+  margin-bottom: 12px;
+  color: #155eef;
+  font-family: var(--vp-font-family-mono);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.vp-doc .purchase-url-box .contact-copy-button {
+  width: auto;
+  padding: 9px 14px;
+  border: 1px solid #b9cef8;
+  background: var(--vp-c-bg);
+  color: #155eef;
+  font-size: 14px;
+}
+
+.vp-doc .purchase-url-box .contact-copy-button:hover {
+  border-color: #7fa6f5;
+  background: #eaf1ff;
+  color: #0d4ed8;
+}
+
+.vp-doc .purchase-reminder {
+  margin-top: 24px;
+  padding: 22px 24px;
+  border-left: 4px solid #155eef;
+  border-radius: 8px;
+  background: #f2f6ff;
+}
+
+.vp-doc .purchase-reminder strong {
+  display: block;
+  margin: 0 0 6px;
+  color: #173b7a;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.vp-doc .purchase-reminder p {
+  margin: 0;
+  color: #38547f;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.dark .vp-doc .purchase-label {
+  border-color: rgba(240, 161, 38, 0.46);
+  background: rgba(240, 161, 38, 0.12);
+  color: #f6c96e;
+}
+
+.dark .vp-doc .purchase-reminder {
+  background: rgba(30, 64, 175, 0.12);
+}
+
+.dark .vp-doc .purchase-reminder strong {
+  color: #c8dcff;
+}
+
+.dark .vp-doc .purchase-reminder p {
+  color: #a9bddd;
+}
+
 .vp-doc img {
   display: block;
   width: 100%;
@@ -293,6 +438,33 @@
 }
 
 @media (max-width: 768px) {
+  .vp-doc .purchase-page {
+    padding: 28px 0 40px;
+  }
+
+  .vp-doc .purchase-page h1 {
+    font-size: 32px;
+  }
+
+  .vp-doc .purchase-lead {
+    margin: 16px 0 24px;
+    font-size: 17px;
+  }
+
+  .vp-doc .purchase-button {
+    width: 100%;
+    min-height: 56px;
+    padding: 10px 16px;
+  }
+
+  .vp-doc .purchase-url-box .contact-copy-button {
+    width: 100%;
+  }
+
+  .vp-doc .purchase-reminder {
+    padding: 20px;
+  }
+
   .vp-doc .doc-image-link {
     margin: 18px 0 24px;
   }
