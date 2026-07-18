@@ -110,28 +110,12 @@
 
 .vp-doc .purchase-url-box > a {
   display: block;
-  margin-bottom: 12px;
   color: #155eef;
   font-family: var(--vp-font-family-mono);
   font-size: 14px;
   font-weight: 700;
   line-height: 1.55;
   overflow-wrap: anywhere;
-}
-
-.vp-doc .purchase-url-box .contact-copy-button {
-  width: auto;
-  padding: 9px 14px;
-  border: 1px solid #b9cef8;
-  background: var(--vp-c-bg);
-  color: #155eef;
-  font-size: 14px;
-}
-
-.vp-doc .purchase-url-box .contact-copy-button:hover {
-  border-color: #7fa6f5;
-  background: #eaf1ff;
-  color: #0d4ed8;
 }
 
 .vp-doc .purchase-steps {
@@ -517,10 +501,6 @@
     width: 100%;
     min-height: 56px;
     padding: 10px 16px;
-  }
-
-  .vp-doc .purchase-url-box .contact-copy-button {
-    width: 100%;
   }
 
   .vp-doc .purchase-reminder {

@@ -19,7 +19,6 @@ next: false
   <div class="purchase-url-box">
     <p>也可以复制下面的网址，在浏览器地址栏打开：</p>
     <a href="https://pay.ldxp.cn/shop/CCXNR097" target="_blank" rel="noopener noreferrer">https://pay.ldxp.cn/shop/CCXNR097</a>
-    <CopyButton text="https://pay.ldxp.cn/shop/CCXNR097" label="复制网址" />
   </div>
 
   <section class="purchase-steps" aria-labelledby="purchase-steps-title">
