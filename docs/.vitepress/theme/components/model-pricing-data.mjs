@@ -8,6 +8,12 @@ export const TEXT_GROUPS = [
     description: '适合日常使用和批量任务',
   },
   {
+    id: 'gpt-0.16',
+    name: 'GPT 0.16 分组',
+    multiplier: 0.16,
+    description: '适合常用任务和日常改写',
+  },
+  {
     id: 'full',
     name: '正价满血分组',
     multiplier: 0.25,

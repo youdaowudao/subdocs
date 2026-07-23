@@ -76,7 +76,7 @@ const copyModelId = async (modelId) => {
       </div>
       <span class="pricing-rule-example">
         {{ activeCategory === 'text'
-          ? '示例：GPT-5.5 输入官方 ¥35.00，Pro / Plus 分组 ¥0.50'
+          ? '示例：GPT-5.5 输入官方 ¥35.00，GPT 0.16 分组 ¥0.80'
           : '示例：GPT Image 2 标准画质官方约 ¥0.37，绘图分组 ¥0.05' }}
       </span>
     </section>

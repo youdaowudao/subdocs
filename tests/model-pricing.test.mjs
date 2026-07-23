@@ -2,11 +2,23 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  TEXT_GROUPS,
   TEXT_MODELS,
   calculateTextPrice,
   formatCny,
   getEquivalentDiscount,
 } from '../docs/.vitepress/theme/components/model-pricing-data.mjs'
+
+test('includes the GPT 0.16 group between the existing text groups', () => {
+  assert.deepEqual(
+    TEXT_GROUPS.map(({ id, name, multiplier }) => ({ id, name, multiplier })),
+    [
+      { id: 'pro-plus', name: 'Pro / Plus 分组', multiplier: 0.1 },
+      { id: 'gpt-0.16', name: 'GPT 0.16 分组', multiplier: 0.16 },
+      { id: 'full', name: '正价满血分组', multiplier: 0.25 },
+    ],
+  )
+})
 
 test('places the three GPT-5.6 models before the existing models', () => {
   assert.deepEqual(
@@ -63,6 +75,7 @@ test('uses the group multiplier directly on the official USD number', () => {
 
 test('expresses 0.1 and 0.25 multipliers as rounded equivalent discounts', () => {
   assert.equal(getEquivalentDiscount(0.1), '0.1折')
+  assert.equal(getEquivalentDiscount(0.16), '0.2折')
   assert.equal(getEquivalentDiscount(0.25), '0.4折')
 })
 
