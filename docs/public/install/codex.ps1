@@ -64,18 +64,23 @@ function Show-WritePlan {
     return
   }
 
+  Say ""
   Say "检测到已有旧配置，将会在备份后再覆盖。"
 }
 
 function Read-ValidatedApiKey {
   while ($true) {
-    $apiKey = Read-Host "请粘贴从 UseGoodAI 中转站复制过来的 API Key，然后回车"
+    $apiKey = Read-Host "请粘贴从 UseGoodAI 中转站复制过来的 API Key，然后回车确认"
     if ([string]::IsNullOrWhiteSpace($apiKey)) {
+      Say ""
       Say "API Key 不能为空，请重新输入。"
+      Say ""
       continue
     }
     if (-not $apiKey.StartsWith("sk-", [System.StringComparison]::Ordinal)) {
+      Say ""
       Say "API Key 格式错误，必须以 sk- 开头，请重新输入。"
+      Say ""
       continue
     }
     return $apiKey
@@ -143,5 +148,8 @@ $ApiKey = Read-ValidatedApiKey
 Write-CodexFiles -ApiKey $ApiKey
 
 Say ""
-Say "Codex 配置已经写入。"
+Say "配置已经完成，可以关闭 PowerShell 了。"
+Say ""
 Report-RunningClients
+Say ""
+Say "感谢您对 UseGoodAI 中转站的支持，使用过程中如有问题请联系网站客服。"

@@ -89,6 +89,7 @@ json_escape() {
 
 show_write_plan() {
   if [ -f "$CONFIG_FILE" ] || [ -f "$AUTH_FILE" ]; then
+    say ""
     say "检测到已有旧配置，将会在备份后再覆盖。"
   fi
 }
@@ -97,9 +98,11 @@ read_validated_api_key() {
   local var_name="$1"
   local entered_key
   while true; do
-    read_input entered_key "请粘贴从 UseGoodAI 中转站复制过来的 API Key，然后回车："
+    read_input entered_key "请粘贴从 UseGoodAI 中转站复制过来的 API Key，然后回车确认："
     if [ -z "$entered_key" ]; then
+      say ""
       say "API Key 不能为空，请重新输入。"
+      say ""
       continue
     fi
     case "$entered_key" in
@@ -108,7 +111,9 @@ read_validated_api_key() {
         return
         ;;
       *)
+        say ""
         say "API Key 格式错误，必须以 sk- 开头，请重新输入。"
+        say ""
         ;;
     esac
   done
@@ -177,8 +182,11 @@ main() {
   write_codex_files "$api_key"
 
   say ""
-  say "Codex 配置已经写入。"
+  say "配置已经完成，可以关闭终端了。"
+  say ""
   report_running_clients
+  say ""
+  say "感谢您对 UseGoodAI 中转站的支持，使用过程中如有问题请联系网站客服。"
 }
 
 main "$@"
