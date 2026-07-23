@@ -140,7 +140,7 @@ const copyModelId = async (modelId) => {
         <div class="pricing-description">
           <template v-if="priceMode === 'group'">
             <strong>分组介绍：</strong>
-            <span>{{ activeGroup.name }}，{{ activeGroup.description }}。输入和输出合计价格已单独列出。</span>
+            <span>{{ activeGroup.name }}，{{ activeGroup.description }}。</span>
           </template>
           <template v-else>
             <strong>官方价格：</strong>
