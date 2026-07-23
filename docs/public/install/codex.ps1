@@ -21,7 +21,6 @@ function Backup-IfExists([string]$Path) {
       $suffix += 1
     }
     Copy-Item -LiteralPath $Path -Destination $backup
-    Say "已备份：$backup"
   }
 }
 
@@ -35,18 +34,22 @@ function Get-RunningCodexClients {
 
 function Report-RunningClients {
   $runningClients = @(Get-RunningCodexClients)
-  if ($runningClients.Count -eq 0) {
+  $codexRunning = $runningClients -icontains "codex"
+  $chatgptRunning = $runningClients -icontains "chatgpt"
+
+  if ($chatgptRunning -and $codexRunning) {
+    Say "当前检测到 ChatGPT 软件和 Codex CLI 正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
     return
   }
-
-  foreach ($processName in $runningClients) {
-    if ($processName -ieq "codex") {
-      Say "当前检测到 Codex CLI 正在运行。"
-    } elseif ($processName -ieq "chatgpt") {
-      Say "当前检测到 ChatGPT 正在运行。"
-    }
+  if ($chatgptRunning) {
+    Say "当前检测到 ChatGPT 软件正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+    return
   }
-  Say "请彻底退出并结束以上进程，然后重新打开。"
+  if ($codexRunning) {
+    Say "当前检测到 Codex CLI 正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+    return
+  }
+  Say "当前未检测到 ChatGPT/Codex CLI 运行，请启动软件后进行测试。"
 }
 
 function Show-WritePlan {
@@ -58,21 +61,15 @@ function Show-WritePlan {
   }
 
   if ($existingFiles.Count -eq 0) {
-    Say "未发现旧配置，将创建："
-    Say "  - $ConfigFile"
-    Say "  - $AuthFile"
     return
   }
 
-  Say "检测到已有配置，将先备份再覆盖："
-  foreach ($path in $existingFiles) {
-    Say "  - $path"
-  }
+  Say "检测到已有旧配置，将会在备份后再覆盖。"
 }
 
 function Read-ValidatedApiKey {
   while ($true) {
-    $apiKey = Read-Host "请输入 UseGoodAI API Key"
+    $apiKey = Read-Host "请粘贴从 UseGoodAI 中转站复制过来的 API Key，然后回车"
     if ([string]::IsNullOrWhiteSpace($apiKey)) {
       Say "API Key 不能为空，请重新输入。"
       continue
@@ -134,13 +131,9 @@ image_generation = true
   }
 }
 
-Say "UseGoodAI Codex 一键配置"
+Say "欢迎使用 UseGoodAI 中转站 Codex 一键配置脚本。"
 Say ""
-Say "接口地址：$CodexBaseUrl"
-Say "默认模型：$CodexModel"
-Say ""
-Say "脚本不会安装软件；新配置不会写入沙盒或审批字段。"
-Say ""
+Say "本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml 和 auth.json 文件。"
 
 Show-WritePlan
 Say ""
@@ -150,7 +143,5 @@ $ApiKey = Read-ValidatedApiKey
 Write-CodexFiles -ApiKey $ApiKey
 
 Say ""
-Say "Codex 配置已写入。"
+Say "Codex 配置已经写入。"
 Report-RunningClients
-Say "Codex App / ChatGPT：重新打开后新建任务发送：测试"
-Say "Codex CLI：启动新的 Codex 会话后发送：测试"

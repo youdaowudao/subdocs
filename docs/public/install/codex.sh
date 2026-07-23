@@ -36,24 +36,32 @@ detect_running_clients() {
 
 report_running_clients() {
   local running_clients
+  local codex_running=false
+  local chatgpt_running=false
   running_clients="$(detect_running_clients)"
-  if [ -z "$running_clients" ]; then
-    return
-  fi
 
   while IFS= read -r process_name; do
     case "$(printf '%s' "$process_name" | tr '[:upper:]' '[:lower:]')" in
       codex|codex.exe)
-        say "当前检测到 Codex CLI 正在运行。"
+        codex_running=true
         ;;
       chatgpt|chatgpt.exe)
-        say "当前检测到 ChatGPT 正在运行。"
+        chatgpt_running=true
         ;;
     esac
   done <<EOF
 $running_clients
 EOF
-  say "请彻底退出并结束以上进程，然后重新打开。"
+
+  if [ "$chatgpt_running" = true ] && [ "$codex_running" = true ]; then
+    say "当前检测到 ChatGPT 软件和 Codex CLI 正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+  elif [ "$chatgpt_running" = true ]; then
+    say "当前检测到 ChatGPT 软件正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+  elif [ "$codex_running" = true ]; then
+    say "当前检测到 Codex CLI 正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+  else
+    say "当前未检测到 ChatGPT/Codex CLI 运行，请启动软件后进行测试。"
+  fi
 }
 
 backup_if_exists() {
@@ -72,7 +80,6 @@ backup_if_exists() {
     if [ "$private_backup" = "true" ]; then
       chmod 600 "$backup" 2>/dev/null || true
     fi
-    say "已备份：$backup"
   fi
 }
 
@@ -82,22 +89,15 @@ json_escape() {
 
 show_write_plan() {
   if [ -f "$CONFIG_FILE" ] || [ -f "$AUTH_FILE" ]; then
-    say "检测到已有配置，将先备份再覆盖："
-    [ -f "$CONFIG_FILE" ] && say "  - $CONFIG_FILE"
-    [ -f "$AUTH_FILE" ] && say "  - $AUTH_FILE"
-    return
+    say "检测到已有旧配置，将会在备份后再覆盖。"
   fi
-
-  say "未发现旧配置，将创建："
-  say "  - $CONFIG_FILE"
-  say "  - $AUTH_FILE"
 }
 
 read_validated_api_key() {
   local var_name="$1"
   local entered_key
   while true; do
-    read_input entered_key "请输入 UseGoodAI API Key: "
+    read_input entered_key "请粘贴从 UseGoodAI 中转站复制过来的 API Key，然后回车："
     if [ -z "$entered_key" ]; then
       say "API Key 不能为空，请重新输入。"
       continue
@@ -164,13 +164,9 @@ main() {
     exit 1
   fi
 
-  say "UseGoodAI Codex 一键配置"
+  say "欢迎使用 UseGoodAI 中转站 Codex 一键配置脚本。"
   say ""
-  say "接口地址：$CODEX_BASE_URL"
-  say "默认模型：$CODEX_MODEL"
-  say ""
-  say "脚本不会安装软件；新配置不会写入沙盒或审批字段。"
-  say ""
+  say "本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml 和 auth.json 文件。"
 
   show_write_plan
   say ""
@@ -181,10 +177,8 @@ main() {
   write_codex_files "$api_key"
 
   say ""
-  say "Codex 配置已写入。"
+  say "Codex 配置已经写入。"
   report_running_clients
-  say "Codex App / ChatGPT：重新打开后新建任务发送：测试"
-  say "Codex CLI：启动新的 Codex 会话后发送：测试"
 }
 
 main "$@"
