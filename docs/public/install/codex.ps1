@@ -9,6 +9,9 @@ $AuthFile = Join-Path $CodexHome "auth.json"
 
 function Say([string]$Message) {
   Write-Host $Message
+  if (-not [string]::IsNullOrEmpty($Message)) {
+    Start-Sleep -Milliseconds 500
+  }
 }
 
 function Backup-IfExists([string]$Path) {

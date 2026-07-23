@@ -13,6 +13,9 @@ fi
 
 say() {
   printf '%s\n' "$*"
+  if [ -n "$*" ]; then
+    sleep 0.5
+  fi
 }
 
 read_input() {
