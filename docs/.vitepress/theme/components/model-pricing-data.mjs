@@ -3,15 +3,15 @@ export const EXCHANGE_RATE = 7
 export const TEXT_GROUPS = [
   {
     id: 'pro-plus',
-    name: 'Pro / Plus 分组',
+    name: 'GPT Plus 特惠分组',
     multiplier: 0.1,
-    description: '适合日常使用和批量任务',
+    description: '适合体验',
   },
   {
     id: 'gpt-0.16',
-    name: 'GPT 0.16 分组',
+    name: 'Pro / Plus 混合分组',
     multiplier: 0.16,
-    description: '适合常用任务和日常改写',
+    description: '适合日常',
   },
   {
     id: 'full',

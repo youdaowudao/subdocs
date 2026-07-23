@@ -12,6 +12,8 @@ import {
   getImageDiscount,
 } from './model-pricing-data.mjs'
 
+const exampleTextOfficialUsd = { input: 5, output: 30, cachedInput: 0.5 }
+
 const activeCategory = ref('text')
 const activeGroupId = ref(TEXT_GROUPS[0].id)
 const priceMode = ref('group')
@@ -27,6 +29,19 @@ const textRows = computed(() =>
     prices: calculateTextPrice(model.officialUsd, activeGroup.value.multiplier),
   })),
 )
+
+const pricingRuleExample = computed(() => {
+  if (activeCategory.value !== 'text') {
+    return '示例：GPT Image 2 标准画质官方约 ¥0.37，绘图分组 ¥0.05'
+  }
+
+  const examplePrice = calculateTextPrice(
+    exampleTextOfficialUsd,
+    activeGroup.value.multiplier,
+  )
+
+  return `示例：GPT-5.5 输入官方 ¥35.00，${activeGroup.value.name} 输入价 ${formatCny(examplePrice.group.input)}`
+})
 
 const copyModelId = async (modelId) => {
   if (!navigator?.clipboard) return
@@ -75,9 +90,7 @@ const copyModelId = async (modelId) => {
         <span v-else>绘图分组统一 ¥0.05 / 张</span>
       </div>
       <span class="pricing-rule-example">
-        {{ activeCategory === 'text'
-          ? '示例：GPT-5.5 输入官方 ¥35.00，GPT 0.16 分组 ¥0.80'
-          : '示例：GPT Image 2 标准画质官方约 ¥0.37，绘图分组 ¥0.05' }}
+        {{ pricingRuleExample }}
       </span>
     </section>
 
@@ -505,7 +518,7 @@ const copyModelId = async (modelId) => {
 
 .pricing-groups {
   display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 320px));
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }

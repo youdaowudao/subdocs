@@ -9,12 +9,12 @@ import {
   getEquivalentDiscount,
 } from '../docs/.vitepress/theme/components/model-pricing-data.mjs'
 
-test('includes the GPT 0.16 group between the existing text groups', () => {
+test('includes the updated GPT pricing groups in order', () => {
   assert.deepEqual(
     TEXT_GROUPS.map(({ id, name, multiplier }) => ({ id, name, multiplier })),
     [
-      { id: 'pro-plus', name: 'Pro / Plus 分组', multiplier: 0.1 },
-      { id: 'gpt-0.16', name: 'GPT 0.16 分组', multiplier: 0.16 },
+      { id: 'pro-plus', name: 'GPT Plus 特惠分组', multiplier: 0.1 },
+      { id: 'gpt-0.16', name: 'Pro / Plus 混合分组', multiplier: 0.16 },
       { id: 'full', name: '正价满血分组', multiplier: 0.25 },
     ],
   )
