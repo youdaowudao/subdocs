@@ -2,7 +2,7 @@
 
 使用 `gpt-image-2` 可以通过 OpenAI-compatible 图片接口生成图片。本文适合自己写脚本、服务端流程、自动化流程，或给支持图片生成接口的客户端填写接口信息。
 
-最直接的效果是：本地创建一个脚本，请求图片生成接口，把返回的 Base64 图片保存成 `.png` 文件。只想手动连续创作图片，先看 [无限画布](/images/infinite-canvas)。
+最直接的效果是：本地创建一个脚本，请求图片生成接口，把返回的图片保存成 `.png` 文件。只想手动连续创作图片，先看 [无限画布](/images/infinite-canvas)。
 
 ## 懒人方法：让 AI 帮你快速测试
 
@@ -17,7 +17,7 @@
 3. 调用接口：POST https://api.usegoodai.com/v1/images/generations，API Key 让我自己填。
 4. 请求体参考 `gpt-image-2` 图片生成调用方法，例如：
    {"model":"gpt-image-2","prompt":"生成一张白底玻璃杯产品图","size":"1024x1024"}
-5. 把原始返回保存为 response.json，再把 data[0].b64_json 解码成 outputs/image.png；失败时显示状态码和返回内容。
+5. 把原始返回保存为 response.json，同时兼容 data[].b64_json 和 data[].url；有 b64_json 时先解码，有 url 时下载图片；两者都没有有效图片数据时，保留原始返回并明确报错。
 ```
 
 测试跑通后，再根据自己的业务改提示词、输出文件名、批量读取方式和错误处理。
@@ -74,15 +74,17 @@ curl https://api.usegoodai.com/v1/images/generations \
   -o response.json
 ```
 
-请求成功后，图片内容会在返回 JSON 的 `data[0].b64_json` 字段里。
+请求成功后，图片通常在返回 JSON 的 `data[].b64_json` 或 `data[].url` 里。脚本要同时兼容这两种结果。
 
 ## 保存返回的图片
 
-`data[0].b64_json` 是 Base64 图片内容，不是图片 URL。保存图片时按下面顺序处理：
+保存图片时按下面顺序处理：
 
-1. 从返回 JSON 里读取 `data[0].b64_json`。
-2. 对这个字符串做 Base64 解码。
-3. 把解码后的二进制内容写入 `.png` 文件。
+1. 解析整个 JSON，不要只硬取 `data[0]`。
+2. 先读取有效的 `data[].b64_json`，做 Base64 解码。
+3. 没有有效 `b64_json` 时，读取有效的 `data[].url` 并下载图片。
+4. 两者同时存在时，优先使用 Base64，URL 作为备用。
+5. 确认拿到图片二进制后再写入文件；没有有效图片数据时，保留 `response.json` 并报错。
 
 下面用 Python 标准库把 `response.json` 里的图片保存为 `outputs/image.png`：
 
@@ -90,14 +92,41 @@ curl https://api.usegoodai.com/v1/images/generations \
 import base64
 import json
 import os
+import urllib.request
 
 with open("response.json", "r", encoding="utf-8") as file:
     response = json.load(file)
 
-image_base64 = response["data"][0]["b64_json"]
+def read_image_bytes(item):
+    image_base64 = item.get("b64_json")
+    image_url = item.get("url")
+
+    if isinstance(image_base64, str) and image_base64.strip():
+        try:
+            return base64.b64decode(image_base64)
+        except Exception:
+            if not isinstance(image_url, str) or not image_url.strip():
+                raise
+
+    if isinstance(image_url, str) and image_url.strip():
+        with urllib.request.urlopen(image_url, timeout=60) as remote:
+            return remote.read()
+
+    return None
+
+image_bytes = None
+for item in response.get("data", []):
+    if isinstance(item, dict):
+        image_bytes = read_image_bytes(item)
+        if image_bytes:
+            break
+
+if not image_bytes:
+    raise RuntimeError("response.json 里没有有效的 data[].b64_json 或 data[].url")
+
 os.makedirs("outputs", exist_ok=True)
 with open("outputs/image.png", "wb") as file:
-    file.write(base64.b64decode(image_base64))
+    file.write(image_bytes)
 ```
 
 ## 常用参数
@@ -154,7 +183,7 @@ curl https://api.usegoodai.com/v1/images/edits \
 
 ### 保存后的文件打不开
 
-检查是不是把 `data[0].b64_json` 原样写进了图片文件。正确做法是先 Base64 解码，再把解码后的二进制内容写成 PNG 文件。它不是可直接打开的 URL。
+检查是不是把 `data[].b64_json` 原样写进了图片文件，或者在字段为空时写出了空文件。正确做法是先解析 JSON：有 `b64_json` 就 Base64 解码，有 `url` 就下载图片；两者都没有有效图片数据时，保留原始返回并报错。
 
 ### 429 或 5xx 怎么处理
 

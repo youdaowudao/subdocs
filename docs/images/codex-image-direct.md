@@ -2,7 +2,7 @@
 
 Codex 内置生图是 ChatGPT 桌面应用中 Codex 自带的 `image_gen` 工具，不是图片生成 API、无限画布，也不是让 Codex 写脚本调接口。本文适合已经按 [快速开始](/quick-start) 把 Codex 接到 UseGoodAI 的用户；改完后，Codex 继续走中转站，并且可以在 Codex 里直接调用内置生图工具。
 
-本文只改本机 `config.toml`。`auth.json` 继续使用快速开始导入的 UseGoodAI API Key，不要删除，也不要把 Key 写进下面的配置。
+本文只改本机 `config.toml`。`auth.json` 继续使用快速开始写入的 UseGoodAI API Key，不要删除，也不要把 Key 写进下面的配置。
 
 ## 复制完整配置
 
@@ -82,7 +82,7 @@ image_generation = true
 
 ## 进阶：配置项含义
 
-`requires_openai_auth = false` 表示这个自定义 provider 不使用 OpenAI 官方账号鉴权。UseGoodAI 用户的鉴权仍然来自快速开始导入的 `auth.json` 和中转站配置，不是关闭 UseGoodAI 的 API Key 检查。
+`requires_openai_auth = false` 表示这个自定义 provider 不使用 OpenAI 官方账号鉴权。UseGoodAI 用户的鉴权仍然来自快速开始写入的 `auth.json` 和中转站配置，不是关闭 UseGoodAI 的 API Key 检查。
 
 设为 `true` 时，Codex 会把这个 provider 当成 OpenAI 鉴权入口处理，适合仍然要走 OpenAI 账号或 OpenAI API Key 的代理场景。UseGoodAI 中转站按本文配置走，保持 `false`。
 
@@ -98,4 +98,4 @@ image_generation = true
 | 提示当前会话没有 `image_gen` 工具 | 完全退出 ChatGPT 桌面应用，重新打开 Codex 后新开任务 |
 | 配置后 Codex 打不开 | 检查 `config.toml` 里是不是写了两个 `[features]`，有两个就合并成一个 |
 | 请求没有到 UseGoodAI | 检查 `base_url` 是否是后台 Codex 配置使用的中转站地址，`auth.json` 是否还在 `.codex` 目录里 |
-| 401 / Unauthorized | 重新按 [快速开始](/quick-start) 导入当前 API Key；需要手动处理时进入 [Codex 手动接入](/clients/codex-manual-config) |
+| 401 / Unauthorized | 重新按 [快速开始](/quick-start) 写入当前 API Key；需要手动处理时进入 [Codex 手动接入](/clients/codex-manual-config) |

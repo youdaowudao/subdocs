@@ -1,8 +1,8 @@
 # CC Switch 手动接入
 
-本文用于在 CC Switch 中手动添加 UseGoodAI，供 Claude Code 使用。Codex 用户按 [快速开始](/quick-start) 从后台一键导入，不看本文。
+本文用于在 CC Switch 中手动添加 UseGoodAI，供 Claude Code 使用。Codex 用户看 [Codex CC Switch 接入](/codex-cc-switch)。
 
-还没有安装 CC Switch 时，先进入 [快速开始的安装步骤](/quick-start#第二步安装-cc-switch)，安装完成后再返回本页。
+还没有安装 CC Switch 时，先进入 [Codex CC Switch 接入](/codex-cc-switch) 查看下载入口，安装完成后再返回本页。
 
 ## 把 UseGoodAI 添加到 Claude Code
 

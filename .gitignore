@@ -33,3 +33,9 @@ Thumbs.db
 codex/
 .codex/
 AGENTS.md
+
+# Separate local installer repository; do not include it in the docs repository.
+usegoodai-codex-installer/
+
+# Temporary local scripts and working notes; never commit or deploy.
+local-scripts/

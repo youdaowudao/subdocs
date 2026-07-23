@@ -1,115 +1,90 @@
+---
+title: 快速开始
+---
+
 # 快速开始
 
-本文适合第一次使用 UseGoodAI 的用户。按顺序创建 API Key、安装 CC Switch、把配置导入 Codex；完成后，Codex CLI 或 ChatGPT 桌面应用中的 Codex 就能通过 UseGoodAI 使用模型，不需要手动修改配置文件。
+首先安装好 Codex App，粘贴运行本站一键配置脚本命令，即可快速接入本中转站，无任何难度。
 
-## 第一步：创建 API Key
+## 1. 先创建本中转站的 API 密钥
 
-### 1. 进入 API 密钥页面
+进入后台 **API 密钥**，点击 **创建密钥**。名称写用途，分组选模型档位，创建后复制 API Key。
 
-注册并登录 UseGoodAI 后台，左侧进入 **API 密钥**，然后点击 **创建密钥**。
+<details>
+<summary>查看创建和复制截图</summary>
 
 <a class="doc-image-link" href="/images/quick-start/create-api-key-1.jpg" target="_blank" rel="noopener">
   <img src="/images/quick-start/create-api-key-1.jpg" alt="进入 API 密钥页面并点击创建密钥">
 </a>
 
-### 2. 填写名称并选择分组
-
-名称写成能看懂用途的名字，例如 `编程专用`。
-
-选择需要使用的分组。分组决定这个 API Key 可以使用哪些模型和对应的计费档位。
-
 <a class="doc-image-link" href="/images/quick-start/create-api-key-2.jpg" target="_blank" rel="noopener">
   <img src="/images/quick-start/create-api-key-2.jpg" alt="填写密钥名称并选择正确分组">
 </a>
 
-除名称和分组外，其它限制项保持默认。创建完成后回到 API 密钥列表，继续安装 CC Switch。
+<a class="doc-image-link" href="/images/quick-start/create-api-key-3.jpg" target="_blank" rel="noopener">
+  <img src="/images/quick-start/create-api-key-3.jpg" alt="在 API 密钥列表中复制 API Key">
+</a>
 
-## 第二步：安装 CC Switch
+</details>
 
-CC Switch 用来把 UseGoodAI 的地址、API Key 和模型写入 Codex。安装一次，完成导入后即可关闭。
+## 2. 复制粘贴以下命令运行
 
-::: tip 无法下载就进客服群
-### QQ 客服群：**1020015031**
-
-官方和国内下载入口都无法打开时，进入客服群，在 **群文件** 中下载 Windows 或 Mac 安装包。
-:::
-
-| 下载来源 | 入口 |
-| --- | --- |
-| 官方下载 | [GitHub Releases](https://github.com/farion1231/cc-switch/releases) |
-| GitCode | [国内下载](https://gitcode.com/YujinDawnlight/cc-switch-download) |
-| Gitee | [国内下载](https://gitee.com/iamzhihuix/cc-switch-mirror/releases) |
-
-Windows 用户也可以打开 PowerShell 安装：
+Windows 打开 PowerShell，复制粘贴以下命令运行：
 
 ```powershell
-winget install -e --id farion1231.CC-Switch
+irm https://docs.usegoodai.com/install/codex.ps1 | iex
 ```
 
-Mac 用户已经安装 Homebrew 时，打开终端执行：
+Mac 打开终端运行：
 
 ```bash
-brew install --cask cc-switch
+curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 ```
 
-安装完成后打开 CC Switch。
+脚本要求输入 API Key 时，粘贴第一步复制的 Key。
 
-## 第三步：导入配置
+提示未检测到 Codex App 时，先安装并打开一次，再运行脚本。
 
-回到 UseGoodAI 后台的 API 密钥列表，找到刚创建的 Key，点击右侧的 **导入到 CCS**。
+## 3. 关闭并重新打开 Codex
 
-浏览器询问是否打开 CC Switch 时，点击 **打开**。
+脚本完成后，彻底退出 Codex App，再重新打开并新建任务。
 
-<a class="doc-image-link" href="/images/ccswitch/CCSWITCH导入1.jpg" target="_blank" rel="noopener">
-  <img src="/images/ccswitch/CCSWITCH导入1.jpg" alt="在 API 密钥页面点击导入到 CCS 并允许浏览器打开 CC Switch">
-</a>
+Windows 配置未生效时，用任务管理器结束所有 `ChatGPT` 进程，再打开 Codex。
 
-## 第四步：确认导入
+发送 `测试`。
 
-确认应用类型是 `Codex`，然后点击 **导入**。
+能正常回复，就接入完成。
 
-<a class="doc-image-link" href="/images/ccswitch/CCSWITCH导入2.jpg" target="_blank" rel="noopener">
-  <img src="/images/ccswitch/CCSWITCH导入2.jpg" alt="核对 Codex 的 UseGoodAI 供应商配置并点击导入">
-</a>
+<details>
+<summary>脚本提示未检测到 Codex App</summary>
 
-## 第五步：重开 Codex 测试
+先安装 Codex App，并打开一次。回到本页重新运行脚本。
 
-导入完成后，确认 `UseGoodAI` 右侧显示 **使用中**。
+</details>
 
-<a class="doc-image-link" href="/images/ccswitch/CCSWITCH导入3.jpg" target="_blank" rel="noopener">
-  <img src="/images/ccswitch/CCSWITCH导入3.jpg" alt="确认 UseGoodAI 供应商已在 Codex 中使用">
-</a>
+<details>
+<summary>脚本安全吗？</summary>
 
-Codex CLI 用户退出当前 Codex，重新打开终端后执行：
-
-```bash
-codex
-```
-
-ChatGPT 桌面应用用户在系统托盘中点击 **Exit**，彻底退出后再重新打开应用并切换到 Codex。仍未读取新配置时，在任务管理器中结束所有 ChatGPT 相关进程，或者重启电脑后再打开。
-
-新建一个对话或任务，不要继续使用导入前的旧对话。发送：
+脚本开源，源码会放在公开仓库：
 
 ```text
-测试
+https://github.com/usegoodai/usegoodai-codex-installer
 ```
 
-能正常收到回复，就说明接入成功。需要核对实际请求时，进入 UseGoodAI 后台的 **使用记录** 页面查看。
+本脚本仅仅只是为了方便不会配置文件的用户，只修改本机 Codex 配置中的以下两个文件，不会有其他操作。如果不放心，请采取后面的其他配置方法。
 
-重新打开 Codex，测试正常后即可关闭 CC Switch，以后也不用再打开。
-
-## 常见问题
-
-| 现象 | 检查动作 |
+| 文件 | 作用 |
 | --- | --- |
-| 点击“导入到 CCS”没有反应 | 确认 CC Switch 已安装并打开，再允许浏览器打开外部应用 |
-| 导入窗口里的应用类型不是 Codex | 点击取消，回到同一个 API Key 后重新点击 **导入到 CCS** |
-| 导入后 Codex 仍使用旧配置 | 彻底退出 Codex，重新打开后新建对话或任务测试 |
-| `401 Unauthorized` | 回到后台重新导入当前有效的 API Key |
-| `403 Forbidden` | 确认当前 Key 所属分组支持导入的模型 |
+| `~/.codex/config.toml` | 写入 UseGoodAI 接口地址、模型和 Responses 配置 |
+| `~/.codex/auth.json` | 写入 UseGoodAI API Key |
 
-其它错误进入 [报错与踩坑](/errors/) 检查。
+写入前会自动备份旧文件。
 
-## 手动配置
+</details>
 
-后台无法打开 CC Switch 时，进入 [Codex 手动接入](/clients/codex-manual-config)。
+## 其它配置方式
+
+| 顺序 | 方式 | 入口 |
+| --- | --- | --- |
+| 第二种 | CC Switch 接入 | [Codex CC Switch 接入](/codex-cc-switch) |
+| 第三种 | 手动配置 | [Codex 手动接入](/clients/codex-manual-config) |

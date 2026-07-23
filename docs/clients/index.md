@@ -8,7 +8,8 @@
 | 你要做什么 | 进入 |
 | --- | --- |
 | 用 Codex CLI / ChatGPT 桌面应用中的 Codex 写代码 | [Codex 接入](/clients/codex) |
-| CC Switch 无法一键导入，需要手动修改 Codex 配置文件 | [Codex 手动接入](/clients/codex-manual-config) |
+| 不想运行脚本，用 CC Switch 导入 Codex 配置 | [Codex CC Switch 接入](/codex-cc-switch) |
+| 手动修改 Codex 配置文件 | [Codex 手动接入](/clients/codex-manual-config) |
 | 在 VS Code 里配合 Codex 或 BYOK 使用 | [VS Code 接入](/clients/vscode) |
 | 在 Claude Desktop APP 或 Claude Code CLI 中使用 GPT-5.6 | [Claude Code / Desktop 接入](/clients/claude-code-desktop) |
 | 在 CC Switch 中手动添加 Claude Code 供应商 | [CC Switch 手动接入](/clients/cc-switch) |
@@ -36,9 +37,10 @@ https://api.usegoodai.com/v1
 | 页面 | 用途 |
 | --- | --- |
 | [Codex 接入](/clients/codex) | 第一次安装、配置和排查基础问题 |
-| [Codex 手动接入](/clients/codex-manual-config) | CC Switch 无法一键导入时，手动写入 `config.toml` 和 `auth.json` |
+| [Codex CC Switch 接入](/codex-cc-switch) | 不运行脚本时，用图形工具导入配置 |
+| [Codex 手动接入](/clients/codex-manual-config) | 手动写入 `config.toml` 和 `auth.json` |
 | [Codex 内置生图](/images/codex-image-direct) | 在 ChatGPT 桌面应用中的 Codex 调用内置生图工具 |
-| [保留 ChatGPT 登录](/chatgpt-login-usegoodai) | ChatGPT 桌面应用中的 Codex 保留 ChatGPT 登录和手机连接 |
+| [保留 ChatGPT 登录](/clients/chatgpt-login-usegoodai) | ChatGPT 桌面应用中的 Codex 保留 ChatGPT 登录和手机连接 |
 | [VS Code](/clients/vscode) | 想在编辑器里配合 Codex，或了解 VS Code BYOK |
 | [Codex 进阶](/external/codex-advanced) | 已经跑通后，学习 profile、会话、权限、手机连接和多 Codex 工作流 |
 | [Codex 周边工具](/external/codex-tools) | 想了解 Git、ripgrep、GitHub CLI、MCPHub、Superpowers 等辅助工具 |

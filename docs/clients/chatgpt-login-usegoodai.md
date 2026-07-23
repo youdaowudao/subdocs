@@ -14,7 +14,7 @@
 
 ## 懒人方法：复制给 AI 帮你改
 
-先按 [快速开始](/quick-start) 的第一步、第二步创建 UseGoodAI API Key；已经有 Key 时直接继续。把下面这段话复制给能操作本机文件的 AI。最后点开 AI 给出的 `config.toml` 路径，只把 `experimental_bearer_token` 双引号里的内容换成自己的 API Key 并保存。
+先按 [快速开始](/quick-start) 创建 UseGoodAI API Key；已经有 Key 时直接继续。把下面这段话复制给能操作本机文件的 AI。最后点开 AI 给出的 `config.toml` 路径，只把 `experimental_bearer_token` 双引号里的内容换成自己的 API Key 并保存。
 
 ```text
 请帮我修改当前电脑上 ChatGPT 桌面应用中 Codex 的配置文件。

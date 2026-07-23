@@ -5,6 +5,8 @@ const config = defineConfig({
   title: 'UseGoodAI.com中转站教程',
   description: '中转站各类教程',
   rewrites: {
+    'clients/codex-cc-switch.md': 'codex-cc-switch.md',
+    'chatgpt-login-usegoodai.md': 'clients/chatgpt-login-usegoodai.md',
     'clients/infinite-canvas.md': 'images/infinite-canvas.md',
     'external/image-generation.md': 'images/image-generation.md',
     'images/codex-image-misunderstanding.md': 'images/codex-image-direct.md'
@@ -12,13 +14,12 @@ const config = defineConfig({
 
   themeConfig: {
     nav: [
-        { text: '首页', link: '/' },
-        { text: '快速开始', link: '/quick-start' },
-        { text: '客户端接入', link: '/clients/' },
-        { text: '扩展说明', link: '/external/' },
+        { text: '快速开始', link: '/' },
+        { text: '一键配置', link: '/quick-start' },
+        { text: 'Codex', link: '/clients/codex' },
+        { text: '客户端', link: '/clients/' },
         { text: '生图', link: '/images/' },
         { text: '常见错误', link: '/errors/' },
-        { text: '模型与分组', link: '/models' },
         { text: '联系客服', link: '/contact' }
     ],
 
@@ -35,14 +36,17 @@ export default withSidebar(config, {
   useTitleFromFrontmatter: true,
   useFolderTitleFromIndexFile: true,
   useFolderLinkFromIndexFile: true,
-  collapsed: false,
+  collapsed: true,
   includeRootIndexFile: false,
   includeFolderIndexFile: false,
+  excludeByGlobPattern: ['buy.md'],
   manualSortFileNameByPriority: [
     'quick-start.md',
-    'chatgpt-login-usegoodai.md',
+    'codex-cc-switch.md',
+    'models.md',
     'clients',
     'codex.md',
+    'chatgpt-login-usegoodai.md',
     'codex-manual-config.md',
     'vscode.md',
     'claude-code-desktop.md',
@@ -72,7 +76,6 @@ export default withSidebar(config, {
     'codex-tools.md',
     'errors',
     'index.md',
-    'models.md',
     'contact.md'
   ]
 })

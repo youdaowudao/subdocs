@@ -1,8 +1,8 @@
 # Codex 手动接入
 
-CC Switch 无法导入时，按本文把 UseGoodAI 后台提供的 `config.toml` 和 `auth.json` 写入本机 `.codex` 文件夹。重新打开 Codex 后，即可通过 UseGoodAI 使用模型。
+一键脚本不适用时，按本文把 UseGoodAI 后台提供的 `config.toml` 和 `auth.json` 写入本机 `.codex` 文件夹。重新打开 Codex 后，即可通过 UseGoodAI 使用模型。
 
-先按 [快速开始](/quick-start#第一步创建-api-key) 创建 API Key，再回来继续。
+先按 [快速开始](/quick-start) 创建 API Key，再回来继续。
 
 ## 找到配置文件
 
@@ -98,4 +98,4 @@ ChatGPT 桌面应用用户先在右下角托盘找到 ChatGPT 图标，点击 **
 | Windows 修改后不生效 | 确认文件名不是 `config.toml.txt` 或 `auth.json.txt`，再彻底退出并重新打开 Codex |
 | 后台没有使用记录 | 确认两个文件位于当前 Codex 实际读取的 `.codex` 目录，并重新新建对话测试 |
 
-仍然无法使用时，返回 [快速开始](/quick-start) 改用 CC Switch 一键导入。
+仍然无法使用时，返回 [快速开始](/quick-start) 改用一键脚本。
