@@ -60,7 +60,6 @@ export default withSidebar(config, {
     'librechat.md',
     'images',
     'image-video-group-image.md',
-    'image-video-group-video.md',
     'infinite-canvas.md',
     'image-generation.md',
     'codex-image-direct.md',

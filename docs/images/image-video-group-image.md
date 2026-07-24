@@ -1,8 +1,6 @@
 # 生图分组方法
 
-“生图与视频分组”提供 `Nano Banana`、`GPT Image`、`Adobe` 和 `Grok` 图片模型，价格见[模型价格](/models)。让 Codex 按本文创建调用脚本，并把生成结果显示在当前对话中。
-
-需要生成视频时，进入[视频分组方法](/images/image-video-group-video)。
+“生图分组”提供 `Nano Banana`、`GPT Image`、`Adobe` 和 `Grok` 图片模型，价格见[模型价格](/models)。让 Codex 按本文创建调用脚本，并把生成结果显示在当前对话中。
 
 ## 第一次使用：让 Codex 创建调用工具
 

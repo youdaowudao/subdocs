@@ -1,9 +1,8 @@
 # 生图
 
-## 生图与视频分组
+## 生图分组
 
 1. [生图方法](/images/image-video-group-image)
-2. [视频方法](/images/image-video-group-video)
 
 ## 其它生图方法
 
