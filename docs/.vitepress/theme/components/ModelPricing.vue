@@ -31,7 +31,7 @@ const textRows = computed(() =>
 
 const pricingRuleExample = computed(() => {
   if (activeCategory.value !== 'text') {
-    return '示例：GPT Image 2 当前分组价 $0.05 / 张，官方价格会随尺寸和画质变化'
+    return '示例：GPT Image 2 当前分组价 $0.05 / 张'
   }
 
   const examplePrice = calculateTextPrice(
@@ -88,7 +88,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
         <strong>计价规则</strong>
         <span>官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
         <span v-if="activeCategory === 'text'">分组价格 = 官方美元价格 × 分组倍率</span>
-        <span v-else>绘图分组统一 ¥0.05 / 张</span>
+        <span v-else>生图分组价格按模型默认美元价计费</span>
       </div>
       <span class="pricing-rule-example">
         {{ pricingRuleExample }}
@@ -103,8 +103,8 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
         </div>
         <div class="price-mode-wrap">
           <span v-if="activeCategory === 'text'">{{ priceMode === 'group' ? '分组价已按人民币计算' : '官方价按固定汇率换算' }}</span>
-          <span v-else>{{ priceMode === 'group' ? '分组价按美元 / 张显示' : '官方参考价按原厂计价方式显示' }}</span>
-          <div class="price-mode-switch" role="group" aria-label="价格类型">
+          <span v-else>分组价按美元 / 张显示</span>
+          <div v-if="activeCategory === 'text'" class="price-mode-switch" role="group" aria-label="价格类型">
             <button
               type="button"
               :class="{ 'is-active': priceMode === 'group' }"
@@ -221,9 +221,8 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
         </div>
 
         <div class="pricing-description">
-          <strong>{{ priceMode === 'group' ? '绘图价格：' : '官方价格：' }}</strong>
-          <span v-if="priceMode === 'group'">当前分组按模型设置默认美元价格，未命中更细定价层级时使用；图片请求按张计费。</span>
-          <span v-else>官方参考价格不是统一单价：OpenAI 按尺寸和画质计价，Google 按图片输出 token 计价，Adobe 按生成积分计价，xAI 按图片计价。</span>
+          <strong>绘图价格：</strong>
+          <span>当前分组按模型设置默认美元价格，图片请求按张计费。</span>
         </div>
 
         <div class="pricing-table-scroll">
@@ -234,8 +233,6 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
                 <th scope="col">模型介绍</th>
                 <th scope="col">接口 / 规格</th>
                 <th scope="col">当前分组价</th>
-                <th scope="col">官方参考</th>
-                <th scope="col">备注</th>
               </tr>
             </thead>
             <tbody>
@@ -243,8 +240,9 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
                 <td>
                   <div class="model-id-cell">
                     <div>
-                      <strong>{{ model.id }}</strong>
-                      <span>{{ model.name }}</span>
+                      <strong v-if="model.id === 'gpt-image-2'">{{ model.id }}</strong>
+                      <span v-else class="image-model-id">{{ model.id }}</span>
+                      <span v-if="model.id === 'gpt-image-2'">推荐日常使用</span>
                     </div>
                     <button
                       type="button"
@@ -261,21 +259,9 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
                   <span class="table-subvalue">{{ model.spec }}</span>
                 </td>
                 <td>
-                  <template v-if="priceMode === 'group'">
-                    <strong class="group-price">{{ formatUsd(model.groupUsdPerImage) }}</strong>
-                    <span class="price-unit">/ 张</span>
-                    <span class="table-subvalue">当前分组默认价</span>
-                  </template>
-                  <template v-else>
-                    <span class="official-label">见右侧官方参考</span>
-                  </template>
-                </td>
-                <td>
-                  <span class="official-reference">{{ model.officialReference }}</span>
-                  <a class="source-link" :href="model.officialSource" target="_blank" rel="noreferrer">官方资料</a>
-                </td>
-                <td>
-                  <span class="model-note">{{ model.note }}</span>
+                  <strong class="group-price">{{ formatUsd(model.groupUsdPerImage) }}</strong>
+                  <span class="price-unit">/ 张</span>
+                  <span class="table-subvalue">当前分组默认价</span>
                 </td>
               </tr>
             </tbody>
@@ -286,7 +272,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 
     <p class="pricing-footnote">
       <span v-if="activeCategory === 'text'">文本模型官方价格按当前公开标准价和固定汇率换算。</span>
-      <span v-else>生图分组价格按当前模型默认美元价显示；官方参考价按各厂商公开的尺寸、画质、token 或积分规则显示。</span>
+      <span v-else>生图分组价格按当前模型默认美元价显示。</span>
       页面价格用于说明和对比，实际扣费以后台定价配置和调用记录为准。
     </p>
   </main>
@@ -656,15 +642,13 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 .model-pricing-page .pricing-table th:nth-child(6) { width: 14%; }
 
 .model-pricing-page .pricing-table--image {
-  min-width: 1320px;
+  min-width: 980px;
 }
 
-.model-pricing-page .pricing-table--image th:first-child { width: 17%; }
-.model-pricing-page .pricing-table--image th:nth-child(2) { width: 19%; }
-.model-pricing-page .pricing-table--image th:nth-child(3) { width: 14%; }
-.model-pricing-page .pricing-table--image th:nth-child(4) { width: 13%; }
-.model-pricing-page .pricing-table--image th:nth-child(5) { width: 22%; }
-.model-pricing-page .pricing-table--image th:nth-child(6) { width: 15%; }
+.model-pricing-page .pricing-table--image th:first-child { width: 24%; }
+.model-pricing-page .pricing-table--image th:nth-child(2) { width: 34%; }
+.model-pricing-page .pricing-table--image th:nth-child(3) { width: 20%; }
+.model-pricing-page .pricing-table--image th:nth-child(4) { width: 22%; }
 
 .model-id-cell {
   display: flex;
@@ -690,6 +674,12 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   color: var(--vp-c-text-3);
   font-size: 13px;
   line-height: 1.35;
+}
+
+.model-id-cell .image-model-id {
+  color: var(--vp-c-text-1);
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .copy-model-button {
@@ -774,27 +764,15 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 }
 
 .table-subvalue,
-.model-description,
-.official-reference,
-.model-note {
+.model-description {
   display: block;
   color: var(--vp-c-text-3);
   font-size: 12px;
   line-height: 1.5;
 }
 
-.model-description,
-.official-reference,
-.model-note {
+.model-description {
   color: var(--vp-c-text-2);
-}
-
-.source-link {
-  display: inline-block;
-  margin-top: 5px;
-  color: #a64b0d;
-  font-size: 12px;
-  font-weight: 650;
 }
 
 .pricing-footnote {
@@ -849,6 +827,6 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   .pricing-groups--image { grid-template-columns: 1fr; }
   .pricing-description { align-items: flex-start; flex-direction: column; gap: 2px; }
   .model-pricing-page .pricing-table { min-width: 980px; }
-  .model-pricing-page .pricing-table--image { min-width: 1320px; }
+  .model-pricing-page .pricing-table--image { min-width: 980px; }
 }
 </style>
