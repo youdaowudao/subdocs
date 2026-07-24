@@ -1,6 +1,6 @@
 # Codex 内置生图
 
-Codex 内置生图是 ChatGPT 桌面应用中 Codex 自带的 `image_gen` 工具，不是图片生成 API、无限画布，也不是让 Codex 写脚本调接口。本文适合已经按 [快速开始](/quick-start) 把 Codex 接到 UseGoodAI 的用户；改完后，Codex 继续走中转站，并且可以在 Codex 里直接调用内置生图工具。
+Codex 内置生图是 ChatGPT 桌面应用中 Codex 自带的 `image_gen` 工具，不是 GPT 生图 API、无限画布，也不是让 Codex 写脚本调接口。本文适合已经按 [快速开始](/quick-start) 把 Codex 接到 UseGoodAI 的用户；改完后，Codex 继续走中转站，并且可以在 Codex 里直接调用内置生图工具。
 
 本文只改本机 `config.toml`。`auth.json` 继续使用快速开始写入的 UseGoodAI API Key，不要删除，也不要把 Key 写进下面的配置。
 

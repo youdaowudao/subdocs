@@ -2,12 +2,6 @@ export const EXCHANGE_RATE = 7
 
 export const TEXT_GROUPS = [
   {
-    id: 'pro-plus',
-    name: 'GPT Plus 特惠分组',
-    multiplier: 0.1,
-    description: '适合体验',
-  },
-  {
     id: 'gpt-0.16',
     name: 'Pro / Plus 混合分组',
     multiplier: 0.16,
@@ -16,7 +10,7 @@ export const TEXT_GROUPS = [
   {
     id: 'full',
     name: '正价满血分组',
-    multiplier: 0.25,
+    multiplier: 0.28,
     description: '完整能力，适合重要任务',
   },
 ]
@@ -62,19 +56,131 @@ export const TEXT_MODELS = [
 
 export const IMAGE_GROUP = {
   id: 'image',
-  name: '绘图分组',
-  description: '图片生成统一按张计费',
-  priceCny: 0.05,
+  name: '生图分组',
+  description: '图片模型按当前分组默认价计费，单位为美元 / 张',
 }
 
 export const IMAGE_MODELS = [
   {
+    id: 'gpt-image-1k-th',
+    name: 'GPT Image 1K',
+    description: 'GPT Image 2 的 1K 渠道档，适合低成本测试',
+    route: '/v1/images/generations',
+    spec: '1K',
+    groupUsdPerImage: 0.03,
+    officialReference: 'GPT Image 2 官方约 $0.005 - $0.006 / 张（低画质，随尺寸变化）',
+    officialSource: 'https://developers.openai.com/api/docs/guides/image-generation',
+    note: '当前分组的渠道名，不是 OpenAI 单独公布的模型 ID。',
+  },
+  {
     id: 'gpt-image-2',
     name: 'GPT Image 2',
-    description: '图片生成与图片编辑',
-    size: '1024 × 1024',
-    quality: '标准画质',
-    officialUsdPerImage: 0.053,
+    description: 'OpenAI 通用生图与改图模型',
+    route: '/v1/images/generations',
+    spec: '按尺寸 / 画质',
+    groupUsdPerImage: 0.05,
+    officialReference: 'OpenAI 官方约 $0.006 - $0.211 / 张（随尺寸、画质变化）',
+    officialSource: 'https://developers.openai.com/api/docs/guides/image-generation',
+    note: '官方不是固定单价；本页显示当前分组默认价。',
+  },
+  {
+    id: 'gpt-image-2-4k',
+    name: 'GPT Image 2 4K',
+    description: 'GPT Image 2 的高分辨率渠道档',
+    route: '/v1/images/generations',
+    spec: '4K 渠道档',
+    groupUsdPerImage: 0.08,
+    officialReference: '无独立官方 4K 模型价；按 GPT Image 2 尺寸、画质计价',
+    officialSource: 'https://developers.openai.com/api/docs/guides/image-generation',
+    note: '当前分组的渠道名，实际输出尺寸以返回图片为准。',
+  },
+  {
+    id: 'gpt-image-1k-adobe',
+    name: 'GPT Image 1K Adobe',
+    description: 'Adobe Firefly Partner Model 账号渠道的 1K 档',
+    route: '/v1/images/generations',
+    spec: '1K 渠道档',
+    groupUsdPerImage: 0.08,
+    officialReference: 'Adobe 官方按 GPT Image 2 Partner Model 收取 5 / 10 / 60 积分',
+    officialSource: 'https://helpx.adobe.com/creative-cloud/apps/generative-ai/non-adobe-models-in-adobe-products.html',
+    note: '此 ID 是本分组的 Adobe 渠道别名，不是 Adobe 官方 API 模型名。',
+  },
+  {
+    id: 'gpt-image-2k-adobe',
+    name: 'GPT Image 2K Adobe',
+    description: 'Adobe Firefly Partner Model 账号渠道的 2K 档',
+    route: '/v1/images/generations',
+    spec: '2K 渠道档',
+    groupUsdPerImage: 0.15,
+    officialReference: 'Adobe 官方按 GPT Image 2 Partner Model 收取 5 / 10 / 60 积分',
+    officialSource: 'https://helpx.adobe.com/creative-cloud/apps/generative-ai/non-adobe-models-in-adobe-products.html',
+    note: '此 ID 是本分组的 Adobe 渠道别名，不是 Adobe 官方 API 模型名。',
+  },
+  {
+    id: 'gpt-image-4k-adobe',
+    name: 'GPT Image 4K Adobe',
+    description: 'Adobe Firefly Partner Model 账号渠道的 4K 档',
+    route: '/v1/images/generations',
+    spec: '4K 渠道档',
+    groupUsdPerImage: 0.20,
+    officialReference: 'Adobe 官方按 GPT Image 2 Partner Model 收取 5 / 10 / 60 积分',
+    officialSource: 'https://helpx.adobe.com/creative-cloud/apps/generative-ai/non-adobe-models-in-adobe-products.html',
+    note: '此 ID 是本分组的 Adobe 渠道别名，不是 Adobe 官方 API 模型名。',
+  },
+  {
+    id: 'nano-banana-pro',
+    name: 'Nano Banana Pro',
+    description: 'Google Gemini 3 Pro Image，适合高质量和复杂画面',
+    route: '/v1/responses',
+    spec: '1K / 2K / 4K',
+    groupUsdPerImage: 0.25,
+    officialReference: 'Google 官方约 $0.134 / 张（1K / 2K），$0.24 / 张（4K）',
+    officialSource: 'https://ai.google.dev/gemini-api/docs/pricing',
+    note: 'Nano Banana Pro 是 Google Gemini 3 Pro Image 的产品别名。',
+  },
+  {
+    id: 'nano-banana-2',
+    name: 'Nano Banana 2',
+    description: 'Google Gemini 3.1 Flash Image，速度和成本平衡',
+    route: '/v1/responses',
+    spec: '1K / 2K / 4K',
+    groupUsdPerImage: 0.20,
+    officialReference: 'Google 官方约 $0.067 / 张（1K），$0.101 / 张（2K），$0.151 / 张（4K）',
+    officialSource: 'https://ai.google.dev/gemini-api/docs/pricing',
+    note: 'Nano Banana 2 是 Google Gemini 3.1 Flash Image 的产品别名。',
+  },
+  {
+    id: 'gpt-image-2-adobe',
+    name: 'GPT Image 2 Adobe',
+    description: 'Adobe Firefly Partner Model 账号渠道的 GPT Image 2',
+    route: '/v1/images/generations',
+    spec: '按尺寸 / 画质',
+    groupUsdPerImage: 0.12,
+    officialReference: 'Adobe 官方按 GPT Image 2 Partner Model 收取 5 / 10 / 60 积分',
+    officialSource: 'https://helpx.adobe.com/creative-cloud/apps/generative-ai/non-adobe-models-in-adobe-products.html',
+    note: '此 ID 是本分组的 Adobe 渠道别名，不是 Adobe 官方 API 模型名。',
+  },
+  {
+    id: 'gpt-image-4k-ys',
+    name: 'GPT Image 4K YS',
+    description: 'YS 渠道的 GPT Image 高分辨率档',
+    route: '/v1/images/generations',
+    spec: '4K 渠道档',
+    groupUsdPerImage: 0.20,
+    officialReference: '未找到独立公开官方模型价，按当前分组价格使用',
+    officialSource: 'https://developers.openai.com/api/docs/guides/image-generation',
+    note: 'YS 是渠道别名，不能当作 OpenAI 官方独立模型名。',
+  },
+  {
+    id: 'grok-imagine-image',
+    name: 'Grok Imagine Image',
+    description: 'xAI Imagine 图片生成模型的当前渠道名',
+    route: '/v1/images/generations',
+    spec: '1K / 2K',
+    groupUsdPerImage: 0.10,
+    officialReference: 'xAI Imagine API 官方约 $0.02 / 张（1K / 2K）',
+    officialSource: 'https://docs.x.ai/developers/models',
+    note: '当前渠道账号可用性不稳定；官方文档使用的是其它完整模型名。',
   },
 ]
 
@@ -98,11 +204,6 @@ export function calculateTextPrice(officialUsd, multiplier) {
 
 export function getEquivalentDiscount(multiplier) {
   return `${((multiplier / EXCHANGE_RATE) * 10).toFixed(1)}折`
-}
-
-export function getImageDiscount(priceCny, officialUsdPerImage) {
-  const officialCny = officialUsdPerImage * EXCHANGE_RATE
-  return `${((priceCny / officialCny) * 10).toFixed(1)}折`
 }
 
 export function formatCny(value) {

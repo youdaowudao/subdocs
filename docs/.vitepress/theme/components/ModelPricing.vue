@@ -9,7 +9,6 @@ import {
   calculateTextPrice,
   formatCny,
   getEquivalentDiscount,
-  getImageDiscount,
 } from './model-pricing-data.mjs'
 
 const exampleTextOfficialUsd = { input: 5, output: 30, cachedInput: 0.5 }
@@ -32,7 +31,7 @@ const textRows = computed(() =>
 
 const pricingRuleExample = computed(() => {
   if (activeCategory.value !== 'text') {
-    return '示例：GPT Image 2 标准画质官方约 ¥0.37，绘图分组 ¥0.05'
+    return '示例：GPT Image 2 当前分组价 $0.05 / 张，官方价格会随尺寸和画质变化'
   }
 
   const examplePrice = calculateTextPrice(
@@ -51,6 +50,8 @@ const copyModelId = async (modelId) => {
     if (copiedModel.value === modelId) copiedModel.value = ''
   }, 1400)
 }
+
+const formatUsd = (value) => `$${value.toFixed(2)}`
 </script>
 
 <template>
@@ -101,7 +102,8 @@ const copyModelId = async (modelId) => {
           <h2>价格列表</h2>
         </div>
         <div class="price-mode-wrap">
-          <span>{{ priceMode === 'group' ? '分组价已按人民币计算' : '官方价按固定汇率换算' }}</span>
+          <span v-if="activeCategory === 'text'">{{ priceMode === 'group' ? '分组价已按人民币计算' : '官方价按固定汇率换算' }}</span>
+          <span v-else>{{ priceMode === 'group' ? '分组价按美元 / 张显示' : '官方参考价按原厂计价方式显示' }}</span>
           <div class="price-mode-switch" role="group" aria-label="价格类型">
             <button
               type="button"
@@ -212,7 +214,7 @@ const copyModelId = async (modelId) => {
           <div class="pricing-group-static is-active">
             <span class="pricing-group-title">
               <strong>{{ IMAGE_GROUP.name }}</strong>
-              <em>{{ formatCny(IMAGE_GROUP.priceCny) }} / 张</em>
+              <em>按模型计价</em>
             </span>
             <span>{{ IMAGE_GROUP.description }}</span>
           </div>
@@ -220,8 +222,8 @@ const copyModelId = async (modelId) => {
 
         <div class="pricing-description">
           <strong>{{ priceMode === 'group' ? '绘图价格：' : '官方价格：' }}</strong>
-          <span v-if="priceMode === 'group'">所有绘图请求统一 ¥0.05 / 张，和文本模型分组分开计费。</span>
-          <span v-else>官方单张价格会随尺寸和画质变化，下表使用 1024 × 1024 标准画质估算。</span>
+          <span v-if="priceMode === 'group'">当前分组按模型设置默认美元价格，未命中更细定价层级时使用；图片请求按张计费。</span>
+          <span v-else>官方参考价格不是统一单价：OpenAI 按尺寸和画质计价，Google 按图片输出 token 计价，Adobe 按生成积分计价，xAI 按图片计价。</span>
         </div>
 
         <div class="pricing-table-scroll">
@@ -229,11 +231,11 @@ const copyModelId = async (modelId) => {
             <thead>
               <tr>
                 <th scope="col">模型 ID</th>
-                <th scope="col">尺寸</th>
-                <th scope="col">画质</th>
-                <th scope="col">本站单价</th>
-                <th scope="col">官方人民币价</th>
-                <th scope="col">折扣</th>
+                <th scope="col">模型介绍</th>
+                <th scope="col">接口 / 规格</th>
+                <th scope="col">当前分组价</th>
+                <th scope="col">官方参考</th>
+                <th scope="col">备注</th>
               </tr>
             </thead>
             <tbody>
@@ -242,7 +244,7 @@ const copyModelId = async (modelId) => {
                   <div class="model-id-cell">
                     <div>
                       <strong>{{ model.id }}</strong>
-                      <span>{{ model.description }}</span>
+                      <span>{{ model.name }}</span>
                     </div>
                     <button
                       type="button"
@@ -253,26 +255,27 @@ const copyModelId = async (modelId) => {
                     ><span aria-hidden="true"></span></button>
                   </div>
                 </td>
-                <td><strong class="table-plain-value">{{ model.size }}</strong></td>
-                <td><strong class="table-plain-value">{{ model.quality }}</strong></td>
+                <td><span class="model-description">{{ model.description }}</span></td>
+                <td>
+                  <strong class="table-plain-value">{{ model.route }}</strong>
+                  <span class="table-subvalue">{{ model.spec }}</span>
+                </td>
                 <td>
                   <template v-if="priceMode === 'group'">
-                    <strong class="group-price">{{ formatCny(IMAGE_GROUP.priceCny) }}</strong>
+                    <strong class="group-price">{{ formatUsd(model.groupUsdPerImage) }}</strong>
                     <span class="price-unit">/ 张</span>
-                    <del>官方约 {{ formatCny(model.officialUsdPerImage * EXCHANGE_RATE) }}</del>
+                    <span class="table-subvalue">当前分组默认价</span>
                   </template>
-                  <template v-else><span class="official-label">切换查看</span></template>
+                  <template v-else>
+                    <span class="official-label">见右侧官方参考</span>
+                  </template>
                 </td>
                 <td>
-                  <strong class="official-price">{{ formatCny(model.officialUsdPerImage * EXCHANGE_RATE) }}</strong>
-                  <span class="price-unit">/ 张</span>
-                  <span class="official-usd">${{ model.officialUsdPerImage.toFixed(3) }}</span>
+                  <span class="official-reference">{{ model.officialReference }}</span>
+                  <a class="source-link" :href="model.officialSource" target="_blank" rel="noreferrer">官方资料</a>
                 </td>
                 <td>
-                  <span v-if="priceMode === 'group'" class="saving-badge">
-                    {{ getImageDiscount(IMAGE_GROUP.priceCny, model.officialUsdPerImage) }}
-                  </span>
-                  <span v-else class="official-label">官方估算</span>
+                  <span class="model-note">{{ model.note }}</span>
                 </td>
               </tr>
             </tbody>
@@ -282,7 +285,9 @@ const copyModelId = async (modelId) => {
     </section>
 
     <p class="pricing-footnote">
-      官方价格按当前公开标准价和固定汇率换算；图片官方价会随尺寸、画质及输入内容变化，页面数值仅用于对比。
+      <span v-if="activeCategory === 'text'">文本模型官方价格按当前公开标准价和固定汇率换算。</span>
+      <span v-else>生图分组价格按当前模型默认美元价显示；官方参考价按各厂商公开的尺寸、画质、token 或积分规则显示。</span>
+      页面价格用于说明和对比，实际扣费以后台定价配置和调用记录为准。
     </p>
   </main>
 </template>
@@ -650,6 +655,17 @@ const copyModelId = async (modelId) => {
 .model-pricing-page .pricing-table th:nth-child(5) { width: 18%; }
 .model-pricing-page .pricing-table th:nth-child(6) { width: 14%; }
 
+.model-pricing-page .pricing-table--image {
+  min-width: 1320px;
+}
+
+.model-pricing-page .pricing-table--image th:first-child { width: 17%; }
+.model-pricing-page .pricing-table--image th:nth-child(2) { width: 19%; }
+.model-pricing-page .pricing-table--image th:nth-child(3) { width: 14%; }
+.model-pricing-page .pricing-table--image th:nth-child(4) { width: 13%; }
+.model-pricing-page .pricing-table--image th:nth-child(5) { width: 22%; }
+.model-pricing-page .pricing-table--image th:nth-child(6) { width: 15%; }
+
 .model-id-cell {
   display: flex;
   align-items: center;
@@ -757,6 +773,30 @@ const copyModelId = async (modelId) => {
   font-weight: 650;
 }
 
+.table-subvalue,
+.model-description,
+.official-reference,
+.model-note {
+  display: block;
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.model-description,
+.official-reference,
+.model-note {
+  color: var(--vp-c-text-2);
+}
+
+.source-link {
+  display: inline-block;
+  margin-top: 5px;
+  color: #a64b0d;
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .pricing-footnote {
   margin: 12px 2px 0 !important;
   color: var(--vp-c-text-3) !important;
@@ -809,5 +849,6 @@ const copyModelId = async (modelId) => {
   .pricing-groups--image { grid-template-columns: 1fr; }
   .pricing-description { align-items: flex-start; flex-direction: column; gap: 2px; }
   .model-pricing-page .pricing-table { min-width: 980px; }
+  .model-pricing-page .pricing-table--image { min-width: 1320px; }
 }
 </style>

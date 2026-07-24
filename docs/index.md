@@ -37,7 +37,7 @@ outline: false
   <a href="/clients/">客户端接入</a>
   <a href="/clients/codex-manual-config">Codex 手动配置</a>
   <a href="/images/infinite-canvas">无限画布</a>
-  <a href="/images/image-generation">图片生成 API</a>
+  <a href="/images/image-generation">GPT 生图 API</a>
   <a href="/models">模型与分组</a>
   <a href="/errors/">报错与踩坑</a>
   <a href="/external/codex-advanced">Codex 进阶</a>

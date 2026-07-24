@@ -9,13 +9,14 @@ import {
   getEquivalentDiscount,
 } from '../docs/.vitepress/theme/components/model-pricing-data.mjs'
 
+const isClose = (actual, expected) => Math.abs(actual - expected) < 1e-12
+
 test('includes the updated GPT pricing groups in order', () => {
   assert.deepEqual(
     TEXT_GROUPS.map(({ id, name, multiplier }) => ({ id, name, multiplier })),
     [
-      { id: 'pro-plus', name: 'GPT Plus 特惠分组', multiplier: 0.1 },
       { id: 'gpt-0.16', name: 'Pro / Plus 混合分组', multiplier: 0.16 },
-      { id: 'full', name: '正价满血分组', multiplier: 0.25 },
+      { id: 'full', name: '正价满血分组', multiplier: 0.28 },
     ],
   )
 })
@@ -62,21 +63,18 @@ test('converts official USD prices to RMB at the fixed exchange rate', () => {
 test('uses the group multiplier directly on the official USD number', () => {
   const price = calculateTextPrice(
     { input: 5, output: 30, cachedInput: 0.5 },
-    0.25,
+    0.28,
   )
 
-  assert.deepEqual(price.group, {
-    input: 1.25,
-    output: 7.5,
-    cachedInput: 0.125,
-    total: 8.75,
-  })
+  assert.ok(isClose(price.group.input, 1.4))
+  assert.ok(isClose(price.group.output, 8.4))
+  assert.ok(isClose(price.group.cachedInput, 0.14))
+  assert.ok(isClose(price.group.total, 9.8))
 })
 
-test('expresses 0.1 and 0.25 multipliers as rounded equivalent discounts', () => {
-  assert.equal(getEquivalentDiscount(0.1), '0.1折')
+test('expresses 0.16 and 0.28 multipliers as rounded equivalent discounts', () => {
   assert.equal(getEquivalentDiscount(0.16), '0.2折')
-  assert.equal(getEquivalentDiscount(0.25), '0.4折')
+  assert.equal(getEquivalentDiscount(0.28), '0.4折')
 })
 
 test('formats RMB amounts without noisy trailing zeroes', () => {
