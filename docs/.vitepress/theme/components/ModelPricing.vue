@@ -520,10 +520,10 @@ const copyModelId = async (modelId) => {
   gap: 10px;
 }
 
-.pricing-panel-header h2 {
-  margin: 0;
-  padding: 0;
-  border: 0;
+.model-pricing-page .pricing-panel-header h2 {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
   color: var(--vp-c-text-1);
   font-size: 23px;
   font-weight: 750;
