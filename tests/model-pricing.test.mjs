@@ -2,10 +2,15 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  EXCHANGE_RATE,
+  IMAGE_GROUP,
+  IMAGE_MODELS,
+  MODEL_CATEGORIES,
   TEXT_GROUPS,
-  TEXT_MODELS,
+  calculateImagePriceCny,
   calculateTextPrice,
   formatCny,
+  getTextModelsForGroup,
   getEquivalentDiscount,
 } from '../docs/.vitepress/theme/components/model-pricing-data.mjs'
 
@@ -15,15 +20,46 @@ test('includes the updated GPT pricing groups in order', () => {
   assert.deepEqual(
     TEXT_GROUPS.map(({ id, name, multiplier }) => ({ id, name, multiplier })),
     [
-      { id: 'gpt-0.16', name: 'Pro / Plus 混合分组', multiplier: 0.16 },
-      { id: 'full', name: '正价满血分组', multiplier: 0.28 },
+      { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.12 },
+      { id: 'gpt-0.18', name: 'GPT 日常分组', multiplier: 0.18 },
+      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.28 },
+      { id: 'anthropic-main', name: '主力分组', multiplier: 0.4 },
+      { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.9 },
+      { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.1 },
     ],
   )
 })
 
-test('places the three GPT-5.6 models before the existing models', () => {
+test('keeps the model category tabs in the requested order', () => {
   assert.deepEqual(
-    TEXT_MODELS.map((model) => model.id),
+    MODEL_CATEGORIES.map(({ id, name, kind, groupIds, defaultGroupId }) => ({ id, name, kind, groupIds, defaultGroupId })),
+    [
+      { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full'], defaultGroupId: 'gpt-0.18' },
+      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-max'], defaultGroupId: undefined },
+      { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-4.5'], defaultGroupId: undefined },
+      { id: 'image', name: '生图', kind: 'image', groupIds: [], defaultGroupId: undefined },
+    ],
+  )
+})
+
+test('uses the requested Anthropic group recommendations', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-main')
+
+  assert.equal(group.name, '主力分组')
+  assert.equal(group.description, '写作推荐 Opus 4.5，复杂架构设计推荐 Opus 4.8')
+})
+
+test('relaunches the GPT Plus discount group at 0.12 with instability copy', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'pro-plus')
+
+  assert.equal(group.name, 'GPT Plus 特惠分组（最近不稳定）')
+  assert.equal(group.multiplier, 0.12)
+  assert.match(group.description, /最近不稳定/)
+})
+
+test('keeps the GPT family models in the expected order', () => {
+  assert.deepEqual(
+    getTextModelsForGroup('pro-plus').map((model) => model.id),
     [
       'gpt-5.6-sol',
       'gpt-5.6-terra',
@@ -35,9 +71,51 @@ test('places the three GPT-5.6 models before the existing models', () => {
   )
 })
 
+test('shows the main Anthropic group with the exact model list from the current whitelist', () => {
+  assert.deepEqual(
+    getTextModelsForGroup('anthropic-main').map((model) => model.id),
+    [
+      'claude-fable-5',
+      'claude-haiku-4-5-20251001',
+      'claude-opus-4-5-20251101',
+      'claude-opus-4-6',
+      'claude-opus-4-7',
+      'claude-opus-4-8',
+      'claude-opus-5',
+      'claude-sonnet-4-6',
+      'claude-sonnet-5',
+    ],
+  )
+})
+
+test('shows the CC MAX Claude group with the extra sonnet snapshot model', () => {
+  assert.deepEqual(
+    getTextModelsForGroup('anthropic-max').map((model) => model.id),
+    [
+      'claude-fable-5',
+      'claude-haiku-4-5-20251001',
+      'claude-opus-4-5-20251101',
+      'claude-opus-4-6',
+      'claude-opus-4-7',
+      'claude-opus-4-8',
+      'claude-opus-5',
+      'claude-sonnet-4-5-20250929',
+      'claude-sonnet-4-6',
+      'claude-sonnet-5',
+    ],
+  )
+})
+
+test('shows Grok 4.5 as a standalone text group', () => {
+  assert.deepEqual(
+    getTextModelsForGroup('grok-4.5').map((model) => model.id),
+    ['grok-4.5'],
+  )
+})
+
 test('uses the displayed official price baselines for GPT-5.6', () => {
   assert.deepEqual(
-    TEXT_MODELS.slice(0, 3).map((model) => model.officialUsd),
+    getTextModelsForGroup('gpt-0.18').slice(0, 3).map((model) => model.officialUsd),
     [
       { input: 5, output: 30, cachedInput: 0.5 },
       { input: 2.5, output: 15, cachedInput: 0.25 },
@@ -72,13 +150,45 @@ test('uses the group multiplier directly on the official USD number', () => {
   assert.ok(isClose(price.group.total, 9.8))
 })
 
-test('expresses 0.16 and 0.28 multipliers as rounded equivalent discounts', () => {
-  assert.equal(getEquivalentDiscount(0.16), '0.2折')
+test('expresses the active multipliers as rounded equivalent discounts', () => {
+  assert.equal(getEquivalentDiscount(0.1), '0.1折')
+  assert.equal(getEquivalentDiscount(0.12), '0.2折')
+  assert.equal(getEquivalentDiscount(0.18), '0.3折')
   assert.equal(getEquivalentDiscount(0.28), '0.4折')
+  assert.equal(getEquivalentDiscount(0.4), '0.6折')
+  assert.equal(getEquivalentDiscount(1.9), '2.7折')
 })
 
 test('formats RMB amounts without noisy trailing zeroes', () => {
   assert.equal(formatCny(245), '¥245.00')
   assert.equal(formatCny(0.525), '¥0.53')
   assert.equal(formatCny(1.25), '¥1.25')
+})
+
+test('marks the image group as RMB pricing without multiplying the original per-image prices', () => {
+  assert.equal(EXCHANGE_RATE, 7)
+  assert.match(IMAGE_GROUP.description, /人民币/)
+  assert.equal(calculateImagePriceCny(0.03), 0.03)
+  assert.equal(calculateImagePriceCny(0.05), 0.05)
+  assert.equal(calculateImagePriceCny(0.2), 0.2)
+  assert.deepEqual(
+    IMAGE_MODELS.slice(0, 3).map((model) => ({
+      id: model.id,
+      cny: calculateImagePriceCny(model.groupCnyPerImage),
+    })),
+    [
+      { id: 'gpt-image-1k-th', cny: 0.03 },
+      { id: 'gpt-image-2', cny: 0.05 },
+      { id: 'gpt-image-2-4k', cny: 0.08 },
+    ],
+  )
+})
+
+test('keeps image model descriptions customer-facing without backend mapping wording', () => {
+  const forbidden = /Google|Gemini|Firefly|Partner Model|账号渠道|YS 渠道|xAI|后台|映射/
+
+  for (const model of IMAGE_MODELS) {
+    assert.doesNotMatch(model.description, forbidden, model.id)
+    assert.doesNotMatch(model.spec, /渠道档/, model.id)
+  }
 })

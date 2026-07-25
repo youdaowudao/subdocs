@@ -4,43 +4,68 @@ import {
   EXCHANGE_RATE,
   IMAGE_GROUP,
   IMAGE_MODELS,
+  MODEL_CATEGORIES,
   TEXT_GROUPS,
-  TEXT_MODELS,
+  calculateImagePriceCny,
   calculateTextPrice,
   formatCny,
+  getTextModelsForGroup,
   getEquivalentDiscount,
 } from './model-pricing-data.mjs'
 
-const exampleTextOfficialUsd = { input: 5, output: 30, cachedInput: 0.5 }
-
-const activeCategory = ref('text')
-const activeGroupId = ref(TEXT_GROUPS[0].id)
+const activeCategory = ref(MODEL_CATEGORIES[0].id)
+const activeGroupId = ref(MODEL_CATEGORIES[0].defaultGroupId ?? MODEL_CATEGORIES[0].groupIds[0])
 const priceMode = ref('group')
 const copiedModel = ref('')
 
-const activeGroup = computed(
-  () => TEXT_GROUPS.find((group) => group.id === activeGroupId.value) ?? TEXT_GROUPS[0],
+const activeCategoryConfig = computed(
+  () => MODEL_CATEGORIES.find((category) => category.id === activeCategory.value) ?? MODEL_CATEGORIES[0],
 )
 
+const activeGroups = computed(() =>
+  activeCategoryConfig.value.groupIds
+    .map((groupId) => TEXT_GROUPS.find((group) => group.id === groupId))
+    .filter(Boolean),
+)
+
+const isImageCategory = computed(() => activeCategoryConfig.value.kind === 'image')
+
+const activeGroup = computed(
+  () => activeGroups.value.find((group) => group.id === activeGroupId.value) ?? activeGroups.value[0] ?? TEXT_GROUPS[0],
+)
+
+const activeTextModels = computed(() => getTextModelsForGroup(activeGroupId.value))
+
 const textRows = computed(() =>
-  TEXT_MODELS.map((model) => ({
+  activeTextModels.value.map((model) => ({
     ...model,
     prices: calculateTextPrice(model.officialUsd, activeGroup.value.multiplier),
   })),
 )
 
 const pricingRuleExample = computed(() => {
-  if (activeCategory.value !== 'text') {
-    return '示例：GPT Image 2 当前分组价 $0.05 / 张'
+  if (isImageCategory.value) {
+    const imageModel = IMAGE_MODELS.find((model) => model.id === 'gpt-image-2')
+    return `示例：GPT Image 2 当前分组价 ${formatCny(calculateImagePriceCny(imageModel.groupCnyPerImage))} / 张`
   }
 
+  const exampleModel = activeTextModels.value[0]
   const examplePrice = calculateTextPrice(
-    exampleTextOfficialUsd,
+    exampleModel.officialUsd,
     activeGroup.value.multiplier,
   )
 
-  return `示例：GPT-5.5 输入官方 ¥35.00，${activeGroup.value.name} 输入价 ${formatCny(examplePrice.group.input)}`
+  return `示例：${exampleModel.name} 输入官方 ${formatCny(examplePrice.official.input)}，${activeGroup.value.name} 输入价 ${formatCny(examplePrice.group.input)}`
 })
+
+const setCategory = (categoryId) => {
+  const category = MODEL_CATEGORIES.find((item) => item.id === categoryId)
+  if (!category) return
+
+  activeCategory.value = category.id
+  activeGroupId.value = category.defaultGroupId ?? category.groupIds[0] ?? ''
+  priceMode.value = 'group'
+}
 
 const copyModelId = async (modelId) => {
   if (!navigator?.clipboard) return
@@ -51,7 +76,6 @@ const copyModelId = async (modelId) => {
   }, 1400)
 }
 
-const formatUsd = (value) => `$${value.toFixed(2)}`
 </script>
 
 <template>
@@ -64,22 +88,22 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 
     <nav class="model-category-tabs" aria-label="模型类型">
       <button
+        v-for="category in MODEL_CATEGORIES"
+        :key="category.id"
         type="button"
-        :class="{ 'is-active': activeCategory === 'text' }"
-        :aria-pressed="activeCategory === 'text'"
-        @click="activeCategory = 'text'"
+        :class="{ 'is-active': activeCategory === category.id }"
+        :aria-pressed="activeCategory === category.id"
+        @click="setCategory(category.id)"
       >
-        <span class="model-category-mark model-category-mark--gpt">G</span>
-        GPT 模型
-      </button>
-      <button
-        type="button"
-        :class="{ 'is-active': activeCategory === 'image' }"
-        :aria-pressed="activeCategory === 'image'"
-        @click="activeCategory = 'image'"
-      >
-        <span class="model-category-mark model-category-mark--image">图</span>
-        图片生成
+        <svg
+          v-if="category.iconSvg"
+          :class="['model-category-icon', `model-category-icon--${category.id}`]"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          v-html="category.iconSvg"
+        ></svg>
+        <span v-else :class="['model-category-mark', `model-category-mark--${category.id}`]">{{ category.mark }}</span>
+        {{ category.name }}
       </button>
     </nav>
 
@@ -87,8 +111,8 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
       <div>
         <strong>计价规则</strong>
         <span>官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
-        <span v-if="activeCategory === 'text'">分组价格 = 官方美元价格 × 分组倍率</span>
-        <span v-else>生图分组价格按模型默认美元价计费</span>
+        <span v-if="!isImageCategory">分组价格 = 官方美元价格 × 分组倍率</span>
+        <span v-else>生图分组价格按人民币固定价计费</span>
       </div>
       <span class="pricing-rule-example">
         {{ pricingRuleExample }}
@@ -102,9 +126,9 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
           <h2>价格列表</h2>
         </div>
         <div class="price-mode-wrap">
-          <span v-if="activeCategory === 'text'">{{ priceMode === 'group' ? '分组价已按人民币计算' : '官方价按固定汇率换算' }}</span>
-          <span v-else>分组价按美元 / 张显示</span>
-          <div v-if="activeCategory === 'text'" class="price-mode-switch" role="group" aria-label="价格类型">
+          <span v-if="!isImageCategory">{{ priceMode === 'group' ? '分组价已按人民币计算' : '官方价按固定汇率换算' }}</span>
+          <span v-else>分组价按人民币 / 张显示</span>
+          <div v-if="!isImageCategory" class="price-mode-switch" role="group" aria-label="价格类型">
             <button
               type="button"
               :class="{ 'is-active': priceMode === 'group' }"
@@ -121,12 +145,18 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
         </div>
       </header>
 
-      <div v-if="activeCategory === 'text'" class="pricing-content">
-        <div v-if="priceMode === 'group'" class="pricing-groups" aria-label="选择分组">
+      <div v-if="!isImageCategory" class="pricing-content">
+        <div
+          v-if="priceMode === 'group'"
+          class="pricing-groups"
+          :class="{ 'pricing-groups--single': activeGroups.length === 1 }"
+          aria-label="选择分组"
+        >
           <button
-            v-for="group in TEXT_GROUPS"
+            v-for="group in activeGroups"
             :key="group.id"
             type="button"
+            class="pricing-group-card"
             :class="{ 'is-active': activeGroupId === group.id }"
             :aria-pressed="activeGroupId === group.id"
             @click="activeGroupId = group.id"
@@ -135,7 +165,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
               <strong>{{ group.name }}</strong>
               <em>{{ getEquivalentDiscount(group.multiplier) }}</em>
             </span>
-            <span>{{ group.multiplier }} 倍率 · {{ group.description }}</span>
+            <span>{{ group.multiplier }} 倍率</span>
           </button>
         </div>
 
@@ -211,18 +241,17 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 
       <div v-else class="pricing-content">
         <div v-if="priceMode === 'group'" class="pricing-groups pricing-groups--image">
-          <div class="pricing-group-static is-active">
+          <div class="pricing-group-card pricing-group-static is-active">
             <span class="pricing-group-title">
               <strong>{{ IMAGE_GROUP.name }}</strong>
               <em>按模型计价</em>
             </span>
-            <span>{{ IMAGE_GROUP.description }}</span>
           </div>
         </div>
 
         <div class="pricing-description">
           <strong>绘图价格：</strong>
-          <span>当前分组按模型设置默认美元价格，图片请求按张计费。</span>
+          <span>当前分组按模型设置默认人民币价格，图片请求按张计费。</span>
         </div>
 
         <div class="pricing-table-scroll">
@@ -232,7 +261,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
                 <th scope="col">模型 ID</th>
                 <th scope="col">模型介绍</th>
                 <th scope="col">接口 / 规格</th>
-                <th scope="col">当前分组价</th>
+                <th scope="col">当前分组价（人民币）</th>
               </tr>
             </thead>
             <tbody>
@@ -240,7 +269,10 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
                 <td>
                   <div class="model-id-cell">
                     <div>
-                      <strong v-if="model.id === 'gpt-image-2'">{{ model.id }}</strong>
+                      <strong
+                        v-if="model.id === 'gpt-image-2'"
+                        class="image-model-id--recommended"
+                      >{{ model.id }}</strong>
                       <span v-else class="image-model-id">{{ model.id }}</span>
                       <span v-if="model.id === 'gpt-image-2'">推荐日常使用</span>
                     </div>
@@ -259,7 +291,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
                   <span class="table-subvalue">{{ model.spec }}</span>
                 </td>
                 <td>
-                  <strong class="group-price">{{ formatUsd(model.groupUsdPerImage) }}</strong>
+                  <strong class="group-price">{{ formatCny(calculateImagePriceCny(model.groupCnyPerImage)) }}</strong>
                   <span class="price-unit">/ 张</span>
                   <span class="table-subvalue">当前分组默认价</span>
                 </td>
@@ -271,9 +303,9 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
     </section>
 
     <p class="pricing-footnote">
-      <span v-if="activeCategory === 'text'">文本模型官方价格按当前公开标准价和固定汇率换算。</span>
-      <span v-else>生图分组价格按当前模型默认美元价显示。</span>
-      页面价格用于说明和对比，实际扣费以后台定价配置和调用记录为准。
+      <span v-if="!isImageCategory">文本类模型官方价格按当前公开标准价和固定汇率换算。</span>
+      <span v-else>生图分组价格按当前模型默认人民币价格显示。</span>
+      页面价格用于说明和对比，实际扣费以定价配置和调用记录为准。
     </p>
   </main>
 </template>
@@ -303,6 +335,12 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 }
 
 .model-pricing-page {
+  --pricing-active-bg: #f3ad72;
+  --pricing-active-border: #e78e45;
+  --pricing-active-text: #3f2818;
+  --pricing-active-chip-bg: rgba(255, 250, 245, 0.94);
+  --pricing-active-chip-text: #9f4a17;
+  --pricing-active-shadow: 0 4px 10px rgba(170, 84, 22, 0.1), inset 0 0 0 1px rgba(255, 250, 245, 0.28);
   width: 100%;
   color: var(--vp-c-text-1);
   font-family: var(--vp-font-family-base);
@@ -327,15 +365,15 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   border: 0;
   color: var(--vp-c-text-1);
   font-family: var(--vp-font-family-base);
-  font-size: 38px;
+  font-size: 40px;
   font-weight: 750;
   line-height: 1.28;
 }
 
 .model-category-tabs {
-  display: flex;
-  min-height: 68px;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-height: 72px;
   gap: 8px;
   padding: 8px;
   border: 1px solid var(--site-line);
@@ -345,47 +383,56 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 }
 
 .model-category-tabs button {
-  display: inline-flex;
-  min-width: 150px;
-  height: 50px;
+  display: flex;
+  min-width: 0;
+  height: 56px;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 0 20px;
+  gap: 12px;
+  padding: 0 14px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
   color: var(--vp-c-text-2);
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 560;
   cursor: pointer;
 }
 
-.model-category-tabs button:hover {
-  background: #faf8f5;
-  color: #9a4f16;
+.model-category-tabs button.is-active {
+  border-color: var(--pricing-active-border);
+  background: var(--pricing-active-bg);
+  box-shadow: var(--pricing-active-shadow);
+  color: var(--pricing-active-text);
 }
 
-.model-category-tabs button.is-active {
-  border-color: #e58b48;
-  background: #fffaf6;
-  color: #9a4f16;
+.model-category-icon {
+  display: block;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  color: currentColor;
 }
 
 .model-category-mark {
   display: inline-flex;
-  width: 25px;
-  height: 25px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
 }
 
-.model-category-mark--gpt { background: #33271f; }
 .model-category-mark--image { background: #da6b35; }
+
+.model-category-tabs button.is-active .model-category-mark {
+  background: var(--pricing-active-chip-bg);
+  color: var(--pricing-active-chip-text);
+}
 
 .pricing-rule {
   display: flex;
@@ -399,7 +446,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   border-radius: 8px;
   background: var(--site-surface);
   color: var(--vp-c-text-2);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .pricing-rule > div {
@@ -411,7 +458,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 
 .pricing-rule strong {
   color: var(--vp-c-text-1);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .pricing-rule-example {
@@ -450,7 +497,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   padding: 0;
   border: 0;
   color: var(--vp-c-text-1);
-  font-size: 21px;
+  font-size: 23px;
   font-weight: 750;
   line-height: 1.3;
 }
@@ -473,7 +520,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   align-items: center;
   gap: 12px;
   color: var(--vp-c-text-3);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .price-mode-switch {
@@ -492,7 +539,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   border-radius: 14px;
   background: transparent;
   color: var(--vp-c-text-2);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -514,8 +561,13 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   margin-bottom: 16px;
 }
 
-.pricing-groups > button,
-.pricing-group-static {
+.pricing-groups--single {
+  display: inline-grid;
+  max-width: 100%;
+  grid-template-columns: fit-content(720px);
+}
+
+.pricing-group-card {
   display: flex;
   min-height: 82px;
   flex-direction: column;
@@ -526,22 +578,31 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   border-radius: 8px;
   background: rgba(255, 252, 247, 0.94);
   color: var(--vp-c-text-2);
-  font-size: 14px;
+  font-size: 16px;
   text-align: left;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
 }
 
 .pricing-groups > button { cursor: pointer; }
 
-.pricing-groups > button:hover {
-  border-color: #e4a06f;
-  background: #fffaf7;
+.pricing-groups--single > button {
+  min-height: 56px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
 }
 
-.pricing-groups > button.is-active,
-.pricing-group-static.is-active {
-  border-color: #ee8a43;
-  background: #fffaf6;
-  box-shadow: inset 0 0 0 1px rgba(238, 138, 67, 0.08);
+.pricing-groups--single > button > span:last-child {
+  flex: 1 1 auto;
+  text-align: right;
+}
+
+.pricing-group-card.is-active {
+  border-color: var(--pricing-active-border);
+  background: var(--pricing-active-bg);
+  box-shadow: var(--pricing-active-shadow);
+  color: var(--pricing-active-text);
 }
 
 .pricing-group-title {
@@ -553,8 +614,12 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 
 .pricing-group-title strong {
   color: var(--vp-c-text-1);
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 750;
+}
+
+.pricing-group-card.is-active .pricing-group-title strong {
+  color: #fff;
 }
 
 .pricing-group-title em {
@@ -562,14 +627,21 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   border-radius: 12px;
   background: #ffe2d3;
   color: #a84c14;
-  font-size: 13px;
+  font-size: 15px;
   font-style: normal;
   font-weight: 800;
   line-height: 1.4;
 }
 
+.pricing-group-card.is-active .pricing-group-title em {
+  background: var(--pricing-active-chip-bg);
+  color: var(--pricing-active-chip-text);
+}
+
 .pricing-groups--image {
-  grid-template-columns: minmax(300px, 380px);
+  display: inline-grid;
+  max-width: 100%;
+  grid-template-columns: fit-content(460px);
 }
 
 .pricing-description {
@@ -583,7 +655,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   border-radius: 8px;
   background: #fffaf7;
   color: var(--vp-c-text-2);
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .pricing-description strong {
@@ -605,7 +677,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   border: 0;
   border-collapse: collapse;
   border-radius: 0;
-  font-size: 14px;
+  font-size: 16px;
   table-layout: fixed;
 }
 
@@ -622,7 +694,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   padding: 0 16px;
   background: #f8eee2;
   color: var(--vp-c-text-2);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 650;
 }
 
@@ -666,20 +738,24 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 
 .model-id-cell strong {
   color: var(--vp-c-text-1);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 750;
 }
 
 .model-id-cell > div > span {
   color: var(--vp-c-text-3);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.35;
 }
 
 .model-id-cell .image-model-id {
   color: var(--vp-c-text-1);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
+}
+
+.model-id-cell .image-model-id--recommended {
+  color: #2f6fca;
 }
 
 .copy-model-button {
@@ -711,7 +787,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 .group-price,
 .official-price {
   color: #ad500f;
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -721,7 +797,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 .price-unit {
   margin-left: 3px;
   color: var(--vp-c-text-3);
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
@@ -730,7 +806,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   display: block;
   margin-top: 3px;
   color: #aa9b8f;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.35;
   text-decoration-thickness: 1px;
 }
@@ -747,7 +823,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   border-radius: 15px;
   background: #eaf9ef;
   color: #239653;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -759,7 +835,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 
 .table-plain-value {
   color: var(--vp-c-text-1);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 650;
 }
 
@@ -767,7 +843,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 .model-description {
   display: block;
   color: var(--vp-c-text-3);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -778,7 +854,7 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 .pricing-footnote {
   margin: 12px 2px 0 !important;
   color: var(--vp-c-text-3) !important;
-  font-size: 12px !important;
+  font-size: 14px !important;
   line-height: 1.6 !important;
 }
 
@@ -801,6 +877,19 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
 .dark .model-pricing-page .pricing-table th { background: #2a2724; color: #c2b9b0; }
 .dark .pricing-description { border-color: #5a3b29; background: #2b211b; }
 .dark .copy-model-button span { background: #211f1d; }
+.dark .model-category-tabs button.is-active,
+.dark .pricing-group-card.is-active {
+  border-color: #e78e45;
+  background: #de8442;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16), inset 0 0 0 1px rgba(255, 250, 245, 0.2);
+  color: #25160d;
+}
+.dark .pricing-group-card.is-active .pricing-group-title strong { color: #25160d; }
+.dark .pricing-group-card.is-active .pricing-group-title em,
+.dark .model-category-tabs button.is-active .model-category-mark {
+  background: rgba(255, 242, 230, 0.92);
+  color: #8c3b0d;
+}
 
 @media (max-width: 1100px) {
   .price-mode-wrap > span,
@@ -811,9 +900,13 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   .VPDoc:has(.model-pricing-page) { padding: 32px 16px 40px !important; }
   .VPDoc:has(.model-pricing-page) .container { padding-top: 22px !important; }
   .model-pricing-heading { min-height: 0; padding-bottom: 20px; }
-  .model-pricing-heading h1 { margin-bottom: 16px; font-size: 30px; }
-  .model-category-tabs { min-height: 58px; }
-  .model-category-tabs button { min-width: 0; height: 42px; flex: 1; padding: 0 10px; font-size: 15px; }
+  .model-pricing-heading h1 { margin-bottom: 16px; font-size: 32px; }
+  .model-category-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 0;
+  }
+  .model-category-tabs button { height: 50px; gap: 8px; padding: 0 10px; font-size: 18px; }
+  .model-category-icon { width: 22px; height: 22px; flex-basis: 22px; }
   .model-category-mark { width: 22px; height: 22px; font-size: 11px; }
   .pricing-rule { align-items: flex-start; }
   .pricing-rule > div { gap: 4px 14px; }
@@ -824,7 +917,16 @@ const formatUsd = (value) => `$${value.toFixed(2)}`
   .price-mode-switch button { flex: 1; }
   .pricing-content { padding: 14px; }
   .pricing-groups,
-  .pricing-groups--image { grid-template-columns: 1fr; }
+  .pricing-groups--image { grid-template-columns: minmax(0, 1fr); }
+  .pricing-groups--single { grid-template-columns: minmax(0, 1fr); }
+  .pricing-groups--single > button {
+    min-height: 82px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+  }
+  .pricing-groups--single > button > span:last-child { text-align: left; }
   .pricing-description { align-items: flex-start; flex-direction: column; gap: 2px; }
   .model-pricing-page .pricing-table { min-width: 980px; }
   .model-pricing-page .pricing-table--image { min-width: 980px; }
