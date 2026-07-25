@@ -319,8 +319,18 @@ const copyModelId = async (modelId) => {
 </template>
 
 <style>
+:root.model-pricing-active,
+:root.model-pricing-active body,
+:root.model-pricing-active .Layout {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 :root.model-pricing-active .VPDoc,
 .VPDoc:has(.model-pricing-page) {
+  box-sizing: border-box;
+  max-width: 100vw;
+  overflow-x: hidden;
   padding: 48px var(--site-shell-inset, 32px) 56px 16px !important;
 }
 
@@ -355,6 +365,8 @@ const copyModelId = async (modelId) => {
   --pricing-active-chip-bg: rgba(255, 250, 245, 0.94);
   --pricing-active-chip-text: #9f4a17;
   --pricing-active-shadow: 0 4px 10px rgba(170, 84, 22, 0.1), inset 0 0 0 1px rgba(255, 250, 245, 0.28);
+  min-width: 0;
+  max-width: 100%;
   width: 100%;
   color: var(--vp-c-text-1);
   font-family: var(--vp-font-family-base);
@@ -482,6 +494,8 @@ const copyModelId = async (modelId) => {
 }
 
 .pricing-panel {
+  min-width: 0;
+  max-width: 100%;
   margin-top: 16px;
   border: 1px solid var(--site-line);
   border-radius: 8px;
@@ -565,12 +579,14 @@ const copyModelId = async (modelId) => {
 }
 
 .pricing-content {
+  min-width: 0;
+  max-width: 100%;
   padding: 20px;
 }
 
 .pricing-groups {
   display: grid;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -679,6 +695,8 @@ const copyModelId = async (modelId) => {
 }
 
 .pricing-table-scroll {
+  width: 100%;
+  max-width: 100%;
   border: 1px solid var(--site-line);
   border-radius: 8px;
   overflow-x: auto;
