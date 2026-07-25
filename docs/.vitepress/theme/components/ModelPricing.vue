@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   EXCHANGE_RATE,
   IMAGE_GROUP,
@@ -17,6 +17,14 @@ const activeCategory = ref(MODEL_CATEGORIES[0].id)
 const activeGroupId = ref(MODEL_CATEGORIES[0].defaultGroupId ?? MODEL_CATEGORIES[0].groupIds[0])
 const priceMode = ref('group')
 const copiedModel = ref('')
+
+onMounted(() => {
+  document.documentElement.classList.add('model-pricing-active')
+})
+
+onBeforeUnmount(() => {
+  document.documentElement.classList.remove('model-pricing-active')
+})
 
 const activeCategoryConfig = computed(
   () => MODEL_CATEGORIES.find((category) => category.id === activeCategory.value) ?? MODEL_CATEGORIES[0],
@@ -311,25 +319,31 @@ const copyModelId = async (modelId) => {
 </template>
 
 <style>
+:root.model-pricing-active .VPDoc,
 .VPDoc:has(.model-pricing-page) {
   padding: 48px var(--site-shell-inset, 32px) 56px 16px !important;
 }
 
+:root.model-pricing-active .VPDoc .container,
+:root.model-pricing-active .VPDoc .content-container,
 .VPDoc:has(.model-pricing-page) .container,
 .VPDoc:has(.model-pricing-page) .content-container {
   width: 100% !important;
   max-width: none !important;
 }
 
+:root.model-pricing-active .VPDoc .container,
 .VPDoc:has(.model-pricing-page) .container {
   padding-top: 32px !important;
 }
 
+:root.model-pricing-active .VPDoc .vp-doc,
 .VPDoc:has(.model-pricing-page) .vp-doc {
   font-size: 15px;
   line-height: 1.6;
 }
 
+:root.model-pricing-active .VPDoc .prev-next,
 .VPDoc:has(.model-pricing-page) .prev-next {
   display: none;
 }
@@ -897,7 +911,9 @@ const copyModelId = async (modelId) => {
 }
 
 @media (max-width: 768px) {
+  :root.model-pricing-active .VPDoc,
   .VPDoc:has(.model-pricing-page) { padding: 32px 16px 40px !important; }
+  :root.model-pricing-active .VPDoc .container,
   .VPDoc:has(.model-pricing-page) .container { padding-top: 22px !important; }
   .model-pricing-heading { min-height: 0; padding-bottom: 20px; }
   .model-pricing-heading h1 { margin-bottom: 16px; font-size: 32px; }
