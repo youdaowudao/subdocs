@@ -26,6 +26,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'anthropic-main', name: '主力分组', multiplier: 0.4 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.9 },
       { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.1 },
+      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.55 },
     ],
   )
 })
@@ -37,9 +38,24 @@ test('keeps the model category tabs in the requested order', () => {
       { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full'], defaultGroupId: 'gpt-0.18' },
       { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-max'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-4.5'], defaultGroupId: undefined },
+      { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity'], defaultGroupId: undefined },
       { id: 'image', name: '生图', kind: 'image', groupIds: [], defaultGroupId: undefined },
     ],
   )
+})
+
+test('uses colored Claude Code, Grok and Gemini icons instead of letter placeholders', () => {
+  const anthropic = MODEL_CATEGORIES.find((category) => category.id === 'anthropic')
+  const grok = MODEL_CATEGORIES.find((category) => category.id === 'grok')
+  const gemini = MODEL_CATEGORIES.find((category) => category.id === 'gemini')
+
+  assert.equal(anthropic.mark, undefined)
+  assert.match(anthropic.iconSvg, /fill="#D97757"/)
+  assert.match(anthropic.iconSvg, /M4\.709 15\.955/)
+  assert.match(grok.iconSvg, /fill="#141413"/)
+  assert.equal(gemini.mark, undefined)
+  assert.match(gemini.iconSvg, /fill="#8E75B2"/)
+  assert.match(gemini.iconSvg, /M11\.04 19\.32/)
 })
 
 test('uses the requested Anthropic group recommendations', () => {
@@ -113,6 +129,26 @@ test('shows Grok 4.5 as a standalone text group', () => {
   )
 })
 
+test('shows the Gemini Antigravity group with newest models first and Pro before Flash', () => {
+  assert.deepEqual(
+    getTextModelsForGroup('gemini-antigravity').map((model) => model.id),
+    [
+      'gemini-3.6-flash-tiered',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'gemini-3.1-pro-preview',
+      'gemini-3.1-flash-lite',
+      'gemini-3.1-flash-lite-preview',
+      'gemini-3-pro-preview',
+      'gemini-3-flash',
+      'gemini-3-flash-preview',
+      'gemini-2.5-pro',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+    ],
+  )
+})
+
 test('uses the displayed official price baselines for GPT-5.6', () => {
   assert.deepEqual(
     getTextModelsForGroup('gpt-0.18').slice(0, 3).map((model) => model.officialUsd),
@@ -122,6 +158,30 @@ test('uses the displayed official price baselines for GPT-5.6', () => {
       { input: 1, output: 6, cachedInput: 0.1 },
     ],
   )
+})
+
+test('uses the displayed official price baselines for Gemini text models', () => {
+  const models = new Map(getTextModelsForGroup('gemini-antigravity').map((model) => [model.id, model]))
+
+  assert.deepEqual(models.get('gemini-3.6-flash').officialUsd, { input: 1.5, output: 7.5, cachedInput: 0.15 })
+  assert.deepEqual(models.get('gemini-3.1-pro-preview').officialUsd, { input: 2, output: 12, cachedInput: 0.2 })
+  assert.deepEqual(models.get('gemini-2.5-pro').officialUsd, { input: 1.25, output: 10, cachedInput: 0.125 })
+})
+
+test('keeps Gemini descriptions customer-facing with dates or concrete use cases', () => {
+  const models = new Map(getTextModelsForGroup('gemini-antigravity').map((model) => [model.id, model]))
+  const forbidden = /旧预览|预览 ID|上一代|后台|Moxing|没的写/
+
+  for (const model of models.values()) {
+    assert.doesNotMatch(model.description, forbidden, model.id)
+  }
+
+  assert.match(models.get('gemini-3.6-flash').description, /2026-07/)
+  assert.match(models.get('gemini-3.5-flash').description, /2026-05/)
+  assert.match(models.get('gemini-3.1-pro-preview').description, /2026-02/)
+  assert.match(models.get('gemini-3-pro-preview').description, /2025-11/)
+  assert.match(models.get('gemini-2.5-pro').description, /2025-06/)
+  assert.match(models.get('gemini-2.5-flash-lite').description, /高频|低延迟/)
 })
 
 test('converts official USD prices to RMB at the fixed exchange rate', () => {
@@ -156,6 +216,7 @@ test('expresses the active multipliers as rounded equivalent discounts', () => {
   assert.equal(getEquivalentDiscount(0.18), '0.3折')
   assert.equal(getEquivalentDiscount(0.28), '0.4折')
   assert.equal(getEquivalentDiscount(0.4), '0.6折')
+  assert.equal(getEquivalentDiscount(0.55), '0.8折')
   assert.equal(getEquivalentDiscount(1.9), '2.7折')
 })
 
@@ -163,6 +224,10 @@ test('formats RMB amounts without noisy trailing zeroes', () => {
   assert.equal(formatCny(245), '¥245.00')
   assert.equal(formatCny(0.525), '¥0.53')
   assert.equal(formatCny(1.25), '¥1.25')
+})
+
+test('formats tiny non-zero RMB amounts without rounding them to zero', () => {
+  assert.equal(formatCny(0.0049), '¥0.0049')
 })
 
 test('marks the image group as RMB pricing without multiplying the original per-image prices', () => {

@@ -157,7 +157,10 @@ const copyModelId = async (modelId) => {
         <div
           v-if="priceMode === 'group'"
           class="pricing-groups"
-          :class="{ 'pricing-groups--single': activeGroups.length === 1 }"
+          :class="{
+            'pricing-groups--single': activeGroups.length === 1,
+            'pricing-groups--gemini': activeCategoryConfig.id === 'gemini',
+          }"
           aria-label="选择分组"
         >
           <button
@@ -358,6 +361,13 @@ const copyModelId = async (modelId) => {
   display: none;
 }
 
+@media (min-width: 960px) {
+  :root.model-pricing-active body {
+    --site-shell-inset: clamp(24px, 2vw, 64px);
+    --site-sidebar-left: max(0px, calc(var(--site-shell-inset) - 72px));
+  }
+}
+
 .model-pricing-page {
   --pricing-active-bg: #f3ad72;
   --pricing-active-border: #e78e45;
@@ -398,8 +408,8 @@ const copyModelId = async (modelId) => {
 
 .model-category-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  min-height: 72px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-height: 68px;
   gap: 8px;
   padding: 8px;
   border: 1px solid var(--site-line);
@@ -411,18 +421,19 @@ const copyModelId = async (modelId) => {
 .model-category-tabs button {
   display: flex;
   min-width: 0;
-  height: 56px;
+  height: 52px;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 0 14px;
+  gap: 9px;
+  padding: 0 10px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
   color: var(--vp-c-text-2);
-  font-size: 23px;
+  font-size: 20px;
   font-weight: 560;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -435,16 +446,16 @@ const copyModelId = async (modelId) => {
 
 .model-category-icon {
   display: block;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
   color: currentColor;
 }
 
 .model-category-mark {
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 25px;
+  height: 25px;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
@@ -592,9 +603,14 @@ const copyModelId = async (modelId) => {
 }
 
 .pricing-groups--single {
-  display: inline-grid;
+  display: grid;
+  width: 100%;
   max-width: 100%;
-  grid-template-columns: fit-content(720px);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pricing-groups--single.pricing-groups--gemini {
+  width: min(680px, 100%);
 }
 
 .pricing-group-card {
@@ -661,6 +677,7 @@ const copyModelId = async (modelId) => {
   font-style: normal;
   font-weight: 800;
   line-height: 1.4;
+  white-space: nowrap;
 }
 
 .pricing-group-card.is-active .pricing-group-title em {
@@ -669,9 +686,18 @@ const copyModelId = async (modelId) => {
 }
 
 .pricing-groups--image {
-  display: inline-grid;
+  display: grid;
+  width: min(420px, 100%);
   max-width: 100%;
-  grid-template-columns: fit-content(460px);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pricing-groups--image .pricing-group-card {
+  min-height: 56px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
 }
 
 .pricing-description {
@@ -951,8 +977,14 @@ const copyModelId = async (modelId) => {
   .price-mode-switch button { flex: 1; }
   .pricing-content { padding: 14px; }
   .pricing-groups,
-  .pricing-groups--image { grid-template-columns: minmax(0, 1fr); }
-  .pricing-groups--single { grid-template-columns: minmax(0, 1fr); }
+  .pricing-groups--image {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pricing-groups--single {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
   .pricing-groups--single > button {
     min-height: 82px;
     flex-direction: column;
