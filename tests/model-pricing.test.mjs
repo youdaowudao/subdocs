@@ -60,9 +60,11 @@ test('uses colored Claude Code, Grok and Gemini icons instead of letter placehol
 
 test('uses the requested Anthropic group recommendations', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-main')
+  const fable = getTextModelsForGroup('anthropic-main').find((model) => model.id === 'claude-fable-5')
 
   assert.equal(group.name, '主力分组')
-  assert.equal(group.description, '写作推荐 Opus 4.5，复杂架构设计推荐 Opus 4.8')
+  assert.equal(group.description, '写作推荐 Fable 5，复杂架构设计推荐 Opus 5')
+  assert.equal(fable.description, 'Anthropic 写作向模型，适合长文创作、文案润色和自然表达')
 })
 
 test('relaunches the GPT Plus discount group at 0.12 with instability copy', () => {

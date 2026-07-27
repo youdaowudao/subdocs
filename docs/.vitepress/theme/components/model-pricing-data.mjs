@@ -74,7 +74,7 @@ export const TEXT_GROUPS = [
     id: 'anthropic-main',
     name: '主力分组',
     multiplier: 0.4,
-    description: '写作推荐 Opus 4.5，复杂架构设计推荐 Opus 4.8',
+    description: '写作推荐 Fable 5，复杂架构设计推荐 Opus 5',
     modelIds: ANTHROPIC_MAIN_MODEL_IDS,
   },
   {
@@ -179,7 +179,7 @@ export const TEXT_MODELS = [
   {
     id: 'claude-fable-5',
     name: 'Claude Fable 5',
-    description: 'Anthropic 高端模型，适合复杂推理和长上下文任务',
+    description: 'Anthropic 写作向模型，适合长文创作、文案润色和自然表达',
     officialUsd: { input: 10, output: 50, cachedInput: 1 },
   },
   {
