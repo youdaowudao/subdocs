@@ -14,12 +14,12 @@ const config = defineConfig({
 
   themeConfig: {
     nav: [
-        { text: '快速开始', link: '/' },
-        { text: '一键配置', link: '/quick-start' },
-        { text: 'Codex', link: '/clients/codex' },
+        { text: '快速开始', link: '/quick-start' },
+        { text: 'CC Switch', link: '/codex-cc-switch' },
+        { text: '模型价格', link: '/models' },
+        { text: '遇到问题', link: '/errors/' },
         { text: '客户端', link: '/clients/' },
         { text: '生图', link: '/images/' },
-        { text: '常见错误', link: '/errors/' },
         { text: '联系客服', link: '/contact' }
     ],
 
@@ -44,6 +44,7 @@ export default withSidebar(config, {
     'quick-start.md',
     'codex-cc-switch.md',
     'models.md',
+    'errors',
     'clients',
     'codex.md',
     'chatgpt-login-usegoodai.md',
@@ -75,7 +76,6 @@ export default withSidebar(config, {
     'codex-advanced.md',
     'codex-log-sqlite.md',
     'codex-tools.md',
-    'errors',
     'index.md',
     'contact.md'
   ]

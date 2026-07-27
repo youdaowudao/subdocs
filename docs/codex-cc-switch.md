@@ -4,7 +4,7 @@ title: Codex CC Switch 接入
 
 # Codex CC Switch 接入
 
-不运行脚本时，用 CC Switch 从后台导入 Codex 配置。导入后彻底退出 Codex，再重新打开测试。
+CC Switch 是图形化配置切换工具，适合不想运行脚本的 Codex App 用户。本文用它从后台导入 UseGoodAI 的 Codex 配置，导入后彻底退出 Codex，再重新打开测试。
 
 ## 1. 安装 CC Switch
 
@@ -82,15 +82,13 @@ brew install --cask cc-switch
 
 能正常回复，就接入完成。测试正常后可以关闭 CC Switch。
 
-<details>
-<summary>常见问题</summary>
+## CC Switch 接入失败先看这里
 
-| 现象 | 检查动作 |
-| --- | --- |
-| 点击“导入到 CCS”没有反应 | 确认 CC Switch 已安装并打开，再允许浏览器打开外部应用 |
-| 导入窗口里的应用类型不是 Codex | 点击取消，回到同一个 API Key 后重新点击 **导入到 CCS** |
-| 导入后 Codex 仍使用旧配置 | 彻底退出 Codex，重新打开后新建任务测试 |
-| `401 Unauthorized` | 回到后台重新导入当前有效的 API Key |
-| `403 Forbidden` | 确认当前 Key 所属分组支持导入的模型 |
-
-</details>
+| 你看到的情况 | 先做这一件事 | 还不行 |
+| --- | --- | --- |
+| 点击 **导入到 CCS** 没有反应 | 确认 CC Switch 已安装并打开，再允许浏览器打开外部应用 | 重新打开浏览器和 CC Switch 后再点一次 |
+| 导入窗口里的应用类型不是 `Codex` | 点击取消，回到同一个 API Key 后重新点击 **导入到 CCS** | 不要导入到其它应用类型 |
+| 导入后没有显示 **使用中** | 在 CC Switch 里选中 `UseGoodAI`，确认右侧显示 **使用中** | 回后台重新导入当前 Key |
+| 导入后 Codex 仍使用旧配置 | 彻底退出 Codex，重新打开后新建任务测试 | 看 [报错与踩坑](/errors/) |
+| `401 Unauthorized` | 回到后台重新导入当前有效的 API Key | 看 [报错与踩坑](/errors/) |
+| `403 Forbidden` | 确认当前 Key 所属分组支持导入的模型 | 看 [报错与踩坑](/errors/) |
