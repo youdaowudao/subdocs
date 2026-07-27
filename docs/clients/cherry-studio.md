@@ -1,6 +1,6 @@
 # Cherry Studio 接入
 
-Cherry Studio 是桌面聊天客户端，适合想用图形界面管理模型、直接聊天的个人用户。本文在 Cherry Studio 里新增一个 `UseGoodAI` 服务商，让聊天请求走 `https://api.usegoodai.com/v1`。
+Cherry Studio 是桌面聊天客户端，适合想用图形界面管理模型、直接聊天的个人用户。新增 `UseGoodAI` 服务商后，聊天请求会通过 `https://api.usegoodai.com/v1` 发出。
 
 ## 安装 Cherry Studio
 
@@ -46,10 +46,10 @@ Base URL 只填到 `/v1`，不要追加其它路径。
 示例：
 
 ```text
-gpt-5.5
+claude-fable-5
 ```
 
-模型名要和当前 Key 分组里的模型完全一致。
+也可以填 `gpt-5.5`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`。模型名要和当前 Key 分组里的模型完全一致。
 
 ## 测试
 

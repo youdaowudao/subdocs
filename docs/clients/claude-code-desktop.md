@@ -1,8 +1,8 @@
 # Claude Code / Desktop 接入
 
-Claude Desktop 是带图形界面的 AI 工作应用，包含 Chat、Cowork 和 Code 等入口；Claude Code CLI 是在终端里运行的代码 Agent。两者都适合希望保留 Claude 操作方式、同时通过 UseGoodAI 使用 GPT-5.6 的用户。
+Claude Desktop 是带图形界面的 AI 工作应用，包含 Chat、Cowork 和 Code 等入口；Claude Code CLI 是在终端里运行的代码 Agent。使用 Claude Desktop 或 Claude Code CLI 的用户，可以按下面步骤接入 UseGoodAI。
 
-本文分别配置 Claude Desktop APP 和 Claude Code CLI。APP 通过内置设置写入本机配置，CLI 不修改配置文件，只在当前终端设置两个环境变量；配置完成后，可以直接在当前会话里切换模型。
+先在下面表格里选入口。配置完成后，可以直接在当前对话里切换模型。
 
 ## 选择配置入口
 
@@ -36,7 +36,7 @@ macOS 从系统菜单栏进入，Windows 从登录页左上角的菜单进入：
 | Gateway API key | UseGoodAI API Key |
 | Gateway auth scheme | `Bearer` |
 
-Gateway base URL 不要添加 `/v1`。Claude Desktop 会自动请求 Anthropic Messages API，UseGoodAI 在服务端完成协议处理和模型映射。
+Gateway base URL 不要添加 `/v1`。Claude Desktop 会自动请求 Anthropic Messages API，UseGoodAI 会按当前 API Key 所属分组转发 Claude 模型请求。
 
 ### 3. 应用配置并测试
 
@@ -72,19 +72,13 @@ claude
 测试
 ```
 
-能正常回复后，在当前会话输入 `/model`，直接切换模型，不需要新开对话。
+能正常回复后，在当前对话输入 `/model`，直接切换模型，不需要新开对话。
 
-## Claude 模型如何映射到 GPT-5.6
+## Claude 模型怎么切换
 
-Claude Desktop 和 Claude Code CLI 仍然显示 Claude 模型名称。请求到达 UseGoodAI 后，服务端按照下面的关系调用 GPT-5.6：
+Claude Desktop 和 Claude Code CLI 里直接选择 Claude 模型。UseGoodAI 会按当前 API Key 所属分组调用对应的 Anthropic 模型。
 
-| 客户端选择 | UseGoodAI 实际调用 |
-| --- | --- |
-| `Opus 4.7` | `GPT-5.6 Sol` |
-| `Sonnet 4.7` | `GPT-5.6 Terra` |
-| `Haiku 4.7` | `GPT-5.6 Luna` |
-
-客户端只需选择 `Opus 4.7`、`Sonnet 4.7` 或 `Haiku 4.7`。不要在 APP 或 CLI 里另外填写 `GPT-5.6 Sol`、`GPT-5.6 Terra`、`GPT-5.6 Luna`，也不需要设置 `ANTHROPIC_MODEL` 或 `ANTHROPIC_DEFAULT_*_MODEL`。
+不要在 APP 或 CLI 里填写 GPT 模型名，也不需要设置 `ANTHROPIC_MODEL` 或 `ANTHROPIC_DEFAULT_*_MODEL`。可用模型以 Claude 的模型选择器和后台当前 Key 所属分组为准，价格看 [模型价格](/models)。
 
 ## 排查
 
@@ -95,7 +89,7 @@ Claude Desktop 和 Claude Code CLI 仍然显示 Claude 模型名称。请求到�
 | CLI 仍在使用原来的服务 | 确认在执行 `export` 的同一个终端里启动了 `claude` |
 | `401 Unauthorized` | 重新复制 UseGoodAI API Key，确认 APP 使用 `Bearer`，CLI 使用 `ANTHROPIC_AUTH_TOKEN` |
 | 请求地址错误 | APP 和 CLI 都只填 `https://api.usegoodai.com`，不要添加 `/v1` |
-| 切换模型后没有变化 | APP 检查模型选择器，CLI 重新输入 `/model`，确认选择的是对应的 4.7 模型 |
+| 切换模型后没有变化 | APP 检查模型选择器，CLI 重新输入 `/model`，确认当前 Key 分组支持所选模型 |
 
 ## 切回默认服务
 

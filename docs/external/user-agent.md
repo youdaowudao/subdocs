@@ -18,7 +18,7 @@
 
 | 接入类型 | 常见工具 | `User-Agent` 处理口径 | 常见优先检查项 |
 | --- | --- | --- | --- |
-| Codex / Responses | Codex CLI、ChatGPT 桌面应用中的 Codex、支持 Responses API 的代码 Agent | 默认使用 Codex 自带 UA；不要改成普通聊天客户端 UA | 是否走 Responses，使用记录页面是否出现 `/v1/responses` |
+| Codex / Responses | Codex CLI、ChatGPT 桌面应用中的 Codex、支持 Responses API 的代码 Agent | 默认使用 Codex 自带 UA；不要改成普通聊天客户端 UA | 是否使用 Responses，使用记录页面是否出现 `/v1/responses` |
 | 普通 OpenAI-compatible | Cherry Studio、Open WebUI、LibreChat、普通聊天客户端 | 能用就不改；需要时填写客户端名和版本 | Key、`https://api.usegoodai.com/v1`、模型名 |
 | OpenClaw / Hermes / Agent | OpenClaw、Hermes、其他 Agent CLI | 优先保留工具默认 UA；需要时填写工具真实标识 | API mode、模型名、代理是否转发 Header |
 | 自建代理 / 脚本 | Python、Node.js、curl、内部网关、反向代理 | 明确写自己的脚本或服务名，便于日志定位 | 代理最终请求是否覆盖 Authorization 和 UA |
@@ -28,7 +28,7 @@
 
 ### Codex / Responses
 
-适用于 Codex CLI、ChatGPT 桌面应用中的 Codex，以及明确走 OpenAI Responses API 的客户端。
+适用于 Codex CLI、ChatGPT 桌面应用中的 Codex，以及明确使用 OpenAI Responses API 的客户端。
 
 优先按这个顺序看：
 
@@ -79,7 +79,7 @@
 
 | 检查项 | 说明 |
 | --- | --- |
-| API mode | 该走 Responses 就走 Responses；普通兼容端点才走 Chat Completions |
+| API mode | 该使用 Responses 就使用 Responses；普通兼容端点才使用 Chat Completions |
 | Base URL | 按当前客户端教程填写，不要自己拼完整接口路径 |
 | 模型名 | 必须和 UseGoodAI 后台当前可用模型一致 |
 | Header 转发 | 经过网关或代理时，确认最终请求没有丢掉 Header |
@@ -165,5 +165,5 @@ Hermes 也同理，写 Hermes 自己的稳定标识，不要伪装成 Codex 或�
 | 页面 | 什么时候看 |
 | --- | --- |
 | [外接兼容与 Base URL 说明](./base-url) | 不确定 Base URL、协议或 `/v1` 应该怎么填 |
-| [Responses 与兼容模式说明](./compatibility) | 不确定应该走 Responses 还是普通 OpenAI-compatible |
+| [Responses 与兼容模式说明](./compatibility) | 不确定应该使用 Responses 还是普通 OpenAI-compatible |
 | [报错与踩坑](/errors/) | 已经确认请求到达 UseGoodAI，但仍然返回 403 |

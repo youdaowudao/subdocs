@@ -1,10 +1,10 @@
 # Base URL 与兼容模式
 
-第三方客户端、Agent 工具、配置切换器和自定义 OpenAI-compatible 客户端接入 UseGoodAI 时，先用本页判断协议和 `Base URL`。配置具体客户端时，再回到对应客户端教程填写字段。
-
-核心结论：**支持 Responses 的客户端，优先按 Responses 接入；只有普通 OpenAI-compatible 客户端需要手动配置时，才走兼容模式并填写 `https://api.usegoodai.com/v1`。**
+核心结论：**支持 Responses 的客户端，优先按 Responses 接入；只有普通 OpenAI-compatible 客户端需要手动配置时，才使用兼容模式并填写 `https://api.usegoodai.com/v1`。**
 
 后台、客户端教程或 CC Switch 已经生成配置时，直接使用生成内容，不要自己额外补 `/v1`，也不要把 `/chat/completions`、`/responses` 手动拼进 `Base URL`。
+
+配置具体客户端时，再回到对应客户端教程填写字段。
 
 ## 按接入类型填写
 
@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | 后台生成配置 | 按后台生成配置 | 按后台生成配置 | 直接复制生成结果，不要手动改地址或补 `/v1` |
 | CC Switch / 配置工具 | 按工具生成内容 | 按工具生成内容 | 只使用明确来自 UseGoodAI 后台或当前教程的配置；不要套用其它站点的配置模板 |
-| 支持 Responses 的客户端 | Responses | 按后台生成配置 | Codex 等支持 Responses 的工具优先走 Responses，不要降级成普通兼容模式 |
+| 支持 Responses 的客户端 | Responses | 按后台生成配置 | Codex 等支持 Responses 的工具优先使用 Responses，不要降级成普通兼容模式 |
 | 普通 OpenAI-compatible 客户端 | OpenAI-compatible / Chat Completions | `https://api.usegoodai.com/v1` | 适合 Cherry Studio、Open WebUI、LibreChat 等只能手动填 OpenAI-compatible 地址的客户端 |
 | 客户端要求完整接口地址 | 按客户端说明 | 按客户端说明填写完整路径 | 这不是常规 `Base URL` 场景，只有客户端明确要求完整接口时才这样填 |
 
@@ -30,7 +30,7 @@
 
 ### 第二步：确认客户端是否支持 Responses
 
-客户端支持 Responses，并且当前教程或后台配置也按 Responses 提供时，优先走 Responses。
+客户端支持 Responses，并且当前教程或后台配置也按 Responses 提供时，优先使用 Responses。
 
 Responses 和普通 OpenAI-compatible 不是同一个接入层。支持 Responses 的工具通常会使用 `/v1/responses`，请求体和输出结构也不同；不要只因为看到 OpenAI-compatible 字样，就把它改成普通 `/v1` 兼容模式。
 

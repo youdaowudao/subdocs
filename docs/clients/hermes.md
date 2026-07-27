@@ -1,8 +1,8 @@
 # Hermes Agent 接入
 
-Hermes Agent 是 Nous Research 的开源自主 Agent，适合在终端和聊天软件里长期处理项目、文件、工具调用和自动化任务。它的主要优点是本地记忆、Skill 沉淀、定时任务、并行子 Agent、多平台入口和 MCP 扩展。
+Hermes Agent 是可以在终端和聊天软件里处理项目任务的 AI Agent，适合长期管理文件、执行工具和处理自动化任务。
 
-本文用 Hermes 官方的 `Custom endpoint` 接入 UseGoodAI。配置入口是 `hermes model`，最终让 Hermes 的模型请求走 `https://api.usegoodai.com/v1`。
+通过 Hermes 的 `Custom endpoint` 添加 UseGoodAI 后，Hermes 会通过 `https://api.usegoodai.com/v1` 使用模型。配置入口是 `hermes model`。
 
 ## 安装 Hermes
 
@@ -34,7 +34,7 @@ Provider 选择 `Custom endpoint`，然后按提示填写：
 | --- | --- |
 | API Base URL / Base URL | `https://api.usegoodai.com/v1` |
 | API Key | UseGoodAI API Key |
-| Model name | 当前 Key 分组可用模型，例如 `gpt-5.5` |
+| Model name | 当前 Key 分组可用模型，例如 `claude-fable-5`、`gemini-3.6-flash` 或 `grok-4.5` |
 | Context window | 不强制；必须填写时按模型上下文填写 |
 
 Base URL 只填到 `/v1`，不要追加其它路径。
@@ -53,7 +53,7 @@ hermes
 测试
 ```
 
-能正常回复，说明 Hermes 已经走 UseGoodAI。
+能正常回复，说明 Hermes 已经通过 UseGoodAI 发起请求。
 
 ## 排查
 
@@ -81,7 +81,7 @@ hermes config
 
 ## 进阶命令
 
-跑通后再看这些命令：
+能正常使用后再看这些命令：
 
 | 命令 | 用途 |
 | --- | --- |

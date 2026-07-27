@@ -1,6 +1,6 @@
 # Codex 手动接入
 
-一键脚本不适用时，按本文把 UseGoodAI 后台提供的 `config.toml` 和 `auth.json` 写入本机 `.codex` 文件夹。重新打开 Codex 后，即可通过 UseGoodAI 使用模型。
+一键脚本不适用时，手动把 UseGoodAI 管理后台生成的配置写入本机 `.codex` 文件夹。重新打开 Codex 后，即可通过 UseGoodAI 使用模型。
 
 先按 [快速开始](/quick-start) 创建 API Key，再回来继续。
 
@@ -17,8 +17,8 @@ Codex 的配置文件放在用户目录下的 `.codex` 文件夹中：
 
 | 文件 | 写入内容 |
 | --- | --- |
-| `config.toml` | 后台提供的模型、接口地址和接入配置 |
-| `auth.json` | 后台提供的 UseGoodAI API Key 配置 |
+| `config.toml` | 后台生成的模型、接口地址和接入配置 |
+| `auth.json` | 后台生成的 UseGoodAI API Key 配置 |
 
 ### Windows：打开 `.codex` 文件夹
 

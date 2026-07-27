@@ -1,8 +1,6 @@
 # LibreChat 接入
 
-LibreChat 是自部署网页聊天站，适合给自己或团队提供浏览器聊天入口。本文把 UseGoodAI 添加为 LibreChat 的自定义 endpoint，让网页聊天请求走 `https://api.usegoodai.com/v1`。
-
-本文会修改 LibreChat 项目里的 `.env`、`librechat.yaml`，Docker 部署还要挂载 `librechat.yaml`。
+LibreChat 是自部署网页聊天站，适合给自己或团队提供浏览器聊天入口。添加 UseGoodAI 自定义 endpoint 后，网页聊天请求会通过 `https://api.usegoodai.com/v1` 发出。
 
 ## 启动 LibreChat
 
@@ -49,14 +47,14 @@ endpoints:
       baseURL: "https://api.usegoodai.com/v1"
       models:
         default:
-          - "gpt-5.5"
+          - "claude-fable-5"
         fetch: false
       titleConvo: true
-      titleModel: "gpt-5.5"
+      titleModel: "claude-fable-5"
       modelDisplayLabel: "UseGoodAI"
 ```
 
-把 `gpt-5.5` 换成当前 Key 分组可用模型。第一次只写一个模型，跑通后再增加其它模型。
+把 `claude-fable-5` 换成当前 Key 分组可用模型。也可以填 `gpt-5.5`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`。第一次只写一个模型，能正常回复后再增加其它模型。
 
 ## 挂载配置
 
@@ -106,7 +104,7 @@ docker compose up -d
 ```yaml
 models:
   default:
-    - "gpt-5.5"
+    - "claude-fable-5"
     - "替换为另一个可用模型名"
   fetch: false
 ```

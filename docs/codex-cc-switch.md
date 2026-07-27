@@ -4,7 +4,7 @@ title: Codex CC Switch 接入
 
 # Codex CC Switch 接入
 
-CC Switch 是图形化配置切换工具，适合不想运行脚本的 Codex App 用户。本文用它从后台导入 UseGoodAI 的 Codex 配置，导入后彻底退出 Codex，再重新打开测试。
+CC Switch 是图形化配置切换工具，适合不想运行脚本的 Codex App 用户。导入 UseGoodAI 配置后，彻底退出 Codex，再重新打开测试。
 
 ## 1. 安装 CC Switch
 
@@ -42,9 +42,9 @@ brew install --cask cc-switch
 
 安装完成后打开 CC Switch。
 
-## 2. 从后台导入配置
+## 2. 从管理后台导入配置
 
-回到后台 **API 密钥**，找到要使用的 Key，点击 **导入到 CCS**。
+回到 UseGoodAI 管理后台 **API 密钥**，找到要使用的 Key，点击 **导入到 CCS**。
 
 浏览器询问是否打开 CC Switch 时，点击 **打开**。确认应用类型是 `Codex`，再点击 **导入**。
 
@@ -84,7 +84,7 @@ brew install --cask cc-switch
 
 ## CC Switch 接入失败先看这里
 
-| 你看到的情况 | 先做这一件事 | 还不行 |
+| 遇到的问题 | 先做这个 | 还是不行 |
 | --- | --- | --- |
 | 点击 **导入到 CCS** 没有反应 | 确认 CC Switch 已安装并打开，再允许浏览器打开外部应用 | 重新打开浏览器和 CC Switch 后再点一次 |
 | 导入窗口里的应用类型不是 `Codex` | 点击取消，回到同一个 API Key 后重新点击 **导入到 CCS** | 不要导入到其它应用类型 |

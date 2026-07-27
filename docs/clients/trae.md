@@ -1,8 +1,6 @@
 # Trae 接入
 
-Trae 是 AI IDE。本文在 Trae 的自定义 provider / API 配置里添加 `UseGoodAI`，让当前聊天、编辑器或 Agent 功能使用 UseGoodAI 的 API Key、Base URL 和模型名发起请求。
-
-本文不修改 Trae 官方模型市场，也不配置官方账号登录。
+Trae 是 AI IDE。在自定义 API 配置里添加 `UseGoodAI` 后，聊天、编辑器和 Agent 功能可以通过 UseGoodAI 使用模型。
 
 ## 添加 provider
 
@@ -14,7 +12,7 @@ Trae 是 AI IDE。本文在 Trae 的自定义 provider / API 配置里添加 `Us
 | Type / API Type | `OpenAI`、`OpenAI-compatible` 或 `Custom OpenAI` |
 | Base URL | `https://api.usegoodai.com/v1` |
 | API Key | UseGoodAI API Key |
-| Model | 当前 Key 分组可用模型，例如 `gpt-5.5` |
+| Model | 当前 Key 分组可用模型，例如 `claude-fable-5`、`gemini-3.6-flash` 或 `grok-4.5` |
 
 Base URL 只填到 `/v1`，不要追加其它路径。
 
@@ -27,10 +25,10 @@ Trae 同时有官方模型市场和自定义 API 配置时，进入自定义 API
 模型列表为空时，手动添加一个模型名：
 
 ```text
-gpt-5.5
+claude-fable-5
 ```
 
-模型名要和当前 Key 分组里的模型完全一致。
+也可以填 `gpt-5.5`、`claude-opus-5` 或其它当前 Key 分组里的模型名。模型名要和当前 Key 分组里的模型完全一致。
 
 ## 测试
 
@@ -48,7 +46,7 @@ gpt-5.5
 
 | 现象 | 处理 |
 | --- | --- |
-| 仍然走官方模型 | 回到当前聊天、编辑器或 Agent 的模型选择器，重新选择 `UseGoodAI` |
+| 仍然使用官方模型 | 回到当前聊天、编辑器或 Agent 的模型选择器，重新选择 `UseGoodAI` |
 | `401 Unauthorized` | 重新复制 API Key，保存后重新选择 provider，必要时重启 Trae |
 | `403 Forbidden` / `block` | 确认 Key 分组支持当前模型；仍失败时看 [外接调用 User-Agent 说明](/external/user-agent) |
 | 模型不可用 / model not found | 换成当前 Key 分组里的完整模型名 |
@@ -56,4 +54,4 @@ gpt-5.5
 | 路径错误 | Base URL 改回 `https://api.usegoodai.com/v1` |
 | 网络代理 / 证书问题 | 检查系统代理、公司网络、证书信任和代理插件 |
 
-Trae 的工具调用、上下文、代码编辑、联网、文件操作等能力，以当前 Trae 自定义 provider 支持情况为准。先确认聊天能走通，再测试 Agent 能力。
+Trae 的工具调用、上下文、代码编辑、联网、文件操作等能力，以当前 Trae 自定义 provider 支持情况为准。先确认聊天能正常回复，再测试 Agent 能力。

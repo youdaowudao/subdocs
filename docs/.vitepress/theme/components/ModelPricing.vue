@@ -316,7 +316,7 @@ const copyModelId = async (modelId) => {
     <p class="pricing-footnote">
       <span v-if="!isImageCategory">文本类模型官方价格按当前公开标准价和固定汇率换算。</span>
       <span v-else>生图分组价格按当前模型默认人民币价格显示。</span>
-      页面价格用于说明和对比，实际扣费以定价配置和调用记录为准。
+      切换模型时，Base URL 和 API Key 不变，只改客户端里的模型名；完整模型名以后台当前 Key 所属分组为准。页面价格用于说明和对比，实际扣费以定价配置和调用记录为准。
     </p>
   </main>
 </template>

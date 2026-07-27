@@ -1,6 +1,6 @@
 # Codex 接入
 
-Codex 是 OpenAI 的编程助手，适合阅读代码、修改文件、解释报错和整理项目。按本文接入后，Codex 的模型请求会走 UseGoodAI。
+Codex 是 OpenAI 的编程助手，适合阅读代码、修改文件、解释报错和整理项目。接入后，Codex 的模型请求会通过 UseGoodAI 发出。
 
 ## 一键配置 UseGoodAI
 
@@ -65,14 +65,14 @@ codex --version
 <details>
 <summary>只想手动配置</summary>
 
-进入 [Codex 手动接入](/clients/codex-manual-config)，把后台提供的 `config.toml` 和 `auth.json` 分别写入本机 `.codex` 文件夹。
+进入 [Codex 手动接入](/clients/codex-manual-config)，把 UseGoodAI 管理后台生成的 `config.toml` 和 `auth.json` 分别写入本机 `.codex` 文件夹。
 
 </details>
 
 <details>
 <summary>关于 /v1</summary>
 
-Codex 优先复制 UseGoodAI 后台生成的配置，不要自己额外加 `/v1`。
+Codex 优先复制 UseGoodAI 管理后台生成的配置，不要自己额外加 `/v1`。
 
 只有普通 OpenAI-compatible 客户端手动填写 `Base URL` 时，才填写：
 

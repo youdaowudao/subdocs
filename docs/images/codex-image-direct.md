@@ -1,8 +1,8 @@
 # Codex 内置生图
 
-Codex 内置生图是 ChatGPT 桌面应用中 Codex 自带的 `image_gen` 工具，不是 GPT 生图 API、无限画布，也不是让 Codex 写脚本调接口。本文适合已经按 [快速开始](/quick-start) 把 Codex 接到 UseGoodAI 的用户；改完后，Codex 继续走中转站，并且可以在 Codex 里直接调用内置生图工具。
+Codex 内置生图是 ChatGPT 桌面应用中 Codex 自带的 `image_gen` 工具。已经按 [快速开始](/quick-start) 接入 UseGoodAI 后，按下面步骤开启它，就可以在 Codex 里直接生成图片。
 
-本文只改本机 `config.toml`。`auth.json` 继续使用快速开始写入的 UseGoodAI API Key，不要删除，也不要把 Key 写进下面的配置。
+本页只需要修改本机 `config.toml`。
 
 ## 复制完整配置
 
@@ -13,12 +13,12 @@ Codex 内置生图是 ChatGPT 桌面应用中 Codex 自带的 `image_gen` 工具
 | Windows 桌面应用 / PowerShell / CMD | `C:\Users\你的用户名\.codex\config.toml` |
 | macOS / Linux / WSL | `~/.codex/config.toml` |
 
-打开 `config.toml`，先复制一份旧内容做备份，再全选删除旧内容，把下面这一整段粘贴进去并保存：
+打开 `config.toml`，先复制一份旧内容做备份，再全选删除旧内容，把下面这一整段粘贴进去并保存。`auth.json` 继续使用快速开始写入的 UseGoodAI API Key，不要删除，也不要把 Key 写进下面的配置。
 
 ```toml
 model_provider = "UseGoodAI"
-model = "gpt-5.5"
-review_model = "gpt-5.5"
+model = "claude-fable-5"
+review_model = "claude-fable-5"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 network_access = "enabled"
@@ -35,7 +35,7 @@ http_headers = { "x-openai-actor-authorization" = "local-image-extension" }
 image_generation = true
 ```
 
-后台快速开始给你的模型不是 `gpt-5.5` 时，只改 `model` 和 `review_model` 两行，填当前 API Key 所属分组可用的模型名。
+快速开始配置里的模型不是 `claude-fable-5` 时，只改 `model` 和 `review_model` 两行，填当前 API Key 所属分组可用的模型名。也可以改成 `gpt-5.5`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`，两处保持一致。
 
 ## 重启 Codex
 
@@ -53,7 +53,7 @@ Windows 用户要从右下角托盘退出 ChatGPT。只点窗口右上角关闭�
 请用内置生图工具生一张图：白底上的红色苹果。
 ```
 
-能生成图片，就说明 Codex 已经拿到内置生图工具，并且请求走 UseGoodAI 中转站。
+能生成图片，就说明 Codex 已经拿到内置生图工具，并且请求会通过 UseGoodAI 发出。
 
 ---
 
@@ -84,18 +84,18 @@ image_generation = true
 
 `requires_openai_auth = false` 表示这个自定义 provider 不使用 OpenAI 官方账号鉴权。UseGoodAI 用户的鉴权仍然来自快速开始写入的 `auth.json` 和中转站配置，不是关闭 UseGoodAI 的 API Key 检查。
 
-设为 `true` 时，Codex 会把这个 provider 当成 OpenAI 鉴权入口处理，适合仍然要走 OpenAI 账号或 OpenAI API Key 的代理场景。UseGoodAI 中转站按本文配置走，保持 `false`。
+设为 `true` 时，Codex 会把这个 provider 当成 OpenAI 鉴权入口处理，适合仍然要使用 OpenAI 账号或 OpenAI API Key 的代理场景。UseGoodAI 中转站按本页配置，保持 `false`。
 
 `http_headers = { "x-openai-actor-authorization" = "local-image-extension" }` 用来让 Codex 的内置生图扩展按本地生图入口发起请求。
 
-`image_generation = true` 是 Codex 的内置生图开关。没有这一行，Codex 可能能聊天、能改代码，但当前会话拿不到内置 `image_gen` 工具。
+`image_generation = true` 是 Codex 的内置生图开关。没有这一行，Codex 可能能聊天、能改代码，但当前对话拿不到内置 `image_gen` 工具。
 
 ## 常见问题
 
 | 现象 | 处理方式 |
 | --- | --- |
 | Codex 能聊天，但不能生图 | 检查 `[features]` 里是否有 `image_generation = true` |
-| 提示当前会话没有 `image_gen` 工具 | 完全退出 ChatGPT 桌面应用，重新打开 Codex 后新开任务 |
+| 提示当前对话没有 `image_gen` 工具 | 完全退出 ChatGPT 桌面应用，重新打开 Codex 后新开任务 |
 | 配置后 Codex 打不开 | 检查 `config.toml` 里是不是写了两个 `[features]`，有两个就合并成一个 |
 | 请求没有到 UseGoodAI | 检查 `base_url` 是否是后台 Codex 配置使用的中转站地址，`auth.json` 是否还在 `.codex` 目录里 |
 | 401 / Unauthorized | 重新按 [快速开始](/quick-start) 写入当前 API Key；需要手动处理时进入 [Codex 手动接入](/clients/codex-manual-config) |

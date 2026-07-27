@@ -1,46 +1,44 @@
 # 客户端接入
 
-这里整理 UseGoodAI 可以接入的常见客户端。  
-第一次使用先看 [快速开始](/quick-start)，跑通一次后，再按自己的工具选择对应页面。
+第一次使用 Codex App，先看 [快速开始](/quick-start)；不想运行脚本，看 [Codex CC Switch 接入](/codex-cc-switch)。
 
-## 按使用场景选择
+已经完成 Codex 接入，或者要把 UseGoodAI 接到其它工具，再按工具类型进入对应教程。
 
-| 你要做什么 | 进入 |
+## 模型怎么填
+
+下面适用于 Cherry Studio、Open WebUI、Trae、LibreChat 等普通 OpenAI-compatible 客户端。Codex、Claude Desktop 和 Claude Code CLI 有专门配置方式，按各自教程填写。
+
+普通 OpenAI-compatible 客户端只需要改模型名，不需要为每个模型重新创建地址和 Key：
+
+| 字段 | 填写 |
 | --- | --- |
-| 用 Codex CLI / ChatGPT 桌面应用中的 Codex 写代码 | [Codex 接入](/clients/codex) |
-| 不想运行脚本，用 CC Switch 导入 Codex 配置 | [Codex CC Switch 接入](/codex-cc-switch) |
-| 手动修改 Codex 配置文件 | [Codex 手动接入](/clients/codex-manual-config) |
-| 在 VS Code 里配合 Codex 或 BYOK 使用 | [VS Code 接入](/clients/vscode) |
-| 在 Claude Desktop APP 或 Claude Code CLI 中使用 GPT-5.6 | [Claude Code / Desktop 接入](/clients/claude-code-desktop) |
-| 在 CC Switch 中手动添加 Claude Code 供应商 | [CC Switch 手动接入](/clients/cc-switch) |
-| 在 JetBrains IDE 里接入 | [JetBrains](/clients/jetbrains) |
-| 在 Trae 里接入 | [Trae](/clients/trae) |
-| 使用无限画布做图片创作 | [无限画布](/images/infinite-canvas) |
-| 用图形界面聊天、管理多个模型 | [Cherry Studio](/clients/cherry-studio) |
-| 自建一个网页聊天面板 | [Open WebUI](/clients/open-webui) |
-| 把 UseGoodAI 接到 OpenClaw 龙虾 Gateway | [OpenClaw](/clients/openclaw) |
-| 把 UseGoodAI 接到 Hermes 记忆 / Skill Agent | [Hermes](/clients/hermes) |
-| 自建团队聊天面板 | [LibreChat](/clients/librechat) |
+| Base URL | `https://api.usegoodai.com/v1` |
+| API Key | UseGoodAI 管理后台创建的 API Key |
+| Model | 当前 Key 分组可用模型名 |
 
-## 通用 API 地址
+模型名填一个，不要把下面几项一起填进去：
 
-普通客户端手动填写 `Base URL` 时，使用：
-
-```text
-https://api.usegoodai.com/v1
-```
-
-后台或 CC Switch 已经生成配置时，直接复制生成结果，不要自己额外补 `/v1`。
-
-## Codex 相关页面怎么选
-
-| 页面 | 用途 |
+| 想使用的模型 | Model 示例 |
 | --- | --- |
-| [Codex 接入](/clients/codex) | 第一次安装、配置和排查基础问题 |
-| [Codex CC Switch 接入](/codex-cc-switch) | 不运行脚本时，用图形工具导入配置 |
-| [Codex 手动接入](/clients/codex-manual-config) | 手动写入 `config.toml` 和 `auth.json` |
-| [Codex 内置生图](/images/codex-image-direct) | 在 ChatGPT 桌面应用中的 Codex 调用内置生图工具 |
-| [保留 ChatGPT 登录](/clients/chatgpt-login-usegoodai) | ChatGPT 桌面应用中的 Codex 保留 ChatGPT 登录和手机连接 |
-| [VS Code](/clients/vscode) | 想在编辑器里配合 Codex，或了解 VS Code BYOK |
-| [Codex 进阶](/external/codex-advanced) | 已经跑通后，学习 profile、会话、权限、手机连接和多 Codex 工作流 |
-| [Codex 周边工具](/external/codex-tools) | 想了解 Git、ripgrep、GitHub CLI、MCPHub、Superpowers 等辅助工具 |
+| GPT | `gpt-5.5` |
+| Claude | `claude-opus-5`、`claude-fable-5` |
+| Gemini | `gemini-3.6-flash` |
+| Grok | `grok-4.5` |
+
+上面的模型名只有在当前 API Key 所属分组支持时才能使用。后台分组里没有的模型，会返回 `model not found` 或 `403`。换模型时保留 Base URL 和 API Key，只改 Model。完整价格和模型 ID 看 [模型价格](/models)。
+
+Codex 的 Responses 配置和 Claude Code / Desktop 的原生 Anthropic 配置，按各自教程填写，不要把普通客户端的 `/v1` 地址直接复制过去。
+
+## 按工具类型选择
+
+| 你要接入的工具 | 进入 | 配置入口 |
+| --- | --- | --- |
+| 第一次接入 Codex | [快速开始](/quick-start) / [CC Switch 导入（Codex 用）](/codex-cc-switch) | 一键脚本或图形工具 |
+| 手动配置 Codex | [Codex 接入](/clients/codex) / [Codex 手动接入](/clients/codex-manual-config) / [保留 ChatGPT 登录](/clients/chatgpt-login-usegoodai) | Codex 配置文件 |
+| 桌面聊天客户端 | [Cherry Studio](/clients/cherry-studio) | 模型服务设置 |
+| JetBrains IDE | [JetBrains 接入](/clients/jetbrains) | 进入页面按目标选择 |
+| 其它 IDE / 编辑器 | [VS Code](/clients/vscode) / [Trae](/clients/trae) | IDE 内的 AI 设置 |
+| 自部署聊天面板（需要 Docker） | [Open WebUI](/clients/open-webui) / [LibreChat](/clients/librechat) | 管理后台或项目配置文件 |
+| Agent / Gateway | [OpenClaw](/clients/openclaw) / [Hermes](/clients/hermes) | Gateway 配置或命令行向导 |
+| Claude Desktop / Claude Code CLI | [Claude Code / Desktop 接入](/clients/claude-code-desktop) / [CC Switch 手动配置（Claude Code 用）](/clients/cc-switch) | Claude Gateway 或 Claude Code 供应商 |
+| 图片创作 | [Codex 内置生图](/images/codex-image-direct) / [无限画布](/images/infinite-canvas) | 生图工具或画布设置 |

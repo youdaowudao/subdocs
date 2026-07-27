@@ -1,8 +1,6 @@
 # VS Code 接入
 
-VS Code 是常用的代码编辑器，适合需要打开项目文件、看代码结构、查看修改记录的用户。相比 ChatGPT 桌面应用中的 Codex，VS Code 的优势是项目上下文更直观：文件树、代码、终端、Git 改动都在同一个窗口里，适合边看边改、边运行边验证。
-
-本文只讲 VS Code 里的两条接入方式：**OpenAI Codex 扩展** 和 **VS Code BYOK**。
+VS Code 有两种接入方式，按你的需求选择。
 
 ## 两条路线
 
@@ -15,7 +13,7 @@ VS Code 是常用的代码编辑器，适合需要打开项目文件、看代码
 
 ## Codex 扩展
 
-先把本中转站的模型配置填进 Codex，让 Codex 请求走中转站。已经按 [Codex 接入](/clients/codex) 配好后，直接在 VS Code 扩展市场安装：
+先把本中转站的模型配置填进 Codex，让 Codex 请求通过 UseGoodAI 发出。已经按 [Codex 接入](/clients/codex) 配好后，直接在 VS Code 扩展市场安装：
 
 ```text
 OpenAI Codex
@@ -27,7 +25,7 @@ OpenAI Codex
 
 BYOK 是 **Bring Your Own Key**。它的作用是把你自己的模型 API Key 接进 VS Code 的 Chat / Agent 体验。
 
-VS Code Chat 使用本中转站模型，走 BYOK。它和 Codex 扩展没有配置联动。
+VS Code Chat 使用本中转站模型时，需要配置 BYOK。它和 Codex 扩展没有配置联动。
 
 打开命令面板：
 
@@ -46,7 +44,7 @@ UseGoodAI 按 Custom Endpoint 配。表单里先填：
 | 项目 | 填什么 |
 | --- | --- |
 | Group name | `UseGoodAI` |
-| API Key | UseGoodAI 后台创建的 API Key |
+| API Key | UseGoodAI 管理后台创建的 API Key |
 | API type | `Responses` |
 
 VS Code 打开 `chatLanguageModels.json` 后，关键字段按下面写：
@@ -60,8 +58,8 @@ VS Code 打开 `chatLanguageModels.json` 后，关键字段按下面写：
     "apiType": "responses",
     "models": [
       {
-        "id": "gpt-5.5",
-        "name": "gpt-5.5",
+        "id": "claude-fable-5",
+        "name": "claude-fable-5",
         "url": "https://api.usegoodai.com/v1/responses",
         "toolCalling": true,
         "vision": true,
@@ -73,7 +71,9 @@ VS Code 打开 `chatLanguageModels.json` 后，关键字段按下面写：
 ]
 ```
 
-配置后，在 VS Code Chat 的模型选择器里选中刚添加的模型。只有选中了这个 BYOK 模型，VS Code Chat 的请求才会走对应的第三方 API。
+配置后，在 VS Code Chat 的模型选择器里选中刚添加的模型。只有选中了这个 BYOK 模型，VS Code Chat 的请求才会通过对应的第三方 API 发出。
+
+`id` 和 `name` 也可以改成当前 Key 分组里的 `gpt-5.5`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`；`url` 和 `apiKey` 不变。模型不在当前分组时，VS Code 会显示模型不可用。
 
 BYOK 主要覆盖 VS Code 的 Chat 体验、工具调用和工具任务。代码补全、语义搜索、依赖 embeddings 的能力，仍受 GitHub 登录、Copilot 支持或组织策略影响。
 
@@ -90,5 +90,5 @@ BYOK 主要覆盖 VS Code 的 Chat 体验、工具调用和工具任务。代码
 
 | 要验证什么 | 怎么测 |
 | --- | --- |
-| Codex 扩展是否走 UseGoodAI | 在 Codex 面板发起一个小代码任务 |
-| VS Code Chat 是否走 UseGoodAI | 在 Chat 模型选择器选中 `UseGoodAI / gpt-5.5` 后发一条短消息 |
+| Codex 扩展是否使用 UseGoodAI | 在 Codex 面板发起一个小代码任务 |
+| VS Code Chat 是否使用 UseGoodAI | 在 Chat 模型选择器选中 `UseGoodAI / 当前模型名` 后发一条短消息 |

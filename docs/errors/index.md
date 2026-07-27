@@ -19,9 +19,16 @@
 ## `403 Forbidden` / `403 block` / `Permission denied` / `model not allowed`
 
 - 用户看到：`403 Forbidden`、`403 block`、`Permission denied`、`model not allowed`、`not allowed to use this model`。
-- 通常表示：请求到了后台，但当前 Key、分组、模型或额度不允许这次调用。
-- 先查什么：Key 所属分组是否支持当前模型，模型名是否和后台一致，账号或分组是否有权限和额度。
-- 怎么处理：换成该分组可用的模型；把 Key 切到正确分组；补足额度或联系后台处理权限限制。
+- 通常表示：请求到了后台，但当前 Key、分组或模型不允许这次调用。
+- 先查什么：Key 所属分组是否支持当前模型，模型名是否和后台一致，账号或分组是否被停用。
+- 怎么处理：换成该分组可用的模型；把 Key 切到正确分组；分组停用时联系后台处理。
+
+## `403` / `INSUFFICIENT_BALANCE` / `Insufficient account balance`
+
+- 用户看到：`INSUFFICIENT_BALANCE`、`Insufficient account balance`。
+- 通常表示：UseGoodAI 账户余额不足，当前请求被后台拒绝。
+- 先查什么：登录 UseGoodAI 后台查看账户余额。
+- 怎么处理：充值后重新测试。充值后仍然出现这条提示，再确认当前客户端使用的是最新 API Key。
 
 ## `404 Not Found` / `Cannot POST /v1/chat/completions`
 
@@ -37,12 +44,12 @@
 - 先查什么：客户端是否在用 POST 请求；Base URL 是否填到了客户端要求的位置。
 - 怎么处理：不要用浏览器直接测试聊天接口；回到客户端配置页，只填写 Base URL、API Key 和模型名，让客户端自己拼接请求路径。
 
-## `429 Too Many Requests` / `rate limit`
+## `429 Too Many Requests` / `rate limit` / `rate_limit_exceeded`
 
-- 用户看到：`429 Too Many Requests`、`rate limit`、`Rate Limit Exceeded`、`insufficient_quota`。
-- 通常表示：触发并发/频率限制、账户余额不足，或当前 API Key 被单独设置了限额金额、速率、次数等限制。
-- 先查什么：账户余额是否充足；API Key 是否设置了限额金额、有效期、速率或次数限制；是否有多个客户端同时请求。
-- 怎么处理：余额不足先充值；账户有余额但仍然 429 时，优先检查这个 API Key 的限制项是否填错；确认没有人为限制后，再降低并发和重试频率，等待限制窗口恢复。
+- 用户看到：`429 Too Many Requests`、`rate limit`、`Rate Limit Exceeded`、`rate_limit_exceeded`。
+- 通常表示：触发了并发、频率或 API Key 限制。
+- 先查什么：API Key 是否设置了限额金额、有效期、速率或次数限制；是否有多个客户端同时请求。
+- 怎么处理：降低并发和重试频率，等待限制窗口恢复；确认没有人为限制后仍持续出现，再联系后台处理。
 
 ## `500 Internal Server Error`
 

@@ -1,6 +1,6 @@
 # GPT 生图 API
 
-本文用于自己写脚本或服务端流程，直接调用 `gpt-image-2` 生成并保存图片。需要让 Codex 使用“生图分组”创建调用脚本并在对话中显示图片，查看[生图分组方法](/images/image-video-group-image)；需要用画布连续创作图片，查看[无限画布](/images/infinite-canvas)。
+自己写脚本或服务端流程时，直接调用 `gpt-image-2` 生成并保存图片。需要让 Codex 使用“生图分组”创建调用脚本并在对话中显示图片，查看[生图分组方法](/images/image-video-group-image)；需要用画布连续创作图片，查看[无限画布](/images/infinite-canvas)。
 
 ## 懒人方法：让 AI 帮你快速测试
 
@@ -18,7 +18,7 @@
 5. 把原始返回保存为 response.json，同时兼容 data[].b64_json 和 data[].url；有 b64_json 时先解码，有 url 时下载图片；两者都没有有效图片数据时，保留原始返回并明确报错。
 ```
 
-测试跑通后，再根据自己的业务改提示词、输出文件名、批量读取方式和错误处理。
+测试成功后，再根据自己的业务改提示词、输出文件名、批量读取方式和错误处理。
 
 ## 接口地址
 
@@ -44,7 +44,7 @@ https://api.usegoodai.com/v1
 
 ## 生成一张图片
 
-先把 UseGoodAI 后台创建的 API Key 放到环境变量里。
+先把 UseGoodAI 管理后台创建的 API Key 放到环境变量里。
 
 macOS / Linux / WSL：
 

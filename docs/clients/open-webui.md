@@ -1,6 +1,6 @@
 # Open WebUI 接入
 
-Open WebUI 是自建网页聊天界面，适合给自己或小团队提供浏览器聊天入口。本文在 Open WebUI 管理后台添加一个 `UseGoodAI` 连接，让聊天请求走 `https://api.usegoodai.com/v1`。
+Open WebUI 是自建网页聊天界面，适合给自己或小团队提供浏览器聊天入口。在管理后台添加 `UseGoodAI` 连接后，聊天请求会通过 `https://api.usegoodai.com/v1` 发出。
 
 ## 启动 Open WebUI
 
@@ -38,7 +38,7 @@ Admin Settings -> Connections
 | Name / 名称 | `UseGoodAI` |
 | URL / Base URL | `https://api.usegoodai.com/v1` |
 | API Key | UseGoodAI API Key |
-| Model IDs (Filter) | 当前 Key 分组可用模型，例如 `gpt-5.5` |
+| Model IDs (Filter) | 当前 Key 分组可用模型，例如 `claude-fable-5`、`gemini-3.6-flash` 或 `grok-4.5` |
 
 Base URL 只填到 `/v1`，不要追加其它路径。
 

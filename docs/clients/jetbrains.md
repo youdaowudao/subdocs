@@ -1,68 +1,67 @@
 # JetBrains 接入
 
-JetBrains 系 IDE 包括 IntelliJ IDEA、PyCharm、WebStorm、GoLand、PhpStorm 等。本文适合在支持自定义 OpenAI 服务商的 JetBrains 插件里接入 UseGoodAI，让 IDE 插件使用 UseGoodAI 的 API Key、Base URL 和模型名发起请求。
+适用于 IntelliJ IDEA、PyCharm、WebStorm、GoLand、PhpStorm 等 JetBrains IDE。
 
-本文只修改 JetBrains 插件里的 provider / API 设置，不修改 Codex 配置，也不配置 JetBrains 官方 AI 账号。
+JetBrains 里先按目标选入口。Claude Code 可以安装 Anthropic 的插件；Codex 可以在 JetBrains 的 AI Assistant 中使用，但不能把 UseGoodAI API Key 填给 JetBrains 的 Codex 集成；只有普通 AI Chat 才使用下面的 OpenAI-compatible 配置。
 
-## 安装插件
+| 你要做什么 | 推荐入口 | 说明 |
+| --- | --- | --- |
+| 在 JetBrains 里用 Claude Code | **Claude Code [Beta]** | Marketplace 里认准 Anthropic PBC 发布、Verified 的插件；本机仍要先安装 Claude Code |
+| 在 JetBrains 里用 Codex | JetBrains AI Assistant 里的 **Codex** | 可以使用，但 BYOK 只接受 OpenAI 直接签发的 API Key，不能接 UseGoodAI |
+| 只想让 JetBrains AI Chat 使用 UseGoodAI | **JetBrains AI Assistant** | 这是通用 AI Chat / BYOK 入口，不是 Claude Code，也不是 Codex |
 
-在 JetBrains IDE 中打开插件市场，安装支持自定义 OpenAI 服务商的 AI 插件。
+## Claude Code
 
-配置入口常见名称：
+1. 打开 JetBrains IDE。
+2. 进入 **Settings / Preferences -> Plugins -> Marketplace**。
+3. 搜索 **Claude Code [Beta]**。
+4. 确认发布方是 **Anthropic PBC**，并且插件标记为 Verified。
+5. 安装后按提示重启 IDE。
 
-| 入口 | 用途 |
-| --- | --- |
-| OpenAI-compatible | 填写 Base URL、API Key 和模型名 |
-| OpenAI API | 支持自定义 API 地址时按本文填写 |
-| Custom provider / 自定义服务商 | 手动添加 UseGoodAI |
+这个插件要求本机已经安装 Claude Code。UseGoodAI 的配置不要在 JetBrains AI Assistant 里填，先按 [Claude Code / Desktop 接入](/clients/claude-code-desktop) 或 [CC Switch 手动接入](/clients/cc-switch) 配好 Claude Code，再回到 JetBrains 里使用插件入口。
 
-插件只显示固定官方账号、不能填写自定义 API 地址时，不属于本文场景。
+## Codex
 
-## 填写 UseGoodAI
+JetBrains 新版 AI Assistant 里可以直接选择 **Codex**。打开 **AI Chat**，在智能体或模型选择器里选择 Codex，再按 JetBrains 的提示完成激活。
 
-在插件的 provider 或 API 设置里新增一条配置：
+这条入口不支持 UseGoodAI：JetBrains 官方说明，Codex 使用 BYOK 时必须填写 OpenAI 直接签发的 API Key，第三方中转站的 Key 不支持。不要在 AI Assistant 的 Codex 设置里填写 UseGoodAI 的 Base URL 或 API Key。
+
+需要在 JetBrains 项目里使用 UseGoodAI 的 Codex 时，打开 JetBrains 的内置终端，使用已经按 [快速开始](/quick-start) 或 [Codex 手动接入](/clients/codex-manual-config) 配好的 Codex CLI。不要把 Marketplace 里发布方不明确的 Codex Launcher、Codex CLI、Codex GUI 插件当成 OpenAI 官方插件。
+
+## AI Assistant
+
+只需要 JetBrains 自带 AI Chat 接入 OpenAI-compatible 服务时，用 AI Assistant。
+
+1. 进入 **Settings / Preferences -> Plugins -> Marketplace**。
+2. 搜索并安装 **JetBrains AI Assistant**。
+3. 重启 IDE 后，进入 **Settings / Preferences -> Tools -> AI Assistant -> Providers & API keys**。
+4. 选择 **OpenAI-compatible**。
+
+填写：
 
 | 字段 | 填写 |
 | --- | --- |
-| Name / Provider name | `UseGoodAI` |
-| Provider type / API 类型 | `OpenAI-compatible`、`OpenAI API` 或 `Custom` |
-| Base URL / API Base / Endpoint | `https://api.usegoodai.com/v1` |
-| API Key / Token | UseGoodAI API Key |
-| Model | 当前 Key 分组可用模型，例如 `gpt-5.5` |
+| URL | `https://api.usegoodai.com/v1` |
+| API key | UseGoodAI API Key |
+| Model | 当前 Key 分组可用模型 |
 
-Base URL 只填到 `/v1`，不要追加其它路径。
-
-## 添加模型
-
-模型列表能自动出现时，选择当前 Key 分组可用模型。
-
-模型列表为空时，手动添加一个模型名：
+模型可以填写：
 
 ```text
-gpt-5.5
+claude-opus-5
 ```
 
-模型名要和当前 Key 分组里的模型完全一致。
+也可以改成当前分组里的 `claude-fable-5`、`gemini-3.6-flash`、`grok-4.5` 或 `gpt-5.5`。一次只填一个模型名，模型名必须和 UseGoodAI 管理后台分组里的 ID 完全一致。
 
-## 测试
+点击 **Test Connection**，测试通过后保存。打开 **AI Chat**，在顶部模型选择器里选择刚添加的 UseGoodAI 模型，再发送 `测试`。
 
-在 JetBrains 插件里选择 `UseGoodAI` provider 和刚填写的模型，发送：
+这条配置用于 AI Chat，不会把 JetBrains 里的 Codex 换成 UseGoodAI。代码补全和下一步编辑也不一定会使用这里配置的通用聊天模型。
 
-```text
-测试
-```
+## 不要装这些
 
-能正常回复，说明当前插件已经切到 UseGoodAI。
-
-## 排查
-
-| 现象 | 处理 |
+| 插件类型 | 处理 |
 | --- | --- |
-| `401 Unauthorized` | 重新复制 API Key，确认填在当前插件正在使用的 provider |
-| `403 Forbidden` / `block` | 换成当前 Key 分组支持的模型；仍失败时看 [报错与踩坑](/errors/) |
-| 模型列表为空 | 手动添加模型 ID 后直接测试聊天 |
-| 路径错误 / Not Found | Base URL 改回 `https://api.usegoodai.com/v1` |
-| 连接超时 | 检查 JetBrains HTTP Proxy、系统代理、防火墙和证书拦截 |
-| 浏览器可用但 IDE 不可用 | 检查 IDE 代理和插件是否启用了 `UseGoodAI` provider |
-
-JetBrains IDE 有自己的 HTTP Proxy 设置。代理、证书或本地网关改写请求时，优先在 IDE 设置和插件设置里排查。
+| 发布方不明确的 Claude / Codex GUI 插件 | 不作为默认推荐 |
+| 要求单独安装官方 CLI 的插件 | 先安装官方 Claude Code 或 Codex CLI，再配置对应工具 |
+| 想让 JetBrains 里的 Codex 使用 UseGoodAI | 不使用 AI Assistant 的 Codex 集成，改用内置终端里的 Codex CLI |
+| 只是 OpenAI-compatible AI Chat 的需求 | 用 AI Assistant，不要把它写成 Claude Code 或 Codex 接入 |

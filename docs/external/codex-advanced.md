@@ -47,7 +47,7 @@ codex -c model='"gpt-5.5"'
 codex exec -m gpt-5.5 "检查当前改动是否有明显 bug"
 ```
 
-UseGoodAI 用户优先复制后台生成的 Codex 配置，不要在高级配置里重新推导 provider 字段。UseGoodAI API 地址通常是 `https://api.usegoodai.com`；Codex 接入优先走 Responses。手动排障时，检查后台生成配置和基础接入页，不要把 Base URL 改成 Responses 或 Chat Completions 的最终请求路径。
+UseGoodAI 用户优先复制后台生成的 Codex 配置，不要在高级配置里重新推导 provider 字段。UseGoodAI API 地址通常是 `https://api.usegoodai.com`；Codex 接入优先使用 Responses。手动排障时，检查后台生成配置和基础接入页，不要把 Base URL 改成 Responses 或 Chat Completions 的最终请求路径。
 
 ## Codex Home 目录解释
 

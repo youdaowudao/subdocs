@@ -4,19 +4,19 @@ title: 快速开始
 
 # 快速开始
 
-本文适合第一次在 Windows 的 Codex App 接入 UseGoodAI。完成后，Codex 的模型请求会走中转站；脚本只写入本机 `~/.codex/config.toml` 和 `~/.codex/auth.json`，并自动备份旧文件。
+第一次使用 Windows 版 Codex App 时，按下面步骤配置。配置完成后，Codex 会通过 UseGoodAI 使用 AI 模型。
 
 开始前确认：
 
 - 已安装 ChatGPT / Codex App；还没安装先看 [Codex 接入](/clients/codex)。
-- 已能登录 UseGoodAI 后台。
-- 账户有可用余额；余额不足时接入能完成，但测试会失败。
+- 已能登录 UseGoodAI 管理后台。
+- 账号有余额。
 
 ## 1. 创建本中转站的 API 密钥
 
-进入后台 **API 密钥**，点击 **创建密钥**。名称写用途，分组选当前要用的模型档位，创建后复制 API Key。
+进入管理后台 **API 密钥**，点击 **创建密钥**。名称写用途，分组选择当前要用的模型档位，创建后复制 API Key。
 
-API Key 用来让 Codex 识别你的账户和扣费，后面脚本会要求你粘贴这个 Key。
+API Key 用来让 Codex 识别你的账户并记录用量，后面脚本会要求你粘贴这个 Key。
 
 <details>
 <summary>查看创建和复制截图</summary>
@@ -45,7 +45,7 @@ Windows 按 `Win + X`，点击 **终端** 或 **Windows PowerShell**。
 irm https://docs.usegoodai.com/install/codex.ps1 | iex
 ```
 
-脚本要求输入 API Key 时，粘贴第 1 步复制的 Key，然后按回车。
+看到输入 API Key 的提示时，粘贴第 1 步复制的 Key，然后按回车。
 
 <details>
 <summary>Mac 用户看这里</summary>
@@ -56,36 +56,32 @@ irm https://docs.usegoodai.com/install/codex.ps1 | iex
 curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 ```
 
-脚本要求输入 API Key 时，粘贴第 1 步复制的 Key，然后按回车。
+看到输入 API Key 的提示时，粘贴第 1 步复制的 Key，然后按回车。
 
 </details>
-
-提示未检测到 Codex App 时，先安装 Codex App，再运行脚本。
 
 ## 3. 关闭并重新打开 Codex
 
 脚本完成后，彻底退出 Codex App，再重新打开并新建任务。
 
-Windows 配置未生效时，用任务管理器结束所有 `ChatGPT` 进程，再打开 Codex。
-
 发送 `测试`。
 
-能正常回复，就接入完成。
+能正常回复，就接入完成。还是不能回复，先看下面的脚本排查。
 
 ## 4. 查看模型价格
 
-接入完成后，模型价格和分组在 [模型价格](/models) 查看。实际扣费以后台使用记录为准。
+接入完成后，看 [模型价格](/models) 了解价格和分组。实际扣费以后台使用记录为准。
 
-## 快速开始失败先看这里
+## 运行脚本时遇到问题
 
-| 你看到的情况 | 先做这一件事 | 还不行 |
+| 遇到的问题 | 先做这个 | 还是不行 |
 | --- | --- | --- |
-| 不知道命令粘贴到哪里 | 按 `Win + X`，打开 **终端** 或 **Windows PowerShell** | 回到第 2 步重新复制命令 |
+| PowerShell 提示无法下载脚本 | 检查网络后重新运行第 2 步命令 | 仍然失败时，改用下面的 CC Switch 接入 |
 | 脚本提示未检测到 Codex App | 先安装 Codex App，再回到本页重新运行脚本 | 看 [Codex 接入](/clients/codex) |
-| 脚本完成后 Codex 仍没反应 | 彻底退出 Codex；Windows 用任务管理器结束所有 `ChatGPT` 进程，再重新打开 | 看 [报错与踩坑](/errors/) |
-| 出现 `401` / `Unauthorized` | 回后台重新复制 API Key，再运行脚本 | 看 [报错与踩坑](/errors/) |
-| 出现 `403` / `model not found` | 回后台确认 API Key 所属分组支持当前模型 | 看 [报错与踩坑](/errors/) |
-| 出现 `429` / `insufficient_quota` | 登录后台查看余额，充值后重新测试 | 看 [报错与踩坑](/errors/) |
+| Codex 提示 `INSUFFICIENT_BALANCE` 或 `Insufficient account balance` | 登录后台充值，充值后重新测试 | 仍然提示余额不足时，确认 Codex 使用的是当前账号的 API Key |
+| 脚本完成后 Codex 还是不能回复 | 彻底退出 Codex；Windows 用任务管理器结束所有 `ChatGPT` 进程，再重新打开 | 看 [报错与踩坑](/errors/) |
+
+脚本已经完成，但 Codex 返回具体错误时，直接看 [报错与踩坑](/errors/)。
 
 <details>
 <summary>脚本安全吗？</summary>
@@ -96,7 +92,7 @@ Windows 配置未生效时，用任务管理器结束所有 `ChatGPT` 进程，�
 https://github.com/usegoodai/usegoodai-codex-installer
 ```
 
-本脚本仅仅只是为了方便不会配置文件的用户，只修改本机 Codex 配置中的以下两个文件，不会有其他操作。如果不放心，请采取后面的其他配置方法。
+这个脚本只是帮不会手动改配置的用户写入 Codex 配置，不会修改系统设置。不放心就用下面的 CC Switch 或手动配置。
 
 | 文件 | 作用 |
 | --- | --- |
@@ -107,7 +103,7 @@ https://github.com/usegoodai/usegoodai-codex-installer
 
 </details>
 
-## 其它配置方式
+## 不用脚本的方式
 
 | 顺序 | 方式 | 入口 |
 | --- | --- | --- |

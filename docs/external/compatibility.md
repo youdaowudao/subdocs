@@ -34,7 +34,7 @@ https://api.usegoodai.com/v1
 | 模型 / 能力类型 | 使用模式 | 怎么判断 |
 | --- | --- | --- |
 | Codex、代码 Agent、支持 Responses 的 Agent | Responses 模式 | 客户端文档或配置里明确支持 Responses API，或配置项里有类似 `wire_api = "responses"` |
-| 推理模型、新文本生成项目 | Responses 模式 | 客户端支持 Responses 时优先使用 Responses，推理模型尤其适合走 Responses |
+| 推理模型、新文本生成项目 | Responses 模式 | 客户端支持 Responses 时优先使用 Responses，推理模型尤其适合使用 Responses |
 | 普通聊天、翻译、摘要、日常问答 | 兼容模式也可以 | 客户端只提供 OpenAI-compatible / Chat Completions 配置时，按兼容模式接入 |
 | 长上下文分组 | 先看客户端协议 | 长上下文不是只换模型名就生效，还要看客户端是否传出上下文、截断、缓存等相关配置 |
 | 工具调用、搜索、MCP、文件检索、Computer use | 优先 Responses 模式 | 这些能力更接近 Responses / Agent 体系；普通聊天客户端可能只支持其中一部分 |
@@ -60,7 +60,7 @@ https://api.usegoodai.com/v1
 
 | 现象 | 优先检查 |
 | --- | --- |
-| Codex 能启动但能力不完整 | 后台日志是否走 `/v1/responses`，本地配置是否启用了 Responses 模式 |
+| Codex 能启动但能力不完整 | 后台日志是否出现 `/v1/responses`，本地配置是否启用了 Responses 模式 |
 | Cherry Studio / Open WebUI / LibreChat 报路径错误 | Base URL 是否误填成了 `https://api.usegoodai.com/v1/chat/completions` |
 | 模型列表为空 | 不一定代表聊天不可用，可以手动填写后台分组里实际可用的模型名 |
 | 长上下文没有生效 | 客户端是否真的传出了上下文相关配置，是否在本地被截断 |

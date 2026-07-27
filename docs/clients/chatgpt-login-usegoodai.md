@@ -1,15 +1,17 @@
 # 保留 ChatGPT 登录
 
-本文适合已经安装 ChatGPT 桌面应用、并且有 ChatGPT 账号的用户。配置完成后，应用中的 Codex 继续保持 ChatGPT 登录状态，模型请求走 UseGoodAI 中转站，同时保留插件入口、手机和其它设备连接；本文只修改本机 `config.toml`。
+已经安装 ChatGPT 桌面应用、并且有 ChatGPT 账号时，按下面步骤配置。配置完成后，应用中的 Codex 继续保持 ChatGPT 登录状态，模型请求通过 UseGoodAI 发出，同时保留插件入口、手机和其它设备连接。
 
-注意：配置后原账号的对话记录将不会显示在app上（本地文件还在），有需要请提前备份或连接后叫ai整理。
+::: warning 重要提示
+配置后，原 ChatGPT 账号的对话记录将不会显示在 app 上（本地文件还在）。如果需要保留，请提前备份或连接后让 AI 整理。
+:::
 
 ## 适合谁
 
 | 你的情况 | 看哪里 |
 | --- | --- |
 | 没有 ChatGPT 账号，或不想登录 ChatGPT 账号 | 先看 [快速开始](/quick-start) |
-| 有 ChatGPT 账号，并且需要保留 ChatGPT 登录状态 | 看本文 |
+| 有 ChatGPT 账号，并且需要保留 ChatGPT 登录状态 | 继续看下面步骤 |
 | 只配置 Codex CLI，不用 App 内置能力 | 看 [Codex 接入](/clients/codex) |
 
 ## 懒人方法：复制给 AI 帮你改
@@ -39,8 +41,8 @@
    - 找不到可用命令时，不要安装 CLI；提醒我重启 ChatGPT 桌面应用，切换到 Codex 后新开对话并发送同一句测试消息，不要用旧对话。
 
 model_provider = "UseGoodAI"
-model = "gpt-5.5"
-review_model = "gpt-5.5"
+model = "claude-fable-5"
+review_model = "claude-fable-5"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 network_access = "enabled"
@@ -55,6 +57,8 @@ experimental_bearer_token = "这里完整填写你的中转站 API Key"
 
 ```
 
+`model` 和 `review_model` 要填当前 Key 分组里的模型名。也可以改成 `gpt-5.5`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`，两处保持一致。
+
 ## 手动配置
 
 1. 打开 ChatGPT 桌面应用，确认已经登录 ChatGPT，不要点退出登录。在左上角切换到 **ChatGPT Codex**。
@@ -66,7 +70,7 @@ experimental_bearer_token = "这里完整填写你的中转站 API Key"
 | macOS / Linux / WSL | `~/.codex/config.toml` |
 
 3. 修改前先复制一份旧的 `config.toml` 作为备份。
-4. 删除旧的模型端点配置，保留本文这套 UseGoodAI 配置。
+4. 删除旧的模型端点配置，保留下面这套 UseGoodAI 配置。
 5. 保留文件下方已有的 MCP、插件、项目权限、工作区等其它配置。
 6. 把上面的配置放到文件开头，只改 `experimental_bearer_token` 里的 API Key。
 7. 保存前检查全文不要出现重复的 `[model_providers.UseGoodAI]`。

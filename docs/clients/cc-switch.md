@@ -1,6 +1,6 @@
 # CC Switch 手动接入
 
-本文用于在 CC Switch 中手动添加 UseGoodAI，供 Claude Code 使用。Codex 用户看 [Codex CC Switch 接入](/codex-cc-switch)。
+在 CC Switch 中手动添加 UseGoodAI 后，Claude Code 可以通过 UseGoodAI 使用模型。Codex 用户看 [Codex CC Switch 接入](/codex-cc-switch)。
 
 还没有安装 CC Switch 时，先进入 [Codex CC Switch 接入](/codex-cc-switch) 查看下载入口，安装完成后再返回本页。
 
@@ -26,7 +26,7 @@
   <img src="/images/ccswitch/ccswitch2.jpg" alt="在 Claude 供应商中选择自定义配置并点击添加">
 </a>
 
-本文不使用其它站点的预设，也不选择 **统一供应商**。UseGoodAI 的 Claude Code 配置只需要在这个自定义配置里填写一次。
+这里不使用其它站点的预设，也不选择 **统一供应商**。UseGoodAI 的 Claude Code 配置只需要在这个自定义配置里填写一次。
 
 ### 3. 填写四个字段并保存
 
@@ -65,7 +65,7 @@
 测试
 ```
 
-需要切换模型时，在当前会话输入 `/model`。模型在 Claude Code 内选择，不在 CC Switch 的供应商页面填写；Claude 模型与 UseGoodAI 实际模型的对应关系见 [Claude Code / Desktop 接入](/clients/claude-code-desktop#claude-模型如何映射到-gpt-5-6)。
+需要切换模型时，在当前对话输入 `/model`。模型在 Claude Code 内选择，不在 CC Switch 的供应商页面填写；可用模型以 Claude Code 模型选择器和当前 API Key 所属分组为准。
 
 测试成功后可以关闭 CC Switch，不需要后台运行。不要开启 **Proxy**、本地代理或本地路由功能。
 

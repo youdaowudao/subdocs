@@ -2,7 +2,7 @@
 
 OpenClaw 官方页面里的“龙虾”指 Molty，是 OpenClaw 的产品形象；看到龙虾或 Molty，说的就是 OpenClaw。
 
-OpenClaw 是自托管 AI Agent Gateway，一个后台 Gateway 可以同时接 Telegram、WhatsApp、Discord、Slack、iMessage、WebChat 和移动节点。本文把 UseGoodAI 加到 `~/.openclaw/openclaw.json` 的 model provider，让这些入口统一走 UseGoodAI。
+OpenClaw 是自托管 AI Agent Gateway，一个 Gateway 可以同时接 Telegram、WhatsApp、Discord、Slack、iMessage、WebChat 和移动节点。添加 UseGoodAI model provider 后，这些入口会统一通过 UseGoodAI 使用模型。
 
 ## 安装 OpenClaw
 
@@ -34,7 +34,7 @@ OpenClaw 推荐 Node 24，Node 22.19+ 也支持。
 openclaw onboard --install-daemon
 ```
 
-第一次使用按默认或 QuickStart 路径走。模型和渠道可以先跳过，后面用浏览器 Control UI 验证。
+第一次使用按默认或 QuickStart 路径完成向导。模型和渠道可以先跳过，后面用浏览器 Control UI 验证。
 
 打开控制台：
 
@@ -59,7 +59,7 @@ openclaw dashboard
   "agents": {
     "defaults": {
       "model": {
-        "primary": "usegoodai/gpt-5.5"
+        "primary": "usegoodai/claude-fable-5"
       }
     }
   },
@@ -72,8 +72,8 @@ openclaw dashboard
         "api": "openai-completions",
         "models": [
           {
-            "id": "gpt-5.5",
-            "name": "gpt-5.5",
+            "id": "claude-fable-5",
+            "name": "claude-fable-5",
             "reasoning": true,
             "input": ["text"],
             "contextWindow": 200000,
@@ -129,7 +129,7 @@ openclaw dashboard
 测试
 ```
 
-能正常回复，说明当前会话已使用 `usegoodai/模型名`。
+能正常回复，说明当前对话已使用 `usegoodai/模型名`。
 
 ## 进阶配置
 
@@ -162,10 +162,10 @@ OpenClaw 支持多个 API adapter。普通 UseGoodAI 接入保持 `openai-comple
 | 现象 | 处理 |
 | --- | --- |
 | 看不到 `usegoodai` provider | 检查 `openclaw.json` 是否合并成功，再运行 `openclaw models list --provider usegoodai` |
-| 模型不可用 | 把 `gpt-5.5` 换成当前 Key 分组里的完整模型 ID |
+| 模型不可用 | 把 `claude-fable-5` 换成当前 Key 分组里的完整模型 ID |
 | `401 Unauthorized` | 重新复制 API Key；使用环境变量时，重启 Gateway |
 | Base URL 路径错误 | `baseUrl` 改回 `https://api.usegoodai.com/v1` |
-| 配置没有生效 | 运行 `openclaw gateway restart`，确认当前会话选择的是 `usegoodai/模型名` |
+| 配置没有生效 | 运行 `openclaw gateway restart`，确认当前对话选择的是 `usegoodai/模型名` |
 | `403 Forbidden` / `block` | 先确认 Key、模型、Base URL；仍失败时看 [外接调用 User-Agent 说明](/external/user-agent) |
 
 需要排查 Header 时，再给 provider 添加稳定的客户端标识。普通接入不要伪装成 Codex、Claude CLI 或浏览器。
