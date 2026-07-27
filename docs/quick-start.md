@@ -9,7 +9,7 @@ title: 快速开始
 开始前确认：
 
 - 已安装 ChatGPT / Codex App；还没安装先看 [Codex 接入](/clients/codex)。
-- 已能登录 UseGoodAI 管理后台。
+- 已打开 UseGoodAI 管理后台，方便下一步创建 API 密钥。
 - 账号有余额。
 
 ## 1. 创建本中转站的 API 密钥
@@ -96,10 +96,12 @@ https://github.com/usegoodai/usegoodai-codex-installer
 
 | 文件 | 作用 |
 | --- | --- |
-| `~/.codex/config.toml` | 写入 UseGoodAI 接口地址、模型和 Responses 配置 |
-| `~/.codex/auth.json` | 写入 UseGoodAI API Key |
+| `C:\Users\你的用户名\.codex\config.toml` | 写入 UseGoodAI 接口地址、模型和 Responses 配置 |
+| `C:\Users\你的用户名\.codex\auth.json` | 写入 UseGoodAI API Key |
 
 写入前会自动备份旧文件。
+
+Mac 用户对应路径是 `~/.codex/config.toml` 和 `~/.codex/auth.json`。
 
 </details>
 

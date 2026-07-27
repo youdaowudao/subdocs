@@ -17,9 +17,9 @@ const config = defineConfig({
         { text: '快速开始', link: '/quick-start' },
         { text: 'CC Switch', link: '/codex-cc-switch' },
         { text: '模型价格', link: '/models' },
-        { text: '遇到问题', link: '/errors/' },
         { text: '客户端', link: '/clients/' },
         { text: '生图', link: '/images/' },
+        { text: '遇到问题', link: '/errors/' },
         { text: '联系客服', link: '/contact' }
     ],
 
@@ -44,7 +44,6 @@ export default withSidebar(config, {
     'quick-start.md',
     'codex-cc-switch.md',
     'models.md',
-    'errors',
     'clients',
     'codex.md',
     'chatgpt-login-usegoodai.md',
@@ -77,6 +76,7 @@ export default withSidebar(config, {
     'codex-log-sqlite.md',
     'codex-tools.md',
     'index.md',
+    'errors',
     'contact.md'
   ]
 })
