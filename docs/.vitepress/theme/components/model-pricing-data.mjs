@@ -87,7 +87,7 @@ export const TEXT_GROUPS = [
   {
     id: 'grok-4.5',
     name: 'Grok 4.5 分组',
-    multiplier: 0.1,
+    multiplier: 0.15,
     description: '速度比 GPT 日常分组更快，风控相对低，支持实时搜索和工具调用',
     modelIds: ['grok-4.5'],
   },

@@ -25,7 +25,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.28 },
       { id: 'anthropic-main', name: '主力分组', multiplier: 0.4 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.9 },
-      { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.1 },
+      { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.15 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.55 },
     ],
   )
@@ -211,7 +211,7 @@ test('uses the group multiplier directly on the official USD number', () => {
 })
 
 test('expresses the active multipliers as rounded equivalent discounts', () => {
-  assert.equal(getEquivalentDiscount(0.1), '0.1折')
+  assert.equal(getEquivalentDiscount(0.15), '0.2折')
   assert.equal(getEquivalentDiscount(0.12), '0.2折')
   assert.equal(getEquivalentDiscount(0.18), '0.3折')
   assert.equal(getEquivalentDiscount(0.28), '0.4折')
