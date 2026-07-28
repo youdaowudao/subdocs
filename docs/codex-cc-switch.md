@@ -44,6 +44,8 @@ brew install --cask cc-switch
 
 ## 2. 从管理后台导入配置
 
+正在使用 ChatGPT 桌面应用里的 Codex，并且需要保留 ChatGPT 账号登录时，先按 [保留 ChatGPT 登录](/clients/chatgpt-login-usegoodai) 打开 CC Switch 的保持登录开关，再回到本页继续导入。普通 Codex App 接入，直接继续下面步骤。
+
 回到 UseGoodAI 管理后台 **API 密钥**，找到要使用的 Key，点击 **导入到 CCS**。
 
 浏览器询问是否打开 CC Switch 时，点击 **打开**。确认应用类型是 `Codex`，再点击 **导入**。

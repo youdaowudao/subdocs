@@ -26,7 +26,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'anthropic-main', name: '主力分组', multiplier: 0.4 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.9 },
       { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.15 },
-      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.55 },
+      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.4 },
     ],
   )
 })

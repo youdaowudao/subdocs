@@ -16,26 +16,27 @@ Codex 内置生图是 ChatGPT 桌面应用中 Codex 自带的 `image_gen` 工具
 打开 `config.toml`，先复制一份旧内容做备份，再全选删除旧内容，把下面这一整段粘贴进去并保存。`auth.json` 继续使用快速开始写入的 UseGoodAI API Key，不要删除，也不要把 Key 写进下面的配置。
 
 ```toml
-model_provider = "UseGoodAI"
-model = "claude-fable-5"
-review_model = "claude-fable-5"
-model_reasoning_effort = "xhigh"
+model_provider = "OpenAI"
+model = "gpt-5.6-sol"
+review_model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
 disable_response_storage = true
 network_access = "enabled"
 windows_wsl_setup_acknowledged = true
 
-[model_providers.UseGoodAI]
-name = "UseGoodAI"
+[model_providers.OpenAI]
+name = "OpenAI"
 base_url = "https://api.usegoodai.com"
 wire_api = "responses"
 requires_openai_auth = false
 http_headers = { "x-openai-actor-authorization" = "local-image-extension" }
 
 [features]
+goals = true
 image_generation = true
 ```
 
-快速开始配置里的模型不是 `claude-fable-5` 时，只改 `model` 和 `review_model` 两行，填当前 API Key 所属分组可用的模型名。也可以改成 `gpt-5.5`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`，两处保持一致。
+快速开始配置里的模型不是 `gpt-5.6-sol` 时，只改 `model` 和 `review_model` 两行，填当前 API Key 所属分组可用的模型名，两处保持一致。
 
 ## 重启 Codex
 
@@ -65,7 +66,7 @@ Windows 用户要从右下角托盘退出 ChatGPT。只点窗口右上角关闭�
 
 已经配置过 MCP、插件、项目权限或其它自定义项时，不要全选覆盖。保留旧配置，只改下面几处。
 
-在 `[model_providers.UseGoodAI]` 里确认有这两行：
+在 `[model_providers.OpenAI]` 里确认有这两行：
 
 ```toml
 requires_openai_auth = false
