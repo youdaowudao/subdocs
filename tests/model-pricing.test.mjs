@@ -20,13 +20,13 @@ test('includes the updated GPT pricing groups in order', () => {
   assert.deepEqual(
     TEXT_GROUPS.map(({ id, name, multiplier }) => ({ id, name, multiplier })),
     [
-      { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.12 },
-      { id: 'gpt-0.18', name: 'GPT 日常分组', multiplier: 0.18 },
-      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.28 },
-      { id: 'anthropic-main', name: '主力分组', multiplier: 0.4 },
+      { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.1 },
+      { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
+      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.25 },
+      { id: 'anthropic-main', name: '主力分组', multiplier: 0.3 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.9 },
-      { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.15 },
-      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.4 },
+      { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.1 },
+      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.35 },
     ],
   )
 })
@@ -67,11 +67,11 @@ test('uses the requested Anthropic group recommendations', () => {
   assert.equal(fable.description, 'Anthropic 写作向模型，适合长文创作、文案润色和自然表达')
 })
 
-test('relaunches the GPT Plus discount group at 0.12 with instability copy', () => {
+test('keeps the GPT Plus discount group at 0.1 with instability copy', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'pro-plus')
 
   assert.equal(group.name, 'GPT Plus 特惠分组（最近不稳定）')
-  assert.equal(group.multiplier, 0.12)
+  assert.equal(group.multiplier, 0.1)
   assert.match(group.description, /最近不稳定/)
 })
 
@@ -203,23 +203,41 @@ test('converts official USD prices to RMB at the fixed exchange rate', () => {
 test('uses the group multiplier directly on the official USD number', () => {
   const price = calculateTextPrice(
     { input: 5, output: 30, cachedInput: 0.5 },
-    0.28,
+    0.25,
   )
 
-  assert.ok(isClose(price.group.input, 1.4))
-  assert.ok(isClose(price.group.output, 8.4))
-  assert.ok(isClose(price.group.cachedInput, 0.14))
-  assert.ok(isClose(price.group.total, 9.8))
+  assert.ok(isClose(price.group.input, 1.25))
+  assert.ok(isClose(price.group.output, 7.5))
+  assert.ok(isClose(price.group.cachedInput, 0.125))
+  assert.ok(isClose(price.group.total, 8.75))
 })
 
 test('expresses the active multipliers as rounded equivalent discounts', () => {
+  assert.equal(getEquivalentDiscount(0.1), '0.1折')
   assert.equal(getEquivalentDiscount(0.15), '0.2折')
-  assert.equal(getEquivalentDiscount(0.12), '0.2折')
-  assert.equal(getEquivalentDiscount(0.18), '0.3折')
-  assert.equal(getEquivalentDiscount(0.28), '0.4折')
-  assert.equal(getEquivalentDiscount(0.4), '0.6折')
-  assert.equal(getEquivalentDiscount(0.55), '0.8折')
+  assert.equal(getEquivalentDiscount(0.25), '0.4折')
+  assert.equal(getEquivalentDiscount(0.3), '0.4折')
+  assert.equal(getEquivalentDiscount(0.35), '0.5折')
   assert.equal(getEquivalentDiscount(1.9), '2.7折')
+})
+
+test('calculates the revised group totals from the official USD baseline', () => {
+  const officialUsd = { input: 5, output: 30, cachedInput: 0.5 }
+  const expectedTotals = new Map([
+    ['pro-plus', 3.5],
+    ['gpt-0.18', 5.25],
+    ['full', 8.75],
+    ['anthropic-main', 10.5],
+    ['grok-4.5', 3.5],
+    ['gemini-antigravity', 12.25],
+  ])
+
+  for (const [groupId, expectedTotal] of expectedTotals) {
+    const group = TEXT_GROUPS.find((item) => item.id === groupId)
+    const price = calculateTextPrice(officialUsd, group.multiplier)
+
+    assert.ok(isClose(price.group.total, expectedTotal), groupId)
+  }
 })
 
 test('formats RMB amounts without noisy trailing zeroes', () => {

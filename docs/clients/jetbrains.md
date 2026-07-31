@@ -18,7 +18,7 @@ JetBrains 里先按目标选入口。Claude Code 可以安装 Anthropic 的插�
 4. 确认发布方是 **Anthropic PBC**，并且插件标记为 Verified。
 5. 安装后按提示重启 IDE。
 
-这个插件要求本机已经安装 Claude Code。UseGoodAI 的配置不要在 JetBrains AI Assistant 里填，先按 [Claude Code / Desktop 接入](/clients/claude-code-desktop) 或 [CC Switch 手动接入](/clients/cc-switch) 配好 Claude Code，再回到 JetBrains 里使用插件入口。
+这个插件要求本机已经安装 Claude Code。UseGoodAI 的配置不要在 JetBrains AI Assistant 里填，先按 [Claude Code CLI 一键导入](/clients/claude-code-desktop#claude-code-cli-ccswitch) 或 [CC Switch 手动配置](/clients/cc-switch#ccswitch-claude-code-manual) 配好 Claude Code，再回到 JetBrains 里使用插件入口。
 
 ## Codex
 

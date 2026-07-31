@@ -40,5 +40,6 @@ Codex 的 Responses 配置和 Claude Code / Desktop 的原生 Anthropic 配置�
 | 其它 IDE / 编辑器 | [VS Code](/clients/vscode) / [Trae](/clients/trae) | IDE 内的 AI 设置 |
 | 自部署聊天面板（需要 Docker） | [Open WebUI](/clients/open-webui) / [LibreChat](/clients/librechat) | 管理后台或项目配置文件 |
 | Agent / Gateway | [OpenClaw](/clients/openclaw) / [Hermes](/clients/hermes) | Gateway 配置或命令行向导 |
-| Claude Desktop / Claude Code CLI | [Claude Code / Desktop 接入](/clients/claude-code-desktop) / [CC Switch 手动配置（Claude Code 用）](/clients/cc-switch) | Claude Gateway 或 Claude Code 供应商 |
+| Claude Code CLI | [后台一键导入到 CC Switch](/clients/claude-code-desktop#claude-code-cli-ccswitch) / [CC Switch 导入确认](/clients/cc-switch#ccswitch-claude-code-import) | Claude Code 供应商 |
+| Claude Desktop APP | [优先用 CC Switch 手动配置](/clients/claude-code-desktop#claude-desktop-ccswitch) / [Gateway 备用配置](/clients/claude-code-desktop#claude-desktop-gateway) | CC Switch 或 APP 内第三方推理设置 |
 | 图片创作 | [Codex 内置生图](/images/codex-image-direct) / [无限画布](/images/infinite-canvas) | 生图工具或画布设置 |

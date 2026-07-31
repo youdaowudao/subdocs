@@ -1,10 +1,28 @@
-# CC Switch 手动接入
+# CC Switch 接入 Claude Code CLI
 
-在 CC Switch 中手动添加 UseGoodAI 后，Claude Code 可以通过 UseGoodAI 使用模型。Codex 用户看 [Codex CC Switch 接入](/codex-cc-switch)。
+CC Switch 可以管理 Claude Code CLI 和 Claude Desktop 的供应商。UseGoodAI 后台的 **导入到 CCS** 可以一键导入 Claude Code CLI；Claude Desktop 不能使用这条后台导入，但可以按 [Claude Desktop 的 CC Switch 主路径](./claude-code-desktop#claude-desktop-ccswitch) 手动配置。
 
-还没有安装 CC Switch 时，先进入 [Codex CC Switch 接入](/codex-cc-switch) 查看下载入口，安装完成后再返回本页。
+还没有安装 CC Switch 时，先进入 [CC Switch 安装步骤](/codex-cc-switch#_1-安装-cc-switch)；安装完成后回到本页继续。
 
-## 把 UseGoodAI 添加到 Claude Code
+<a id="ccswitch-claude-code-import"></a>
+## 从后台一键导入 Claude Code CLI
+
+### 1. 从 API 密钥页面发起导入
+
+回到 UseGoodAI 管理后台 **API 密钥**，找到要使用的 Key，点击 **导入到 CCS**。
+
+浏览器询问是否打开 CC Switch 时，点击 **打开**。确认应用类型是 **Claude Code**，再点击 **导入**。
+
+### 2. 确认导入并启动 Claude Code
+
+导入完成后，确认 CC Switch 中的 `UseGoodAI` 右侧显示 **使用中**。彻底退出 Claude Code，重新打开并新建一个对话或任务。
+
+完成后进入 [在 Claude Code 中测试](#在-claude-code-中测试)。模型在 Claude Code 内选择，不在 CC Switch 的供应商页面填写；可用模型以 Claude Code 模型选择器和当前 API Key 所属分组为准。
+
+如果后台没有弹出 CC Switch 导入，或你需要手动填写字段，继续看下面的 [手动添加 Claude Code 供应商](#ccswitch-claude-code-manual)。
+
+<a id="ccswitch-claude-code-manual"></a>
+## 手动添加 UseGoodAI 到 Claude Code CLI
 
 ### 1. 选择 Claude Code 并新建供应商
 
@@ -68,6 +86,8 @@
 需要切换模型时，在当前对话输入 `/model`。模型在 Claude Code 内选择，不在 CC Switch 的供应商页面填写；可用模型以 Claude Code 模型选择器和当前 API Key 所属分组为准。
 
 测试成功后可以关闭 CC Switch，不需要后台运行。不要开启 **Proxy**、本地代理或本地路由功能。
+
+这篇页面的主路径是 Claude Code CLI。需要配置 Claude Desktop 时，直接进入 [Claude Desktop 的 CC Switch 主路径](./claude-code-desktop#claude-desktop-ccswitch)；不要把本页的后台一键导入步骤当成 Desktop 配置步骤。
 
 ## 排查
 
