@@ -12,6 +12,7 @@ import {
   formatCny,
   getTextModelsForGroup,
   getEquivalentDiscount,
+  getSavingsPercent,
 } from '../docs/.vitepress/theme/components/model-pricing-data.mjs'
 
 const isClose = (actual, expected) => Math.abs(actual - expected) < 1e-12
@@ -27,6 +28,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.9 },
       { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.1 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.35 },
+      { id: 'domestic', name: '国产之光', multiplier: 0.2 },
     ],
   )
 })
@@ -39,6 +41,7 @@ test('keeps the model category tabs in the requested order', () => {
       { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-max'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity'], defaultGroupId: undefined },
+      { id: 'domestic', name: 'GLM', kind: 'text', groupIds: ['domestic'], defaultGroupId: undefined },
       { id: 'image', name: '生图', kind: 'image', groupIds: [], defaultGroupId: undefined },
     ],
   )
@@ -151,6 +154,22 @@ test('shows the Gemini Antigravity group with newest models first and Pro before
   )
 })
 
+test('shows GLM-5.2 and LongCat-2.0 together in the RMB domestic group', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'domestic')
+
+  assert.equal(group.name, '国产之光')
+  assert.equal(group.multiplier, 0.2)
+  assert.equal(group.currency, 'cny')
+  assert.match(group.description, /逆向/)
+  assert.deepEqual(
+    getTextModelsForGroup('domestic').map(({ id, officialCny }) => ({ id, officialCny })),
+    [
+      { id: 'glm-5.2', officialCny: { input: 8, output: 20, cachedInput: 2 } },
+      { id: 'LongCat-2.0', officialCny: { input: 2, output: 8, cachedInput: 0.04 } },
+    ],
+  )
+})
+
 test('uses the displayed official price baselines for GPT-5.6', () => {
   assert.deepEqual(
     getTextModelsForGroup('gpt-0.18').slice(0, 3).map((model) => model.officialUsd),
@@ -212,6 +231,25 @@ test('uses the group multiplier directly on the official USD number', () => {
   assert.ok(isClose(price.group.total, 8.75))
 })
 
+test('calculates domestic model prices directly in RMB without USD conversion', () => {
+  const price = calculateTextPrice(
+    { input: 8, output: 20, cachedInput: 2 },
+    0.2,
+    'cny',
+  )
+
+  assert.deepEqual(price.official, {
+    input: 8,
+    output: 20,
+    cachedInput: 2,
+    total: 28,
+  })
+  assert.ok(isClose(price.group.input, 1.6))
+  assert.ok(isClose(price.group.output, 4))
+  assert.ok(isClose(price.group.cachedInput, 0.4))
+  assert.ok(isClose(price.group.total, 5.6))
+})
+
 test('expresses the active multipliers as rounded equivalent discounts', () => {
   assert.equal(getEquivalentDiscount(0.1), '0.1折')
   assert.equal(getEquivalentDiscount(0.15), '0.2折')
@@ -219,6 +257,8 @@ test('expresses the active multipliers as rounded equivalent discounts', () => {
   assert.equal(getEquivalentDiscount(0.3), '0.4折')
   assert.equal(getEquivalentDiscount(0.35), '0.5折')
   assert.equal(getEquivalentDiscount(1.9), '2.7折')
+  assert.equal(getEquivalentDiscount(0.2, 'cny'), '2.0折')
+  assert.equal(getSavingsPercent(0.2, 'cny'), 80)
 })
 
 test('calculates the revised group totals from the official USD baseline', () => {

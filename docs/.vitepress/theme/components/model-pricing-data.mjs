@@ -98,6 +98,14 @@ export const TEXT_GROUPS = [
     description: '适合 Antigravity、代理式编程和 Gemini 模型测试',
     modelIds: GEMINI_MODEL_IDS,
   },
+  {
+    id: 'domestic',
+    name: '国产之光',
+    multiplier: 0.2,
+    currency: 'cny',
+    description: '限制相对 GPT 更宽，可用于逆向等场景',
+    modelIds: ['glm-5.2', 'LongCat-2.0'],
+  },
 ]
 
 export const MODEL_CATEGORIES = [
@@ -129,6 +137,13 @@ export const MODEL_CATEGORIES = [
     iconSvg: GEMINI_ICON,
     kind: 'text',
     groupIds: ['gemini-antigravity'],
+  },
+  {
+    id: 'domestic',
+    name: 'GLM',
+    mark: '中',
+    kind: 'text',
+    groupIds: ['domestic'],
   },
   {
     id: 'image',
@@ -314,6 +329,18 @@ export const TEXT_MODELS = [
     description: '2025-07 更新，适合高频分类、简单提取和极低延迟场景',
     officialUsd: { input: 0.1, output: 0.4, cachedInput: 0.01 },
   },
+  {
+    id: 'glm-5.2',
+    name: 'GLM-5.2',
+    description: '国产旗舰模型，适合复杂推理、代码和逆向分析场景',
+    officialCny: { input: 8, output: 20, cachedInput: 2 },
+  },
+  {
+    id: 'LongCat-2.0',
+    name: 'LongCat-2.0',
+    description: '国产长上下文模型，适合代码、代理任务和长流程处理',
+    officialCny: { input: 2, output: 8, cachedInput: 0.04 },
+  },
 ]
 
 export const IMAGE_GROUP = {
@@ -423,19 +450,20 @@ export const IMAGE_MODELS = [
   },
 ]
 
-export function calculateTextPrice(officialUsd, multiplier) {
+export function calculateTextPrice(officialPrice, multiplier, currency = 'usd') {
+  const exchangeRate = currency === 'cny' ? 1 : EXCHANGE_RATE
   const official = {
-    input: officialUsd.input * EXCHANGE_RATE,
-    output: officialUsd.output * EXCHANGE_RATE,
-    cachedInput: officialUsd.cachedInput * EXCHANGE_RATE,
-    total: (officialUsd.input + officialUsd.output) * EXCHANGE_RATE,
+    input: officialPrice.input * exchangeRate,
+    output: officialPrice.output * exchangeRate,
+    cachedInput: officialPrice.cachedInput * exchangeRate,
+    total: (officialPrice.input + officialPrice.output) * exchangeRate,
   }
 
   const group = {
-    input: officialUsd.input * multiplier,
-    output: officialUsd.output * multiplier,
-    cachedInput: officialUsd.cachedInput * multiplier,
-    total: (officialUsd.input + officialUsd.output) * multiplier,
+    input: officialPrice.input * multiplier,
+    output: officialPrice.output * multiplier,
+    cachedInput: officialPrice.cachedInput * multiplier,
+    total: (officialPrice.input + officialPrice.output) * multiplier,
   }
 
   return { official, group }
@@ -453,8 +481,14 @@ export function calculateImagePriceCny(cnyPerImage) {
   return Number(cnyPerImage.toFixed(2))
 }
 
-export function getEquivalentDiscount(multiplier) {
-  return `${((multiplier / EXCHANGE_RATE) * 10).toFixed(1)}折`
+export function getEquivalentDiscount(multiplier, currency = 'usd') {
+  const normalizedMultiplier = currency === 'cny' ? multiplier : multiplier / EXCHANGE_RATE
+  return `${(normalizedMultiplier * 10).toFixed(1)}折`
+}
+
+export function getSavingsPercent(multiplier, currency = 'usd') {
+  const normalizedMultiplier = currency === 'cny' ? multiplier : multiplier / EXCHANGE_RATE
+  return Math.round((1 - normalizedMultiplier) * 100)
 }
 
 export function formatCny(value) {

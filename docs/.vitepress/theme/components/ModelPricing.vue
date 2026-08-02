@@ -11,6 +11,7 @@ import {
   formatCny,
   getTextModelsForGroup,
   getEquivalentDiscount,
+  getSavingsPercent,
 } from './model-pricing-data.mjs'
 
 const activeCategory = ref(MODEL_CATEGORIES[0].id)
@@ -42,12 +43,20 @@ const activeGroup = computed(
   () => activeGroups.value.find((group) => group.id === activeGroupId.value) ?? activeGroups.value[0] ?? TEXT_GROUPS[0],
 )
 
+const activeCurrency = computed(() => activeGroup.value.currency ?? 'usd')
+const isRmbTextCategory = computed(() => !isImageCategory.value && activeCurrency.value === 'cny')
+
 const activeTextModels = computed(() => getTextModelsForGroup(activeGroupId.value))
 
 const textRows = computed(() =>
   activeTextModels.value.map((model) => ({
     ...model,
-    prices: calculateTextPrice(model.officialUsd, activeGroup.value.multiplier),
+    priceCurrency: activeCurrency.value,
+    prices: calculateTextPrice(
+      model.officialCny ?? model.officialUsd,
+      activeGroup.value.multiplier,
+      activeCurrency.value,
+    ),
   })),
 )
 
@@ -58,9 +67,11 @@ const pricingRuleExample = computed(() => {
   }
 
   const exampleModel = activeTextModels.value[0]
+  const officialPrice = exampleModel.officialCny ?? exampleModel.officialUsd
   const examplePrice = calculateTextPrice(
-    exampleModel.officialUsd,
+    officialPrice,
     activeGroup.value.multiplier,
+    activeCurrency.value,
   )
 
   return `示例：${exampleModel.name} 输入官方 ${formatCny(examplePrice.official.input)}，${activeGroup.value.name} 输入价 ${formatCny(examplePrice.group.input)}`
@@ -118,8 +129,10 @@ const copyModelId = async (modelId) => {
     <section class="pricing-rule" aria-label="计价规则">
       <div>
         <strong>计价规则</strong>
-        <span>官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
-        <span v-if="!isImageCategory">分组价格 = 官方美元价格 × 分组倍率</span>
+        <span v-if="isRmbTextCategory">官方人民币价格直接显示</span>
+        <span v-else-if="!isImageCategory">官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
+        <span v-if="isRmbTextCategory">分组价格 = 官方人民币价格 × 分组倍率</span>
+        <span v-else-if="!isImageCategory">分组价格 = 官方美元价格 × 分组倍率</span>
         <span v-else>生图分组价格按人民币固定价计费</span>
       </div>
       <span class="pricing-rule-example">
@@ -134,7 +147,9 @@ const copyModelId = async (modelId) => {
           <h2>价格列表</h2>
         </div>
         <div class="price-mode-wrap">
-          <span v-if="!isImageCategory">{{ priceMode === 'group' ? '分组价已按人民币计算' : '官方价按固定汇率换算' }}</span>
+          <span v-if="!isImageCategory">{{ isRmbTextCategory
+            ? (priceMode === 'group' ? '分组价按人民币计算' : '官方价按人民币显示')
+            : (priceMode === 'group' ? '分组价已按人民币计算' : '官方价按固定汇率换算') }}</span>
           <span v-else>分组价按人民币 / 张显示</span>
           <div v-if="!isImageCategory" class="price-mode-switch" role="group" aria-label="价格类型">
             <button
@@ -174,7 +189,7 @@ const copyModelId = async (modelId) => {
           >
             <span class="pricing-group-title">
               <strong>{{ group.name }}</strong>
-              <em>{{ getEquivalentDiscount(group.multiplier) }}</em>
+              <em>{{ getEquivalentDiscount(group.multiplier, group.currency) }}</em>
             </span>
             <span>{{ group.multiplier }} 倍率</span>
           </button>
@@ -187,7 +202,8 @@ const copyModelId = async (modelId) => {
           </template>
           <template v-else>
             <strong>官方价格：</strong>
-            <span>按 $1 = ¥{{ EXCHANGE_RATE }} 折算成人民币，仅用于和分组价格对比。</span>
+            <span v-if="isRmbTextCategory">按人民币官方基准显示，仅用于和分组价格对比。</span>
+            <span v-else>按 $1 = ¥{{ EXCHANGE_RATE }} 折算成人民币，仅用于和分组价格对比。</span>
           </template>
         </div>
 
@@ -231,16 +247,17 @@ const copyModelId = async (modelId) => {
                   <template v-else>
                     <strong class="official-price">{{ formatCny(model.prices.official[field]) }}</strong>
                     <span class="price-unit">/ 1M tokens</span>
-                    <span class="official-usd">
+                    <span v-if="model.priceCurrency === 'usd'" class="official-usd">
                       ${{ field === 'total'
                         ? (model.officialUsd.input + model.officialUsd.output).toFixed(2)
                         : model.officialUsd[field].toFixed(3).replace(/0+$/, '').replace(/\.$/, '') }}
                     </span>
+                    <span v-else class="official-cny">人民币基准</span>
                   </template>
                 </td>
                 <td>
                   <span v-if="priceMode === 'group'" class="saving-badge">
-                    省 {{ Math.round((1 - activeGroup.multiplier / EXCHANGE_RATE) * 100) }}%
+                    省 {{ getSavingsPercent(activeGroup.multiplier, activeGroup.currency) }}%
                   </span>
                   <span v-else class="official-label">官方基准</span>
                 </td>
@@ -318,7 +335,8 @@ const copyModelId = async (modelId) => {
     </section>
 
     <p class="pricing-footnote">
-      <span v-if="!isImageCategory">文本类模型官方价格按当前公开标准价和固定汇率换算。</span>
+      <span v-if="isRmbTextCategory">国产模型官方价格按人民币基准显示，不做美元换算。</span>
+      <span v-else-if="!isImageCategory">文本类模型官方价格按当前公开标准价和固定汇率换算。</span>
       <span v-else>生图分组价格按当前模型默认人民币价格显示。</span>
       切换模型时，Base URL 和 API Key 不变，只改客户端里的模型名；完整模型名以后台当前 Key 所属分组为准。页面价格用于说明和对比，实际扣费以定价配置和调用记录为准。
     </p>
@@ -412,7 +430,7 @@ const copyModelId = async (modelId) => {
 
 .model-category-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   min-height: 68px;
   gap: 8px;
   padding: 8px;
@@ -469,6 +487,7 @@ const copyModelId = async (modelId) => {
 }
 
 .model-category-mark--image { background: #da6b35; }
+.model-category-mark--domestic { background: #56758d; }
 
 .model-category-tabs button.is-active .model-category-mark {
   background: var(--pricing-active-chip-bg);
@@ -890,6 +909,14 @@ const copyModelId = async (modelId) => {
 }
 
 .official-usd { text-decoration: none; }
+
+.official-cny {
+  display: block;
+  margin-top: 3px;
+  color: #aa9b8f;
+  font-size: 13px;
+  line-height: 1.35;
+}
 
 .saving-badge,
 .official-label {
