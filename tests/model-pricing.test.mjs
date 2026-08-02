@@ -269,6 +269,63 @@ test('marks the image group as RMB pricing without multiplying the original per-
   )
 })
 
+test('publishes the two verified Grok image models with generation and editing', () => {
+  const firstGrokIndex = IMAGE_MODELS.findIndex((model) => model.id === 'grok-imagine-image')
+
+  assert.deepEqual(
+    IMAGE_MODELS.slice(firstGrokIndex, firstGrokIndex + 2).map((model) => model.id),
+    ['grok-imagine-image', 'grok-imagine-image-quality'],
+  )
+
+  assert.deepEqual(
+    IMAGE_MODELS
+      .filter((model) => model.id.startsWith('grok-imagine'))
+      .map(({ id, route, spec, groupCnyPerImage, recommendation }) => ({
+        id,
+        route,
+        spec,
+        groupCnyPerImage,
+        recommendation,
+      })),
+    [
+      {
+        id: 'grok-imagine-image',
+        route: '/v1/images/generations',
+        spec: '1K / 2K',
+        groupCnyPerImage: 0.06,
+        recommendation: '推荐',
+      },
+      {
+        id: 'grok-imagine-image-quality',
+        route: '/v1/images/generations',
+        spec: '1K / 2K',
+        groupCnyPerImage: 0.08,
+        recommendation: '推荐',
+      },
+    ],
+  )
+
+  for (const id of ['grok-imagine-image', 'grok-imagine-image-quality']) {
+    const model = IMAGE_MODELS.find((item) => item.id === id)
+    assert.match(model.description, /生成/)
+    assert.match(model.description, /编辑/)
+  }
+})
+
+test('ranks the recommended Grok image models before the Nano Banana models', () => {
+  const grokIndex = IMAGE_MODELS.findIndex((model) => model.id === 'grok-imagine-image')
+
+  assert.deepEqual(
+    IMAGE_MODELS.slice(grokIndex, grokIndex + 4).map((model) => model.id),
+    [
+      'grok-imagine-image',
+      'grok-imagine-image-quality',
+      'nano-banana-pro',
+      'nano-banana-2',
+    ],
+  )
+})
+
 test('keeps image model descriptions customer-facing without backend mapping wording', () => {
   const forbidden = /Google|Gemini|Firefly|Partner Model|账号渠道|YS 渠道|xAI|后台|映射/
 

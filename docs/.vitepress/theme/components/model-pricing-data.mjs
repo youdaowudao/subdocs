@@ -388,6 +388,24 @@ export const IMAGE_MODELS = [
     groupCnyPerImage: 0.20,
   },
   {
+    id: 'grok-imagine-image',
+    name: 'Grok Imagine Image',
+    description: '普通档图片生成与编辑，适合日常出图和多版本尝试',
+    route: '/v1/images/generations',
+    spec: '1K / 2K',
+    groupCnyPerImage: 0.06,
+    recommendation: '推荐',
+  },
+  {
+    id: 'grok-imagine-image-quality',
+    name: 'Grok Imagine Image Quality',
+    description: '高质量图片生成与编辑，适合细节要求较高的成品图',
+    route: '/v1/images/generations',
+    spec: '1K / 2K',
+    groupCnyPerImage: 0.08,
+    recommendation: '推荐',
+  },
+  {
     id: 'nano-banana-pro',
     name: 'Nano Banana Pro',
     description: '高质量图片生成，适合复杂画面、细节和成品图',
@@ -402,14 +420,6 @@ export const IMAGE_MODELS = [
     route: '/v1/responses',
     spec: '1K / 2K / 4K',
     groupCnyPerImage: 0.20,
-  },
-  {
-    id: 'grok-imagine-image',
-    name: 'Grok Imagine Image',
-    description: '快速创意出图，适合轻量测试和多版本尝试',
-    route: '/v1/images/generations',
-    spec: '1K / 2K',
-    groupCnyPerImage: 0.10,
   },
 ]
 
