@@ -298,15 +298,11 @@ const copyModelId = async (modelId) => {
                   <div class="model-id-cell">
                     <div>
                       <strong
-                        v-if="model.id === 'gpt-image-2' || model.recommendation"
+                        v-if="model.id === 'gpt-image-2'"
                         class="image-model-id--recommended"
                       >{{ model.id }}</strong>
                       <span v-else class="image-model-id">{{ model.id }}</span>
-                      <span v-if="model.recommendation" class="image-model-recommendation">
-                        <span class="image-model-recommendation-icon" aria-hidden="true">★</span>
-                        {{ model.recommendation }}
-                      </span>
-                      <span v-else-if="model.id === 'gpt-image-2'">推荐日常使用</span>
+                      <span v-if="model.id === 'gpt-image-2'">推荐日常使用</span>
                     </div>
                     <button
                       type="button"
@@ -837,22 +833,6 @@ const copyModelId = async (modelId) => {
 
 .model-id-cell .image-model-id--recommended {
   color: #2f6fca;
-}
-
-.model-id-cell .image-model-recommendation {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #2f6fca;
-  font-size: 15px;
-  font-weight: 650;
-  line-height: 1.35;
-}
-
-.image-model-recommendation-icon {
-  color: #2f6fca;
-  font-size: 13px;
-  line-height: 1;
 }
 
 .copy-model-button {
