@@ -16,7 +16,6 @@ const config = defineConfig({
     nav: [
         { text: '快速开始', link: '/quick-start' },
         { text: 'CC Switch', link: '/codex-cc-switch' },
-        { text: '模型价格', link: '/models' },
         { text: '客户端', link: '/clients/' },
         { text: '生图', link: '/images/' },
         { text: '遇到问题', link: '/errors/' },
@@ -39,7 +38,7 @@ export default withSidebar(config, {
   collapsed: true,
   includeRootIndexFile: false,
   includeFolderIndexFile: false,
-  excludeByGlobPattern: ['buy.md'],
+  excludeByGlobPattern: ['buy.md', 'models.md'],
   manualSortFileNameByPriority: [
     'quick-start.md',
     'codex-cc-switch.md',

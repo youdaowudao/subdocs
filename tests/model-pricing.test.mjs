@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 import {
   EXCHANGE_RATE,
@@ -15,19 +16,26 @@ import {
   getSavingsPercent,
 } from '../docs/.vitepress/theme/components/model-pricing-data.mjs'
 
+const pricingComponentSource = readFileSync(
+  new URL('../docs/.vitepress/theme/components/ModelPricing.vue', import.meta.url),
+  'utf8',
+)
+const modelsDocSource = readFileSync(new URL('../docs/models.md', import.meta.url), 'utf8')
+const vitepressConfigSource = readFileSync(new URL('../docs/.vitepress/config.mts', import.meta.url), 'utf8')
+
 const isClose = (actual, expected) => Math.abs(actual - expected) < 1e-12
 
 test('includes the updated GPT pricing groups in order', () => {
   assert.deepEqual(
     TEXT_GROUPS.map(({ id, name, multiplier }) => ({ id, name, multiplier })),
     [
-      { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.1 },
+      { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.095 },
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.25 },
-      { id: 'anthropic-main', name: '主力分组', multiplier: 0.3 },
-      { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.9 },
+      { id: 'anthropic-main', name: '主力分组', multiplier: 0.25 },
+      { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
       { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.1 },
-      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.35 },
+      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
       { id: 'domestic', name: '国产之光', multiplier: 0.2 },
     ],
   )
@@ -70,11 +78,11 @@ test('uses the requested Anthropic group recommendations', () => {
   assert.equal(fable.description, 'Anthropic 写作向模型，适合长文创作、文案润色和自然表达')
 })
 
-test('keeps the GPT Plus discount group at 0.1 with instability copy', () => {
+test('keeps the GPT Plus discount group at 0.095 with instability copy', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'pro-plus')
 
   assert.equal(group.name, 'GPT Plus 特惠分组（最近不稳定）')
-  assert.equal(group.multiplier, 0.1)
+  assert.equal(group.multiplier, 0.095)
   assert.match(group.description, /最近不稳定/)
 })
 
@@ -255,7 +263,6 @@ test('expresses the active multipliers as rounded equivalent discounts', () => {
   assert.equal(getEquivalentDiscount(0.15), '0.2折')
   assert.equal(getEquivalentDiscount(0.25), '0.4折')
   assert.equal(getEquivalentDiscount(0.3), '0.4折')
-  assert.equal(getEquivalentDiscount(0.35), '0.5折')
   assert.equal(getEquivalentDiscount(1.9), '2.7折')
   assert.equal(getEquivalentDiscount(0.2, 'cny'), '2.0折')
   assert.equal(getSavingsPercent(0.2, 'cny'), 80)
@@ -264,12 +271,13 @@ test('expresses the active multipliers as rounded equivalent discounts', () => {
 test('calculates the revised group totals from the official USD baseline', () => {
   const officialUsd = { input: 5, output: 30, cachedInput: 0.5 }
   const expectedTotals = new Map([
-    ['pro-plus', 3.5],
+    ['pro-plus', 3.325],
     ['gpt-0.18', 5.25],
     ['full', 8.75],
-    ['anthropic-main', 10.5],
+    ['anthropic-main', 8.75],
+    ['anthropic-max', 45.5],
     ['grok-4.5', 3.5],
-    ['gemini-antigravity', 12.25],
+    ['gemini-antigravity', 8.75],
   ])
 
   for (const [groupId, expectedTotal] of expectedTotals) {
@@ -278,6 +286,19 @@ test('calculates the revised group totals from the official USD baseline', () =>
 
     assert.ok(isClose(price.group.total, expectedTotal), groupId)
   }
+})
+
+test('keeps the model pricing page out of the global navigation chrome', () => {
+  assert.match(modelsDocSource, /^navbar:\s*false$/m)
+  assert.match(modelsDocSource, /^sidebar:\s*false$/m)
+  assert.doesNotMatch(vitepressConfigSource, /text:\s*'模型价格',\s*link:\s*'\/models'/)
+  assert.match(vitepressConfigSource, /excludeByGlobPattern:\s*\[[^\]]*'models\.md'/s)
+})
+
+test('reserves the pricing-group area while official prices are selected', () => {
+  assert.match(pricingComponentSource, /v-else\s+class="pricing-groups pricing-groups--placeholder"/)
+  assert.match(pricingComponentSource, /v-for="group in activeGroups"/)
+  assert.match(pricingComponentSource, /class="pricing-group-card pricing-group-placeholder"/)
 })
 
 test('formats RMB amounts without noisy trailing zeroes', () => {

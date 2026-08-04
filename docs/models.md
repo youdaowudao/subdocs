@@ -1,5 +1,7 @@
 ---
 title: 模型价格
+navbar: false
+sidebar: false
 aside: false
 outline: false
 ---

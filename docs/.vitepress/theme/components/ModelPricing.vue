@@ -195,6 +195,28 @@ const copyModelId = async (modelId) => {
           </button>
         </div>
 
+        <div
+          v-else
+          class="pricing-groups pricing-groups--placeholder"
+          :class="{
+            'pricing-groups--single': activeGroups.length === 1,
+            'pricing-groups--gemini': activeCategoryConfig.id === 'gemini',
+          }"
+          aria-hidden="true"
+        >
+          <div
+            v-for="group in activeGroups"
+            :key="`placeholder-${group.id}`"
+            class="pricing-group-card pricing-group-placeholder"
+          >
+            <span class="pricing-group-title">
+              <strong>{{ group.name }}</strong>
+              <em>官方</em>
+            </span>
+            <span>官方价格模式</span>
+          </div>
+        </div>
+
         <div class="pricing-description">
           <template v-if="priceMode === 'group'">
             <strong>分组介绍：</strong>
@@ -347,12 +369,25 @@ const copyModelId = async (modelId) => {
   overflow-x: hidden;
 }
 
+:root.model-pricing-active .VPNav,
+:root.model-pricing-active .VPNavBar,
+:root.model-pricing-active .VPNavScreen,
+:root.model-pricing-active .VPLocalNav,
+:root.model-pricing-active .VPSidebar {
+  display: none !important;
+}
+
+:root.model-pricing-active .VPContent,
+:root.model-pricing-active .VPContent.has-sidebar {
+  padding-left: 0 !important;
+}
+
 :root.model-pricing-active .VPDoc,
 .VPDoc:has(.model-pricing-page) {
   box-sizing: border-box;
   max-width: 100vw;
   overflow-x: hidden;
-  padding: 48px var(--site-shell-inset, 32px) 56px 16px !important;
+  padding: 32px var(--site-shell-inset, 32px) 56px !important;
 }
 
 :root.model-pricing-active .VPDoc .container,
@@ -363,15 +398,22 @@ const copyModelId = async (modelId) => {
   max-width: none !important;
 }
 
+:root.model-pricing-active .VPDoc .content,
+.VPDoc:has(.model-pricing-page) .content {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
 :root.model-pricing-active .VPDoc .container,
 .VPDoc:has(.model-pricing-page) .container {
-  padding-top: 32px !important;
+  padding-top: 0 !important;
 }
 
 :root.model-pricing-active .VPDoc .vp-doc,
 .VPDoc:has(.model-pricing-page) .vp-doc {
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 17px;
+  line-height: 1.65;
 }
 
 :root.model-pricing-active .VPDoc .prev-next,
@@ -419,7 +461,7 @@ const copyModelId = async (modelId) => {
   border: 0;
   color: var(--vp-c-text-1);
   font-family: var(--vp-font-family-base);
-  font-size: 40px;
+  font-size: 48px;
   font-weight: 750;
   line-height: 1.28;
 }
@@ -449,7 +491,7 @@ const copyModelId = async (modelId) => {
   border-radius: 7px;
   background: transparent;
   color: var(--vp-c-text-2);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 560;
   white-space: nowrap;
   cursor: pointer;
@@ -502,7 +544,7 @@ const copyModelId = async (modelId) => {
   border-radius: 8px;
   background: var(--site-surface);
   color: var(--vp-c-text-2);
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .pricing-rule > div {
@@ -514,7 +556,7 @@ const copyModelId = async (modelId) => {
 
 .pricing-rule strong {
   color: var(--vp-c-text-1);
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .pricing-rule-example {
@@ -555,7 +597,7 @@ const copyModelId = async (modelId) => {
   padding: 0 !important;
   border: 0 !important;
   color: var(--vp-c-text-1);
-  font-size: 23px;
+  font-size: 26px;
   font-weight: 750;
   line-height: 1.3;
 }
@@ -578,7 +620,7 @@ const copyModelId = async (modelId) => {
   align-items: center;
   gap: 12px;
   color: var(--vp-c-text-3);
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .price-mode-switch {
@@ -597,7 +639,7 @@ const copyModelId = async (modelId) => {
   border-radius: 14px;
   background: transparent;
   color: var(--vp-c-text-2);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -643,7 +685,7 @@ const copyModelId = async (modelId) => {
   border-radius: 8px;
   background: rgba(255, 252, 247, 0.94);
   color: var(--vp-c-text-2);
-  font-size: 16px;
+  font-size: 18px;
   text-align: left;
   transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
 }
@@ -670,6 +712,35 @@ const copyModelId = async (modelId) => {
   color: var(--pricing-active-text);
 }
 
+.pricing-group-placeholder {
+  border-style: dashed;
+  background: var(--site-surface-muted);
+  color: var(--vp-c-text-3);
+  box-shadow: none;
+}
+
+.pricing-group-placeholder .pricing-group-title strong {
+  color: var(--vp-c-text-2);
+}
+
+.pricing-group-placeholder .pricing-group-title em {
+  background: #f1e8dd;
+  color: var(--vp-c-text-3);
+}
+
+.pricing-groups--single > .pricing-group-placeholder {
+  min-height: 56px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.pricing-groups--single > .pricing-group-placeholder > span:last-child {
+  flex: 1 1 auto;
+  text-align: right;
+}
+
 .pricing-group-title {
   display: flex;
   align-items: center;
@@ -679,7 +750,7 @@ const copyModelId = async (modelId) => {
 
 .pricing-group-title strong {
   color: var(--vp-c-text-1);
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 750;
 }
 
@@ -692,7 +763,7 @@ const copyModelId = async (modelId) => {
   border-radius: 12px;
   background: #ffe2d3;
   color: #a84c14;
-  font-size: 15px;
+  font-size: 16px;
   font-style: normal;
   font-weight: 800;
   line-height: 1.4;
@@ -730,7 +801,7 @@ const copyModelId = async (modelId) => {
   border-radius: 8px;
   background: #fffaf7;
   color: var(--vp-c-text-2);
-  font-size: 17px;
+  font-size: 18px;
 }
 
 .pricing-description strong {
@@ -754,7 +825,7 @@ const copyModelId = async (modelId) => {
   border: 0;
   border-collapse: collapse;
   border-radius: 0;
-  font-size: 16px;
+  font-size: 17px;
   table-layout: fixed;
 }
 
@@ -771,7 +842,7 @@ const copyModelId = async (modelId) => {
   padding: 0 16px;
   background: #f8eee2;
   color: var(--vp-c-text-2);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 650;
 }
 
@@ -815,19 +886,19 @@ const copyModelId = async (modelId) => {
 
 .model-id-cell strong {
   color: var(--vp-c-text-1);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 750;
 }
 
 .model-id-cell > div > span {
   color: var(--vp-c-text-3);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.35;
 }
 
 .model-id-cell .image-model-id {
   color: var(--vp-c-text-1);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -864,7 +935,7 @@ const copyModelId = async (modelId) => {
 .group-price,
 .official-price {
   color: #ad500f;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -874,7 +945,7 @@ const copyModelId = async (modelId) => {
 .price-unit {
   margin-left: 3px;
   color: var(--vp-c-text-3);
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -883,7 +954,7 @@ const copyModelId = async (modelId) => {
   display: block;
   margin-top: 3px;
   color: #aa9b8f;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.35;
   text-decoration-thickness: 1px;
 }
@@ -894,7 +965,7 @@ const copyModelId = async (modelId) => {
   display: block;
   margin-top: 3px;
   color: #aa9b8f;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.35;
 }
 
@@ -908,7 +979,7 @@ const copyModelId = async (modelId) => {
   border-radius: 15px;
   background: #eaf9ef;
   color: #239653;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -920,7 +991,7 @@ const copyModelId = async (modelId) => {
 
 .table-plain-value {
   color: var(--vp-c-text-1);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 650;
 }
 
@@ -928,7 +999,7 @@ const copyModelId = async (modelId) => {
 .model-description {
   display: block;
   color: var(--vp-c-text-3);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
 }
 
@@ -939,7 +1010,7 @@ const copyModelId = async (modelId) => {
 .pricing-footnote {
   margin: 12px 2px 0 !important;
   color: var(--vp-c-text-3) !important;
-  font-size: 14px !important;
+  font-size: 15px !important;
   line-height: 1.6 !important;
 }
 
@@ -953,6 +1024,7 @@ const copyModelId = async (modelId) => {
 .dark .pricing-rule,
 .dark .pricing-panel,
 .dark .pricing-groups > button,
+.dark .pricing-group-placeholder,
 .dark .pricing-group-static,
 .dark .model-pricing-page .pricing-table td { background: #211f1d; border-color: #3a3530; }
 .dark .model-category-tabs,
@@ -975,6 +1047,8 @@ const copyModelId = async (modelId) => {
   background: rgba(255, 242, 230, 0.92);
   color: #8c3b0d;
 }
+.dark .pricing-group-placeholder .pricing-group-title strong { color: #d0c2b5; }
+.dark .pricing-group-placeholder .pricing-group-title em { background: #3a3028; color: #9f9083; }
 
 @media (max-width: 1100px) {
   .price-mode-wrap > span,
@@ -985,14 +1059,14 @@ const copyModelId = async (modelId) => {
   :root.model-pricing-active .VPDoc,
   .VPDoc:has(.model-pricing-page) { padding: 32px 16px 40px !important; }
   :root.model-pricing-active .VPDoc .container,
-  .VPDoc:has(.model-pricing-page) .container { padding-top: 22px !important; }
+  .VPDoc:has(.model-pricing-page) .container { padding-top: 0 !important; }
   .model-pricing-heading { min-height: 0; padding-bottom: 20px; }
-  .model-pricing-heading h1 { margin-bottom: 16px; font-size: 32px; }
+  .model-pricing-heading h1 { margin-bottom: 16px; font-size: 36px; }
   .model-category-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     min-height: 0;
   }
-  .model-category-tabs button { height: 50px; gap: 8px; padding: 0 10px; font-size: 18px; }
+  .model-category-tabs button { height: 50px; gap: 8px; padding: 0 10px; font-size: 19px; }
   .model-category-icon { width: 22px; height: 22px; flex-basis: 22px; }
   .model-category-mark { width: 22px; height: 22px; font-size: 11px; }
   .pricing-rule { align-items: flex-start; }
@@ -1019,7 +1093,15 @@ const copyModelId = async (modelId) => {
     justify-content: center;
     gap: 6px;
   }
+  .pricing-groups--single > .pricing-group-placeholder {
+    min-height: 82px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+  }
   .pricing-groups--single > button > span:last-child { text-align: left; }
+  .pricing-groups--single > .pricing-group-placeholder > span:last-child { text-align: left; }
   .pricing-description { align-items: flex-start; flex-direction: column; gap: 2px; }
   .model-pricing-page .pricing-table { min-width: 980px; }
   .model-pricing-page .pricing-table--image { min-width: 980px; }

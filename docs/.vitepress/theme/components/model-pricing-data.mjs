@@ -52,7 +52,7 @@ export const TEXT_GROUPS = [
   {
     id: 'pro-plus',
     name: 'GPT Plus 特惠分组（最近不稳定）',
-    multiplier: 0.1,
+    multiplier: 0.095,
     description: '低价入口，最近不稳定',
     modelIds: GPT_MODEL_IDS,
   },
@@ -73,14 +73,14 @@ export const TEXT_GROUPS = [
   {
     id: 'anthropic-main',
     name: '主力分组',
-    multiplier: 0.3,
+    multiplier: 0.25,
     description: '写作推荐 Fable 5，复杂架构设计推荐 Opus 5',
     modelIds: ANTHROPIC_MAIN_MODEL_IDS,
   },
   {
     id: 'anthropic-max',
     name: 'CC MAX 满血版本',
-    multiplier: 1.9,
+    multiplier: 1.3,
     description: '满血高性能档，价格较高，重大任务使用',
     modelIds: CC_MAX_MODEL_IDS,
   },
@@ -94,7 +94,7 @@ export const TEXT_GROUPS = [
   {
     id: 'gemini-antigravity',
     name: 'Gemini 分组（反重力 Antigravity 反代）',
-    multiplier: 0.35,
+    multiplier: 0.25,
     description: '适合 Antigravity、代理式编程和 Gemini 模型测试',
     modelIds: GEMINI_MODEL_IDS,
   },
