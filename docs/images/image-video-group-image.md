@@ -1,6 +1,6 @@
 # 生图分组方法
 
-“生图分组”提供 `Nano Banana`、`GPT Image` 和 `Adobe` 图片模型，价格见[模型价格](/models)。让 Codex 按下面步骤创建调用脚本，并把生成结果显示在当前对话中。
+“生图分组”提供 `Nano Banana`、`GPT Image`、`Adobe` 和 `Grok Imagine` 图片模型，价格见[模型价格](/models)。让 Codex 按下面步骤创建调用脚本，并把生成结果显示在当前对话中。
 
 ## 第一次使用：让 Codex 创建调用工具
 
@@ -17,7 +17,7 @@ https://docs.usegoodai.com/images/image-video-group-image.html
 4. 为 UseGoodAI API Key 保留一个明显的配置项，创建完成后只让我填写这个值。
 5. 这个脚本是给 Codex 调用的，不要让我手动修改图片描述、模型或运行命令。
 6. 脚本必须接收 Codex 每次传入的完整图片描述、模型和可选原图文件，不能把图片描述写死在脚本里。
-7. 默认使用 `gpt-image-2`。用户指定 Nano Banana、Adobe 或其它允许模型时，按页面模板调用；每次调用前先告诉我本次使用的模型。
+7. 默认使用 `gpt-image-2`。用户指定 Nano Banana、Adobe、Grok Imagine 或其它允许模型时，按页面模板调用；每次调用前先告诉我本次使用的模型。
 8. 每个模型请求只发送一次，禁止自动重试；用户要求模型对比时，逐个模型各请求一次。
 9. 成功后保存本地图片，并立即使用 view_image 把图片显示在当前 Codex App 对话中；失败时原样显示错误并保留完整响应。
 ```
@@ -40,7 +40,7 @@ Codex 会把这次要求传给 `生成图片.py`，生成成功后直接在当�
 
 ## 不同模型使用不同接口
 
-Nano Banana 使用 `/v1/responses`；GPT Image 和 Adobe 使用 `/v1/images/generations`。两个接口不能互换：已经确认把 `nano-banana-2` 发送到 `/v1/images/generations` 会返回 HTTP 400，脚本必须根据模型自动选择接口。
+Nano Banana 使用 `/v1/responses`；GPT Image、Adobe 和 Grok Imagine 使用 `/v1/images/generations`。两个接口不能互换：已经确认把 `nano-banana-2` 发送到 `/v1/images/generations` 会返回 HTTP 400，脚本必须根据模型自动选择接口。
 
 ## 让规则在当前项目长期生效
 
@@ -61,6 +61,7 @@ Nano Banana 使用 `/v1/responses`；GPT Image 和 Adobe 使用 `/v1/images/gene
 | `gpt-image-1K-adobe` | `/v1/images/generations` | 使用 `832x1248` |
 | `gpt-image-2K-adobe` | `/v1/images/generations` | 使用 `1536x2304` |
 | `gpt-image-4K-adobe` | `/v1/images/generations` | 使用 `2304x3456` |
+| `grok-imagine-image` | `/v1/images/generations` | 使用 `response_format: "b64_json"`；不发送 `size`、`quality`、`style`、`aspect_ratio`、`resolution` |
 
 所有请求都使用同一个 API 根地址和 `Authorization` 鉴权；当前分组通过 Sub2API 按模型接入不同接口，脚本必须根据模型选择接口，不能把所有模型都发送到同一个接口。
 
@@ -254,6 +255,21 @@ Adobe 模型也发送到 `/v1/images/generations`，使用各自已经确认的�
 }
 ```
 
+### Grok Imagine 请求
+
+`grok-imagine-image` 发送到 `/v1/images/generations`。请求只传模型、完整图片描述、数量和 `response_format`。脚本中的 `n` 只能是 1 到 9 的整数，默认 1；每次任务只发送一次请求。
+
+```json
+{
+  "model": "grok-imagine-image",
+  "prompt": "<运行脚本时收到的图片描述>",
+  "n": 1,
+  "response_format": "b64_json"
+}
+```
+
+不得发送 `size`、`quality`、`style`、`aspect_ratio` 或 `resolution`。优先解析 `data[].b64_json`；没有有效图片时读取 `data[].url`，每个 URL 只下载一次。只接受真实 JPEG 或 PNG，按文件签名保存为 `.jpg` 或 `.png`；其它格式直接报错，不输出图片文件。
+
 当前已经确认并可直接使用的 Images 编辑模板是 `gpt-image-2`：
 
 ```text
@@ -264,9 +280,9 @@ POST https://api.usegoodai.com/v1/images/edits
 
 脚本必须遵守以下规则：
 
-1. 允许使用的模型只有上方表格列出的九个模型，默认使用 `gpt-image-2`；不得改写模型名或静默替换模型。
+1. 允许使用的模型只有上方表格列出的十个模型，默认使用 `gpt-image-2`；不得改写模型名或静默替换模型。
 2. 每次请求前，Codex 必须先在对话中说明本次使用的模型和请求接口，然后直接调用脚本。
-3. 每次运行只发送一次请求，不自动重试，也不自行改用其它接口。Nano Banana 只能发送到 `/v1/responses`；GPT Image 和 Adobe 发送到 `/v1/images/generations`。
+3. 每次运行只发送一次请求，不自动重试，也不自行改用其它接口。Nano Banana 只能发送到 `/v1/responses`；GPT Image、Adobe 和 Grok Imagine 发送到 `/v1/images/generations`。
 4. 没有图片描述、模型不在允许列表中或缺少改图原图时明确报错，不能使用脚本内置的默认提示词或其它模型。没有对应的已确认编辑模板时，只能说明当前调用方法尚未确认，不能直接宣称该模型不支持改图。
 5. 保存 HTTP 状态码、响应头和原始响应体。HTTP 非 2xx 时原样显示错误并停止，不创建空图片。
 6. 解析 JSON 时同时检查 Images 返回的 `data[].b64_json`、`data[].url`，以及 Responses 返回的 `output[].result`、`output[].content[]` 中的 `b64_json`、`image_base64`、`url`、`image_url`、`text` 和 `output_text`。
@@ -281,8 +297,8 @@ POST https://api.usegoodai.com/v1/images/edits
 ## 项目生图规则
 
 - 本项目的生图任务统一调用当前项目内的 `生成图片.py` 和 `https://api.usegoodai.com`，由模型决定使用 `/v1/responses`、`/v1/images/generations` 或已确认的 `/v1/images/edits`。
-- 可用模型只有：`nano-banana-2`、`nano-banana-pro`、`gpt-image-2`、`gpt-image-2-4K`、`gpt-image-1k-th`、`gpt-image-2-adobe`、`gpt-image-1K-adobe`、`gpt-image-2K-adobe`、`gpt-image-4K-adobe`。默认使用 `gpt-image-2`，不得静默替换模型。
-- `nano-banana-2` 和 `nano-banana-pro` 只能使用 `/v1/responses`；不得发送到 `/v1/images/generations`。已经确认 `nano-banana-2` 发送到 Images 接口会返回 HTTP 400。GPT Image 和 Adobe 使用 `/v1/images/generations`。当前可直接交付的编辑模板是 `gpt-image-2` 使用 `/v1/images/edits`；这不代表其它模型一定不支持改图。
+- 可用模型只有：`nano-banana-2`、`nano-banana-pro`、`gpt-image-2`、`gpt-image-2-4K`、`gpt-image-1k-th`、`gpt-image-2-adobe`、`gpt-image-1K-adobe`、`gpt-image-2K-adobe`、`gpt-image-4K-adobe`、`grok-imagine-image`。默认使用 `gpt-image-2`，不得静默替换模型。
+- `nano-banana-2` 和 `nano-banana-pro` 只能使用 `/v1/responses`；不得发送到 `/v1/images/generations`。已经确认 `nano-banana-2` 发送到 Images 接口会返回 HTTP 400。GPT Image、Adobe 和 `grok-imagine-image` 使用 `/v1/images/generations`。`grok-imagine-image` 只传 `model`、`prompt`、`n` 和 `response_format: "b64_json"`，`n` 只能是 1 到 9；不得发送 `size`、`quality`、`style`、`aspect_ratio` 或 `resolution`。当前可直接交付的编辑模板是 `gpt-image-2` 使用 `/v1/images/edits`；这不代表其它模型一定不支持改图。
 - `gpt-image-2` 的 1K、2K、4K 竖图尺寸分别为 `1024x1536`、`1536x2304`、`2160x3840`；`gpt-image-2-4K` 使用 `2160x3840`；`gpt-image-1k-th` 使用 `1024x1024`。
 - Adobe 尺寸固定为：`gpt-image-2-adobe` 使用 `1024x1536`，`gpt-image-1K-adobe` 使用 `832x1248`，`gpt-image-2K-adobe` 使用 `1536x2304`，`gpt-image-4K-adobe` 使用 `2304x3456`。
 - 每次调用前先在对话中告诉用户本次使用的模型和接口。图片描述、模型和参数由 Codex 在本次调用时传给脚本，不写死在脚本中。
@@ -292,58 +308,3 @@ POST https://api.usegoodai.com/v1/images/edits
 ```
 
 :::
-
-## 用 Python 接入 Grok Imagine
-
-`grok-imagine-image` 可以把图片描述提交给 UseGoodAI，并返回可直接保存的图片，适合需要在当前项目里反复调用生图接口的用户。最终交付物是一个可运行的 `生成图片.py`：输入图片描述和数量，输出本地 JPG 或 PNG；本节只改这个脚本，不创建额外工程文件或安装依赖。
-
-工具固定调用 `grok-imagine-image`，默认生成 1 张，数量控件提供 1 到 9。9 是本工具的上限，不把它写成上游已经验证的最大值；接口实际返回少于请求数量时，工具保存已经验证的图片，并明确显示缺少的数量。
-
-### 让 Codex 创建工具
-
-把下面整段提示词发给 Codex：
-
-```text
-在当前文件夹创建一个可运行的单文件 Python 工具，文件名为“生成图片.py”。只使用 Python 标准库，不安装依赖，不创建 requirements.txt、网页、后端或数据库。
-
-工具接收完整图片描述和数量 n。n 只能是 1 到 9，默认 1。UseGoodAI API Key 从明显的配置项或环境变量 USEGOODAI_API_KEY 读取；Key 缺失时直接显示错误，不能写进日志、响应文件或图片文件名。
-
-请求方法为 POST，完整地址为 https://api.usegoodai.com/v1/images/generations。每次请求携带 Authorization: Bearer <API_KEY> 和 Content-Type: application/json。请求体固定为：
-{
-  "model": "grok-imagine-image",
-  "prompt": "本次收到的完整图片描述",
-  "n": 1,
-  "response_format": "b64_json"
-}
-
-调用时把 n 替换为本次数量，且只能是 1 到 9 的整数。不要发送 size、quality、style、aspect_ratio 或 resolution。每次任务只发送一次请求，不自动重试，也不改用其它模型或接口。
-
-成功响应优先读取 data[].b64_json 并解码；没有有效的 Base64 图片时，读取 data[].url，且每个 URL 只下载一次。只接受真实 JPEG 或 PNG 图片：根据图片字节签名确定扩展名，保存为 .jpg 或 .png。data[].mime_type、顶层 output_format 和实际字节冲突时，以实际字节为准。图片为空、Base64 和 URL 都无法取得图片、图片不是 JPEG 或 PNG，或返回图片数量少于 n 时，显示明确错误且不创建占位图片或未知格式文件。
-
-HTTP 非 2xx 时显示状态码、响应头和原始响应体后停止。成功后返回保存的本地图片路径，让调用方可以立即展示这些图片。
-```
-
-### 工具实际发送的请求
-
-```text
-POST https://api.usegoodai.com/v1/images/generations
-Authorization: Bearer <API_KEY>
-Content-Type: application/json
-```
-
-```json
-{
-  "model": "grok-imagine-image",
-  "prompt": "<本次收到的完整图片描述>",
-  "n": 3,
-  "response_format": "b64_json"
-}
-```
-
-`response_format: "b64_json"` 和 `n: 3` 已经通过当前中转实测。工具仍要兼容 `data[].url`，因为这个模型此前也返回过 URL。当前不提供尺寸、画质、画风、宽高比或分辨率控件：一次传入 `aspect_ratio: "16:9"` 和 `resolution: "2k"` 的实测请求仍返回 `size: "auto"`，三张实际图片都是 `1168x784`，不能把这些字段写成已支持能力。
-
-### 保存图片时只认真实格式
-
-同一次实测响应的顶层字段为 `output_format: "png"`，但三个 `data[]` 项的 `mime_type` 都是 `image/jpeg`，图片字节也都是 JPEG。工具因此不能按顶层 `output_format` 命名文件。
-
-保存规则只有两条：真实 JPEG 保存为 `.jpg`，真实 PNG 保存为 `.png`。工具读取到其它格式时直接报错，不输出图片文件。
