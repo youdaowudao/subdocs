@@ -292,3 +292,58 @@ POST https://api.usegoodai.com/v1/images/edits
 ```
 
 :::
+
+## 用 Python 接入 Grok Imagine
+
+`grok-imagine-image` 可以把图片描述提交给 UseGoodAI，并返回可直接保存的图片，适合需要在当前项目里反复调用生图接口的用户。最终交付物是一个可运行的 `生成图片.py`：输入图片描述和数量，输出本地 JPG 或 PNG；本节只改这个脚本，不创建额外工程文件或安装依赖。
+
+工具固定调用 `grok-imagine-image`，默认生成 1 张，数量控件提供 1 到 9。9 是本工具的上限，不把它写成上游已经验证的最大值；接口实际返回少于请求数量时，工具保存已经验证的图片，并明确显示缺少的数量。
+
+### 让 Codex 创建工具
+
+把下面整段提示词发给 Codex：
+
+```text
+在当前文件夹创建一个可运行的单文件 Python 工具，文件名为“生成图片.py”。只使用 Python 标准库，不安装依赖，不创建 requirements.txt、网页、后端或数据库。
+
+工具接收完整图片描述和数量 n。n 只能是 1 到 9，默认 1。UseGoodAI API Key 从明显的配置项或环境变量 USEGOODAI_API_KEY 读取；Key 缺失时直接显示错误，不能写进日志、响应文件或图片文件名。
+
+请求方法为 POST，完整地址为 https://api.usegoodai.com/v1/images/generations。每次请求携带 Authorization: Bearer <API_KEY> 和 Content-Type: application/json。请求体固定为：
+{
+  "model": "grok-imagine-image",
+  "prompt": "本次收到的完整图片描述",
+  "n": 1,
+  "response_format": "b64_json"
+}
+
+调用时把 n 替换为本次数量，且只能是 1 到 9 的整数。不要发送 size、quality、style、aspect_ratio 或 resolution。每次任务只发送一次请求，不自动重试，也不改用其它模型或接口。
+
+成功响应优先读取 data[].b64_json 并解码；没有有效的 Base64 图片时，读取 data[].url，且每个 URL 只下载一次。只接受真实 JPEG 或 PNG 图片：根据图片字节签名确定扩展名，保存为 .jpg 或 .png。data[].mime_type、顶层 output_format 和实际字节冲突时，以实际字节为准。图片为空、Base64 和 URL 都无法取得图片、图片不是 JPEG 或 PNG，或返回图片数量少于 n 时，显示明确错误且不创建占位图片或未知格式文件。
+
+HTTP 非 2xx 时显示状态码、响应头和原始响应体后停止。成功后返回保存的本地图片路径，让调用方可以立即展示这些图片。
+```
+
+### 工具实际发送的请求
+
+```text
+POST https://api.usegoodai.com/v1/images/generations
+Authorization: Bearer <API_KEY>
+Content-Type: application/json
+```
+
+```json
+{
+  "model": "grok-imagine-image",
+  "prompt": "<本次收到的完整图片描述>",
+  "n": 3,
+  "response_format": "b64_json"
+}
+```
+
+`response_format: "b64_json"` 和 `n: 3` 已经通过当前中转实测。工具仍要兼容 `data[].url`，因为这个模型此前也返回过 URL。当前不提供尺寸、画质、画风、宽高比或分辨率控件：一次传入 `aspect_ratio: "16:9"` 和 `resolution: "2k"` 的实测请求仍返回 `size: "auto"`，三张实际图片都是 `1168x784`，不能把这些字段写成已支持能力。
+
+### 保存图片时只认真实格式
+
+同一次实测响应的顶层字段为 `output_format: "png"`，但三个 `data[]` 项的 `mime_type` 都是 `image/jpeg`，图片字节也都是 JPEG。工具因此不能按顶层 `output_format` 命名文件。
+
+保存规则只有两条：真实 JPEG 保存为 `.jpg`，真实 PNG 保存为 `.png`。工具读取到其它格式时直接报错，不输出图片文件。

@@ -330,10 +330,25 @@ test('marks the image group as RMB pricing without multiplying the original per-
   )
 })
 
-test('does not publish Grok image models', () => {
-  assert.equal(
-    IMAGE_MODELS.some((model) => model.id.startsWith('grok-imagine-image')),
-    false,
+test('publishes Grok Imagine Image at 0.12 RMB per image', () => {
+  const grok = IMAGE_MODELS.find((model) => model.id === 'grok-imagine-image')
+
+  assert.ok(grok, 'grok-imagine-image should be published')
+  assert.deepEqual(
+    {
+      id: grok.id,
+      name: grok.name,
+      route: grok.route,
+      spec: grok.spec,
+      groupCnyPerImage: grok.groupCnyPerImage,
+    },
+    {
+      id: 'grok-imagine-image',
+      name: 'Grok Imagine Image',
+      route: '/v1/images/generations',
+      spec: '自动尺寸',
+      groupCnyPerImage: 0.12,
+    },
   )
 })
 

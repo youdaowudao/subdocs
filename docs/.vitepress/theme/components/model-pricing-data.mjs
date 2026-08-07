@@ -415,6 +415,14 @@ export const IMAGE_MODELS = [
     groupCnyPerImage: 0.20,
   },
   {
+    id: 'grok-imagine-image',
+    name: 'Grok Imagine Image',
+    description: '自动尺寸图片生成，适合快速创意出图和多版本尝试',
+    route: '/v1/images/generations',
+    spec: '自动尺寸',
+    groupCnyPerImage: 0.12,
+  },
+  {
     id: 'nano-banana-pro',
     name: 'Nano Banana Pro',
     description: '高质量图片生成，适合复杂画面、细节和成品图',
