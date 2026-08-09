@@ -26,30 +26,36 @@ try {
     }
 
     $InstallerArguments = @($InstallerCorePath, "uninstall", "--source-root", $PackageRoot) + $args
-    $PythonExitCode = $null
-    if (Get-Command py -CommandType Application -ErrorAction SilentlyContinue) {
-        & py -3 @InstallerArguments
-        $PythonExitCode = $LASTEXITCODE
-        if ($PythonExitCode -ne 9009) {
-            if ($PythonExitCode -ne 0) {
-                throw "包内卸载核心返回退出码 $PythonExitCode。"
+    $PythonCommand = $null
+    $PythonPrefixArguments = @()
+    $PyCommand = Get-Command py -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $PyCommand) {
+        & $PyCommand.Path -3 --version *> $null
+        if ($LASTEXITCODE -eq 0) {
+            $PythonCommand = $PyCommand.Path
+            $PythonPrefixArguments = @("-3")
+        }
+    }
+
+    if ($null -eq $PythonCommand) {
+        $PythonExecutable = Get-Command python -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -ne $PythonExecutable) {
+            & $PythonExecutable.Path --version *> $null
+            if ($LASTEXITCODE -eq 0) {
+                $PythonCommand = $PythonExecutable.Path
             }
-            return
         }
     }
 
-    if (Get-Command python -CommandType Application -ErrorAction SilentlyContinue) {
-        & python @InstallerArguments
-        $PythonExitCode = $LASTEXITCODE
-        if ($PythonExitCode -eq 0) {
-            return
-        }
-        if ($PythonExitCode -ne 9009) {
-            throw "包内卸载核心返回退出码 $PythonExitCode。"
-        }
+    if ($null -eq $PythonCommand) {
+        throw "卸载失败：未找到可用的 Python 3。请先安装 Python 3，再重新运行本卸载脚本。"
     }
 
-    throw "卸载失败：未找到可用的 Python 3。请先安装 Python 3，再重新运行本卸载脚本。"
+    $PythonInvocationArguments = $PythonPrefixArguments + $InstallerArguments
+    & $PythonCommand @PythonInvocationArguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "包内卸载核心返回退出码 $LASTEXITCODE。"
+    }
 }
 catch {
     [Console]::Error.WriteLine("卸载失败：" + $_.Exception.Message)
