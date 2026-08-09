@@ -5,11 +5,17 @@ import test from 'node:test'
 
 const publicRoot = new URL('../docs/public/', import.meta.url)
 const releaseRoot = new URL(
-  'install/usegoodai-imagines-tool/releases/v0.2-r1/',
+  'install/usegoodai-imagines-tool/releases/v0.2-r2/',
   publicRoot,
 )
-const archiveName = 'usegoodai-imagines-tool-v0.2-r1.zip'
-const archiveUrl = new URL(archiveName, releaseRoot)
+const artifactNames = [
+  'usegoodai-imagines-tool-v0.2-r2-windows-amd64.exe',
+  'usegoodai-imagines-tool-v0.2-r2-windows-arm64.exe',
+  'usegoodai-imagines-tool-v0.2-r2-linux-amd64',
+  'usegoodai-imagines-tool-v0.2-r2-linux-arm64',
+  'usegoodai-imagines-tool-v0.2-r2-darwin-amd64',
+  'usegoodai-imagines-tool-v0.2-r2-darwin-arm64',
+]
 const shellUrl = new URL('install/usegoodai-imagines-tool/install.sh', publicRoot)
 const powershellUrl = new URL('install/usegoodai-imagines-tool/install.ps1', publicRoot)
 const shellUninstallUrl = new URL('install/usegoodai-imagines-tool/uninstall.sh', publicRoot)
@@ -17,59 +23,63 @@ const powershellUninstallUrl = new URL('install/usegoodai-imagines-tool/uninstal
 const checksumUrl = new URL('SHA256SUMS', releaseRoot)
 const headersUrl = new URL('_headers', publicRoot)
 
-function extract(pattern, text, label) {
-  const match = text.match(pattern)
-  assert.ok(match, `missing ${label}`)
-  return match[1]
+function parseChecksums(text) {
+  return new Map(
+    text.trim().split('\n').map((line) => {
+      const match = line.match(/^([0-9a-f]{64})\s{2}(.+)$/)
+      assert.ok(match, `invalid checksum line: ${line}`)
+      return [match[2], match[1]]
+    }),
+  )
 }
 
-test('publishes matching V0.2-r1 scripts, archive and checksum', async () => {
-  const [archive, shell, powershell, shellUninstall, powershellUninstall, checksum] = await Promise.all([
-    readFile(archiveUrl),
+test('publishes matching V0.2-r2 native artifacts, scripts and checksums', async () => {
+  const [shell, powershell, shellUninstall, powershellUninstall, checksum, ...artifacts] = await Promise.all([
     readFile(shellUrl, 'utf8'),
     readFile(powershellUrl, 'utf8'),
     readFile(shellUninstallUrl, 'utf8'),
     readFile(powershellUninstallUrl, 'utf8'),
     readFile(checksumUrl, 'utf8'),
+    ...artifactNames.map((name) => readFile(new URL(name, releaseRoot))),
   ])
-  const digest = createHash('sha256').update(archive).digest('hex')
-  const shellDigest = extract(/^package_sha256="([0-9a-f]{64})"$/m, shell, 'shell hash')
-  const powershellDigest = extract(
-    /^\$ExpectedSha256 = "([0-9a-f]{64})"$/m,
-    powershell,
-    'PowerShell hash',
-  )
-  const checksumDigest = extract(/^([0-9a-f]{64})\s{2}/m, checksum, 'checksum hash')
+  const checksums = parseChecksums(checksum)
+  assert.equal(checksums.size, artifactNames.length)
 
-  assert.equal(shellDigest, digest)
-  assert.equal(powershellDigest, digest)
-  assert.match(shellUninstall, new RegExp(digest))
-  assert.match(powershellUninstall, new RegExp(digest))
-  assert.equal(checksumDigest, digest)
-  assert.match(checksum, new RegExp(`${archiveName.replaceAll('.', '\\.')}\\s*$`))
+  for (const [index, name] of artifactNames.entries()) {
+    const digest = createHash('sha256').update(artifacts[index]).digest('hex')
+    assert.equal(checksums.get(name), digest)
+    const installScript = name.includes('windows') ? powershell : shell
+    const uninstallScript = name.includes('windows') ? powershellUninstall : shellUninstall
+    assert.match(installScript, new RegExp(digest))
+    assert.match(uninstallScript, new RegExp(digest))
+  }
+  for (const script of [shell, powershell, shellUninstall, powershellUninstall]) {
+    assert.match(script, /releases\/v0\.2-r2/)
+    assert.doesNotMatch(script, /python|Expand-Archive|v0\.2-r1\.zip/i)
+  }
+  for (const script of [powershell, powershellUninstall]) {
+    assert.match(script, /default\s*\{\s*throw\s*\(/s)
+    assert.match(script, /catch\s*\{\s*throw\s*\(/s)
+    assert.doesNotMatch(script, /^\s*exit\b/im)
+  }
 })
 
 test('publishes explicit content types and cache policy', async () => {
   const headers = await readFile(headersUrl, 'utf8')
 
+  for (const name of ['install.ps1', 'install.sh', 'uninstall.ps1', 'uninstall.sh']) {
+    assert.match(
+      headers,
+      new RegExp(`/install/usegoodai-imagines-tool/${name.replace('.', '\\.')}` +
+        '\\s+Content-Type:\\s*text/plain;\\s*charset=utf-8', 'i'),
+    )
+  }
   assert.match(
     headers,
-    /\/install\/usegoodai-imagines-tool\/install\.ps1\s+Content-Type:\s*text\/plain;\s*charset=utf-8/i,
+    /\/install\/usegoodai-imagines-tool\/releases\/v0\.2-r2\/usegoodai-imagines-tool-\*\s+Content-Type:\s*application\/octet-stream\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
   )
   assert.match(
     headers,
-    /\/install\/usegoodai-imagines-tool\/install\.sh\s+Content-Type:\s*text\/plain;\s*charset=utf-8/i,
-  )
-  assert.match(
-    headers,
-    /\/install\/usegoodai-imagines-tool\/uninstall\.ps1\s+Content-Type:\s*text\/plain;\s*charset=utf-8/i,
-  )
-  assert.match(
-    headers,
-    /\/install\/usegoodai-imagines-tool\/uninstall\.sh\s+Content-Type:\s*text\/plain;\s*charset=utf-8/i,
-  )
-  assert.match(
-    headers,
-    /\/install\/usegoodai-imagines-tool\/releases\/v0\.2-r1\/usegoodai-imagines-tool-v0\.2-r1\.zip\s+Content-Type:\s*application\/zip\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
+    /\/install\/usegoodai-imagines-tool\/releases\/v0\.2-r2\/SHA256SUMS\s+Content-Type:\s*text\/plain;\s*charset=utf-8\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
   )
 })
