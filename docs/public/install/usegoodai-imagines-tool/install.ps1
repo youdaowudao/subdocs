@@ -44,7 +44,7 @@ function Download-WithPercent {
     }
 }
 
-$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.2-r3"
+$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.3-r1"
 $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
     $env:PROCESSOR_ARCHITECTURE
 } else {
@@ -52,17 +52,17 @@ $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
 }
 
 if ($Architecture.ToUpperInvariant() -ne "AMD64") {
-    throw ("安装失败：V0.2-r3 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
+    throw ("安装失败：V0.3-r1 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
 }
-$Artifact = "usegoodai-imagines-tool-v0.2-r3-windows-amd64.exe"
-$ExpectedSha256 = "1dfb2d02bbdc1c027eda31dbf84acc5283dc0abffa6672390b19ab545ddb701b"
+$Artifact = "usegoodai-imagines-tool-v0.3-r1-windows-amd64.exe"
+$ExpectedSha256 = "bd0171618879dd0dd60f7afc62735af6b1eaa81b33042ba799f0790d84f3d2d9"
 
 $TemporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("usegoodai-imagines-tool-" + [System.Guid]::NewGuid().ToString("N"))
 $BinaryPath = Join-Path $TemporaryRoot $Artifact
 
 try {
     New-Item -ItemType Directory -Path $TemporaryRoot | Out-Null
-    Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.2-r3"
+    Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.3-r1"
 
     $ActualSha256 = (Get-FileHash -LiteralPath $BinaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($ActualSha256 -ne $ExpectedSha256) {
