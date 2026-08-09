@@ -39,3 +39,6 @@ usegoodai-codex-installer/
 
 # Temporary local scripts and working notes; never commit or deploy.
 local-scripts/
+
+# Local development workspace for the UseGoodAI image tool.
+/usegoodai-imagines-tool/

@@ -3,3 +3,27 @@
 
 /install/codex.sh
   Content-Type: text/plain; charset=utf-8
+
+/install/usegoodai-imagines-tool/install.ps1
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+/install/usegoodai-imagines-tool/install.sh
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+/install/usegoodai-imagines-tool/uninstall.ps1
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+/install/usegoodai-imagines-tool/uninstall.sh
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+/install/usegoodai-imagines-tool/releases/v0.2-r1/usegoodai-imagines-tool-v0.2-r1.zip
+  Content-Type: application/zip
+  Cache-Control: public, max-age=31536000, immutable
+
+/install/usegoodai-imagines-tool/releases/v0.2-r1/SHA256SUMS
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=31536000, immutable
