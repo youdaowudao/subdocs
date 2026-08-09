@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.3-r1"
+release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.3-r2"
 
 if ! command -v curl >/dev/null 2>&1; then
   echo "安装失败：未找到 curl，无法下载安装程序。" >&2
@@ -13,11 +13,11 @@ system_name="$(uname -s)"
 machine_name="$(uname -m)"
 case "$system_name/$machine_name" in
   Darwin/arm64)
-    artifact="usegoodai-imagines-tool-v0.3-r1-darwin-arm64"
-    expected_sha256="6263a856ddd17661b5543ecb7f2e79f221e0ac84b24ba9c154e248cd841ed59c"
+    artifact="usegoodai-imagines-tool-v0.3-r2-darwin-arm64"
+    expected_sha256="d3e332ea7c3f911c60c4e480450f0fb1b6a3d3c9337149e66f091059405c9be2"
     ;;
   *)
-    echo "安装失败：V0.3-r1 仅支持 Apple Silicon 64 位 Mac，当前为 $system_name/$machine_name。" >&2
+    echo "安装失败：V0.3-r2 仅支持 Apple Silicon 64 位 Mac，当前为 $system_name/$machine_name。" >&2
     exit 1
     ;;
 esac
@@ -32,7 +32,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-echo "正在下载中转站生图工具 V0.3-r1……"
+echo "正在下载中转站生图工具 V0.3-r2……"
 curl --fail --location --progress-bar --show-error --proto '=https' --proto-redir '=https' --tlsv1.2 \
   "$release_base/$artifact" --output "$binary_path"
 
@@ -52,4 +52,8 @@ if [[ "$actual_sha256" != "$expected_sha256" ]]; then
 fi
 
 chmod +x "$binary_path"
-"$binary_path" install "$@"
+if [[ ! -r /dev/tty || ! -w /dev/tty ]]; then
+  echo "安装失败：未检测到可输入的终端。请在终端中直接运行安装命令。" >&2
+  exit 1
+fi
+"$binary_path" install "$@" </dev/tty

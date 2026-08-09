@@ -5,12 +5,12 @@ import test from 'node:test'
 
 const publicRoot = new URL('../docs/public/', import.meta.url)
 const releaseRoot = new URL(
-  'install/usegoodai-imagines-tool/releases/v0.3-r1/',
+  'install/usegoodai-imagines-tool/releases/v0.3-r2/',
   publicRoot,
 )
 const artifactNames = [
-  'usegoodai-imagines-tool-v0.3-r1-windows-amd64.exe',
-  'usegoodai-imagines-tool-v0.3-r1-darwin-arm64',
+  'usegoodai-imagines-tool-v0.3-r2-windows-amd64.exe',
+  'usegoodai-imagines-tool-v0.3-r2-darwin-arm64',
 ]
 const shellUrl = new URL('install/usegoodai-imagines-tool/install.sh', publicRoot)
 const powershellUrl = new URL('install/usegoodai-imagines-tool/install.ps1', publicRoot)
@@ -29,7 +29,7 @@ function parseChecksums(text) {
   )
 }
 
-test('publishes matching V0.3-r1 native artifacts, scripts and checksums', async () => {
+test('publishes matching V0.3-r2 native artifacts, scripts and checksums', async () => {
   assert.deepEqual((await readdir(releaseRoot)).sort(), ['SHA256SUMS', ...artifactNames].sort())
   const [shell, powershell, shellUninstall, powershellUninstall, checksum, ...artifacts] = await Promise.all([
     readFile(shellUrl, 'utf8'),
@@ -51,7 +51,7 @@ test('publishes matching V0.3-r1 native artifacts, scripts and checksums', async
     assert.match(uninstallScript, new RegExp(digest))
   }
   for (const script of [shell, powershell, shellUninstall, powershellUninstall]) {
-    assert.match(script, /releases\/v0\.3-r1/)
+    assert.match(script, /releases\/v0\.3-r2/)
     assert.doesNotMatch(script, /python|Expand-Archive|v0\.2-r1\.zip/i)
   }
   for (const script of [powershell, powershellUninstall]) {
@@ -79,10 +79,10 @@ test('publishes explicit content types and cache policy', async () => {
   }
   assert.match(
     headers,
-    /\/install\/usegoodai-imagines-tool\/releases\/v0\.3-r1\/usegoodai-imagines-tool-\*\s+Content-Type:\s*application\/octet-stream\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
+    /\/install\/usegoodai-imagines-tool\/releases\/v0\.3-r2\/usegoodai-imagines-tool-\*\s+Content-Type:\s*application\/octet-stream\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
   )
   assert.match(
     headers,
-    /\/install\/usegoodai-imagines-tool\/releases\/v0\.3-r1\/SHA256SUMS\s+Content-Type:\s*text\/plain;\s*charset=utf-8\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
+    /\/install\/usegoodai-imagines-tool\/releases\/v0\.3-r2\/SHA256SUMS\s+Content-Type:\s*text\/plain;\s*charset=utf-8\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
   )
 })
