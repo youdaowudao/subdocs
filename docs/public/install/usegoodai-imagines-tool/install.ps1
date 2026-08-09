@@ -25,16 +25,31 @@ try {
         throw "安装包内缺少安装入口。"
     }
 
-    if (Get-Command py -ErrorAction SilentlyContinue) {
-        & py -3 $InstallerCorePath install --source-root $PackageRoot @args
-    } elseif (Get-Command python -ErrorAction SilentlyContinue) {
-        & python $InstallerCorePath install --source-root $PackageRoot @args
-    } else {
-        throw "安装失败：未找到 Python 3。请先安装 Python 3，再重新运行本安装脚本。"
+    $InstallerArguments = @($InstallerCorePath, "install", "--source-root", $PackageRoot) + $args
+    $PythonExitCode = $null
+    if (Get-Command py -CommandType Application -ErrorAction SilentlyContinue) {
+        & py -3 @InstallerArguments
+        $PythonExitCode = $LASTEXITCODE
+        if ($PythonExitCode -ne 9009) {
+            if ($PythonExitCode -ne 0) {
+                throw "包内安装核心返回退出码 $PythonExitCode。"
+            }
+            return
+        }
     }
-    if ($LASTEXITCODE -ne 0) {
-        throw "包内安装核心返回退出码 $LASTEXITCODE。"
+
+    if (Get-Command python -CommandType Application -ErrorAction SilentlyContinue) {
+        & python @InstallerArguments
+        $PythonExitCode = $LASTEXITCODE
+        if ($PythonExitCode -eq 0) {
+            return
+        }
+        if ($PythonExitCode -ne 9009) {
+            throw "包内安装核心返回退出码 $PythonExitCode。"
+        }
     }
+
+    throw "安装失败：未找到可用的 Python 3。请先安装 Python 3，再重新运行本安装脚本。"
 }
 catch {
     [Console]::Error.WriteLine("安装失败：" + $_.Exception.Message)
