@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.2-r2"
+release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.2-r3"
 
 if ! command -v curl >/dev/null 2>&1; then
   echo "卸载失败：未找到 curl，无法下载卸载程序。" >&2
@@ -12,24 +12,12 @@ fi
 system_name="$(uname -s)"
 machine_name="$(uname -m)"
 case "$system_name/$machine_name" in
-  Linux/x86_64|Linux/amd64)
-    artifact="usegoodai-imagines-tool-v0.2-r2-linux-amd64"
-    expected_sha256="d0af13b84a2b51557c19e6b26a84ecda202e907e4cf85e8dcbc1e03b9bedc897"
-    ;;
-  Linux/aarch64|Linux/arm64)
-    artifact="usegoodai-imagines-tool-v0.2-r2-linux-arm64"
-    expected_sha256="d510961b526446aacce4e8160ad8ac159faa31ad5b27a679521f4aee695f1a7c"
-    ;;
-  Darwin/x86_64|Darwin/amd64)
-    artifact="usegoodai-imagines-tool-v0.2-r2-darwin-amd64"
-    expected_sha256="c1705c1398d585d696720381465cfa9f38ede483c7b514f7a1c09797c677877b"
-    ;;
   Darwin/arm64)
-    artifact="usegoodai-imagines-tool-v0.2-r2-darwin-arm64"
+    artifact="usegoodai-imagines-tool-v0.2-r3-darwin-arm64"
     expected_sha256="69eaf728fb85c9ba478a4e2c3ce3f294f9795e0f19285ed29e45fa37987a4abf"
     ;;
   *)
-    echo "卸载失败：暂不支持当前系统或架构：$system_name/$machine_name。" >&2
+    echo "卸载失败：V0.2-r3 仅支持 Apple Silicon 64 位 Mac，当前为 $system_name/$machine_name。" >&2
     exit 1
     ;;
 esac
@@ -44,8 +32,8 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-echo "正在准备卸载中转站生图工具 V0.2-r2……"
-curl --fail --location --silent --show-error --proto '=https' --proto-redir '=https' --tlsv1.2 \
+echo "正在准备卸载中转站生图工具 V0.2-r3……"
+curl --fail --location --progress-bar --show-error --proto '=https' --proto-redir '=https' --tlsv1.2 \
   "$release_base/$artifact" --output "$binary_path"
 
 if command -v sha256sum >/dev/null 2>&1; then
