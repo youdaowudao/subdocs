@@ -19,14 +19,21 @@ try {
     }
 
     Expand-Archive -LiteralPath $ArchivePath -DestinationPath $UnpackPath
-    $UninstallerPath = Join-Path $UnpackPath "$PackageRootName\installer\uninstall.ps1"
-    if (-not (Test-Path -LiteralPath $UninstallerPath -PathType Leaf)) {
+    $PackageRoot = Join-Path $UnpackPath $PackageRootName
+    $InstallerCorePath = Join-Path $PackageRoot "installer\安装.py"
+    if (-not (Test-Path -LiteralPath $InstallerCorePath -PathType Leaf)) {
         throw "卸载包内缺少卸载入口。"
     }
 
-    & $UninstallerPath @args
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        & py -3 $InstallerCorePath uninstall --source-root $PackageRoot @args
+    } elseif (Get-Command python -ErrorAction SilentlyContinue) {
+        & python $InstallerCorePath uninstall --source-root $PackageRoot @args
+    } else {
+        throw "卸载失败：未找到 Python 3。请先安装 Python 3，再重新运行本卸载脚本。"
+    }
     if ($LASTEXITCODE -ne 0) {
-        throw "包内卸载器返回退出码 $LASTEXITCODE。"
+        throw "包内卸载核心返回退出码 $LASTEXITCODE。"
     }
 }
 catch {
