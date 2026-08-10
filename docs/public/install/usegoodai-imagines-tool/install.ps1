@@ -44,7 +44,8 @@ function Download-WithPercent {
     }
 }
 
-$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.3-r3"
+$ReleaseRevision = "V0.3-r4"
+$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.3-r4"
 $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
     $env:PROCESSOR_ARCHITECTURE
 } else {
@@ -52,33 +53,47 @@ $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
 }
 
 if ($Architecture.ToUpperInvariant() -ne "AMD64") {
-    throw ("安装失败：V0.3-r3 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
+    throw ("安装失败：V0.3-r4 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
 }
-$Artifact = "usegoodai-imagines-tool-v0.3-r3-windows-amd64.exe"
-$ExpectedSha256 = "25a7aee6fbf34b306cd0b560244fce5b89c281e3bd0a6ffe3e0a79c2945fa4d2"
+$Artifact = "usegoodai-imagines-tool-v0.3-r4-windows-amd64.exe"
+$ExpectedSha256 = "49f27144527bf9fffa8bd0e15305e10fc5424eae4f1ea43fa42362fb5db59764"
+
+$ToolCodexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { Join-Path $HOME ".codex" } else { $env:CODEX_HOME }
+$InstalledReleasePath = Join-Path $ToolCodexHome "tools\usegoodai-imagines-tool\RELEASE"
+$InstalledBinaryPath = Join-Path $ToolCodexHome "tools\usegoodai-imagines-tool\usegoodai-imagines-tool.exe"
+$NeedsDownload = $true
+if ((Test-Path -LiteralPath $InstalledReleasePath -PathType Leaf) -and (Test-Path -LiteralPath $InstalledBinaryPath -PathType Leaf)) {
+    $InstalledRelease = (Get-Content -LiteralPath $InstalledReleasePath -Raw).Trim()
+    if ($InstalledRelease -eq $ReleaseRevision) {
+        Write-Output "中转站生图工具 $ReleaseRevision 已是最新版，无需下载。"
+        $NeedsDownload = $false
+    }
+}
 
 $TemporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("usegoodai-imagines-tool-" + [System.Guid]::NewGuid().ToString("N"))
 $BinaryPath = Join-Path $TemporaryRoot $Artifact
 
-try {
-    New-Item -ItemType Directory -Path $TemporaryRoot | Out-Null
-    Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.3-r3"
+if ($NeedsDownload) {
+    try {
+        New-Item -ItemType Directory -Path $TemporaryRoot | Out-Null
+        Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.3-r4"
 
-    $ActualSha256 = (Get-FileHash -LiteralPath $BinaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($ActualSha256 -ne $ExpectedSha256) {
-        throw "安装程序 SHA-256 校验不通过，已停止安装。"
-    }
+        $ActualSha256 = (Get-FileHash -LiteralPath $BinaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($ActualSha256 -ne $ExpectedSha256) {
+            throw "安装程序 SHA-256 校验不通过，已停止安装。"
+        }
 
-    & $BinaryPath install @args
-    if ($LASTEXITCODE -ne 0) {
-        throw "安装程序返回退出码 $LASTEXITCODE。"
+        & $BinaryPath install @args
+        if ($LASTEXITCODE -ne 0) {
+            throw "安装程序返回退出码 $LASTEXITCODE。"
+        }
     }
-}
-catch {
-    throw ("安装失败：" + $_.Exception.Message)
-}
-finally {
-    if (Test-Path -LiteralPath $TemporaryRoot) {
-        Remove-Item -LiteralPath $TemporaryRoot -Recurse -Force
+    catch {
+        throw ("安装失败：" + $_.Exception.Message)
+    }
+    finally {
+        if (Test-Path -LiteralPath $TemporaryRoot) {
+            Remove-Item -LiteralPath $TemporaryRoot -Recurse -Force
+        }
     }
 }
