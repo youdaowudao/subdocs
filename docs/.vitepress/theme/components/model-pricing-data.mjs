@@ -73,7 +73,7 @@ export const TEXT_GROUPS = [
   {
     id: 'anthropic-main',
     name: '主力分组',
-    multiplier: 0.25,
+    multiplier: 0.3,
     description: '写作推荐 Fable 5，复杂架构设计推荐 Opus 5',
     modelIds: ANTHROPIC_MAIN_MODEL_IDS,
   },
