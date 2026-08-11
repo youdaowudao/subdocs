@@ -341,9 +341,25 @@ const copyModelId = async (modelId) => {
                   <span class="table-subvalue">{{ model.spec }}</span>
                 </td>
                 <td>
-                  <strong class="group-price">{{ formatCny(calculateImagePriceCny(model.groupCnyPerImage)) }}</strong>
-                  <span class="price-unit">/ 张</span>
-                  <span class="table-subvalue">{{ model.priceNote ?? '当前分组默认价' }}</span>
+                  <template v-if="model.sizePricesCny">
+                    <div class="image-size-prices">
+                      <span
+                        v-for="sizePrice in model.sizePricesCny"
+                        :key="sizePrice.size"
+                        class="image-size-price"
+                      >
+                        <span class="image-size-label">{{ sizePrice.size }}</span>
+                        <strong class="group-price">{{ formatCny(calculateImagePriceCny(sizePrice.cnyPerImage)) }}</strong>
+                        <span class="price-unit">/ 张</span>
+                      </span>
+                    </div>
+                    <span class="table-subvalue">按分辨率计费</span>
+                  </template>
+                  <template v-else>
+                    <strong class="group-price">{{ formatCny(calculateImagePriceCny(model.groupCnyPerImage)) }}</strong>
+                    <span class="price-unit">/ 张</span>
+                    <span class="table-subvalue">{{ model.priceNote ?? '当前分组默认价' }}</span>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -947,6 +963,32 @@ const copyModelId = async (modelId) => {
   color: var(--vp-c-text-3);
   font-size: 14px;
   white-space: nowrap;
+}
+
+.image-size-prices {
+  display: grid;
+  gap: 4px;
+}
+
+.image-size-price {
+  display: grid;
+  grid-template-columns: 28px 64px auto;
+  align-items: baseline;
+  justify-content: start;
+}
+
+.image-size-label {
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.image-size-price .group-price {
+  font-size: 17px;
+}
+
+.image-size-price .price-unit {
+  margin-left: 0;
 }
 
 .model-pricing-page .pricing-table del,

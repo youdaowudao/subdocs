@@ -363,16 +363,13 @@ export const IMAGE_MODELS = [
     name: 'GPT Image 2',
     description: '通用生图与改图，适合日常图片任务',
     route: '/v1/images/generations',
-    spec: '按尺寸 / 画质',
+    spec: '1K / 2K / 4K',
     groupCnyPerImage: 0.05,
-  },
-  {
-    id: 'gpt-image-2-4k',
-    name: 'GPT Image 2 4K',
-    description: '高分辨率图片生成，适合成品图和精细画面',
-    route: '/v1/images/generations',
-    spec: '4K',
-    groupCnyPerImage: 0.08,
+    sizePricesCny: [
+      { size: '1K', cnyPerImage: 0.04 },
+      { size: '2K', cnyPerImage: 0.05 },
+      { size: '4K', cnyPerImage: 0.08 },
+    ],
   },
   {
     id: 'gpt-image-2-adobe',
