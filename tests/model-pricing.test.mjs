@@ -329,6 +329,16 @@ test('keeps the requested drawing prices in RMB without applying USD conversion'
       ['gpt-image-2-adobe', 0.12],
     ],
   )
+
+  const gptImage2 = IMAGE_MODELS.find((model) => model.id === 'gpt-image-2')
+  assert.deepEqual(gptImage2.sizePricesCny, [
+    { size: '1K', cnyPerImage: 0.04 },
+    { size: '2K', cnyPerImage: 0.05 },
+    { size: '4K', cnyPerImage: 0.08 },
+  ])
+  assert.equal(gptImage2.spec, '1K / 2K / 4K')
+  assert.match(pricingComponentSource, /v-if="model\.sizePricesCny"/)
+  assert.match(pricingComponentSource, /按分辨率计费/)
 })
 
 test('shows the unified size-price note only for gpt-image-2-adobe', () => {
@@ -338,10 +348,11 @@ test('shows the unified size-price note only for gpt-image-2-adobe', () => {
   assert.match(pricingComponentSource, /model\.priceNote \?\? '当前分组默认价'/)
 })
 
-test('removes the Adobe size aliases and YS model from the pricing page', () => {
+test('removes nonexistent GPT Image size aliases and the YS model from the pricing page', () => {
   const modelIds = new Set(IMAGE_MODELS.map((model) => model.id))
 
   for (const removedId of [
+    'gpt-image-2-4k',
     'gpt-image-1k-adobe',
     'gpt-image-2k-adobe',
     'gpt-image-4k-adobe',
