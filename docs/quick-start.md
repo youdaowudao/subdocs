@@ -111,3 +111,7 @@ Mac 用户对应路径是 `~/.codex/config.toml` 和 `~/.codex/auth.json`。
 | --- | --- | --- |
 | 第二种 | CC Switch 接入 | [Codex CC Switch 接入](/codex-cc-switch) |
 | 第三种 | 手动配置 | [Codex 手动接入](/clients/codex-manual-config) |
+
+## 安装生图工具
+
+Codex 已经可以正常对话后，再为图片模型额外创建一个 **专门画图分组** 的 API Key。按照[安装生图工具](/image-video-group-image)运行一键安装命令，之后可以直接在 Codex 对话中生成、修改并显示图片。
