@@ -375,44 +375,13 @@ export const IMAGE_MODELS = [
     groupCnyPerImage: 0.08,
   },
   {
-    id: 'gpt-image-1k-adobe',
-    name: 'GPT Image 1K Adobe',
-    description: '1K 竖图档，适合头像、封面小图和轻量测试',
-    route: '/v1/images/generations',
-    spec: '1K',
-    groupCnyPerImage: 0.08,
-  },
-  {
-    id: 'gpt-image-2k-adobe',
-    name: 'GPT Image 2K Adobe',
-    description: '2K 竖图档，适合更清晰的海报和社媒配图',
-    route: '/v1/images/generations',
-    spec: '2K',
-    groupCnyPerImage: 0.15,
-  },
-  {
-    id: 'gpt-image-4k-adobe',
-    name: 'GPT Image 4K Adobe',
-    description: '4K 竖图档，适合高清海报和大幅画面',
-    route: '/v1/images/generations',
-    spec: '4K',
-    groupCnyPerImage: 0.20,
-  },
-  {
     id: 'gpt-image-2-adobe',
     name: 'GPT Image 2 Adobe',
     description: '通用图片生成档，适合常规出图和改图任务',
     route: '/v1/images/generations',
     spec: '按尺寸 / 画质',
     groupCnyPerImage: 0.12,
-  },
-  {
-    id: 'gpt-image-4k-ys',
-    name: 'GPT Image 4K YS',
-    description: '高分辨率图片生成，适合高清成品图',
-    route: '/v1/images/generations',
-    spec: '4K',
-    groupCnyPerImage: 0.20,
+    priceNote: '1/2/4k统一价',
   },
   {
     id: 'grok-imagine-image',
@@ -420,7 +389,7 @@ export const IMAGE_MODELS = [
     description: '自动尺寸图片生成，适合快速创意出图和多版本尝试',
     route: '/v1/images/generations',
     spec: '自动尺寸',
-    groupCnyPerImage: 0.12,
+    groupCnyPerImage: 0.10,
   },
   {
     id: 'nano-banana-pro',
@@ -436,7 +405,7 @@ export const IMAGE_MODELS = [
     description: '快速图片生成，适合日常出图和成本平衡',
     route: '/v1/responses',
     spec: '1K / 2K / 4K',
-    groupCnyPerImage: 0.20,
+    groupCnyPerImage: 0.12,
   },
 ]
 

@@ -312,26 +312,59 @@ test('formats tiny non-zero RMB amounts without rounding them to zero', () => {
   assert.equal(formatCny(0.0049), '¥0.0049')
 })
 
-test('marks the image group as RMB pricing without multiplying the original per-image prices', () => {
+test('keeps the requested drawing prices in RMB without applying USD conversion', () => {
   assert.equal(EXCHANGE_RATE, 7)
   assert.match(IMAGE_GROUP.description, /人民币/)
   assert.equal(calculateImagePriceCny(0.03), 0.03)
   assert.equal(calculateImagePriceCny(0.05), 0.05)
   assert.equal(calculateImagePriceCny(0.2), 0.2)
+  const requestedPrices = new Map(
+    IMAGE_MODELS.map((model) => [model.id, calculateImagePriceCny(model.groupCnyPerImage)]),
+  )
+
   assert.deepEqual(
-    IMAGE_MODELS.slice(0, 3).map((model) => ({
-      id: model.id,
-      cny: calculateImagePriceCny(model.groupCnyPerImage),
-    })),
+    [...requestedPrices].filter(([id]) => ['gpt-image-1k-th', 'gpt-image-2', 'gpt-image-2-adobe'].includes(id)),
     [
-      { id: 'gpt-image-1k-th', cny: 0.03 },
-      { id: 'gpt-image-2', cny: 0.05 },
-      { id: 'gpt-image-2-4k', cny: 0.08 },
+      ['gpt-image-1k-th', 0.03],
+      ['gpt-image-2', 0.05],
+      ['gpt-image-2-adobe', 0.12],
     ],
   )
 })
 
-test('publishes Grok Imagine Image at 0.12 RMB per image', () => {
+test('shows the unified size-price note only for gpt-image-2-adobe', () => {
+  const adobe = IMAGE_MODELS.find((model) => model.id === 'gpt-image-2-adobe')
+
+  assert.equal(adobe.priceNote, '1/2/4k统一价')
+  assert.match(pricingComponentSource, /model\.priceNote \?\? '当前分组默认价'/)
+})
+
+test('removes the Adobe size aliases and YS model from the pricing page', () => {
+  const modelIds = new Set(IMAGE_MODELS.map((model) => model.id))
+
+  for (const removedId of [
+    'gpt-image-1k-adobe',
+    'gpt-image-2k-adobe',
+    'gpt-image-4k-adobe',
+    'gpt-image-4k-ys',
+  ]) {
+    assert.equal(modelIds.has(removedId), false, removedId)
+  }
+})
+
+test('publishes only the two requested Nano Banana models and RMB prices', () => {
+  assert.deepEqual(
+    IMAGE_MODELS
+      .filter((model) => model.id.startsWith('nano-banana'))
+      .map(({ id, groupCnyPerImage }) => ({ id, groupCnyPerImage })),
+    [
+      { id: 'nano-banana-pro', groupCnyPerImage: 0.25 },
+      { id: 'nano-banana-2', groupCnyPerImage: 0.12 },
+    ],
+  )
+})
+
+test('publishes Grok Imagine Image at 0.10 RMB per image', () => {
   const grok = IMAGE_MODELS.find((model) => model.id === 'grok-imagine-image')
 
   assert.ok(grok, 'grok-imagine-image should be published')
@@ -348,7 +381,7 @@ test('publishes Grok Imagine Image at 0.12 RMB per image', () => {
       name: 'Grok Imagine Image',
       route: '/v1/images/generations',
       spec: '自动尺寸',
-      groupCnyPerImage: 0.12,
+      groupCnyPerImage: 0.10,
     },
   )
 })
