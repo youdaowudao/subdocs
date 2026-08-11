@@ -343,7 +343,7 @@ const copyModelId = async (modelId) => {
                 <td>
                   <strong class="group-price">{{ formatCny(calculateImagePriceCny(model.groupCnyPerImage)) }}</strong>
                   <span class="price-unit">/ 张</span>
-                  <span class="table-subvalue">当前分组默认价</span>
+                  <span class="table-subvalue">{{ model.priceNote ?? '当前分组默认价' }}</span>
                 </td>
               </tr>
             </tbody>
