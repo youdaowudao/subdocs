@@ -362,7 +362,7 @@ test('keeps the Grok request inside the existing Codex rules', () => {
 
   const codexRules = codexRulesMatch[1]
   const grokSectionMatch = codexRules.match(
-    /### Grok Imagine 请求\n([\s\S]*?)\n+当前已经确认并可直接使用的 Images 编辑模板/,
+    /### Grok Imagine 请求\n([\s\S]*?)\n+`gpt-image-2`、`gpt-image-1k-th` 和 `grok-imagine-image` 可以使用 Images 编辑接口/,
   )
   const agentsRulesMatch = codexRules.match(/```md\n## 项目生图规则\n([\s\S]*?)\n```/)
 
@@ -377,19 +377,23 @@ test('keeps the Grok request inside the existing Codex rules', () => {
     model: 'grok-imagine-image',
     prompt: '<运行脚本时收到的图片描述>',
     n: 1,
+    resolution: '2k',
+    aspect_ratio: '16:9',
+    quality: 'high',
     response_format: 'b64_json',
   })
   assert.match(grokSectionMatch[1], /1 到 9/)
+  assert.match(grokSectionMatch[1], /`1k` 或 `2k`/)
+  assert.match(grokSectionMatch[1], /`1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`3:2` 和 `2:3`/)
   assert.match(grokSectionMatch[1], /data\[\]\.b64_json/)
   assert.match(grokSectionMatch[1], /data\[\]\.url/)
-  assert.match(grokSectionMatch[1], /JPEG 或 PNG/)
+  assert.match(grokSectionMatch[1], /\.jpg` 或 `\.png/)
 
   const agentsRules = agentsRulesMatch[1]
   assert.match(agentsRules, /可用模型只有：[\s\S]*?`grok-imagine-image`/)
-  assert.match(agentsRules, /`grok-imagine-image` 使用 `\/v1\/images\/generations`/)
-  assert.match(agentsRules, /`response_format: "b64_json"`/)
-  assert.match(agentsRules, /`n` 只能是 1 到 9/)
-  assert.match(agentsRules, /不得发送 `size`、`quality`、`style`、`aspect_ratio` 或 `resolution`/)
+  assert.match(agentsRules, /`grok-imagine-image` 可以使用 `\/v1\/images\/edits`/)
+  assert.match(agentsRules, /支持 `1k`、`2k`/)
+  assert.match(agentsRules, /`low`、`medium`、`high`/)
 })
 
 test('keeps image model descriptions customer-facing without backend mapping wording', () => {
