@@ -10,7 +10,7 @@
 
 ## 生图分组
 
-1. [生图方法](/images/image-video-group-image)
+1. [安装生图工具](/image-video-group-image)
 
 ## 进阶用法
 

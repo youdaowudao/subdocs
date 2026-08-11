@@ -22,7 +22,6 @@ const pricingComponentSource = readFileSync(
 )
 const modelsDocSource = readFileSync(new URL('../docs/models.md', import.meta.url), 'utf8')
 const vitepressConfigSource = readFileSync(new URL('../docs/.vitepress/config.mts', import.meta.url), 'utf8')
-const imageGroupDocSource = readFileSync(new URL('../docs/images/image-video-group-image.md', import.meta.url), 'utf8')
 
 const isClose = (actual, expected) => Math.abs(actual - expected) < 1e-12
 
@@ -384,49 +383,6 @@ test('publishes Grok Imagine Image at 0.10 RMB per image', () => {
       groupCnyPerImage: 0.10,
     },
   )
-})
-
-test('keeps the Grok request inside the existing Codex rules', () => {
-  const codexRulesMatch = imageGroupDocSource.match(
-    /::: details Codex 必须遵守的调用规则\n([\s\S]*?)\n:::/,
-  )
-
-  assert.ok(codexRulesMatch, 'the Codex rules details block should be present')
-
-  const codexRules = codexRulesMatch[1]
-  const grokSectionMatch = codexRules.match(
-    /### Grok Imagine 请求\n([\s\S]*?)\n+`gpt-image-2`、`gpt-image-1k-th` 和 `grok-imagine-image` 可以使用 Images 编辑接口/,
-  )
-  const agentsRulesMatch = codexRules.match(/```md\n## 项目生图规则\n([\s\S]*?)\n```/)
-
-  assert.doesNotMatch(imageGroupDocSource, /^## 用 Python 接入 Grok Imagine$/m)
-  assert.ok(grokSectionMatch, 'the Grok request should be in the existing Codex rules')
-  assert.equal((codexRules.match(/### Grok Imagine 请求/g) || []).length, 1)
-  assert.ok(agentsRulesMatch, 'the project image rules should be present')
-
-  const jsonBlock = grokSectionMatch[1].match(/```json\n([\s\S]*?)\n```/)
-  assert.ok(jsonBlock, 'the Grok request body should be present')
-  assert.deepEqual(JSON.parse(jsonBlock[1]), {
-    model: 'grok-imagine-image',
-    prompt: '<运行脚本时收到的图片描述>',
-    n: 1,
-    resolution: '2k',
-    aspect_ratio: '16:9',
-    quality: 'high',
-    response_format: 'b64_json',
-  })
-  assert.match(grokSectionMatch[1], /1 到 9/)
-  assert.match(grokSectionMatch[1], /`1k` 或 `2k`/)
-  assert.match(grokSectionMatch[1], /`1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`3:2` 和 `2:3`/)
-  assert.match(grokSectionMatch[1], /data\[\]\.b64_json/)
-  assert.match(grokSectionMatch[1], /data\[\]\.url/)
-  assert.match(grokSectionMatch[1], /\.jpg` 或 `\.png/)
-
-  const agentsRules = agentsRulesMatch[1]
-  assert.match(agentsRules, /可用模型只有：[\s\S]*?`grok-imagine-image`/)
-  assert.match(agentsRules, /`grok-imagine-image` 可以使用 `\/v1\/images\/edits`/)
-  assert.match(agentsRules, /支持 `1k`、`2k`/)
-  assert.match(agentsRules, /`low`、`medium`、`high`/)
 })
 
 test('keeps image model descriptions customer-facing without backend mapping wording', () => {

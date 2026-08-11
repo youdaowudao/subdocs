@@ -1,6 +1,6 @@
 # GPT 生图 API
 
-自己写脚本或服务端流程时，直接调用 `gpt-image-2` 生成并保存图片。需要让 Codex 使用“生图分组”创建调用脚本并在对话中显示图片，查看[生图分组方法](/images/image-video-group-image)；需要用画布连续创作图片，查看[无限画布](/images/infinite-canvas)。
+自己写脚本或服务端流程时，直接调用 `gpt-image-2` 生成并保存图片。需要让 Codex 安装中转站生图工具并在对话中显示图片，查看[安装生图工具](/image-video-group-image)；需要用画布连续创作图片，查看[无限画布](/images/infinite-canvas)。
 
 ## 懒人方法：让 AI 帮你快速测试
 
