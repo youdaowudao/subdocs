@@ -33,13 +33,13 @@ irm https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.ps1 | iex
 <details>
 <summary>Mac 用户看这里</summary>
 
-当前支持 Apple Silicon Mac。打开终端运行：
+Apple Silicon 和 Intel Mac 使用同一条命令，安装脚本会自动识别芯片。打开终端运行：
 
 ```bash
 curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh | bash
 ```
 
-看到 Key 输入提示后，粘贴第 1 步复制的专门画图分组 Key，然后按回车。
+看到 Key 输入提示后，粘贴第 1 步复制的专门画图分组 Key，然后按回车。安装器只下载当前 Mac 对应的一个程序。
 
 </details>
 
