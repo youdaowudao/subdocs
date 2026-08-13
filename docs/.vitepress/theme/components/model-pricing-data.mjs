@@ -89,7 +89,7 @@ export const TEXT_GROUPS = [
     name: 'heavy号池',
     multiplier: 0.35,
     description: '速度比 GPT Pro / Plus 混池分组更快，风控相对低，支持实时搜索和工具调用',
-    modelIds: ['grok-4.5'],
+    modelIds: ['grok-4.6', 'grok-4.5'],
   },
   {
     id: 'gemini-antigravity',
@@ -265,6 +265,12 @@ export const TEXT_MODELS = [
     name: 'Claude Sonnet 5',
     description: 'Anthropic 新一代均衡模型，适合代码和长任务',
     officialUsd: { input: 3, output: 15, cachedInput: 0.3 },
+  },
+  {
+    id: 'grok-4.6',
+    name: 'Grok 4.6',
+    description: 'XAI最新模型，性能直逼OPUS 5跟GPT 5.6 SOL，限制低，速度快，当前非常火热。',
+    officialUsd: { input: 2, output: 6, cachedInput: 0.5 },
   },
   {
     id: 'grok-4.5',

@@ -137,10 +137,21 @@ test('shows the CC MAX Claude group with the extra sonnet snapshot model', () =>
   )
 })
 
-test('shows Grok 4.5 as a standalone text group', () => {
+test('shows Grok 4.6 before Grok 4.5 with official prices and customer-facing descriptions', () => {
   assert.deepEqual(
-    getTextModelsForGroup('grok-4.5').map((model) => model.id),
-    ['grok-4.5'],
+    getTextModelsForGroup('grok-4.5').map(({ id, description, officialUsd }) => ({ id, description, officialUsd })),
+    [
+      {
+        id: 'grok-4.6',
+        description: 'XAI最新模型，性能直逼OPUS 5跟GPT 5.6 SOL，限制低，速度快，当前非常火热。',
+        officialUsd: { input: 2, output: 6, cachedInput: 0.5 },
+      },
+      {
+        id: 'grok-4.5',
+        description: '速度比 GPT 日常分组更快，风控相对低，支持实时搜索和工具调用',
+        officialUsd: { input: 2, output: 6, cachedInput: 0.2 },
+      },
+    ],
   )
 })
 
