@@ -86,8 +86,8 @@ export const TEXT_GROUPS = [
   },
   {
     id: 'grok-4.5',
-    name: 'Grok 4.5 分组',
-    multiplier: 0.1,
+    name: 'heavy号池',
+    multiplier: 0.35,
     description: '速度比 GPT Pro / Plus 混池分组更快，风控相对低，支持实时搜索和工具调用',
     modelIds: ['grok-4.5'],
   },
