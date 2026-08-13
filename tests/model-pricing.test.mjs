@@ -34,7 +34,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.25 },
       { id: 'anthropic-main', name: '主力分组', multiplier: 0.3 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
-      { id: 'grok-4.5', name: 'Grok 4.5 分组', multiplier: 0.1 },
+      { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.35 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
       { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.45 },
       { id: 'domestic', name: '国产之光', multiplier: 0.2 },
@@ -303,7 +303,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['full', 8.75],
     ['anthropic-main', 10.5],
     ['anthropic-max', 45.5],
-    ['grok-4.5', 3.5],
+    ['grok-4.5', 12.25],
     ['gemini-antigravity', 8.75],
   ])
 
