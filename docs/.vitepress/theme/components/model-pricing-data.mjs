@@ -99,6 +99,14 @@ export const TEXT_GROUPS = [
     modelIds: GEMINI_MODEL_IDS,
   },
   {
+    id: 'deepseek-v4-flash',
+    name: 'DeepSeek V4 Flash 分组',
+    multiplier: 0.45,
+    currency: 'cny',
+    description: 'V4 Flash 0731 正式版，适合代码、Agent 和长上下文任务',
+    modelIds: ['deepseek-v4-flash'],
+  },
+  {
     id: 'domestic',
     name: '国产之光',
     multiplier: 0.2,
@@ -137,6 +145,13 @@ export const MODEL_CATEGORIES = [
     iconSvg: GEMINI_ICON,
     kind: 'text',
     groupIds: ['gemini-antigravity'],
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    mark: '深',
+    kind: 'text',
+    groupIds: ['deepseek-v4-flash'],
   },
   {
     id: 'domestic',
@@ -328,6 +343,12 @@ export const TEXT_MODELS = [
     name: 'Gemini 2.5 Flash-Lite',
     description: '2025-07 更新，适合高频分类、简单提取和极低延迟场景',
     officialUsd: { input: 0.1, output: 0.4, cachedInput: 0.01 },
+  },
+  {
+    id: 'deepseek-v4-flash',
+    name: 'DeepSeek V4 Flash 0731',
+    description: 'V4-Flash-0731 正式版，支持思考模式、工具调用和 Responses API',
+    officialCny: { input: 1, output: 2, cachedInput: 0.02 },
   },
   {
     id: 'glm-5.2',
