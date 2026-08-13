@@ -101,7 +101,7 @@ export const TEXT_GROUPS = [
   {
     id: 'deepseek-v4-flash',
     name: 'DeepSeek V4 Flash 分组',
-    multiplier: 0.45,
+    multiplier: 0.4,
     currency: 'cny',
     description: 'V4 Flash 0731 正式版，适合代码、Agent 和长上下文任务',
     modelIds: ['deepseek-v4-flash'],
