@@ -5,13 +5,13 @@ import test from 'node:test'
 
 const publicRoot = new URL('../docs/public/', import.meta.url)
 const releaseRoot = new URL(
-  'install/usegoodai-imagines-tool/releases/v0.7.3/',
+  'install/usegoodai-imagines-tool/releases/v0.7.4/',
   publicRoot,
 )
 const artifactNames = [
-  'usegoodai-imagines-tool-v0.7.3-windows-amd64.exe',
-  'usegoodai-imagines-tool-v0.7.3-darwin-arm64',
-  'usegoodai-imagines-tool-v0.7.3-darwin-amd64',
+  'usegoodai-imagines-tool-v0.7.4-windows-amd64.exe',
+  'usegoodai-imagines-tool-v0.7.4-darwin-arm64',
+  'usegoodai-imagines-tool-v0.7.4-darwin-amd64',
 ]
 const shellUrl = new URL('install/usegoodai-imagines-tool/install.sh', publicRoot)
 const powershellUrl = new URL('install/usegoodai-imagines-tool/install.ps1', publicRoot)
@@ -30,10 +30,10 @@ function parseChecksums(text) {
   )
 }
 
-test('publishes matching V0.7.3 native artifacts, scripts and checksums', async () => {
+test('publishes matching V0.7.4 native artifacts, scripts and checksums', async () => {
   assert.deepEqual((await readdir(releaseRoot)).sort(), ['SHA256SUMS', ...artifactNames].sort())
   assert.deepEqual((await readdir(entryRoot)).sort(), ['install.ps1', 'install.sh', 'releases'])
-  assert.deepEqual((await readdir(releasesRoot)).sort(), ['v0.7.2', 'v0.7.3'])
+  assert.deepEqual((await readdir(releasesRoot)).sort(), ['v0.7.2', 'v0.7.3', 'v0.7.4'])
   const [shell, powershell, checksum, ...artifacts] = await Promise.all([
     readFile(shellUrl, 'utf8'),
     readFile(powershellUrl, 'utf8'),
@@ -50,7 +50,7 @@ test('publishes matching V0.7.3 native artifacts, scripts and checksums', async 
     assert.match(installScript, new RegExp(digest))
   }
   for (const script of [shell, powershell]) {
-    assert.match(script, /releases\/v0\.7\.3/)
+    assert.match(script, /releases\/v0\.7\.4/)
     assert.doesNotMatch(script, /python|Expand-Archive|v0\.2-r1\.zip/i)
   }
   for (const script of [powershell]) {
@@ -82,10 +82,31 @@ test('publishes explicit content types and cache policy', async () => {
   }
   assert.match(
     headers,
-    /\/install\/usegoodai-imagines-tool\/releases\/v0\.7\.3\/usegoodai-imagines-tool-\*\s+Content-Type:\s*application\/octet-stream\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
+    /\/install\/usegoodai-imagines-tool\/releases\/v0\.7\.4\/usegoodai-imagines-tool-\*\s+Content-Type:\s*application\/octet-stream\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
   )
   assert.match(
     headers,
-    /\/install\/usegoodai-imagines-tool\/releases\/v0\.7\.3\/SHA256SUMS\s+Content-Type:\s*text\/plain;\s*charset=utf-8\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
+    /\/install\/usegoodai-imagines-tool\/releases\/v0\.7\.4\/SHA256SUMS\s+Content-Type:\s*text\/plain;\s*charset=utf-8\s+Cache-Control:\s*public,\s*max-age=31536000,\s*immutable/i,
   )
+})
+
+test('keeps the published V0.7.3 checksums immutable', async () => {
+  const legacyRoot = new URL(
+    'install/usegoodai-imagines-tool/releases/v0.7.3/',
+    publicRoot,
+  )
+  const checksum = await readFile(
+    new URL('SHA256SUMS', legacyRoot),
+    'utf8',
+  )
+  const expected = {
+    'usegoodai-imagines-tool-v0.7.3-windows-amd64.exe': 'fa4fe114ce64cba82e0005813d65c832537d94892f3437ad3d71d7e96597aa45',
+    'usegoodai-imagines-tool-v0.7.3-darwin-arm64': '0a07c944e11048444d16679725c3f4747cfcfecc1bfa4018b6ff8a70c86a289c',
+    'usegoodai-imagines-tool-v0.7.3-darwin-amd64': 'af72026e9b6c21075293f841c6e1c0b7993da48a8749fc1c04ce1196fad6db1e',
+  }
+  assert.deepEqual(Object.fromEntries(parseChecksums(checksum)), expected)
+  for (const [name, digest] of Object.entries(expected)) {
+    const artifact = await readFile(new URL(name, legacyRoot))
+    assert.equal(createHash('sha256').update(artifact).digest('hex'), digest)
+  }
 })
