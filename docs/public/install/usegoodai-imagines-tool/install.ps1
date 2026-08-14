@@ -56,7 +56,7 @@ if ($Architecture.ToUpperInvariant() -ne "AMD64") {
     throw ("安装失败：V0.7.3 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
 }
 $Artifact = "usegoodai-imagines-tool-v0.7.3-windows-amd64.exe"
-$ExpectedSha256 = "fa4fe114ce64cba82e0005813d65c832537d94892f3437ad3d71d7e96597aa45"
+$ExpectedSha256 = "3ab5ad4a324209117b67dcffde1d8e0fd61bdd31cbf8b5c3cdc8ecbb96220816"
 
 $ToolCodexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { Join-Path $HOME ".codex" } else { $env:CODEX_HOME }
 $InstalledReleasePath = Join-Path $ToolCodexHome "tools\usegoodai-imagines-tool\RELEASE"

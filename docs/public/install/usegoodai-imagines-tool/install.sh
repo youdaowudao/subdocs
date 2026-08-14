@@ -20,12 +20,12 @@ fi
 case "$system_name/$machine_name/$translated" in
   Darwin/arm64/*|Darwin/x86_64/1)
     artifact="usegoodai-imagines-tool-v0.7.3-darwin-arm64"
-    expected_sha256="0a07c944e11048444d16679725c3f4747cfcfecc1bfa4018b6ff8a70c86a289c"
+    expected_sha256="e1ae606d9586dc1eec1cc2781e61d44e3ccde0e7808705942a582f8ff2c0338d"
     expected_macho_architecture="arm64"
     ;;
   Darwin/x86_64/*)
     artifact="usegoodai-imagines-tool-v0.7.3-darwin-amd64"
-    expected_sha256="af72026e9b6c21075293f841c6e1c0b7993da48a8749fc1c04ce1196fad6db1e"
+    expected_sha256="2b7bbdcfc4532bc6367c38ba38d91356a32c522daf167337ba4f2897f507f773"
     expected_macho_architecture="x86_64"
     ;;
   *)
