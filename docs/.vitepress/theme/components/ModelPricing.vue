@@ -242,11 +242,20 @@ const copyModelId = async (modelId) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="model in textRows" :key="model.id">
+              <tr
+                v-for="model in textRows"
+                :key="model.id"
+                :class="{ 'is-featured-model': model.featured }"
+              >
                 <td>
                   <div class="model-id-cell">
                     <div>
-                      <strong>{{ model.id }}</strong>
+                      <div class="model-id-title">
+                        <strong>{{ model.id }}</strong>
+                        <span v-if="model.featured" class="featured-model-badge">
+                          {{ model.featuredLabel ?? '主推' }}
+                        </span>
+                      </div>
                       <span>{{ model.description }}</span>
                     </div>
                     <button
@@ -869,6 +878,15 @@ const copyModelId = async (modelId) => {
   color: var(--vp-c-text-1);
 }
 
+.model-pricing-page .pricing-table tbody tr.is-featured-model td {
+  border-bottom-color: #d9cff4;
+  background: #f5f1ff;
+}
+
+.model-pricing-page .pricing-table tbody tr.is-featured-model td:first-child {
+  box-shadow: inset 4px 0 0 #8069b3;
+}
+
 .model-pricing-page .pricing-table tbody tr:last-child td { border-bottom: 0; }
 .model-pricing-page .pricing-table th:first-child { width: 23%; }
 .model-pricing-page .pricing-table th:nth-child(2),
@@ -898,6 +916,28 @@ const copyModelId = async (modelId) => {
   min-width: 0;
   flex-direction: column;
   gap: 3px;
+}
+
+.model-id-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.featured-model-badge {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #8069b3;
+  color: #fff !important;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
 }
 
 .model-id-cell strong {
@@ -1069,6 +1109,14 @@ const copyModelId = async (modelId) => {
 .dark .pricing-group-placeholder,
 .dark .pricing-group-static,
 .dark .model-pricing-page .pricing-table td { background: #211f1d; border-color: #3a3530; }
+.dark .model-pricing-page .pricing-table tbody tr.is-featured-model td {
+  border-bottom-color: #55486f;
+  background: #292335;
+}
+.dark .model-pricing-page .pricing-table tbody tr.is-featured-model td:first-child {
+  box-shadow: inset 4px 0 0 #a18bd0;
+}
+.dark .featured-model-badge { background: #a18bd0; color: #21192e !important; }
 .dark .model-category-tabs,
 .dark .pricing-rule,
 .dark .pricing-panel,

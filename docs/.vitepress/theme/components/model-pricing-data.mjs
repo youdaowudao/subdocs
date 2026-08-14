@@ -10,6 +10,7 @@ const GPT_MODEL_IDS = [
 ]
 
 const GEMINI_MODEL_IDS = [
+  'gemini-3.7-flash',
   'gemini-3.6-flash-tiered',
   'gemini-3.6-flash',
   'gemini-3.5-flash',
@@ -277,6 +278,14 @@ export const TEXT_MODELS = [
     name: 'Grok 4.5',
     description: '速度比 GPT 日常分组更快，风控相对低，支持实时搜索和工具调用',
     officialUsd: { input: 2, output: 6, cachedInput: 0.2 },
+  },
+  {
+    id: 'gemini-3.7-flash',
+    name: 'Gemini 3.7 Flash',
+    description: '2026-08 发布，当前主推，适合代码、代理流程和多模态任务；首发价到 2026-12-31',
+    officialUsd: { input: 0.75, output: 3.75, cachedInput: 0.075 },
+    featured: true,
+    featuredLabel: '主推',
   },
   {
     id: 'gemini-3.6-flash-tiered',

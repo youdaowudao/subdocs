@@ -159,6 +159,7 @@ test('shows the Gemini Antigravity group with newest models first and Pro before
   assert.deepEqual(
     getTextModelsForGroup('gemini-antigravity').map((model) => model.id),
     [
+      'gemini-3.7-flash',
       'gemini-3.6-flash-tiered',
       'gemini-3.6-flash',
       'gemini-3.5-flash',
@@ -230,6 +231,7 @@ test('uses the displayed official price baselines for GPT-5.6', () => {
 test('uses the displayed official price baselines for Gemini text models', () => {
   const models = new Map(getTextModelsForGroup('gemini-antigravity').map((model) => [model.id, model]))
 
+  assert.deepEqual(models.get('gemini-3.7-flash').officialUsd, { input: 0.75, output: 3.75, cachedInput: 0.075 })
   assert.deepEqual(models.get('gemini-3.6-flash').officialUsd, { input: 1.5, output: 7.5, cachedInput: 0.15 })
   assert.deepEqual(models.get('gemini-3.1-pro-preview').officialUsd, { input: 2, output: 12, cachedInput: 0.2 })
   assert.deepEqual(models.get('gemini-2.5-pro').officialUsd, { input: 1.25, output: 10, cachedInput: 0.125 })
@@ -243,12 +245,24 @@ test('keeps Gemini descriptions customer-facing with dates or concrete use cases
     assert.doesNotMatch(model.description, forbidden, model.id)
   }
 
+  assert.match(models.get('gemini-3.7-flash').description, /2026-08/)
+  assert.match(models.get('gemini-3.7-flash').description, /2026-12-31/)
   assert.match(models.get('gemini-3.6-flash').description, /2026-07/)
   assert.match(models.get('gemini-3.5-flash').description, /2026-05/)
   assert.match(models.get('gemini-3.1-pro-preview').description, /2026-02/)
   assert.match(models.get('gemini-3-pro-preview').description, /2025-11/)
   assert.match(models.get('gemini-2.5-pro').description, /2025-06/)
   assert.match(models.get('gemini-2.5-flash-lite').description, /高频|低延迟/)
+})
+
+test('highlights Gemini 3.7 Flash as the featured model', () => {
+  const model = getTextModelsForGroup('gemini-antigravity')[0]
+
+  assert.equal(model.id, 'gemini-3.7-flash')
+  assert.equal(model.featured, true)
+  assert.equal(model.featuredLabel, '主推')
+  assert.match(pricingComponentSource, /'is-featured-model': model\.featured/)
+  assert.match(pricingComponentSource, /class="featured-model-badge"/)
 })
 
 test('converts official USD prices to RMB at the fixed exchange rate', () => {
