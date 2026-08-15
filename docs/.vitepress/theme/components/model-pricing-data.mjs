@@ -81,7 +81,7 @@ export const TEXT_GROUPS = [
   {
     id: 'anthropic-max',
     name: 'CC MAX 满血版本',
-    multiplier: 1.3,
+    multiplier: 1,
     description: '满血高性能档，价格较高，重大任务使用',
     modelIds: CC_MAX_MODEL_IDS,
   },
