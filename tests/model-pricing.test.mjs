@@ -176,7 +176,7 @@ test('shows the Gemini Antigravity group with newest models first and Pro before
   )
 })
 
-test('shows GLM-5.2 and LongCat-2.0 together in the RMB domestic group', () => {
+test('shows GLM-5.3, GLM-5.2 and LongCat-2.0 together in the RMB domestic group', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'domestic')
 
   assert.equal(group.name, '国产之光')
@@ -186,6 +186,7 @@ test('shows GLM-5.2 and LongCat-2.0 together in the RMB domestic group', () => {
   assert.deepEqual(
     getTextModelsForGroup('domestic').map(({ id, officialCny }) => ({ id, officialCny })),
     [
+      { id: 'glm-5.3', officialCny: { input: 8, output: 20, cachedInput: 2 } },
       { id: 'glm-5.2', officialCny: { input: 8, output: 20, cachedInput: 2 } },
       { id: 'LongCat-2.0', officialCny: { input: 2, output: 8, cachedInput: 0.04 } },
     ],

@@ -113,7 +113,7 @@ export const TEXT_GROUPS = [
     multiplier: 0.2,
     currency: 'cny',
     description: '限制相对 GPT 更宽，可用于逆向等场景',
-    modelIds: ['glm-5.2', 'LongCat-2.0'],
+    modelIds: ['glm-5.3', 'glm-5.2', 'LongCat-2.0'],
   },
 ]
 
@@ -364,6 +364,12 @@ export const TEXT_MODELS = [
     name: 'DeepSeek V4 Flash 0731',
     description: 'V4-Flash-0731 正式版，支持思考模式、工具调用和 Responses API',
     officialCny: { input: 1, output: 2, cachedInput: 0.02 },
+  },
+  {
+    id: 'glm-5.3',
+    name: 'GLM-5.3',
+    description: '国产旗舰模型，适合复杂推理、代码和逆向分析场景',
+    officialCny: { input: 8, output: 20, cachedInput: 2 },
   },
   {
     id: 'glm-5.2',
