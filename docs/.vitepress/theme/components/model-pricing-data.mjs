@@ -109,7 +109,7 @@ export const TEXT_GROUPS = [
   {
     id: 'deepseek-v4-flash',
     name: 'DeepSeek V4 Flash 分组',
-    multiplier: 0.4,
+    multiplier: 0.45,
     currency: 'cny',
     description: 'V4 Flash 0731 正式版，适合代码、Agent 和长上下文任务',
     modelIds: ['deepseek-v4-flash'],
@@ -125,7 +125,7 @@ export const TEXT_GROUPS = [
   {
     id: 'domestic',
     name: '国产之光',
-    multiplier: 0.2,
+    multiplier: 0.45,
     currency: 'cny',
     description: '限制相对 GPT 更宽，可用于逆向等场景',
     modelIds: ['glm-5.3', 'glm-5.2', 'LongCat-2.0'],
