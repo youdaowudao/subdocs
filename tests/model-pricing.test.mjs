@@ -34,7 +34,8 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.25 },
       { id: 'anthropic-main', name: '主力分组', multiplier: 0.3 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1 },
-      { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.35 },
+      { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
+      { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.4 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
       { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.4 },
       { id: 'domestic', name: '国产之光', multiplier: 0.2 },
@@ -48,7 +49,7 @@ test('keeps the model category tabs in the requested order', () => {
     [
       { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full'], defaultGroupId: 'gpt-0.18' },
       { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-max'], defaultGroupId: undefined },
-      { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-4.5'], defaultGroupId: undefined },
+      { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity'], defaultGroupId: undefined },
       { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek-v4-flash'], defaultGroupId: undefined },
       { id: 'domestic', name: 'GLM', kind: 'text', groupIds: ['domestic'], defaultGroupId: undefined },
@@ -137,21 +138,31 @@ test('shows the CC MAX Claude group with the extra sonnet snapshot model', () =>
   )
 })
 
-test('shows Grok 4.6 before Grok 4.5 with official prices and customer-facing descriptions', () => {
+test('shows the free and heavy Grok pools with the same models and requested multipliers', () => {
+  const freeGroup = TEXT_GROUPS.find((item) => item.id === 'grok-free')
+  const heavyGroup = TEXT_GROUPS.find((item) => item.id === 'grok-4.5')
+  const expectedModels = [
+    {
+      id: 'grok-4.6',
+      description: 'XAI最新模型，性能直逼OPUS 5跟GPT 5.6 SOL，限制低，速度快，当前非常火热。',
+      officialUsd: { input: 2, output: 6, cachedInput: 0.5 },
+    },
+    {
+      id: 'grok-4.5',
+      description: '速度比 GPT 日常分组更快，风控相对低，支持实时搜索和工具调用',
+      officialUsd: { input: 2, output: 6, cachedInput: 0.2 },
+    },
+  ]
+
+  assert.equal(freeGroup.multiplier, 0.1)
+  assert.equal(heavyGroup.multiplier, 0.4)
+  assert.deepEqual(
+    getTextModelsForGroup('grok-free').map(({ id, description, officialUsd }) => ({ id, description, officialUsd })),
+    expectedModels,
+  )
   assert.deepEqual(
     getTextModelsForGroup('grok-4.5').map(({ id, description, officialUsd }) => ({ id, description, officialUsd })),
-    [
-      {
-        id: 'grok-4.6',
-        description: 'XAI最新模型，性能直逼OPUS 5跟GPT 5.6 SOL，限制低，速度快，当前非常火热。',
-        officialUsd: { input: 2, output: 6, cachedInput: 0.5 },
-      },
-      {
-        id: 'grok-4.5',
-        description: '速度比 GPT 日常分组更快，风控相对低，支持实时搜索和工具调用',
-        officialUsd: { input: 2, output: 6, cachedInput: 0.2 },
-      },
-    ],
+    expectedModels,
   )
 })
 
@@ -329,7 +340,8 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['full', 8.75],
     ['anthropic-main', 10.5],
     ['anthropic-max', 35],
-    ['grok-4.5', 12.25],
+    ['grok-free', 3.5],
+    ['grok-4.5', 14],
     ['gemini-antigravity', 8.75],
   ])
 

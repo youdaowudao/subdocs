@@ -86,9 +86,16 @@ export const TEXT_GROUPS = [
     modelIds: CC_MAX_MODEL_IDS,
   },
   {
+    id: 'grok-free',
+    name: 'free号池',
+    multiplier: 0.1,
+    description: '低价号池，适合日常对话、搜索和工具调用',
+    modelIds: ['grok-4.6', 'grok-4.5'],
+  },
+  {
     id: 'grok-4.5',
     name: 'heavy号池',
-    multiplier: 0.35,
+    multiplier: 0.4,
     description: '速度比 GPT Pro / Plus 混池分组更快，风控相对低，支持实时搜索和工具调用',
     modelIds: ['grok-4.6', 'grok-4.5'],
   },
@@ -138,7 +145,7 @@ export const MODEL_CATEGORIES = [
     name: 'Grok',
     iconSvg: X_ICON,
     kind: 'text',
-    groupIds: ['grok-4.5'],
+    groupIds: ['grok-free', 'grok-4.5'],
   },
   {
     id: 'gemini',
