@@ -390,13 +390,13 @@ export const TEXT_MODELS = [
     id: 'glm-5.3',
     name: 'GLM-5.3',
     description: '国产旗舰模型，适合复杂推理、代码和逆向分析场景',
-    officialCny: { input: 8, output: 20, cachedInput: 2 },
+    officialCny: { input: 8, output: 28, cachedInput: 2 },
   },
   {
     id: 'glm-5.2',
     name: 'GLM-5.2',
     description: '国产旗舰模型，适合复杂推理、代码和逆向分析场景',
-    officialCny: { input: 8, output: 20, cachedInput: 2 },
+    officialCny: { input: 8, output: 28, cachedInput: 2 },
   },
   {
     id: 'LongCat-2.0',

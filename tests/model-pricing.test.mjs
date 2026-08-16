@@ -198,8 +198,8 @@ test('shows GLM-5.3, GLM-5.2 and LongCat-2.0 together in the RMB domestic group'
   assert.deepEqual(
     getTextModelsForGroup('domestic').map(({ id, officialCny }) => ({ id, officialCny })),
     [
-      { id: 'glm-5.3', officialCny: { input: 8, output: 20, cachedInput: 2 } },
-      { id: 'glm-5.2', officialCny: { input: 8, output: 20, cachedInput: 2 } },
+      { id: 'glm-5.3', officialCny: { input: 8, output: 28, cachedInput: 2 } },
+      { id: 'glm-5.2', officialCny: { input: 8, output: 28, cachedInput: 2 } },
       { id: 'LongCat-2.0', officialCny: { input: 2, output: 8, cachedInput: 0.04 } },
     ],
   )
@@ -332,21 +332,21 @@ test('uses the group multiplier directly on the official USD number', () => {
 test('calculates GLM group prices directly in RMB without USD conversion', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'domestic')
   const price = calculateTextPrice(
-    { input: 8, output: 20, cachedInput: 2 },
+    { input: 8, output: 28, cachedInput: 2 },
     group.multiplier,
     group.currency,
   )
 
   assert.deepEqual(price.official, {
     input: 8,
-    output: 20,
+    output: 28,
     cachedInput: 2,
-    total: 28,
+    total: 36,
   })
   assert.ok(isClose(price.group.input, 3.6))
-  assert.ok(isClose(price.group.output, 9))
+  assert.ok(isClose(price.group.output, 12.6))
   assert.ok(isClose(price.group.cachedInput, 0.9))
-  assert.ok(isClose(price.group.total, 12.6))
+  assert.ok(isClose(price.group.total, 16.2))
 })
 
 test('expresses the active multipliers as rounded equivalent discounts', () => {
