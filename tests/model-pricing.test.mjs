@@ -38,6 +38,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.4 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
       { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.4 },
+      { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.7 },
       { id: 'domestic', name: '国产之光', multiplier: 0.2 },
     ],
   )
@@ -51,7 +52,7 @@ test('keeps the model category tabs in the requested order', () => {
       { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-max'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity'], defaultGroupId: undefined },
-      { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek-v4-flash'], defaultGroupId: undefined },
+      { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek-v4-flash', 'deepseek-v4-pro'], defaultGroupId: undefined },
       { id: 'domestic', name: 'GLM', kind: 'text', groupIds: ['domestic'], defaultGroupId: undefined },
       { id: 'image', name: '生图', kind: 'image', groupIds: [], defaultGroupId: undefined },
     ],
@@ -229,6 +230,31 @@ test('shows DeepSeek V4 Flash 0731 with the official RMB prices and 0.4 multipli
   assert.ok(isClose(price.group.total, 1.2))
 })
 
+test('shows DeepSeek V4 Pro 0813 with the official RMB prices and 0.7 multiplier', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'deepseek-v4-pro')
+  const models = getTextModelsForGroup(group.id)
+
+  assert.equal(group.multiplier, 0.7)
+  assert.equal(group.currency, 'cny')
+  assert.deepEqual(
+    models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
+    [
+      {
+        id: 'deepseek-v4-pro',
+        name: 'DeepSeek V4 Pro 0813',
+        officialCny: { input: 3, output: 6, cachedInput: 0.025 },
+      },
+    ],
+  )
+
+  const price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
+  assert.deepEqual(price.official, { input: 3, output: 6, cachedInput: 0.025, total: 9 })
+  assert.ok(isClose(price.group.input, 2.1))
+  assert.ok(isClose(price.group.output, 4.2))
+  assert.ok(isClose(price.group.cachedInput, 0.0175))
+  assert.ok(isClose(price.group.total, 6.3))
+})
+
 test('uses the displayed official price baselines for GPT-5.6', () => {
   assert.deepEqual(
     getTextModelsForGroup('gpt-0.18').slice(0, 3).map((model) => model.officialUsd),
@@ -374,6 +400,7 @@ test('formats RMB amounts without noisy trailing zeroes', () => {
 
 test('formats tiny non-zero RMB amounts without rounding them to zero', () => {
   assert.equal(formatCny(0.0049), '¥0.0049')
+  assert.equal(formatCny(0.025), '¥0.025')
 })
 
 test('keeps the requested drawing prices in RMB without applying USD conversion', () => {

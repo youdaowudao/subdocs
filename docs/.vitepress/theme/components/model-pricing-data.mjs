@@ -115,6 +115,14 @@ export const TEXT_GROUPS = [
     modelIds: ['deepseek-v4-flash'],
   },
   {
+    id: 'deepseek-v4-pro',
+    name: 'DeepSeek V4 Pro 分组',
+    multiplier: 0.7,
+    currency: 'cny',
+    description: 'V4 Pro 0813 正式版，适合复杂代码、Agent 和长上下文任务',
+    modelIds: ['deepseek-v4-pro'],
+  },
+  {
     id: 'domestic',
     name: '国产之光',
     multiplier: 0.2,
@@ -159,7 +167,7 @@ export const MODEL_CATEGORIES = [
     name: 'DeepSeek',
     mark: '深',
     kind: 'text',
-    groupIds: ['deepseek-v4-flash'],
+    groupIds: ['deepseek-v4-flash', 'deepseek-v4-pro'],
   },
   {
     id: 'domestic',
@@ -373,6 +381,12 @@ export const TEXT_MODELS = [
     officialCny: { input: 1, output: 2, cachedInput: 0.02 },
   },
   {
+    id: 'deepseek-v4-pro',
+    name: 'DeepSeek V4 Pro 0813',
+    description: 'V4-Pro-0813 正式版，适合复杂代码、Agent 和长上下文任务',
+    officialCny: { input: 3, output: 6, cachedInput: 0.025 },
+  },
+  {
     id: 'glm-5.3',
     name: 'GLM-5.3',
     description: '国产旗舰模型，适合复杂推理、代码和逆向分析场景',
@@ -497,8 +511,8 @@ export function getSavingsPercent(multiplier, currency = 'usd') {
 }
 
 export function formatCny(value) {
-  if (value > 0 && value < 0.01) {
-    return `¥${value.toFixed(4)}`
+  if (value > 0 && value < 0.1) {
+    return `¥${value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')}`
   }
 
   return `¥${value.toFixed(2)}`
