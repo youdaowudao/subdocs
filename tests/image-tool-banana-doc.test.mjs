@@ -8,6 +8,8 @@ const imageToolDocSource = readFileSync(
 )
 const quickStartSource = readFileSync(new URL('../docs/quick-start.md', import.meta.url), 'utf8')
 const configSource = readFileSync(new URL('../docs/.vitepress/config.mts', import.meta.url), 'utf8')
+const customCssSource = readFileSync(new URL('../docs/.vitepress/theme/custom.css', import.meta.url), 'utf8')
+const ccSwitchSource = readFileSync(new URL('../docs/codex-cc-switch.md', import.meta.url), 'utf8')
 
 test('puts the image tool installation on one three-step customer path', () => {
   const stepOne = imageToolDocSource.indexOf('## 1. 创建专门画图分组的 API Key')
@@ -41,10 +43,17 @@ test('keeps secondary information collapsed and retains the DIY Python path at t
   assert.doesNotMatch(imageToolDocSource, /POST https:\/\/api\.usegoodai\.com/)
 })
 
-test('keeps the image tool as the fourth top-level sidebar entry and links it from quick start', () => {
+test('keeps the three primary sidebar paths in the requested order and visually numbered', () => {
   assert.match(
     configSource,
-    /'quick-start\.md',[\s\S]*?'codex-cc-switch\.md',[\s\S]*?'clients',\s*'image-video-group-image\.md'/,
+    /'quick-start\.md',\s*'codex-cc-switch\.md',\s*'image-video-group-image\.md',[\s\S]*?'clients'/,
   )
+  assert.match(configSource, /frontmatterTitleFieldName:\s*'sidebarTitle'/)
+  assert.match(ccSwitchSource, /^sidebarTitle:\s*CC Switch 接入$/m)
+  assert.match(customCssSource, /\.link\[href='\/quick-start\.html'\]::before\s*\{[\s\S]*?content:\s*'1'/)
+  assert.match(customCssSource, /\.link\[href='\/codex-cc-switch\.html'\]::before\s*\{[\s\S]*?content:\s*'2'/)
+  assert.match(customCssSource, /\.link\[href='\/image-video-group-image\.html'\]::before\s*\{[\s\S]*?content:\s*'3'/)
+  assert.match(customCssSource, /\.VPSidebar \.link\[href='\/codex-cc-switch\.html'\] \.text/)
+  assert.match(customCssSource, /white-space:\s*nowrap/)
   assert.match(quickStartSource, /\[安装生图工具\]\(\/image-video-group-image\)/)
 })

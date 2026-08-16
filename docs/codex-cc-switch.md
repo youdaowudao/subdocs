@@ -1,5 +1,6 @@
 ---
 title: Codex CC Switch 接入
+sidebarTitle: CC Switch 接入
 ---
 
 # Codex CC Switch 接入
