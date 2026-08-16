@@ -33,6 +33,7 @@ export default withSidebar(config, {
   documentRootPath: 'docs',
   useTitleFromFileHeading: true,
   useTitleFromFrontmatter: true,
+  frontmatterTitleFieldName: 'sidebarTitle',
   useFolderTitleFromIndexFile: true,
   useFolderLinkFromIndexFile: true,
   collapsed: true,
@@ -42,9 +43,9 @@ export default withSidebar(config, {
   manualSortFileNameByPriority: [
     'quick-start.md',
     'codex-cc-switch.md',
+    'image-video-group-image.md',
     'models.md',
     'clients',
-    'image-video-group-image.md',
     'codex.md',
     'chatgpt-login-usegoodai.md',
     'codex-manual-config.md',
