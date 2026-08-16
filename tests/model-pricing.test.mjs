@@ -37,9 +37,9 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.4 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
-      { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.4 },
+      { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.45 },
       { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.7 },
-      { id: 'domestic', name: '国产之光', multiplier: 0.2 },
+      { id: 'domestic', name: '国产之光', multiplier: 0.45 },
     ],
   )
 })
@@ -192,7 +192,7 @@ test('shows GLM-5.3, GLM-5.2 and LongCat-2.0 together in the RMB domestic group'
   const group = TEXT_GROUPS.find((item) => item.id === 'domestic')
 
   assert.equal(group.name, '国产之光')
-  assert.equal(group.multiplier, 0.2)
+  assert.equal(group.multiplier, 0.45)
   assert.equal(group.currency, 'cny')
   assert.match(group.description, /逆向/)
   assert.deepEqual(
@@ -205,11 +205,11 @@ test('shows GLM-5.3, GLM-5.2 and LongCat-2.0 together in the RMB domestic group'
   )
 })
 
-test('shows DeepSeek V4 Flash 0731 with the official RMB prices and 0.4 multiplier', () => {
+test('shows DeepSeek V4 Flash 0731 with the official RMB prices and 0.45 multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'deepseek-v4-flash')
   const models = getTextModelsForGroup(group.id)
 
-  assert.equal(group.multiplier, 0.4)
+  assert.equal(group.multiplier, 0.45)
   assert.equal(group.currency, 'cny')
   assert.deepEqual(
     models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
@@ -224,10 +224,10 @@ test('shows DeepSeek V4 Flash 0731 with the official RMB prices and 0.4 multipli
 
   const price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
   assert.deepEqual(price.official, { input: 1, output: 2, cachedInput: 0.02, total: 3 })
-  assert.ok(isClose(price.group.input, 0.4))
-  assert.ok(isClose(price.group.output, 0.8))
-  assert.ok(isClose(price.group.cachedInput, 0.008))
-  assert.ok(isClose(price.group.total, 1.2))
+  assert.ok(isClose(price.group.input, 0.45))
+  assert.ok(isClose(price.group.output, 0.9))
+  assert.ok(isClose(price.group.cachedInput, 0.009))
+  assert.ok(isClose(price.group.total, 1.35))
 })
 
 test('shows DeepSeek V4 Pro 0813 with the official RMB prices and 0.7 multiplier', () => {
@@ -329,11 +329,12 @@ test('uses the group multiplier directly on the official USD number', () => {
   assert.ok(isClose(price.group.total, 8.75))
 })
 
-test('calculates domestic model prices directly in RMB without USD conversion', () => {
+test('calculates GLM group prices directly in RMB without USD conversion', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'domestic')
   const price = calculateTextPrice(
     { input: 8, output: 20, cachedInput: 2 },
-    0.2,
-    'cny',
+    group.multiplier,
+    group.currency,
   )
 
   assert.deepEqual(price.official, {
@@ -342,10 +343,10 @@ test('calculates domestic model prices directly in RMB without USD conversion', 
     cachedInput: 2,
     total: 28,
   })
-  assert.ok(isClose(price.group.input, 1.6))
-  assert.ok(isClose(price.group.output, 4))
-  assert.ok(isClose(price.group.cachedInput, 0.4))
-  assert.ok(isClose(price.group.total, 5.6))
+  assert.ok(isClose(price.group.input, 3.6))
+  assert.ok(isClose(price.group.output, 9))
+  assert.ok(isClose(price.group.cachedInput, 0.9))
+  assert.ok(isClose(price.group.total, 12.6))
 })
 
 test('expresses the active multipliers as rounded equivalent discounts', () => {
@@ -354,8 +355,8 @@ test('expresses the active multipliers as rounded equivalent discounts', () => {
   assert.equal(getEquivalentDiscount(0.25), '0.4折')
   assert.equal(getEquivalentDiscount(0.3), '0.4折')
   assert.equal(getEquivalentDiscount(1.9), '2.7折')
-  assert.equal(getEquivalentDiscount(0.2, 'cny'), '2.0折')
-  assert.equal(getSavingsPercent(0.2, 'cny'), 80)
+  assert.equal(getEquivalentDiscount(0.45, 'cny'), '4.5折')
+  assert.equal(getSavingsPercent(0.45, 'cny'), 55)
 })
 
 test('calculates the revised group totals from the official USD baseline', () => {
