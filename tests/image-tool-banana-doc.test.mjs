@@ -29,6 +29,11 @@ test('puts the image tool installation on one three-step customer path', () => {
 })
 
 test('keeps secondary information collapsed and retains the DIY Python path at the end', () => {
+  const customerPath = imageToolDocSource.slice(
+    0,
+    imageToolDocSource.indexOf('不用一键安装：让 Codex 创建 Python 脚本'),
+  )
+
   assert.ok((imageToolDocSource.match(/<details>/g) || []).length >= 6)
   assert.match(imageToolDocSource, /查看常用说法/)
   assert.match(imageToolDocSource, /查看支持的模型/)
@@ -40,7 +45,33 @@ test('keeps secondary information collapsed and retains the DIY Python path at t
   assert.match(imageToolDocSource, /在当前文件夹创建一个可运行的单文件生图脚本/)
   assert.match(imageToolDocSource, /自建 Python 脚本必须遵守的规则/)
   assert.match(imageToolDocSource, /创建或更新当前项目根目录的 AGENTS\.md/)
-  assert.doesNotMatch(imageToolDocSource, /POST https:\/\/api\.usegoodai\.com/)
+  assert.doesNotMatch(customerPath, /POST https:\/\/api\.usegoodai\.com/)
+})
+
+test('documents the verified Nano Banana 2 Responses request contract', () => {
+  assert.match(imageToolDocSource, /POST https:\/\/api\.usegoodai\.com\/v1\/responses/)
+  assert.match(imageToolDocSource, /请求方法：POST/)
+  assert.match(imageToolDocSource, /完整地址：https:\/\/api\.usegoodai\.com\/v1\/responses/)
+  assert.match(imageToolDocSource, /Authorization: Bearer <API_KEY>/)
+  assert.match(imageToolDocSource, /"stream": false/)
+  assert.match(imageToolDocSource, /"type": "input_text"/)
+  assert.match(imageToolDocSource, /"type": "input_image"/)
+  assert.match(imageToolDocSource, /标准 Base64 编码图片内容/)
+  assert.match(imageToolDocSource, /`data:<MIME 类型>;base64,<Base64 内容>`/)
+  assert.match(imageToolDocSource, /分辨率测试是在 `1:1` 下完成的，比例测试是在 `1K` 下完成的/)
+  assert.match(imageToolDocSource, /已验证的 `image_size`：/)
+  assert.match(imageToolDocSource, /已验证的 `aspect_ratio`：/)
+  assert.match(imageToolDocSource, /Nano Banana 不使用 `size`、`quality` 或 `output_format`/)
+  assert.match(imageToolDocSource, /`n=3` 已完成真实测试并成功返回 3 张图片/)
+  assert.match(imageToolDocSource, /PNG、JPEG、WebP 单张参考图均已验证成功/)
+  assert.match(imageToolDocSource, /16:9、21:9、9:21/)
+  assert.match(imageToolDocSource, /上面的“改背景”请求已经验证成功/)
+  assert.match(imageToolDocSource, /2 张不同参考图和 4 张不同参考图放在同一个请求中均已验证成功/)
+  assert.match(imageToolDocSource, /Nano Banana 改图不使用另一个接口/)
+  assert.match(imageToolDocSource, /Responses 请求体不发送顶层 `n`/)
+  assert.match(imageToolDocSource, /只解析 Responses 返回 JSON 的 `output` 字段/)
+  assert.match(imageToolDocSource, /14 张参考图.*HTTP 502/)
+  assert.doesNotMatch(imageToolDocSource, /最多接收 14 张/)
 })
 
 test('keeps the three primary sidebar paths in the requested order and visually numbered', () => {

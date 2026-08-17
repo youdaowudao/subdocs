@@ -148,7 +148,7 @@ Codex 会按照用户明确提出的模型、数量、尺寸和画面要求调�
 | --- | --- |
 | 安装器提示 Key 无效或生图返回鉴权错误 | 回到 API 密钥页面，确认复制的是 **专门画图分组** 的 Key，再重新安装 |
 | 安装后 Codex 不知道生图工具 | 新建一个 Codex 任务，不要继续使用安装前的旧对话 |
-| Codex 只回复图片路径 | 明确要求“生成后把图片显示在当前对话中”，并确认当前任务已经读取生图 Skill |
+| Codex 只回复图片路径或图片只出现在折叠的中间过程 | 确认当前任务已经读取生图 Skill；最终回复必须用绝对路径 Markdown 图片语法再次嵌入图片 |
 | 生图接口返回错误 | 本次请求会直接停止，不会自动重试或更换模型；稍后重新发起一次新请求 |
 | 图片无法写入 | 打开一个有写入权限的项目后再试，或让 Codex 使用桌面 `images` 文件夹 |
 
@@ -174,10 +174,13 @@ https://docs.usegoodai.com/image-video-group-image.html
 6. 脚本必须接收 Codex 每次传入的完整图片描述、模型、数量、规格和可选原图文件，不能把图片描述写死在脚本里。
 7. 默认使用 gpt-image-2；用户指定其它已支持模型时，按页面中的模型和接口映射发送请求。
 8. 每个模型请求只发送一次，禁止自动重试或静默更换模型。
-9. 成功后只保存最终图片，并立即使用 view_image 把每张图片显示在当前 Codex 对话中；失败时显示脱敏错误，不创建空图片或运行记录。
+9. 成功后只保存最终图片，并立即使用 view_image 打开每张图片，确认图片能够正常显示。
+10. view_image 成功后，最终回复仍必须用绝对路径 Markdown 图片语法再次嵌入每张图片，例如：`![生成结果](/absolute/path/image.png)`。不得只依赖中间工具输出，也不得只回复普通文件路径或普通 Markdown 文件链接。失败时显示脱敏错误，不创建空图片或运行记录。
 ```
 
 以后在这个项目中直接对 Codex 说“画一张……”即可。需要比较模型时，明确说出模型名；Codex 应使用同一要求逐个调用，每个模型只请求一次。
+
+</details>
 
 <details>
 <summary>自建 Python 脚本必须遵守的规则</summary>
@@ -201,8 +204,249 @@ API 根地址固定为 `https://api.usegoodai.com`，鉴权使用 `Authorization
 - `gpt-image-1k-th` 使用 `1024x1024`，质量使用 `low` 或 `high`。
 - `gpt-image-2-adobe` 使用 `1024x1536`、`1536x2304` 或 `2304x3456`，质量使用 `low`。
 - `grok-imagine-image` 使用 `resolution`、`aspect_ratio` 和可选 `quality`，不要发送 GPT Image 的 `size`。
-- `nano-banana-2` 和 `nano-banana-pro` 在 `response_format` 中发送 `image_size` 与 `aspect_ratio`；参考图编码为 `input_image`。
-- 图片数量由 Codex 按用户要求传入。上游不支持一次返回多张时，可以在同一次脚本运行中补齐；任意一张失败时不留下部分结果。
+
+### Nano Banana 2 的调用方法和已验证参数
+
+下面的内容只针对 `nano-banana-2`，写的是当前已用真实上游请求验证过的调用方式。文生图、参考图和改图都使用同一个 Responses 接口，不使用 Images 接口。
+
+#### 1. 请求地址和请求头
+
+```text
+请求方法：POST
+完整地址：https://api.usegoodai.com/v1/responses
+```
+
+请求头必须包含：
+
+```http
+Authorization: Bearer <API_KEY>
+Content-Type: application/json
+```
+
+`<API_KEY>` 替换成 UseGoodAI API Key。不要把 Key 写进请求体、日志、错误信息或输出文件。
+
+#### 2. 文生图最小请求体
+
+文本描述放在 `input[0].content` 中的 `input_text.text`，不能写成顶层 `prompt`：
+
+```json
+{
+  "model": "nano-banana-2",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "一只红苹果放在白色桌面上"
+        }
+      ]
+    }
+  ],
+  "stream": false,
+  "response_format": {
+    "type": "image",
+    "mime_type": "image/png",
+    "aspect_ratio": "1:1",
+    "image_size": "1K"
+  }
+}
+```
+
+字段说明：
+
+| 字段 | 必填 | 写法 |
+| --- | --- | --- |
+| `model` | 是 | 固定写 `nano-banana-2` |
+| `input` | 是 | 数组，当前使用一个 `role: "user"` 对象 |
+| `input[0].role` | 是 | 固定写 `user` |
+| `input[0].content` | 是 | 文本、参考图和改图内容都放在这里 |
+| `content[].type` | 是 | 文本使用 `input_text`，图片使用 `input_image` |
+| `content[].text` | 文本请求时必填 | 完整图片描述或修改指令 |
+| `stream` | 是 | 固定写 `false` |
+| `response_format.type` | 是 | 固定写 `image` |
+| `response_format.mime_type` | 是 | 当前固定写 `image/png` |
+| `response_format.aspect_ratio` | 是 | 填已验证的比例，例如 `1:1` |
+| `response_format.image_size` | 是 | 填 `512`、`1K`、`2K` 或 `4K` |
+
+#### 3. 尺寸和比例
+
+已验证的 `image_size`：
+
+```text
+512、1K、2K、4K
+```
+
+已验证的 `aspect_ratio`：
+
+```text
+1:1、3:2、2:3、3:4、1:4、4:1、4:3、4:5、
+5:4、1:8、8:1、9:16、16:9、21:9、9:21
+```
+
+分辨率测试是在 `1:1` 下完成的，比例测试是在 `1K` 下完成的。因此，上面的结果表示这些尺寸和比例分别被上游接受，不表示每一个尺寸和每一个比例的组合都已经逐项测试。
+
+本地工具命令中的 `--resolution 1k` 会转换为请求体中的 `"image_size": "1K"`；`512` 保持为 `"512"`。Nano Banana 不使用 `size`、`quality` 或 `output_format`，不要把这些字段加入请求体。
+
+#### 4. 传一张参考图
+
+参考图不是单独的上传接口，也不是把本地文件路径直接放进 JSON。调用脚本时按下面步骤处理：
+
+1. 读取本地图片的二进制内容。
+2. 判断图片格式，只接受 PNG、JPEG 或 WebP。
+3. 使用标准 Base64 编码图片内容。
+4. 拼成 Data URL：`data:<MIME 类型>;base64,<Base64 内容>`。
+5. 在同一个 `content` 数组中加入一个 `input_image` 对象。
+
+一张 PNG 参考图的请求体结构如下：
+
+```json
+{
+  "model": "nano-banana-2",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "参考这张图片，生成一张白色背景的商品图，保留主体。"
+        },
+        {
+          "type": "input_image",
+          "image_url": "data:image/png;base64,<图片的Base64内容>"
+        }
+      ]
+    }
+  ],
+  "stream": false,
+  "response_format": {
+    "type": "image",
+    "mime_type": "image/png",
+    "aspect_ratio": "1:1",
+    "image_size": "1K"
+  }
+}
+```
+
+不同格式只替换 Data URL 的 MIME 类型：
+
+```text
+PNG：data:image/png;base64,<...>
+JPEG：data:image/jpeg;base64,<...>
+WebP：data:image/webp;base64,<...>
+```
+
+PNG、JPEG、WebP 单张参考图均已验证成功。
+
+#### 5. 传两张或四张参考图
+
+多张参考图仍然使用同一个 `content` 数组。每张图片各占一个独立的 `input_image` 对象，不能把多张图片拼成一个字符串，也不能增加 `images` 字段：
+
+```json
+{
+  "model": "nano-banana-2",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "参考下面四张图片，综合它们的主要视觉特征，生成一张新的图片。"
+        },
+        {
+          "type": "input_image",
+          "image_url": "data:image/png;base64,<第1张图片>"
+        },
+        {
+          "type": "input_image",
+          "image_url": "data:image/jpeg;base64,<第2张图片>"
+        },
+        {
+          "type": "input_image",
+          "image_url": "data:image/webp;base64,<第3张图片>"
+        },
+        {
+          "type": "input_image",
+          "image_url": "data:image/png;base64,<第4张图片>"
+        }
+      ]
+    }
+  ],
+  "stream": false,
+  "response_format": {
+    "type": "image",
+    "mime_type": "image/png",
+    "aspect_ratio": "1:1",
+    "image_size": "1K"
+  }
+}
+```
+
+2 张不同参考图和 4 张不同参考图放在同一个请求中均已验证成功。14 张参考图的请求曾返回上游 `HTTP 502`，因此文档不把 14 张写成已支持，也不把它写成明确不支持。
+
+#### 6. 改图
+
+Nano Banana 改图不使用另一个接口，仍然调用：
+
+```text
+POST https://api.usegoodai.com/v1/responses
+```
+
+改图和参考图的请求结构相同，区别只在 `input_text.text` 的任务指令。把需要修改的原图作为 `input_image` 传入：
+
+```json
+{
+  "model": "nano-banana-2",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "把背景改成纯红色，保留主体和构图不变。"
+        },
+        {
+          "type": "input_image",
+          "image_url": "data:image/png;base64,<原图的Base64内容>"
+        }
+      ]
+    }
+  ],
+  "stream": false,
+  "response_format": {
+    "type": "image",
+    "mime_type": "image/png",
+    "aspect_ratio": "1:1",
+    "image_size": "1K"
+  }
+}
+```
+
+上面的“改背景”请求已经验证成功，返回结果中背景变为纯红色，主体和构图基本保留。需要改图时，提示词必须明确写出“改什么”和“保留什么”。
+
+#### 7. 一次生成多张
+
+Responses 请求体不发送顶层 `n`。工具收到数量要求时，会按数量发送多个独立请求，每个请求只生成一张：
+
+```text
+用户要求生成 3 张
+实际发送：3 个 POST /v1/responses 请求
+每个请求：不包含 n，每个返回 1 张图片
+```
+
+`n=3` 已完成真实测试并成功返回 3 张图片。脚本不能把 `n` 直接塞进 Nano Banana 的请求体，也不能因为一次失败就自动重试或更换模型。
+
+#### 8. 响应解析和保存
+
+收到 HTTP 2xx 后，脚本只解析 Responses 返回 JSON 的 `output` 字段，提取其中的结构化图片 Base64、Data URL 或 HTTPS 图片地址。不要按 Images 接口的 `data[].b64_json` 结构解析 Nano Banana。
+
+保存前必须确认：
+
+1. 图片内容非空。
+2. 图片文件签名有效。
+3. 按实际格式保存为 PNG 或 JPEG 等正确扩展名。
+
+输出目录使用当前项目的 `images`；没有项目时使用桌面的 `images`。只保存最终图片，不保存请求体、响应体、Base64 文本或 API Key。
 
 ### 解析和保存
 
@@ -212,10 +456,9 @@ API 根地址固定为 `https://api.usegoodai.com`，鉴权使用 `Authorization
 4. 输出目录使用当前项目的 `images`；没有项目时使用桌面的 `images`。
 5. 只保留最终图片，不创建请求、响应、摘要或图片专属子目录。
 6. 单图向 Codex 返回 `output_file`，多图返回 `output_files`；Codex 必须逐张调用 `view_image`。
-7. HTTP 非 2xx、解码失败或保存失败时立即停止，不自动重试、不更换模型。
+7. `view_image` 成功后，最终回复必须用每张图片的绝对路径和 Markdown 图片语法再次嵌入全部图片；普通路径和普通文件链接不能代替图片嵌入。
+8. HTTP 非 2xx、解码失败或保存失败时立即停止，不自动重试、不更换模型。
 
-写入当前项目 `AGENTS.md` 的规则必须包含：固定使用本项目的 `生成图片.py`；模型只能从上表选择；每次调用前说明模型；不读取或显示 Key；失败不重试；成功后把所有图片显示在当前对话中。
-
-</details>
+写入当前项目 `AGENTS.md` 的规则必须包含：固定使用本项目的 `生成图片.py`；模型只能从上表选择；每次调用前说明模型；不读取或显示 Key；失败不重试；成功后逐张调用 `view_image`，并在最终回复中用绝对路径 Markdown 图片语法再次嵌入所有成功图片。
 
 </details>
