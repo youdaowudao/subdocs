@@ -101,16 +101,16 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 </details>
 
 <details>
-<summary>查看支持的模型</summary>
+<summary>查看支持的模型、尺寸和参数</summary>
 
-| 模型 | 适合的调用方式 |
-| --- | --- |
-| `gpt-image-2` | 默认模型，支持生图、参考图、修图和多图 |
-| `gpt-image-1k-th` | 1K 生图、参考图、修图和多图 |
-| `gpt-image-2-adobe` | 1K、2K、4K 竖图和多图 |
-| `grok-imagine-image` | 1K、2K 生图、参考图、修图和多图 |
-| `nano-banana-2` | 生图、参考图、修图和多图 |
-| `nano-banana-pro` | 生图、参考图、修图和多图 |
+| 模型 | 接口 | 尺寸或比例参数 | 其它参数和能力 |
+| --- | --- | --- | --- |
+| `gpt-image-2` | Images | `size`、`quality`、`output_format` | 支持参考图、修图、多图 |
+| `gpt-image-1k-th` | Images | 固定 `1024x1024` | `quality=low/high`，支持参考图、修图、多图 |
+| `gpt-image-2-adobe` | Images | `1024x1536`、`1536x2304`、`2304x3456` | 固定 `quality=low`，只支持生图和多图 |
+| `grok-imagine-image` | Images | `resolution=1k/2k`、7 种 `aspect_ratio` | `quality=low/medium/high`，支持参考图、修图、多图 |
+| `nano-banana-2` | Responses | `resolution=512/1k/2k/4k`、15 种 `aspect_ratio` | 不使用 `size`、`quality`、`output_format`，支持参考图、修图、多图 |
+| `nano-banana-pro` | Responses | `resolution=1k/2k/4k`、工具支持的 15 种 `aspect_ratio` | 不使用 `size`、`quality`、`output_format`，支持参考图、修图、多图 |
 
 Codex 会按照用户明确提出的模型、数量、尺寸和画面要求调用工具，不会替用户决定创作内容。价格见[模型价格](/models)。
 
@@ -165,7 +165,7 @@ Codex 会按照用户明确提出的模型、数量、尺寸和画面要求调�
 请完整阅读并严格按照这个页面操作：
 https://docs.usegoodai.com/image-video-group-image.html
 
-根据页面末尾“自建 Python 脚本必须遵守的规则”，完成以下任务：
+根据页面中的“自建 Python 脚本的通用规则”和各模型参数折叠，完成以下任务：
 1. 在当前文件夹创建一个可运行的单文件生图脚本，文件名为“生成图片.py”。
 2. 创建或更新当前项目根目录的 AGENTS.md，保留原有内容，并写入页面规定的“项目生图规则”。
 3. 除“生成图片.py”和 AGENTS.md 外，不创建其它工程文件，也不自动安装依赖。
@@ -183,9 +183,244 @@ https://docs.usegoodai.com/image-video-group-image.html
 </details>
 
 <details>
-<summary>自建 Python 脚本必须遵守的规则</summary>
+<summary>GPT Image 2：尺寸、质量、比例和接口</summary>
 
-### 支持的模型和接口
+`gpt-image-2` 是默认模型，支持文生图、参考图、修图和多图。它使用 Images 接口，使用 `size`、`quality` 和 `output_format`，不能使用 Banana 的 `--aspect-ratio`。
+
+| 参数 | 写法 |
+| --- | --- |
+| `model` | 固定为 `gpt-image-2` |
+| `prompt` | 必填，写完整图片描述或修改指令 |
+| 文生图接口 | `POST /v1/images/generations` |
+| 参考图和修图接口 | `POST /v1/images/edits` |
+| `size` | `auto` 或 `WIDTHxHEIGHT`；宽高为 16 的倍数，单边不超过 3840，长短边比例不超过 3:1，总像素 655360 至 8294400 |
+| `quality` | `low`、`medium`、`high`、`auto`；默认 `high` |
+| `output_format` | 当前工具使用 `png` |
+| `n` | `1` 至 `10`；工具把多图拆成独立单张请求 |
+| 参考图 | 使用 `edit`，每张图片重复传入 `--image` |
+
+用户说“3:4”时转换为 `--size 768x1024`，不要把 `3:4` 直接填进 `size`。下面是本站已验证的尺寸示例：
+
+| 比例 | `size` 示例 |
+| --- | --- |
+| 1:1 | `1024x1024` |
+| 3:2 | `1152x768` |
+| 2:3 | `768x1152` |
+| 3:4 | `768x1024` |
+| 4:3 | `1024x768` |
+| 4:5 | `768x960` |
+| 5:4 | `960x768` |
+| 9:16 | `720x1280` |
+| 16:9 | `1280x720` |
+| 21:9 | `1344x576` |
+| 9:21 | `576x1344` |
+| 3:1 | `1536x512` |
+| 1:3 | `512x1536` |
+
+比例超过 3:1 的 `4:1`、`1:4`、`8:1`、`1:8` 不支持。`--aspect-ratio 3:4` 也不支持。
+
+</details>
+
+<details>
+<summary>GPT Image 1K TH：固定尺寸、质量和接口</summary>
+
+| 参数 | 写法 |
+| --- | --- |
+| `model` | 固定为 `gpt-image-1k-th` |
+| `prompt` | 必填，写完整图片描述或修改指令 |
+| 文生图接口 | `POST /v1/images/generations` |
+| 参考图和修图接口 | `POST /v1/images/edits` |
+| `size` | 只使用 `1024x1024` |
+| `quality` | `low` 或 `high`；默认 `high` |
+| `output_format` | 当前工具使用 `png` |
+| `n` | `1` 至 `10`；多图由工具拆成独立单张请求 |
+| 参考图 | 使用 `edit`，每张图片重复传入 `--image` |
+
+这个模型不使用 `--aspect-ratio`、`--resolution` 或 2K/4K 尺寸。需要横图、竖图或其它比例时，使用 `gpt-image-2`。
+
+</details>
+
+<details>
+<summary>GPT Image 2 Adobe：竖图尺寸、质量和接口</summary>
+
+| 参数 | 写法 |
+| --- | --- |
+| `model` | 固定为 `gpt-image-2-adobe` |
+| `prompt` | 必填，写完整图片描述 |
+| 文生图接口 | `POST /v1/images/generations` |
+| `size` | `1024x1536`、`1536x2304`、`2304x3456` |
+| `quality` | 只使用 `low` |
+| `output_format` | 当前工具使用 `png` |
+| `n` | `1` 至 `10`；多图由工具拆成独立单张请求 |
+| 参考图和修图 | 不开放；需要参考图或修图时使用 `gpt-image-2` |
+
+Adobe 的三个尺寸都是 2:3 竖图，不使用 `--aspect-ratio` 或 `--resolution`。
+
+</details>
+
+<details>
+<summary>Grok Imagine：分辨率、比例、质量和接口</summary>
+
+`grok-imagine-image` 使用 Images 接口，尺寸通过 `resolution` 和 `aspect_ratio` 表达，不能发送 GPT Image 的 `size`。
+
+| 参数 | 写法 |
+| --- | --- |
+| `model` | 固定为 `grok-imagine-image` |
+| `prompt` | 必填，写完整图片描述或修改指令 |
+| 文生图接口 | `POST /v1/images/generations` |
+| 参考图和修图接口 | `POST /v1/images/edits` |
+| `resolution` | `1k`、`2k`；默认 `1k` |
+| `aspect_ratio` | `1:1`、`16:9`、`9:16`、`4:3`、`3:4`、`3:2`、`2:3` |
+| `quality` | 可选 `low`、`medium`、`high`；未指定时使用模型默认值 |
+| `n` | `1` 至 `9`；工具把多图拆成独立单张请求 |
+| 请求体输出字段 | `response_format: "b64_json"`；保存扩展名按返回图片实际格式判断 |
+| 参考图和修图 | 使用 `edit` 和重复的 `--image`；直接使用原图规格，不传 `resolution`、`aspect_ratio` 或 `quality` |
+
+已验证的尺寸示例：
+
+| 规格 | 返回尺寸 |
+| --- | --- |
+| `1k` + `1:1` | `1024x1024` |
+| `2k` + `1:1` | `2048x2048` |
+| `2k` + `16:9` | `2816x1584` |
+| `1k` + `16:9` | `1280x720` |
+| `1k` + `9:16` | `720x1280` |
+| `1k` + `4:3` | `1152x864` |
+| `1k` + `3:4` | `864x1152` |
+| `1k` + `3:2` | `1248x832` |
+| `1k` + `2:3` | `832x1248` |
+
+命令示例：
+
+```bash
+usegoodai-imagines-tool generate \
+  --model grok-imagine-image \
+  --prompt "用户给出的完整图片描述" \
+  --resolution 2k \
+  --aspect-ratio 16:9 \
+  --quality high \
+  --n 1
+```
+
+</details>
+
+<details>
+<summary>Nano Banana 2：分辨率、比例、参考图和接口</summary>
+
+`nano-banana-2` 使用 Responses 接口。文生图、参考图和修图都使用同一个请求入口，不使用 Images 接口。
+
+请求地址是 `POST https://api.usegoodai.com/v1/responses`，请求头使用 `Authorization: Bearer <API_KEY>` 和 `Content-Type: application/json`。
+
+| 参数 | 写法 |
+| --- | --- |
+| `model` | 固定为 `nano-banana-2` |
+| `prompt` | 放在 `input[0].content` 的 `input_text.text` |
+| 接口 | `POST /v1/responses` |
+| `input` | 数组；文本放在 `input_text.text`，图片放在 `input_image.image_url` |
+| `stream` | 固定为 `false` |
+| `response_format.type` | 固定为 `image` |
+| `response_format.mime_type` | 当前固定为 `image/png` |
+| `resolution` | 工具参数为 `512`、`1k`、`2k`、`4k`；请求体字段为 `image_size` |
+| `aspect_ratio` | 工具参数和请求体字段都使用比例字符串 |
+| `quality`、`size`、`output_format` | 不使用 |
+| 多图数量 | 工具内部拆成多个单张 Responses 请求，不发送顶层 `n`；同一画面要求 3 张时发送 3 个单张请求 |
+| 参考图和修图 | 使用 `edit` 并重复传入 `--image`；PNG、JPEG、WebP 各 1 张以及 2 张、4 张不同图片已验证 |
+| 参考图数量 | 本地工具最多 14 张；14 张远端请求尚未形成支持结论 |
+
+已验证的 `image_size`：`512`、`1K`、`2K`、`4K`。
+
+已验证的 `aspect_ratio`：
+
+```text
+1:1、3:2、2:3、3:4、1:4、4:1、4:3、4:5、
+5:4、1:8、8:1、9:16、16:9、21:9、9:21
+```
+
+最小请求体：
+
+```json
+{
+  "model": "nano-banana-2",
+  "input": [{
+    "role": "user",
+    "content": [{
+      "type": "input_text",
+      "text": "一只红苹果放在白色桌面上"
+    }]
+  }],
+  "stream": false,
+  "response_format": {
+    "type": "image",
+    "mime_type": "image/png",
+    "aspect_ratio": "1:1",
+    "image_size": "1K"
+  }
+}
+```
+
+参考图或改图时，在同一个 `content` 数组中增加：
+
+```json
+{
+  "type": "input_image",
+  "image_url": "data:image/png;base64,<图片的Base64内容>"
+}
+```
+
+`image_url` 必须是 PNG、JPEG 或 WebP 的 Data URL，例如 `data:image/png;base64,<...>`。文本、参考图和修改指令都放在 `input[0].content`，不能写成顶层 `prompt` 或 `images` 字段。
+
+</details>
+
+<details>
+<summary>Nano Banana Pro：分辨率、比例、参考图和接口</summary>
+
+`nano-banana-pro` 使用与 Nano Banana 2 相同的 Responses 请求结构，但分辨率从 `1k` 开始，不支持 `512`。
+
+| 参数 | 写法 |
+| --- | --- |
+| `model` | 固定为 `nano-banana-pro` |
+| `prompt` | 放在 `input[0].content` 的 `input_text.text` |
+| 接口 | `POST /v1/responses` |
+| `input` | 数组；文本使用 `input_text`，图片使用 `input_image` |
+| `stream` | 固定为 `false` |
+| `response_format.type` | 固定为 `image` |
+| `response_format.mime_type` | 当前固定为 `image/png` |
+| `resolution` | `1k`、`2k`、`4k`；请求体字段为 `image_size` |
+| `aspect_ratio` | `1:1`、`3:2`、`2:3`、`3:4`、`1:4`、`4:1`、`4:3`、`4:5`、`5:4`、`1:8`、`8:1`、`9:16`、`16:9`、`21:9`、`9:21` |
+| `quality`、`size`、`output_format` | 不使用 |
+| 多图数量 | 工具内部拆成多个单张 Responses 请求，不发送顶层 `n` |
+| 参考图和修图 | 使用 `edit` 并重复传入 `--image`；最多 14 张由本地参数校验限制 |
+
+已远端验证的 Pro 规格包括 `1K + 1:1 -> 1024x1024` 和 `1K + 16:9 -> 1408x768`。其它比例沿用工具参数表，但本轮没有把 Nano Banana 2 的远端结果直接套用到 Pro。
+
+请求体的关键字段：
+
+```json
+{
+  "model": "nano-banana-pro",
+  "input": [{
+    "role": "user",
+    "content": [{
+      "type": "input_text",
+      "text": "用户给出的完整图片描述"
+    }]
+  }],
+  "stream": false,
+  "response_format": {
+    "type": "image",
+    "mime_type": "image/png",
+    "aspect_ratio": "16:9",
+    "image_size": "1K"
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>自建 Python 脚本的通用规则</summary>
+
+### 统一接口和鉴权
 
 | 模型 | 生成接口 | 参考图和修图 |
 | --- | --- | --- |
@@ -198,256 +433,6 @@ https://docs.usegoodai.com/image-video-group-image.html
 
 API 根地址固定为 `https://api.usegoodai.com`，鉴权使用 `Authorization: Bearer <API_KEY>`。脚本不得读取或覆盖 Codex 的 `auth.json`，也不得把 Key 写入请求记录、错误信息或生成图片目录。
 
-### 参数转换
-
-- `gpt-image-2` 使用 `size`、`quality` 和 `output_format`；默认 `1024x1024`、`high`、`png`。
-- `gpt-image-1k-th` 使用 `1024x1024`，质量使用 `low` 或 `high`。
-- `gpt-image-2-adobe` 使用 `1024x1536`、`1536x2304` 或 `2304x3456`，质量使用 `low`。
-- `grok-imagine-image` 使用 `resolution`、`aspect_ratio` 和可选 `quality`，不要发送 GPT Image 的 `size`。
-
-### Nano Banana 2 的调用方法和已验证参数
-
-下面的内容只针对 `nano-banana-2`，写的是当前已用真实上游请求验证过的调用方式。文生图、参考图和改图都使用同一个 Responses 接口，不使用 Images 接口。
-
-#### 1. 请求地址和请求头
-
-```text
-请求方法：POST
-完整地址：https://api.usegoodai.com/v1/responses
-```
-
-请求头必须包含：
-
-```http
-Authorization: Bearer <API_KEY>
-Content-Type: application/json
-```
-
-`<API_KEY>` 替换成 UseGoodAI API Key。不要把 Key 写进请求体、日志、错误信息或输出文件。
-
-#### 2. 文生图最小请求体
-
-文本描述放在 `input[0].content` 中的 `input_text.text`，不能写成顶层 `prompt`：
-
-```json
-{
-  "model": "nano-banana-2",
-  "input": [
-    {
-      "role": "user",
-      "content": [
-        {
-          "type": "input_text",
-          "text": "一只红苹果放在白色桌面上"
-        }
-      ]
-    }
-  ],
-  "stream": false,
-  "response_format": {
-    "type": "image",
-    "mime_type": "image/png",
-    "aspect_ratio": "1:1",
-    "image_size": "1K"
-  }
-}
-```
-
-字段说明：
-
-| 字段 | 必填 | 写法 |
-| --- | --- | --- |
-| `model` | 是 | 固定写 `nano-banana-2` |
-| `input` | 是 | 数组，当前使用一个 `role: "user"` 对象 |
-| `input[0].role` | 是 | 固定写 `user` |
-| `input[0].content` | 是 | 文本、参考图和改图内容都放在这里 |
-| `content[].type` | 是 | 文本使用 `input_text`，图片使用 `input_image` |
-| `content[].text` | 文本请求时必填 | 完整图片描述或修改指令 |
-| `stream` | 是 | 固定写 `false` |
-| `response_format.type` | 是 | 固定写 `image` |
-| `response_format.mime_type` | 是 | 当前固定写 `image/png` |
-| `response_format.aspect_ratio` | 是 | 填已验证的比例，例如 `1:1` |
-| `response_format.image_size` | 是 | 填 `512`、`1K`、`2K` 或 `4K` |
-
-#### 3. 尺寸和比例
-
-已验证的 `image_size`：
-
-```text
-512、1K、2K、4K
-```
-
-已验证的 `aspect_ratio`：
-
-```text
-1:1、3:2、2:3、3:4、1:4、4:1、4:3、4:5、
-5:4、1:8、8:1、9:16、16:9、21:9、9:21
-```
-
-分辨率测试是在 `1:1` 下完成的，比例测试是在 `1K` 下完成的。因此，上面的结果表示这些尺寸和比例分别被上游接受，不表示每一个尺寸和每一个比例的组合都已经逐项测试。
-
-本地工具命令中的 `--resolution 1k` 会转换为请求体中的 `"image_size": "1K"`；`512` 保持为 `"512"`。Nano Banana 不使用 `size`、`quality` 或 `output_format`，不要把这些字段加入请求体。
-
-#### 4. 传一张参考图
-
-参考图不是单独的上传接口，也不是把本地文件路径直接放进 JSON。调用脚本时按下面步骤处理：
-
-1. 读取本地图片的二进制内容。
-2. 判断图片格式，只接受 PNG、JPEG 或 WebP。
-3. 使用标准 Base64 编码图片内容。
-4. 拼成 Data URL：`data:<MIME 类型>;base64,<Base64 内容>`。
-5. 在同一个 `content` 数组中加入一个 `input_image` 对象。
-
-一张 PNG 参考图的请求体结构如下：
-
-```json
-{
-  "model": "nano-banana-2",
-  "input": [
-    {
-      "role": "user",
-      "content": [
-        {
-          "type": "input_text",
-          "text": "参考这张图片，生成一张白色背景的商品图，保留主体。"
-        },
-        {
-          "type": "input_image",
-          "image_url": "data:image/png;base64,<图片的Base64内容>"
-        }
-      ]
-    }
-  ],
-  "stream": false,
-  "response_format": {
-    "type": "image",
-    "mime_type": "image/png",
-    "aspect_ratio": "1:1",
-    "image_size": "1K"
-  }
-}
-```
-
-不同格式只替换 Data URL 的 MIME 类型：
-
-```text
-PNG：data:image/png;base64,<...>
-JPEG：data:image/jpeg;base64,<...>
-WebP：data:image/webp;base64,<...>
-```
-
-PNG、JPEG、WebP 单张参考图均已验证成功。
-
-#### 5. 传两张或四张参考图
-
-多张参考图仍然使用同一个 `content` 数组。每张图片各占一个独立的 `input_image` 对象，不能把多张图片拼成一个字符串，也不能增加 `images` 字段：
-
-```json
-{
-  "model": "nano-banana-2",
-  "input": [
-    {
-      "role": "user",
-      "content": [
-        {
-          "type": "input_text",
-          "text": "参考下面四张图片，综合它们的主要视觉特征，生成一张新的图片。"
-        },
-        {
-          "type": "input_image",
-          "image_url": "data:image/png;base64,<第1张图片>"
-        },
-        {
-          "type": "input_image",
-          "image_url": "data:image/jpeg;base64,<第2张图片>"
-        },
-        {
-          "type": "input_image",
-          "image_url": "data:image/webp;base64,<第3张图片>"
-        },
-        {
-          "type": "input_image",
-          "image_url": "data:image/png;base64,<第4张图片>"
-        }
-      ]
-    }
-  ],
-  "stream": false,
-  "response_format": {
-    "type": "image",
-    "mime_type": "image/png",
-    "aspect_ratio": "1:1",
-    "image_size": "1K"
-  }
-}
-```
-
-2 张不同参考图和 4 张不同参考图放在同一个请求中均已验证成功。14 张参考图的请求曾返回上游 `HTTP 502`，因此文档不把 14 张写成已支持，也不把它写成明确不支持。
-
-#### 6. 改图
-
-Nano Banana 改图不使用另一个接口，仍然调用：
-
-```text
-POST https://api.usegoodai.com/v1/responses
-```
-
-改图和参考图的请求结构相同，区别只在 `input_text.text` 的任务指令。把需要修改的原图作为 `input_image` 传入：
-
-```json
-{
-  "model": "nano-banana-2",
-  "input": [
-    {
-      "role": "user",
-      "content": [
-        {
-          "type": "input_text",
-          "text": "把背景改成纯红色，保留主体和构图不变。"
-        },
-        {
-          "type": "input_image",
-          "image_url": "data:image/png;base64,<原图的Base64内容>"
-        }
-      ]
-    }
-  ],
-  "stream": false,
-  "response_format": {
-    "type": "image",
-    "mime_type": "image/png",
-    "aspect_ratio": "1:1",
-    "image_size": "1K"
-  }
-}
-```
-
-上面的“改背景”请求已经验证成功，返回结果中背景变为纯红色，主体和构图基本保留。需要改图时，提示词必须明确写出“改什么”和“保留什么”。
-
-#### 7. 一次生成多张
-
-Responses 请求体不发送顶层 `n`。工具收到数量要求时，会按数量发送多个独立请求，每个请求只生成一张：
-
-```text
-用户要求生成 3 张
-实际发送：3 个 POST /v1/responses 请求
-每个请求：不包含 n，每个返回 1 张图片
-```
-
-`n=3` 已完成真实测试并成功返回 3 张图片。脚本不能把 `n` 直接塞进 Nano Banana 的请求体，也不能因为一次失败就自动重试或更换模型。
-
-#### 8. 响应解析和保存
-
-收到 HTTP 2xx 后，脚本只解析 Responses 返回 JSON 的 `output` 字段，提取其中的结构化图片 Base64、Data URL 或 HTTPS 图片地址。不要按 Images 接口的 `data[].b64_json` 结构解析 Nano Banana。
-
-保存前必须确认：
-
-1. 图片内容非空。
-2. 图片文件签名有效。
-3. 按实际格式保存为 PNG 或 JPEG 等正确扩展名。
-
-输出目录使用当前项目的 `images`；没有项目时使用桌面的 `images`。只保存最终图片，不保存请求体、响应体、Base64 文本或 API Key。
-
 ### 解析和保存
 
 1. Images 响应检查 `data[].b64_json` 和 `data[].url`；URL 只下载一次。
@@ -459,6 +444,6 @@ Responses 请求体不发送顶层 `n`。工具收到数量要求时，会按数
 7. `view_image` 成功后，最终回复必须用每张图片的绝对路径和 Markdown 图片语法再次嵌入全部图片；普通路径和普通文件链接不能代替图片嵌入。
 8. HTTP 非 2xx、解码失败或保存失败时立即停止，不自动重试、不更换模型。
 
-写入当前项目 `AGENTS.md` 的规则必须包含：固定使用本项目的 `生成图片.py`；模型只能从上表选择；每次调用前说明模型；不读取或显示 Key；失败不重试；成功后逐张调用 `view_image`，并在最终回复中用绝对路径 Markdown 图片语法再次嵌入所有成功图片。
+写入当前项目 `AGENTS.md` 的规则必须包含：固定使用本项目的 `生成图片.py`；模型只能从“查看支持的模型、尺寸和参数”表中选择；每次调用前说明模型；不读取或显示 Key；失败不重试；成功后逐张调用 `view_image`，并在最终回复中用绝对路径 Markdown 图片语法再次嵌入所有成功图片。
 
 </details>
