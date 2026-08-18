@@ -38,7 +38,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.4 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
       { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.45 },
-      { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.7 },
+      { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.75 },
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },
     ],
   )
@@ -205,7 +205,7 @@ test('shows GLM-5.3, GLM-5.2 and LongCat-2.0 together in the RMB domestic group'
   )
 })
 
-test('shows DeepSeek V4 Flash 0731 with the official RMB prices and 0.45 multiplier', () => {
+test('shows DeepSeek V4 Flash 0731 with off-peak RMB prices and a 0.45 multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'deepseek-v4-flash')
   const models = getTextModelsForGroup(group.id)
 
@@ -217,24 +217,24 @@ test('shows DeepSeek V4 Flash 0731 with the official RMB prices and 0.45 multipl
       {
         id: 'deepseek-v4-flash',
         name: 'DeepSeek V4 Flash 0731',
-        officialCny: { input: 1, output: 2, cachedInput: 0.02 },
+        officialCny: { input: 1.5, output: 4.5, cachedInput: 0.05 },
       },
     ],
   )
 
   const price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
-  assert.deepEqual(price.official, { input: 1, output: 2, cachedInput: 0.02, total: 3 })
-  assert.ok(isClose(price.group.input, 0.45))
-  assert.ok(isClose(price.group.output, 0.9))
-  assert.ok(isClose(price.group.cachedInput, 0.009))
-  assert.ok(isClose(price.group.total, 1.35))
+  assert.deepEqual(price.official, { input: 1.5, output: 4.5, cachedInput: 0.05, total: 6 })
+  assert.ok(isClose(price.group.input, 0.675))
+  assert.ok(isClose(price.group.output, 2.025))
+  assert.ok(isClose(price.group.cachedInput, 0.0225))
+  assert.ok(isClose(price.group.total, 2.7))
 })
 
-test('shows DeepSeek V4 Pro 0813 with the official RMB prices and 0.7 multiplier', () => {
+test('shows DeepSeek V4 Pro 0813 with off-peak RMB prices and a 0.75 multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'deepseek-v4-pro')
   const models = getTextModelsForGroup(group.id)
 
-  assert.equal(group.multiplier, 0.7)
+  assert.equal(group.multiplier, 0.75)
   assert.equal(group.currency, 'cny')
   assert.deepEqual(
     models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
@@ -242,17 +242,24 @@ test('shows DeepSeek V4 Pro 0813 with the official RMB prices and 0.7 multiplier
       {
         id: 'deepseek-v4-pro',
         name: 'DeepSeek V4 Pro 0813',
-        officialCny: { input: 3, output: 6, cachedInput: 0.025 },
+        officialCny: { input: 4.5, output: 13.5, cachedInput: 0.15 },
       },
     ],
   )
 
   const price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
-  assert.deepEqual(price.official, { input: 3, output: 6, cachedInput: 0.025, total: 9 })
-  assert.ok(isClose(price.group.input, 2.1))
-  assert.ok(isClose(price.group.output, 4.2))
-  assert.ok(isClose(price.group.cachedInput, 0.0175))
-  assert.ok(isClose(price.group.total, 6.3))
+  assert.deepEqual(price.official, { input: 4.5, output: 13.5, cachedInput: 0.15, total: 18 })
+  assert.ok(isClose(price.group.input, 3.375))
+  assert.ok(isClose(price.group.output, 10.125))
+  assert.ok(isClose(price.group.cachedInput, 0.1125))
+  assert.ok(isClose(price.group.total, 13.5))
+})
+
+test('states that DeepSeek V4 currently uses the off-peak price baseline all day', () => {
+  assert.match(modelsDocSource, /官方已采用闲时、忙时两档价格/)
+  assert.match(modelsDocSource, /全天按官方闲时价格作为基准收费/)
+  assert.match(modelsDocSource, /Flash 分组固定为 `0\.45x`，Pro 分组固定为 `0\.75x`/)
+  assert.match(pricingComponentSource, /DeepSeek 官方闲时价格直接显示，本站暂按闲时基准全天收费/)
 })
 
 test('uses the displayed official price baselines for GPT-5.6', () => {
