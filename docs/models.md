@@ -12,6 +12,12 @@ import ModelPricing from './.vitepress/theme/components/ModelPricing.vue'
 
 <ModelPricing />
 
+## DeepSeek V4 峰谷价格
+
+DeepSeek V4 Flash 和 V4 Pro 官方已采用闲时、忙时两档价格。本站目前全天按官方闲时价格作为基准收费，不会在官方忙时自动上调。
+
+Flash 分组固定为 `0.45x`，Pro 分组固定为 `0.75x`。价格表中的“官方价格”对这两个模型均指官方闲时价格。
+
 ## 如何切换模型
 
 已经接入中转站后，在客户端添加或选择不同的模型名即可。Base URL 和 API Key 不变，只改模型名。
