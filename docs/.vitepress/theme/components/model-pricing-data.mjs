@@ -1,5 +1,10 @@
 export const EXCHANGE_RATE = 7
 
+export const DEEPSEEK_PRICE_PERIODS = {
+  offPeak: '闲时（其余时间）',
+  peak: '忙时（北京时间 09:00-12:00、14:00-18:00）',
+}
+
 const GPT_MODEL_IDS = [
   'gpt-5.6-sol',
   'gpt-5.6-terra',
@@ -111,15 +116,15 @@ export const TEXT_GROUPS = [
     name: 'DeepSeek V4 Flash 分组',
     multiplier: 0.45,
     currency: 'cny',
-    description: 'V4 Flash 0731 正式版。官方已采用峰谷价，本站暂按闲时基准全天计费',
+    description: 'V4 Flash 0731 正式版，忙时为北京时间每天 09:00-12:00、14:00-18:00，其余时间为闲时',
     modelIds: ['deepseek-v4-flash'],
   },
   {
     id: 'deepseek-v4-pro',
     name: 'DeepSeek V4 Pro 分组',
-    multiplier: 0.75,
+    multiplier: 0.7,
     currency: 'cny',
-    description: 'V4 Pro 0813 正式版。官方已采用峰谷价，本站暂按闲时基准全天计费',
+    description: 'V4 Pro 0813 正式版，忙时为北京时间每天 09:00-12:00、14:00-18:00，其余时间为闲时',
     modelIds: ['deepseek-v4-pro'],
   },
   {
@@ -379,12 +384,14 @@ export const TEXT_MODELS = [
     name: 'DeepSeek V4 Flash 0731',
     description: 'V4-Flash-0731 正式版，支持思考模式、工具调用和 Responses API',
     officialCny: { input: 1.5, output: 4.5, cachedInput: 0.05 },
+    officialPeakCny: { input: 3, output: 9, cachedInput: 0.1 },
   },
   {
     id: 'deepseek-v4-pro',
     name: 'DeepSeek V4 Pro 0813',
     description: 'V4-Pro-0813 正式版，适合复杂代码、Agent 和长上下文任务',
     officialCny: { input: 4.5, output: 13.5, cachedInput: 0.15 },
+    officialPeakCny: { input: 9, output: 27, cachedInput: 0.3 },
   },
   {
     id: 'glm-5.3',
