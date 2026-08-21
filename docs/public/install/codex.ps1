@@ -116,8 +116,7 @@ windows_wsl_setup_acknowledged = true
 name = "OpenAI"
 base_url = "$CodexBaseUrl"
 wire_api = "responses"
-requires_openai_auth = false
-http_headers = { "x-openai-actor-authorization" = "local-image-extension" }
+requires_openai_auth = true
 
 [features]
 goals = true
