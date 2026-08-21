@@ -38,7 +38,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.4 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
       { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.45 },
-      { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.75 },
+      { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.7 },
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },
     ],
   )
@@ -228,13 +228,20 @@ test('shows DeepSeek V4 Flash 0731 with off-peak RMB prices and a 0.45 multiplie
   assert.ok(isClose(price.group.output, 2.025))
   assert.ok(isClose(price.group.cachedInput, 0.0225))
   assert.ok(isClose(price.group.total, 2.7))
+
+  assert.deepEqual(models[0].officialPeakCny, { input: 3, output: 9, cachedInput: 0.1 })
+  const peakPrice = calculateTextPrice(models[0].officialPeakCny, group.multiplier, group.currency)
+  assert.ok(isClose(peakPrice.group.input, 1.35))
+  assert.ok(isClose(peakPrice.group.output, 4.05))
+  assert.ok(isClose(peakPrice.group.cachedInput, 0.045))
+  assert.ok(isClose(peakPrice.group.total, 5.4))
 })
 
-test('shows DeepSeek V4 Pro 0813 with off-peak RMB prices and a 0.75 multiplier', () => {
+test('shows DeepSeek V4 Pro 0813 with peak and off-peak RMB prices at a 0.7 multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'deepseek-v4-pro')
   const models = getTextModelsForGroup(group.id)
 
-  assert.equal(group.multiplier, 0.75)
+  assert.equal(group.multiplier, 0.7)
   assert.equal(group.currency, 'cny')
   assert.deepEqual(
     models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
@@ -249,17 +256,32 @@ test('shows DeepSeek V4 Pro 0813 with off-peak RMB prices and a 0.75 multiplier'
 
   const price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
   assert.deepEqual(price.official, { input: 4.5, output: 13.5, cachedInput: 0.15, total: 18 })
-  assert.ok(isClose(price.group.input, 3.375))
-  assert.ok(isClose(price.group.output, 10.125))
-  assert.ok(isClose(price.group.cachedInput, 0.1125))
-  assert.ok(isClose(price.group.total, 13.5))
+  assert.ok(isClose(price.group.input, 3.15))
+  assert.ok(isClose(price.group.output, 9.45))
+  assert.ok(isClose(price.group.cachedInput, 0.105))
+  assert.ok(isClose(price.group.total, 12.6))
+
+  assert.deepEqual(models[0].officialPeakCny, { input: 9, output: 27, cachedInput: 0.3 })
+  const peakPrice = calculateTextPrice(models[0].officialPeakCny, group.multiplier, group.currency)
+  assert.ok(isClose(peakPrice.group.input, 6.3))
+  assert.ok(isClose(peakPrice.group.output, 18.9))
+  assert.ok(isClose(peakPrice.group.cachedInput, 0.21))
+  assert.ok(isClose(peakPrice.group.total, 25.2))
 })
 
-test('states that DeepSeek V4 currently uses the off-peak price baseline all day', () => {
-  assert.match(modelsDocSource, /官方已采用闲时、忙时两档价格/)
-  assert.match(modelsDocSource, /全天按官方闲时价格作为基准收费/)
-  assert.match(modelsDocSource, /Flash 分组固定为 `0\.45x`，Pro 分组固定为 `0\.75x`/)
-  assert.match(pricingComponentSource, /DeepSeek 官方闲时价格直接显示，本站暂按闲时基准全天收费/)
+test('shows DeepSeek peak and off-peak rows with clear Beijing busy hours', () => {
+  assert.match(pricingComponentSource, /<th v-if="isDeepSeekCategory" scope="col">计费时段<\/th>/)
+  assert.match(pricingComponentSource, /忙时为北京时间每天 09:00-12:00、14:00-18:00，其余时间为闲时/)
+  assert.match(pricingComponentSource, /officialPeakCny/)
+  assert.doesNotMatch(pricingComponentSource, /暂按闲时基准全天收费/)
+})
+
+test('keeps the copy below the pricing table concise', () => {
+  assert.doesNotMatch(modelsDocSource, /DeepSeek V4 峰谷价格/)
+  assert.doesNotMatch(modelsDocSource, /model not found|403/)
+  assert.doesNotMatch(modelsDocSource, /我的 API Key 支持哪些模型|切换模型需要重新配置吗/)
+  assert.match(modelsDocSource, /价格表第一列是模型 ID，点击旁边按钮复制/)
+  assert.match(modelsDocSource, /只修改客户端里的 `Model`；Base URL 和 API Key 保持不变/)
 })
 
 test('uses the displayed official price baselines for GPT-5.6', () => {

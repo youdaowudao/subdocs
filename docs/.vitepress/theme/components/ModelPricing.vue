@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
+  DEEPSEEK_PRICE_PERIODS,
   EXCHANGE_RATE,
   IMAGE_GROUP,
   IMAGE_MODELS,
@@ -50,15 +51,23 @@ const isDeepSeekCategory = computed(() => activeCategoryConfig.value.id === 'dee
 const activeTextModels = computed(() => getTextModelsForGroup(activeGroupId.value))
 
 const textRows = computed(() =>
-  activeTextModels.value.map((model) => ({
-    ...model,
-    priceCurrency: activeCurrency.value,
-    prices: calculateTextPrice(
-      model.officialCny ?? model.officialUsd,
-      activeGroup.value.multiplier,
-      activeCurrency.value,
-    ),
-  })),
+  activeTextModels.value.flatMap((model) => {
+    const createRow = (officialPrice, priceLabel = '') => ({
+      ...model,
+      priceLabel,
+      priceCurrency: activeCurrency.value,
+      prices: calculateTextPrice(officialPrice, activeGroup.value.multiplier, activeCurrency.value),
+    })
+
+    if (isDeepSeekCategory.value && model.officialPeakCny) {
+      return [
+        createRow(model.officialCny, DEEPSEEK_PRICE_PERIODS.offPeak),
+        createRow(model.officialPeakCny, DEEPSEEK_PRICE_PERIODS.peak),
+      ]
+    }
+
+    return [createRow(model.officialCny ?? model.officialUsd)]
+  }),
 )
 
 const pricingRuleExample = computed(() => {
@@ -130,7 +139,7 @@ const copyModelId = async (modelId) => {
     <section class="pricing-rule" aria-label="计价规则">
       <div>
         <strong>计价规则</strong>
-        <span v-if="isDeepSeekCategory">DeepSeek 官方闲时价格直接显示，本站暂按闲时基准全天收费</span>
+        <span v-if="isDeepSeekCategory">DeepSeek 采用峰谷计价，忙时为北京时间每天 09:00-12:00、14:00-18:00，其余时间为闲时</span>
         <span v-else-if="isRmbTextCategory">官方人民币价格直接显示</span>
         <span v-else-if="!isImageCategory">官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
         <span v-if="isRmbTextCategory">分组价格 = 官方人民币价格 × 分组倍率</span>
@@ -150,7 +159,7 @@ const copyModelId = async (modelId) => {
         </div>
         <div class="price-mode-wrap">
           <span v-if="!isImageCategory">{{ isRmbTextCategory
-            ? (priceMode === 'group' ? '分组价按人民币计算' : (isDeepSeekCategory ? '官方闲时价按人民币显示' : '官方价按人民币显示'))
+            ? (priceMode === 'group' ? (isDeepSeekCategory ? '分组峰谷价格按人民币计算' : '分组价按人民币计算') : (isDeepSeekCategory ? '官方峰谷价格按人民币显示' : '官方价按人民币显示'))
             : (priceMode === 'group' ? '分组价已按人民币计算' : '官方价按固定汇率换算') }}</span>
           <span v-else>分组价按人民币 / 张显示</span>
           <div v-if="!isImageCategory" class="price-mode-switch" role="group" aria-label="价格类型">
@@ -226,17 +235,21 @@ const copyModelId = async (modelId) => {
           </template>
           <template v-else>
             <strong>官方价格：</strong>
-            <span v-if="isDeepSeekCategory">按官方闲时基准显示，仅用于和分组价格对比。</span>
+            <span v-if="isDeepSeekCategory">同时显示官方峰谷价格；忙时为北京时间每天 09:00-12:00、14:00-18:00，其余时间为闲时。</span>
             <span v-else-if="isRmbTextCategory">按人民币官方基准显示，仅用于和分组价格对比。</span>
             <span v-else>按 $1 = ¥{{ EXCHANGE_RATE }} 折算成人民币，仅用于和分组价格对比。</span>
           </template>
         </div>
 
         <div class="pricing-table-scroll">
-          <table class="pricing-table">
+          <table
+            class="pricing-table"
+            :class="{ 'pricing-table--deepseek': isDeepSeekCategory }"
+          >
             <thead>
               <tr>
                 <th scope="col">模型 ID</th>
+                <th v-if="isDeepSeekCategory" scope="col">计费时段</th>
                 <th scope="col">输入价格</th>
                 <th scope="col">输出价格</th>
                 <th scope="col">缓存读取</th>
@@ -247,7 +260,7 @@ const copyModelId = async (modelId) => {
             <tbody>
               <tr
                 v-for="model in textRows"
-                :key="model.id"
+                :key="`${model.id}-${model.priceLabel || 'default'}`"
                 :class="{ 'is-featured-model': model.featured }"
               >
                 <td>
@@ -271,6 +284,9 @@ const copyModelId = async (modelId) => {
                       <span aria-hidden="true"></span>
                     </button>
                   </div>
+                </td>
+                <td v-if="isDeepSeekCategory" class="deepseek-price-period">
+                  <strong>{{ model.priceLabel }}</strong>
                 </td>
                 <td v-for="field in ['input', 'output', 'cachedInput', 'total']" :key="field">
                   <template v-if="priceMode === 'group'">
@@ -898,6 +914,14 @@ const copyModelId = async (modelId) => {
 .model-pricing-page .pricing-table th:nth-child(5) { width: 18%; }
 .model-pricing-page .pricing-table th:nth-child(6) { width: 14%; }
 
+.model-pricing-page .pricing-table--deepseek th:first-child { width: 21%; }
+.model-pricing-page .pricing-table--deepseek th:nth-child(2) { width: 20%; }
+.model-pricing-page .pricing-table--deepseek th:nth-child(3) { width: 11%; }
+.model-pricing-page .pricing-table--deepseek th:nth-child(4) { width: 12%; }
+.model-pricing-page .pricing-table--deepseek th:nth-child(5) { width: 12%; }
+.model-pricing-page .pricing-table--deepseek th:nth-child(6) { width: 14%; }
+.model-pricing-page .pricing-table--deepseek th:nth-child(7) { width: 10%; }
+
 .model-pricing-page .pricing-table--image {
   min-width: 980px;
 }
@@ -913,6 +937,15 @@ const copyModelId = async (modelId) => {
   justify-content: space-between;
   gap: 10px;
 }
+
+.deepseek-price-period {
+  min-width: 210px;
+  color: #7a3f20;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.deepseek-price-period strong { font-weight: 750; }
 
 .model-id-cell > div {
   display: flex;
@@ -1120,6 +1153,7 @@ const copyModelId = async (modelId) => {
   box-shadow: inset 4px 0 0 #a18bd0;
 }
 .dark .featured-model-badge { background: #a18bd0; color: #21192e !important; }
+.dark .deepseek-price-period { color: #e7b58a; }
 .dark .model-category-tabs,
 .dark .pricing-rule,
 .dark .pricing-panel,
