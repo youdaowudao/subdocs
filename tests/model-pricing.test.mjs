@@ -35,7 +35,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'anthropic-main', name: '主力分组', multiplier: 0.3 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
-      { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.4 },
+      { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.3 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
       { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.45 },
       { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.7 },
@@ -156,7 +156,7 @@ test('shows the free and heavy Grok pools with the same models and requested mul
   ]
 
   assert.equal(freeGroup.multiplier, 0.1)
-  assert.equal(heavyGroup.multiplier, 0.4)
+  assert.equal(heavyGroup.multiplier, 0.3)
   assert.deepEqual(
     getTextModelsForGroup('grok-free').map(({ id, description, officialUsd }) => ({ id, description, officialUsd })),
     expectedModels,
@@ -397,7 +397,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['anthropic-main', 10.5],
     ['anthropic-max', 35],
     ['grok-free', 3.5],
-    ['grok-4.5', 14],
+    ['grok-4.5', 10.5],
     ['gemini-antigravity', 8.75],
   ])
 
