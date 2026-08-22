@@ -40,6 +40,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.45 },
       { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.7 },
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },
+      { id: 'kimi', name: 'Kimi 分组', multiplier: 0.65 },
     ],
   )
 })
@@ -54,15 +55,17 @@ test('keeps the model category tabs in the requested order', () => {
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity'], defaultGroupId: undefined },
       { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek-v4-flash', 'deepseek-v4-pro'], defaultGroupId: undefined },
       { id: 'domestic', name: 'GLM', kind: 'text', groupIds: ['domestic'], defaultGroupId: undefined },
+      { id: 'kimi', name: 'Kimi', kind: 'text', groupIds: ['kimi'], defaultGroupId: undefined },
       { id: 'image', name: '生图', kind: 'image', groupIds: [], defaultGroupId: undefined },
     ],
   )
 })
 
-test('uses colored Claude Code, Grok and Gemini icons instead of letter placeholders', () => {
+test('uses colored Claude Code, Grok, Gemini and Kimi icons instead of letter placeholders', () => {
   const anthropic = MODEL_CATEGORIES.find((category) => category.id === 'anthropic')
   const grok = MODEL_CATEGORIES.find((category) => category.id === 'grok')
   const gemini = MODEL_CATEGORIES.find((category) => category.id === 'gemini')
+  const kimi = MODEL_CATEGORIES.find((category) => category.id === 'kimi')
 
   assert.equal(anthropic.mark, undefined)
   assert.match(anthropic.iconSvg, /fill="#D97757"/)
@@ -71,6 +74,9 @@ test('uses colored Claude Code, Grok and Gemini icons instead of letter placehol
   assert.equal(gemini.mark, undefined)
   assert.match(gemini.iconSvg, /fill="#8E75B2"/)
   assert.match(gemini.iconSvg, /M11\.04 19\.32/)
+  assert.equal(kimi.mark, undefined)
+  assert.match(kimi.iconSvg, /M21\.846 0/)
+  assert.match(kimi.iconSvg, /M11\.065 11\.199/)
 })
 
 test('uses the requested Anthropic group recommendations', () => {
@@ -203,6 +209,46 @@ test('shows GLM-5.3, GLM-5.2 and LongCat-2.0 together in the RMB domestic group'
       { id: 'LongCat-2.0', officialCny: { input: 2, output: 8, cachedInput: 0.04 } },
     ],
   )
+})
+
+test('shows only Kimi K3 and K2.7 Code at verified RMB prices with a 0.65 multiplier', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'kimi')
+  const models = getTextModelsForGroup('kimi')
+
+  assert.equal(group.name, 'Kimi 分组')
+  assert.equal(group.multiplier, 0.65)
+  assert.equal(group.currency, 'cny')
+  assert.deepEqual(
+    models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
+    [
+      {
+        id: 'kimi-k3',
+        name: 'Kimi K3',
+        officialCny: { input: 20, output: 100, cachedInput: 2 },
+      },
+      {
+        id: 'kimi-k2.7-code',
+        name: 'Kimi K2.7 Code',
+        officialCny: { input: 6.5, output: 27, cachedInput: 1.3 },
+      },
+    ],
+  )
+
+  const k3Price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
+  assert.deepEqual(k3Price.official, { input: 20, output: 100, cachedInput: 2, total: 120 })
+  assert.ok(isClose(k3Price.group.input, 13))
+  assert.ok(isClose(k3Price.group.output, 65))
+  assert.ok(isClose(k3Price.group.cachedInput, 1.3))
+  assert.ok(isClose(k3Price.group.total, 78))
+
+  const codePrice = calculateTextPrice(models[1].officialCny, group.multiplier, group.currency)
+  assert.deepEqual(codePrice.official, { input: 6.5, output: 27, cachedInput: 1.3, total: 33.5 })
+  assert.ok(isClose(codePrice.group.input, 4.225))
+  assert.ok(isClose(codePrice.group.output, 17.55))
+  assert.ok(isClose(codePrice.group.cachedInput, 0.845))
+  assert.ok(isClose(codePrice.group.total, 21.775))
+  assert.equal(getEquivalentDiscount(group.multiplier, group.currency), '6.5折')
+  assert.equal(getSavingsPercent(group.multiplier, group.currency), 35)
 })
 
 test('shows DeepSeek V4 Flash 0731 with off-peak RMB prices and a 0.45 multiplier', () => {
