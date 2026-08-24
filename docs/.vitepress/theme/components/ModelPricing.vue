@@ -285,32 +285,39 @@ const copyModelId = async (modelId) => {
                     </button>
                   </div>
                 </td>
-                <td v-if="isDeepSeekCategory" class="deepseek-price-period">
-                  <strong>{{ model.priceLabel }}</strong>
-                </td>
-                <td v-for="field in ['input', 'output', 'cachedInput', 'total']" :key="field">
-                  <template v-if="priceMode === 'group'">
-                    <strong class="group-price">{{ formatCny(model.prices.group[field]) }}</strong>
-                    <span class="price-unit">/ 1M tokens</span>
-                    <del>官方 {{ formatCny(model.prices.official[field]) }}</del>
-                  </template>
-                  <template v-else>
-                    <strong class="official-price">{{ formatCny(model.prices.official[field]) }}</strong>
-                    <span class="price-unit">/ 1M tokens</span>
-                    <span v-if="model.priceCurrency === 'usd'" class="official-usd">
-                      ${{ field === 'total'
-                        ? (model.officialUsd.input + model.officialUsd.output).toFixed(2)
-                        : model.officialUsd[field].toFixed(3).replace(/0+$/, '').replace(/\.$/, '') }}
+                <template v-if="priceMode === 'group' && model.unavailableMessage">
+                  <td :colspan="isDeepSeekCategory ? 6 : 5" class="model-unavailable-cell">
+                    {{ model.unavailableMessage }}
+                  </td>
+                </template>
+                <template v-else>
+                  <td v-if="isDeepSeekCategory" class="deepseek-price-period">
+                    <strong>{{ model.priceLabel }}</strong>
+                  </td>
+                  <td v-for="field in ['input', 'output', 'cachedInput', 'total']" :key="field">
+                    <template v-if="priceMode === 'group'">
+                      <strong class="group-price">{{ formatCny(model.prices.group[field]) }}</strong>
+                      <span class="price-unit">/ 1M tokens</span>
+                      <del>官方 {{ formatCny(model.prices.official[field]) }}</del>
+                    </template>
+                    <template v-else>
+                      <strong class="official-price">{{ formatCny(model.prices.official[field]) }}</strong>
+                      <span class="price-unit">/ 1M tokens</span>
+                      <span v-if="model.priceCurrency === 'usd'" class="official-usd">
+                        ${{ field === 'total'
+                          ? (model.officialUsd.input + model.officialUsd.output).toFixed(2)
+                          : model.officialUsd[field].toFixed(3).replace(/0+$/, '').replace(/\.$/, '') }}
+                      </span>
+                      <span v-else class="official-cny">人民币基准</span>
+                    </template>
+                  </td>
+                  <td>
+                    <span v-if="priceMode === 'group'" class="saving-badge">
+                      省 {{ getSavingsPercent(activeGroup.multiplier, activeGroup.currency) }}%
                     </span>
-                    <span v-else class="official-cny">人民币基准</span>
-                  </template>
-                </td>
-                <td>
-                  <span v-if="priceMode === 'group'" class="saving-badge">
-                    省 {{ getSavingsPercent(activeGroup.multiplier, activeGroup.currency) }}%
-                  </span>
-                  <span v-else class="official-label">官方基准</span>
-                </td>
+                    <span v-else class="official-label">官方基准</span>
+                  </td>
+                </template>
               </tr>
             </tbody>
           </table>
@@ -895,6 +902,13 @@ const copyModelId = async (modelId) => {
   padding: 12px 16px;
   background: rgba(255, 252, 247, 0.94);
   color: var(--vp-c-text-1);
+}
+
+.model-pricing-page .pricing-table td.model-unavailable-cell {
+  color: #9f4a17;
+  font-size: 18px;
+  font-weight: 750;
+  text-align: center;
 }
 
 .model-pricing-page .pricing-table tbody tr.is-featured-model td {
