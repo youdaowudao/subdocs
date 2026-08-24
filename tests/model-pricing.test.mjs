@@ -33,7 +33,8 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.25 },
       { id: 'anthropic-main', name: '主力分组', multiplier: 0.3 },
-      { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1 },
+      { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.55 },
+      { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.3 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
@@ -50,7 +51,7 @@ test('keeps the model category tabs in the requested order', () => {
     MODEL_CATEGORIES.map(({ id, name, kind, groupIds, defaultGroupId }) => ({ id, name, kind, groupIds, defaultGroupId })),
     [
       { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full'], defaultGroupId: 'gpt-0.18' },
-      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-max'], defaultGroupId: undefined },
+      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-max'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity'], defaultGroupId: undefined },
       { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek-v4-flash', 'deepseek-v4-pro'], defaultGroupId: undefined },
@@ -81,11 +82,11 @@ test('uses colored Claude Code, Grok, Gemini and Kimi icons instead of letter pl
 
 test('uses the requested Anthropic group recommendations', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-main')
-  const fable = getTextModelsForGroup('anthropic-main').find((model) => model.id === 'claude-fable-5')
+  const ccTestGroup = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test')
 
   assert.equal(group.name, '主力分组')
-  assert.equal(group.description, '写作推荐 Fable 5，复杂架构设计推荐 Opus 5')
-  assert.equal(fable.description, 'Anthropic 写作向模型，适合长文创作、文案润色和自然表达')
+  assert.equal(group.description, '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5')
+  assert.equal(ccTestGroup.description, '价格更低，适合 Claude Code 日常任务')
 })
 
 test('keeps the GPT Plus discount group at 0.095 with instability copy', () => {
@@ -110,39 +111,39 @@ test('keeps the GPT family models in the expected order', () => {
   )
 })
 
-test('shows the main Anthropic group with the exact model list from the current whitelist', () => {
-  assert.deepEqual(
-    getTextModelsForGroup('anthropic-main').map((model) => model.id),
-    [
-      'claude-fable-5',
-      'claude-haiku-4-5-20251001',
-      'claude-opus-4-5-20251101',
-      'claude-opus-4-6',
-      'claude-opus-4-7',
-      'claude-opus-4-8',
-      'claude-opus-5',
-      'claude-sonnet-4-6',
-      'claude-sonnet-5',
-    ],
-  )
+test('orders all Anthropic groups from Opus 5 through Fable 5', () => {
+  const mainModels = getTextModelsForGroup('anthropic-main')
+  const ccTestModels = getTextModelsForGroup('anthropic-cc-test')
+  const ccMaxModels = getTextModelsForGroup('anthropic-max')
+  const mainOrder = [
+    'claude-opus-5',
+    'claude-opus-4-8',
+    'claude-opus-4-7',
+    'claude-opus-4-6',
+    'claude-opus-4-5-20251101',
+    'claude-sonnet-5',
+    'claude-sonnet-4-6',
+    'claude-haiku-4-5-20251001',
+    'claude-fable-5',
+  ]
+  const ccOrder = [
+    ...mainOrder.slice(0, 7),
+    'claude-sonnet-4-5-20250929',
+    ...mainOrder.slice(7),
+  ]
+
+  assert.deepEqual(mainModels.map((model) => model.id), mainOrder)
+  assert.deepEqual(ccTestModels.map((model) => model.id), ccOrder)
+  assert.deepEqual(ccMaxModels.map((model) => model.id), ccOrder)
+  assert.equal(mainModels.at(-1).unavailableMessage, '此分组无 Fable 5')
+  assert.equal(ccTestModels.at(-1).unavailableMessage, '此分组无 Fable 5')
+  assert.equal(ccMaxModels.at(-1).unavailableMessage, '')
 })
 
-test('shows the CC MAX Claude group with the extra sonnet snapshot model', () => {
-  assert.deepEqual(
-    getTextModelsForGroup('anthropic-max').map((model) => model.id),
-    [
-      'claude-fable-5',
-      'claude-haiku-4-5-20251001',
-      'claude-opus-4-5-20251101',
-      'claude-opus-4-6',
-      'claude-opus-4-7',
-      'claude-opus-4-8',
-      'claude-opus-5',
-      'claude-sonnet-4-5-20250929',
-      'claude-sonnet-4-6',
-      'claude-sonnet-5',
-    ],
-  )
+test('replaces unavailable group prices with one row message', () => {
+  assert.match(pricingComponentSource, /priceMode === 'group' && model\.unavailableMessage/)
+  assert.match(pricingComponentSource, /class="model-unavailable-cell"/)
+  assert.match(pricingComponentSource, /\{\{ model\.unavailableMessage \}\}/)
 })
 
 test('shows the free and heavy Grok pools with the same models and requested multipliers', () => {
@@ -441,7 +442,8 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['gpt-0.18', 5.25],
     ['full', 8.75],
     ['anthropic-main', 10.5],
-    ['anthropic-max', 35],
+    ['anthropic-cc-test', 19.25],
+    ['anthropic-max', 45.5],
     ['grok-free', 3.5],
     ['grok-4.5', 10.5],
     ['gemini-antigravity', 8.75],
