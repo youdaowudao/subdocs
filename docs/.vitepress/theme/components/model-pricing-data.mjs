@@ -85,7 +85,7 @@ export const TEXT_GROUPS = [
   },
   {
     id: 'anthropic-main',
-    name: '主力分组',
+    name: '低价分组',
     multiplier: 0.2,
     description: '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5',
     modelIds: ANTHROPIC_MAIN_MODEL_IDS,

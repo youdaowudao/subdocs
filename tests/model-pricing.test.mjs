@@ -32,7 +32,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.095 },
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.25 },
-      { id: 'anthropic-main', name: '主力分组', multiplier: 0.2 },
+      { id: 'anthropic-main', name: '低价分组', multiplier: 0.2 },
       { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.55 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
@@ -84,7 +84,7 @@ test('uses the requested Anthropic group recommendations', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-main')
   const ccTestGroup = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test')
 
-  assert.equal(group.name, '主力分组')
+  assert.equal(group.name, '低价分组')
   assert.equal(group.description, '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5')
   assert.equal(ccTestGroup.description, '价格更低，适合 Claude Code 日常任务')
 })
