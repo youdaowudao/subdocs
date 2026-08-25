@@ -42,3 +42,6 @@ local-scripts/
 
 # Local development workspace for the UseGoodAI image tool.
 /usegoodai-imagines-tool/
+
+# Generated images kept outside the documentation source.
+/images/
