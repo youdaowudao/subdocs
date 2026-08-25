@@ -37,7 +37,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.3 },
-      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.25 },
+      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.2 },
       { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.45 },
       { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.7 },
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },
@@ -446,7 +446,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['anthropic-max', 45.5],
     ['grok-free', 3.5],
     ['grok-4.5', 10.5],
-    ['gemini-antigravity', 8.75],
+    ['gemini-antigravity', 7],
   ])
 
   for (const [groupId, expectedTotal] of expectedTotals) {
