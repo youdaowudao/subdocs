@@ -154,10 +154,10 @@ export const TEXT_GROUPS = [
   {
     id: 'kimi',
     name: 'Kimi 分组',
-    multiplier: 0.65,
+    multiplier: 0.6,
     currency: 'cny',
-    description: 'K3 适合长程编程与知识工作，K2.7 Code 适合日常编程和 Agent 任务',
-    modelIds: ['kimi-k3', 'kimi-k2.7-code'],
+    description: 'K3 适合长程编程、知识工作和深度推理',
+    modelIds: ['kimi-k3'],
   },
 ]
 
@@ -447,12 +447,6 @@ export const TEXT_MODELS = [
     name: 'Kimi K3',
     description: '旗舰模型，适合长程编程、知识工作和深度推理',
     officialCny: { input: 20, output: 100, cachedInput: 2 },
-  },
-  {
-    id: 'kimi-k2.7-code',
-    name: 'Kimi K2.7 Code',
-    description: '代码模型，适合长上下文编程和 Agent 任务',
-    officialCny: { input: 6.5, output: 27, cachedInput: 1.3 },
   },
 ]
 
