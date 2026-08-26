@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-release_revision="V0.7.5"
-release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.7.5"
+release_revision="V0.7.6"
+release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.7.6"
 
 if ! command -v curl >/dev/null 2>&1; then
   echo "安装失败：未找到 curl，无法下载安装程序。" >&2
@@ -19,17 +19,17 @@ fi
 
 case "$system_name/$machine_name/$translated" in
   Darwin/arm64/*|Darwin/x86_64/1)
-    artifact="usegoodai-imagines-tool-v0.7.5-darwin-arm64"
-    expected_sha256="24c21f98ab9db7a6b036358ad422cd2176d3aa992ac4d68f82743d6ce50a4e4e"
+    artifact="usegoodai-imagines-tool-v0.7.6-darwin-arm64"
+    expected_sha256="823b608a64f2c05ad862c1ace29f54e4e0f7880e2e3f40beb69cd9091a28621f"
     expected_macho_architecture="arm64"
     ;;
   Darwin/x86_64/*)
-    artifact="usegoodai-imagines-tool-v0.7.5-darwin-amd64"
-    expected_sha256="9a25d2fb73eb5aea51beaf9ea7ccaf7c678d20be7a47d1a81949fafe124160ab"
+    artifact="usegoodai-imagines-tool-v0.7.6-darwin-amd64"
+    expected_sha256="31ad3eaa10f98f2ea0a09db4d977118afe483dfc32b76e1934ce12a6c646f36d"
     expected_macho_architecture="x86_64"
     ;;
   *)
-    echo "安装失败：V0.7.5 仅支持 Apple Silicon 或 Intel 64 位 Mac，当前为 $system_name/$machine_name。" >&2
+    echo "安装失败：V0.7.6 仅支持 Apple Silicon 或 Intel 64 位 Mac，当前为 $system_name/$machine_name。" >&2
     exit 1
     ;;
 esac
@@ -72,7 +72,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-echo "正在下载中转站生图工具 V0.7.5……"
+echo "正在下载中转站生图工具 V0.7.6……"
 curl --fail --location --progress-bar --show-error --proto '=https' --proto-redir '=https' --tlsv1.2 \
   "$release_base/$artifact" --output "$binary_path"
 
