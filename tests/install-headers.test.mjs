@@ -25,3 +25,18 @@ test('serves the shell installer as UTF-8 text', async () => {
     /\/install\/codex\.sh\s+Content-Type:\s*text\/plain;\s*charset=utf-8/i,
   )
 })
+
+test('serves both restore scripts as UTF-8 text', async () => {
+  const headers = await readHeaders()
+
+  for (const extension of ['ps1', 'sh']) {
+    assert.match(
+      headers,
+      new RegExp(
+        `/install/codex-restore\\.${extension}\\s+` +
+          'Content-Type:\\s*text/plain;\\s*charset=utf-8',
+        'i',
+      ),
+    )
+  }
+})
