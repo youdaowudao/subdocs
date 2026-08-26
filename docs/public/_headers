@@ -4,6 +4,12 @@
 /install/codex.sh
   Content-Type: text/plain; charset=utf-8
 
+/install/codex-restore.ps1
+  Content-Type: text/plain; charset=utf-8
+
+/install/codex-restore.sh
+  Content-Type: text/plain; charset=utf-8
+
 /install/usegoodai-imagines-tool/install.ps1
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=0, must-revalidate

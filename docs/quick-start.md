@@ -105,6 +105,25 @@ Mac 用户对应路径是 `~/.codex/config.toml` 和 `~/.codex/auth.json`。
 
 </details>
 
+<details>
+<summary>移除中转配置，恢复官方账号登录</summary>
+
+Windows 打开 PowerShell，运行：
+
+```powershell
+irm https://docs.usegoodai.com/install/codex-restore.ps1 | iex
+```
+
+macOS / Linux 打开终端，运行：
+
+```bash
+curl -fsSL https://docs.usegoodai.com/install/codex-restore.sh | bash
+```
+
+脚本会清空登录凭据，并删除 `config.toml` 中的模型端点配置；MCP 和其它配置保持不变。完成后彻底退出 Codex，重新打开并使用官方账号登录。
+
+</details>
+
 ## 不用脚本的方式
 
 | 顺序 | 方式 | 入口 |
