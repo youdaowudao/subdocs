@@ -29,8 +29,8 @@ test('includes the updated GPT pricing groups in order', () => {
   assert.deepEqual(
     TEXT_GROUPS.map(({ id, name, multiplier }) => ({ id, name, multiplier })),
     [
-      { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.095 },
-      { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
+      { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.085 },
+      { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.135 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.25 },
       { id: 'anthropic-main', name: '低价分组', multiplier: 0.2 },
       { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.55 },
@@ -89,11 +89,11 @@ test('uses the requested Anthropic group recommendations', () => {
   assert.equal(ccTestGroup.description, '价格更低，适合 Claude Code 日常任务')
 })
 
-test('keeps the GPT Plus discount group at 0.095 with instability copy', () => {
+test('keeps the GPT Plus discount group at 0.085 with instability copy', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'pro-plus')
 
   assert.equal(group.name, 'GPT Plus 特惠分组（最近不稳定）')
-  assert.equal(group.multiplier, 0.095)
+  assert.equal(group.multiplier, 0.085)
   assert.match(group.description, /最近不稳定/)
 })
 
@@ -426,8 +426,8 @@ test('expresses the active multipliers as rounded equivalent discounts', () => {
 test('calculates the revised group totals from the official USD baseline', () => {
   const officialUsd = { input: 5, output: 30, cachedInput: 0.5 }
   const expectedTotals = new Map([
-    ['pro-plus', 3.325],
-    ['gpt-0.18', 5.25],
+    ['pro-plus', 2.975],
+    ['gpt-0.18', 4.725],
     ['full', 8.75],
     ['anthropic-main', 7],
     ['anthropic-cc-test', 19.25],
