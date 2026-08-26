@@ -65,14 +65,14 @@ export const TEXT_GROUPS = [
   {
     id: 'pro-plus',
     name: 'GPT Plus 特惠分组（最近不稳定）',
-    multiplier: 0.095,
+    multiplier: 0.085,
     description: '低价入口，最近不稳定',
     modelIds: GPT_MODEL_IDS,
   },
   {
     id: 'gpt-0.18',
     name: 'GPT Pro / Plus 混池分组',
-    multiplier: 0.15,
+    multiplier: 0.135,
     description: '适合日常对话、普通代码和大多数任务',
     modelIds: GPT_MODEL_IDS,
   },
