@@ -38,8 +38,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.3 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.2 },
-      { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash 分组', multiplier: 0.45 },
-      { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro 分组', multiplier: 0.7 },
+      { id: 'deepseek', name: 'DeepSeek 分组', multiplier: 0.45 },
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },
       { id: 'kimi', name: 'Kimi 分组', multiplier: 0.6 },
     ],
@@ -54,7 +53,7 @@ test('keeps the model category tabs in the requested order', () => {
       { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-max'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity'], defaultGroupId: undefined },
-      { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek-v4-flash', 'deepseek-v4-pro'], defaultGroupId: undefined },
+      { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek'], defaultGroupId: undefined },
       { id: 'domestic', name: 'GLM', kind: 'text', groupIds: ['domestic'], defaultGroupId: undefined },
       { id: 'kimi', name: 'Kimi', kind: 'text', groupIds: ['kimi'], defaultGroupId: undefined },
       { id: 'image', name: '生图', kind: 'image', groupIds: [], defaultGroupId: undefined },
@@ -62,11 +61,10 @@ test('keeps the model category tabs in the requested order', () => {
   )
 })
 
-test('uses colored Claude Code, Grok, Gemini and Kimi icons instead of letter placeholders', () => {
+test('uses colored Claude Code, Grok and Gemini icons instead of letter placeholders', () => {
   const anthropic = MODEL_CATEGORIES.find((category) => category.id === 'anthropic')
   const grok = MODEL_CATEGORIES.find((category) => category.id === 'grok')
   const gemini = MODEL_CATEGORIES.find((category) => category.id === 'gemini')
-  const kimi = MODEL_CATEGORIES.find((category) => category.id === 'kimi')
 
   assert.equal(anthropic.mark, undefined)
   assert.match(anthropic.iconSvg, /fill="#D97757"/)
@@ -75,9 +73,29 @@ test('uses colored Claude Code, Grok, Gemini and Kimi icons instead of letter pl
   assert.equal(gemini.mark, undefined)
   assert.match(gemini.iconSvg, /fill="#8E75B2"/)
   assert.match(gemini.iconSvg, /M11\.04 19\.32/)
-  assert.equal(kimi.mark, undefined)
-  assert.match(kimi.iconSvg, /M21\.846 0/)
-  assert.match(kimi.iconSvg, /M11\.065 11\.199/)
+})
+
+test('uses official local logos for DeepSeek, GLM and Kimi', () => {
+  const deepseek = MODEL_CATEGORIES.find((category) => category.id === 'deepseek')
+  const glm = MODEL_CATEGORIES.find((category) => category.id === 'domestic')
+  const kimi = MODEL_CATEGORIES.find((category) => category.id === 'kimi')
+
+  assert.deepEqual(
+    [deepseek.iconSrc, glm.iconSrc, kimi.iconSrc],
+    ['/brand-icons/deepseek.ico', '/brand-icons/glm.png', '/brand-icons/kimi.ico'],
+  )
+
+  for (const category of [deepseek, glm, kimi]) {
+    assert.equal(category.mark, undefined)
+    assert.equal(category.iconSvg, undefined)
+  }
+})
+
+test('keeps category logos at icon size instead of inheriting VitePress document image styles', () => {
+  assert.match(
+    pricingComponentSource,
+    /\.model-category-tabs \.model-category-icon\s*\{[\s\S]*?width: 25px;[\s\S]*?height: 25px;[\s\S]*?margin: 0;[\s\S]*?border: 0;[\s\S]*?box-shadow: none;[\s\S]*?cursor: inherit;/,
+  )
 })
 
 test('uses the requested Anthropic group recommendations', () => {
@@ -195,7 +213,7 @@ test('shows the Gemini Antigravity group with newest models first and Pro before
   )
 })
 
-test('shows GLM-5.3, GLM-5.2 and LongCat-2.0 together in the RMB domestic group', () => {
+test('shows GLM-5.3-Flash, GLM-5.3, GLM-5.2 and LongCat-2.0 together in the RMB domestic group', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'domestic')
 
   assert.equal(group.name, '国产之光')
@@ -205,11 +223,29 @@ test('shows GLM-5.3, GLM-5.2 and LongCat-2.0 together in the RMB domestic group'
   assert.deepEqual(
     getTextModelsForGroup('domestic').map(({ id, officialCny }) => ({ id, officialCny })),
     [
+      { id: 'glm-5.3-flash', officialCny: { input: 0.8, output: 2.8, cachedInput: 0.23 } },
       { id: 'glm-5.3', officialCny: { input: 8, output: 28, cachedInput: 2 } },
       { id: 'glm-5.2', officialCny: { input: 8, output: 28, cachedInput: 2 } },
       { id: 'LongCat-2.0', officialCny: { input: 2, output: 8, cachedInput: 0.04 } },
     ],
   )
+})
+
+test('calculates GLM-5.3-Flash from the official RMB baseline at 0.45x', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'domestic')
+  const model = getTextModelsForGroup('domestic').find((item) => item.id === 'glm-5.3-flash')
+
+  assert.ok(model, 'GLM-5.3-Flash should be available in the domestic group')
+  const price = calculateTextPrice(model.officialCny, group.multiplier, group.currency)
+
+  assert.equal(price.official.input, 0.8)
+  assert.equal(price.official.output, 2.8)
+  assert.equal(price.official.cachedInput, 0.23)
+  assert.ok(isClose(price.official.total, 3.6))
+  assert.ok(isClose(price.group.input, 0.36))
+  assert.ok(isClose(price.group.output, 1.26))
+  assert.ok(isClose(price.group.cachedInput, 0.1035))
+  assert.ok(isClose(price.group.total, 1.62))
 })
 
 test('shows only Kimi K3 at the verified RMB price with a 0.6 multiplier', () => {
@@ -240,12 +276,14 @@ test('shows only Kimi K3 at the verified RMB price with a 0.6 multiplier', () =>
   assert.equal(getSavingsPercent(group.multiplier, group.currency), 40)
 })
 
-test('shows DeepSeek V4 Flash 0731 with off-peak RMB prices and a 0.45 multiplier', () => {
-  const group = TEXT_GROUPS.find((item) => item.id === 'deepseek-v4-flash')
+test('shows DeepSeek Flash and Pro together in one RMB group at a 0.45 multiplier', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'deepseek')
   const models = getTextModelsForGroup(group.id)
 
+  assert.equal(group.name, 'DeepSeek 分组')
   assert.equal(group.multiplier, 0.45)
   assert.equal(group.currency, 'cny')
+  assert.match(group.description, /周一至周五/)
   assert.deepEqual(
     models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
     [
@@ -253,6 +291,11 @@ test('shows DeepSeek V4 Flash 0731 with off-peak RMB prices and a 0.45 multiplie
         id: 'deepseek-v4-flash',
         name: 'DeepSeek V4 Flash 0731',
         officialCny: { input: 1.5, output: 4.5, cachedInput: 0.05 },
+      },
+      {
+        id: 'deepseek-v4-pro',
+        name: 'DeepSeek V4 Pro 0813',
+        officialCny: { input: 4.5, output: 13.5, cachedInput: 0.15 },
       },
     ],
   )
@@ -272,41 +315,30 @@ test('shows DeepSeek V4 Flash 0731 with off-peak RMB prices and a 0.45 multiplie
   assert.ok(isClose(peakPrice.group.total, 5.4))
 })
 
-test('shows DeepSeek V4 Pro 0813 with peak and off-peak RMB prices at a 0.7 multiplier', () => {
-  const group = TEXT_GROUPS.find((item) => item.id === 'deepseek-v4-pro')
-  const models = getTextModelsForGroup(group.id)
+test('calculates DeepSeek V4 Pro peak and off-peak RMB prices at a 0.45 multiplier', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'deepseek')
+  const model = getTextModelsForGroup(group.id).find((item) => item.id === 'deepseek-v4-pro')
 
-  assert.equal(group.multiplier, 0.7)
+  assert.equal(group.multiplier, 0.45)
   assert.equal(group.currency, 'cny')
-  assert.deepEqual(
-    models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
-    [
-      {
-        id: 'deepseek-v4-pro',
-        name: 'DeepSeek V4 Pro 0813',
-        officialCny: { input: 4.5, output: 13.5, cachedInput: 0.15 },
-      },
-    ],
-  )
-
-  const price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
+  const price = calculateTextPrice(model.officialCny, group.multiplier, group.currency)
   assert.deepEqual(price.official, { input: 4.5, output: 13.5, cachedInput: 0.15, total: 18 })
-  assert.ok(isClose(price.group.input, 3.15))
-  assert.ok(isClose(price.group.output, 9.45))
-  assert.ok(isClose(price.group.cachedInput, 0.105))
-  assert.ok(isClose(price.group.total, 12.6))
+  assert.ok(isClose(price.group.input, 2.025))
+  assert.ok(isClose(price.group.output, 6.075))
+  assert.ok(isClose(price.group.cachedInput, 0.0675))
+  assert.ok(isClose(price.group.total, 8.1))
 
-  assert.deepEqual(models[0].officialPeakCny, { input: 9, output: 27, cachedInput: 0.3 })
-  const peakPrice = calculateTextPrice(models[0].officialPeakCny, group.multiplier, group.currency)
-  assert.ok(isClose(peakPrice.group.input, 6.3))
-  assert.ok(isClose(peakPrice.group.output, 18.9))
-  assert.ok(isClose(peakPrice.group.cachedInput, 0.21))
-  assert.ok(isClose(peakPrice.group.total, 25.2))
+  assert.deepEqual(model.officialPeakCny, { input: 9, output: 27, cachedInput: 0.3 })
+  const peakPrice = calculateTextPrice(model.officialPeakCny, group.multiplier, group.currency)
+  assert.ok(isClose(peakPrice.group.input, 4.05))
+  assert.ok(isClose(peakPrice.group.output, 12.15))
+  assert.ok(isClose(peakPrice.group.cachedInput, 0.135))
+  assert.ok(isClose(peakPrice.group.total, 16.2))
 })
 
 test('shows DeepSeek peak and off-peak rows with clear Beijing busy hours', () => {
   assert.match(pricingComponentSource, /<th v-if="isDeepSeekCategory" scope="col">计费时段<\/th>/)
-  assert.match(pricingComponentSource, /忙时为北京时间每天 09:00-12:00、14:00-18:00，其余时间为闲时/)
+  assert.match(pricingComponentSource, /忙时为北京时间周一至周五 09:00-12:00、14:00-18:00，其余时间为闲时/)
   assert.match(pricingComponentSource, /officialPeakCny/)
   assert.doesNotMatch(pricingComponentSource, /暂按闲时基准全天收费/)
 })

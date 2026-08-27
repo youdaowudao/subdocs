@@ -124,8 +124,16 @@ const copyModelId = async (modelId) => {
         :aria-pressed="activeCategory === category.id"
         @click="setCategory(category.id)"
       >
+        <img
+          v-if="category.iconSrc"
+          :class="['model-category-icon', `model-category-icon--${category.id}`]"
+          :src="category.iconSrc"
+          alt=""
+          width="25"
+          height="25"
+        >
         <svg
-          v-if="category.iconSvg"
+          v-else-if="category.iconSvg"
           :class="['model-category-icon', `model-category-icon--${category.id}`]"
           viewBox="0 0 24 24"
           aria-hidden="true"
@@ -139,7 +147,7 @@ const copyModelId = async (modelId) => {
     <section class="pricing-rule" aria-label="计价规则">
       <div>
         <strong>计价规则</strong>
-        <span v-if="isDeepSeekCategory">DeepSeek 采用峰谷计价，忙时为北京时间每天 09:00-12:00、14:00-18:00，其余时间为闲时</span>
+        <span v-if="isDeepSeekCategory">DeepSeek 采用峰谷计价，忙时为北京时间周一至周五 09:00-12:00、14:00-18:00，其余时间为闲时</span>
         <span v-else-if="isRmbTextCategory">官方人民币价格直接显示</span>
         <span v-else-if="!isImageCategory">官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
         <span v-if="isRmbTextCategory">分组价格 = 官方人民币价格 × 分组倍率</span>
@@ -555,12 +563,19 @@ const copyModelId = async (modelId) => {
   color: var(--pricing-active-text);
 }
 
-.model-category-icon {
+.model-category-tabs .model-category-icon {
   display: block;
   width: 25px;
   height: 25px;
   flex: 0 0 25px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   color: currentColor;
+  object-fit: contain;
+  cursor: inherit;
+  transition: none;
 }
 
 .model-category-mark {
@@ -1208,7 +1223,7 @@ const copyModelId = async (modelId) => {
     min-height: 0;
   }
   .model-category-tabs button { height: 50px; gap: 8px; padding: 0 10px; font-size: 19px; }
-  .model-category-icon { width: 22px; height: 22px; flex-basis: 22px; }
+  .model-category-tabs .model-category-icon { width: 22px; height: 22px; flex-basis: 22px; }
   .model-category-mark { width: 22px; height: 22px; font-size: 11px; }
   .pricing-rule { align-items: flex-start; }
   .pricing-rule > div { gap: 4px 14px; }
