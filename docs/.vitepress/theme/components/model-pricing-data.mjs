@@ -92,7 +92,7 @@ export const TEXT_GROUPS = [
   {
     id: 'anthropic-cc-test',
     name: 'Anthropic CC TEST 满分渠道',
-    multiplier: 0.55,
+    multiplier: 0.45,
     description: '价格更低，适合 Claude Code 日常任务',
     modelIds: CC_MAX_MODEL_IDS,
     unavailableModels: { 'claude-fable-5': '此分组无 Fable 5' },
