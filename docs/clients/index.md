@@ -38,6 +38,7 @@ Codex 的 Responses 配置和 Claude Code / Desktop 的原生 Anthropic 配置�
 | 桌面聊天客户端 | [Cherry Studio](/clients/cherry-studio) | 模型服务设置 |
 | JetBrains IDE | [JetBrains 接入](/clients/jetbrains) | 进入页面按目标选择 |
 | 其它 IDE / 编辑器 | [VS Code](/clients/vscode) / [Trae](/clients/trae) | IDE 内的 AI 设置 |
+| Kimi Code Agent（Windows） | [Kimi Code 接入 Kimi K3](/kimi-code) | Kimi Web 的供应商设置 |
 | 自部署聊天面板（需要 Docker） | [Open WebUI](/clients/open-webui) / [LibreChat](/clients/librechat) | 管理后台或项目配置文件 |
 | Agent / Gateway | [OpenClaw](/clients/openclaw) / [Hermes](/clients/hermes) | Gateway 配置或命令行向导 |
 | Claude Code CLI | [后台一键导入到 CC Switch](/clients/claude-code-desktop#claude-code-cli-ccswitch) / [CC Switch 导入确认](/clients/cc-switch#ccswitch-claude-code-import) | Claude Code 供应商 |

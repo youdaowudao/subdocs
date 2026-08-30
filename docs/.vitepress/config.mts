@@ -46,6 +46,7 @@ export default withSidebar(config, {
     'image-video-group-image.md',
     'models.md',
     'clients',
+    'kimi-code.md',
     'codex.md',
     'chatgpt-login-usegoodai.md',
     'codex-manual-config.md',
