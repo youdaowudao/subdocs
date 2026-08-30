@@ -58,7 +58,7 @@ kimi web
 <details>
 <summary>查看图片：选择手动添加</summary>
 
-![选择手动添加供应商](/images/kimi/kimi3.jpg)
+![选择手动添加供应商](/images/kimi/kimi3.png)
 
 </details>
 
