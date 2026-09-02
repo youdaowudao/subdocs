@@ -13,7 +13,7 @@
 1. 写一个可运行脚本，文件名用中文，例如 `生成图片.sh`、`生成图片.ps1` 或 `生成图片.py`。
 2. 可以用 `curl` 发送请求；不要额外安装依赖，本机确实缺少工具时先等我确认。
 3. 调用接口：POST https://api.usegoodai.com/v1/images/generations，API Key 让我自己填。
-4. 请求体参考 `gpt-image-2` 图片生成调用方法，例如：
+4. 请求体参考 `gpt-image-2` 的 1K 方图调用方法，例如：
    {"model":"gpt-image-2","prompt":"生成一张白底玻璃杯产品图","size":"1024x1024"}
 5. 把原始返回保存为 response.json，同时兼容 data[].b64_json 和 data[].url；有 b64_json 时先解码，有 url 时下载图片；两者都没有有效图片数据时，保留原始返回并明确报错。
 ```
@@ -42,7 +42,7 @@ https://api.usegoodai.com/v1
 
 普通聊天客户端会自己拼接 `/chat/completions`、`/models` 等路径。不要把 `/v1/images/generations` 填进普通聊天客户端的 `Base URL`。
 
-## 生成一张图片
+## 生成一张 1K 方图
 
 先把 UseGoodAI 管理后台创建的 API Key 放到环境变量里。
 
@@ -129,7 +129,7 @@ with open("outputs/image.png", "wb") as file:
 
 ## 常用参数
 
-下面的尺寸规则针对本站 `gpt-image-2` 图片生成接口。需要按“3:4、9:16”等比例选择已验证尺寸时，查看[中转站生图工具的比例写法](/image-video-group-image)。
+下面的尺寸规则针对本站 `gpt-image-2` 图片生成接口。1K、2K、4K 是分辨率档位，不是 `size` 可以直接填写的值；请求必须使用 `1024x1024`、`2048x2048`、`3840x2160` 这类具体像素尺寸。方图、横图和竖图的完整对应关系，前往[中转站生图工具的 GPT Image 2 说明](/image-video-group-image#gpt-image-2)，点击“GPT Image 2：尺寸、质量、比例和接口”展开查看。
 
 | 参数 | 说明 |
 | --- | --- |
@@ -137,7 +137,9 @@ with open("outputs/image.png", "wb") as file:
 | `quality` | 图片质量选项。不同质量档位是否可用，以实际支持为准。 |
 | `output_format` | 输出格式选项，例如需要 PNG 时可尝试设置为 `png`，以实际支持为准。 |
 
-如果接口返回参数不支持、请求体无效或模型不可用，先删掉可选参数，只保留 `model`、`prompt` 和一个确认可用的 `size` 再测试。
+不要填写 `size: "1k"`、`size: "2k"`、`size: "4k"`，也不要给 `gpt-image-2` 发送 `resolution` 或 `aspect_ratio`。需要控制后台档位时，使用三档尺寸表中的明确像素值；使用 `size: "auto"` 时，输出尺寸和后台档位由本次生成结果决定。
+
+如果接口返回参数不支持、请求体无效或模型不可用，先删掉可选参数，只保留 `model`、`prompt` 和一个确认可用的 `size` 再测试。实际档位和扣费进入后台 **使用记录** 核对。
 
 ## 图片编辑
 

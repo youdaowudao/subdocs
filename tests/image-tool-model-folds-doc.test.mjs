@@ -19,7 +19,7 @@ const modelFolds = [
   },
   {
     summary: 'Grok Imagine：分辨率、比例、质量和接口',
-    required: ['`resolution`', '`aspect_ratio`', '`1k`、`2k`', '`low`、`medium`、`high`', '`2816x1584`'],
+    required: ['`resolution`', '`aspect_ratio`', '`1k`、`2k`', '`low`、`medium`、`high`', '`768x1152`'],
   },
   {
     summary: 'Nano Banana 2：分辨率、比例、参考图和接口',
@@ -27,7 +27,7 @@ const modelFolds = [
   },
   {
     summary: 'Nano Banana Pro：分辨率、比例、参考图和接口',
-    required: ['`1k`、`2k`、`4k`', '1408x768', '`quality`、`size`、`output_format`'],
+    required: ['`1k`、`2k`、`4k`', '九个成功请求', '`quality`、`size`、`output_format`'],
   },
 ]
 
