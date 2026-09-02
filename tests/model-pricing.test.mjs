@@ -35,6 +35,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'anthropic-main', name: '低价分组', multiplier: 0.2 },
       { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.45 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
+      { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.45 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.3 },
       { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.2 },
@@ -50,7 +51,7 @@ test('keeps the model category tabs in the requested order', () => {
     MODEL_CATEGORIES.map(({ id, name, kind, groupIds, defaultGroupId }) => ({ id, name, kind, groupIds, defaultGroupId })),
     [
       { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full'], defaultGroupId: 'gpt-0.18' },
-      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-max'], defaultGroupId: undefined },
+      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-max', 'anthropic-max-external'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity'], defaultGroupId: undefined },
       { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek'], defaultGroupId: undefined },
@@ -129,10 +130,11 @@ test('keeps the GPT family models in the expected order', () => {
   )
 })
 
-test('orders all Anthropic groups from Opus 5 through Fable 5', () => {
+test('orders all Anthropic groups from Opus 5 through Fable 5.1', () => {
   const mainModels = getTextModelsForGroup('anthropic-main')
   const ccTestModels = getTextModelsForGroup('anthropic-cc-test')
   const ccMaxModels = getTextModelsForGroup('anthropic-max')
+  const ccMaxExternalModels = getTextModelsForGroup('anthropic-max-external')
   const mainOrder = [
     'claude-opus-5',
     'claude-opus-4-8',
@@ -149,13 +151,33 @@ test('orders all Anthropic groups from Opus 5 through Fable 5', () => {
     'claude-sonnet-4-5-20250929',
     ...mainOrder.slice(7),
   ]
+  const ccMaxOrder = [...ccOrder, 'claude-fable-5-1']
 
   assert.deepEqual(mainModels.map((model) => model.id), mainOrder)
   assert.deepEqual(ccTestModels.map((model) => model.id), ccOrder)
-  assert.deepEqual(ccMaxModels.map((model) => model.id), ccOrder)
+  assert.deepEqual(ccMaxModels.map((model) => model.id), ccMaxOrder)
+  assert.deepEqual(ccMaxExternalModels.map((model) => model.id), ccMaxOrder)
   assert.equal(mainModels.at(-1).unavailableMessage, '此分组无 Fable 5')
   assert.equal(ccTestModels.at(-1).unavailableMessage, '此分组无 Fable 5')
   assert.equal(ccMaxModels.at(-1).unavailableMessage, '')
+  assert.equal(ccMaxExternalModels.at(-1).unavailableMessage, '')
+})
+
+test('uses Anthropic official pricing for Claude Fable 5.1 in the CC MAX groups', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-max')
+  const externalGroup = TEXT_GROUPS.find((item) => item.id === 'anthropic-max-external')
+  const model = getTextModelsForGroup(group.id).find((item) => item.id === 'claude-fable-5-1')
+
+  assert.deepEqual(model.officialUsd, { input: 10, output: 50, cachedInput: 0.25 })
+  assert.equal(group.multiplier, 1.3)
+  assert.equal(externalGroup.multiplier, 1.45)
+
+  const price = calculateTextPrice(model.officialUsd, externalGroup.multiplier)
+  assert.deepEqual(price.official, { input: 70, output: 350, cachedInput: 1.75, total: 420 })
+  assert.ok(isClose(price.group.input, 14.5))
+  assert.ok(isClose(price.group.output, 72.5))
+  assert.ok(isClose(price.group.cachedInput, 0.3625))
+  assert.ok(isClose(price.group.total, 87))
 })
 
 test('replaces unavailable group prices with one row message', () => {
@@ -464,6 +486,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['anthropic-main', 7],
     ['anthropic-cc-test', 15.75],
     ['anthropic-max', 45.5],
+    ['anthropic-max-external', 50.75],
     ['grok-free', 3.5],
     ['grok-4.5', 10.5],
     ['gemini-antigravity', 7],
