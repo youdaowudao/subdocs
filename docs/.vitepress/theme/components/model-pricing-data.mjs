@@ -15,6 +15,7 @@ const GPT_MODEL_IDS = [
 ]
 
 const GEMINI_MODEL_IDS = [
+  'gemini-3.8-flash',
   'gemini-3.7-flash',
   'gemini-3.6-flash-tiered',
   'gemini-3.6-flash',
@@ -339,24 +340,30 @@ export const TEXT_MODELS = [
     officialUsd: { input: 2, output: 6, cachedInput: 0.2 },
   },
   {
-    id: 'gemini-3.7-flash',
-    name: 'Gemini 3.7 Flash',
-    description: '2026-08 发布，当前主推，适合代码、代理流程和多模态任务；首发价到 2026-12-31',
+    id: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    description: '2026-09 更新，当前主推，适合长程软件开发、自治代理和复杂企业工作流；首发价到 2026-12-31',
     officialUsd: { input: 0.75, output: 3.75, cachedInput: 0.075 },
     featured: true,
     featuredLabel: '主推',
   },
   {
+    id: 'gemini-3.7-flash',
+    name: 'Gemini 3.7 Flash',
+    description: '2026-08 发布，适合代码、代理流程和多模态任务；首发价到 2026-12-31',
+    officialUsd: { input: 0.75, output: 3.75, cachedInput: 0.075 },
+  },
+  {
     id: 'gemini-3.6-flash-tiered',
     name: 'Gemini 3.6 Flash Tiered',
-    description: '2026-07 更新，3.6 Flash 分层入口，适合 Antigravity 高频代理任务',
-    officialUsd: { input: 1.5, output: 7.5, cachedInput: 0.15 },
+    description: '2026-07 更新，3.6 Flash 分层入口，适合 Antigravity 高频代理任务；首发价到 2026-12-31',
+    officialUsd: { input: 0.75, output: 3.75, cachedInput: 0.075 },
   },
   {
     id: 'gemini-3.6-flash',
     name: 'Gemini 3.6 Flash',
-    description: '2026-07 更新，适合代码生成、多步代理流程和多模态任务',
-    officialUsd: { input: 1.5, output: 7.5, cachedInput: 0.15 },
+    description: '2026-07 更新，适合代码生成、多步代理流程和多模态任务；首发价到 2026-12-31',
+    officialUsd: { input: 0.75, output: 3.75, cachedInput: 0.075 },
   },
   {
     id: 'gemini-3.5-flash',

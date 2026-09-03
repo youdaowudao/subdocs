@@ -218,6 +218,7 @@ test('shows the Gemini Antigravity group with newest models first and Pro before
   assert.deepEqual(
     getTextModelsForGroup('gemini-antigravity').map((model) => model.id),
     [
+      'gemini-3.8-flash',
       'gemini-3.7-flash',
       'gemini-3.6-flash-tiered',
       'gemini-3.6-flash',
@@ -384,13 +385,39 @@ test('uses the displayed official price baselines for GPT-5.6', () => {
   )
 })
 
-test('uses the displayed official price baselines for Gemini text models', () => {
-  const models = new Map(getTextModelsForGroup('gemini-antigravity').map((model) => [model.id, model]))
+test('uses the verified current Standard prices for every Gemini text model', () => {
+  assert.deepEqual(
+    getTextModelsForGroup('gemini-antigravity').map(({ id, officialUsd }) => ({ id, officialUsd })),
+    [
+      { id: 'gemini-3.8-flash', officialUsd: { input: 0.75, output: 3.75, cachedInput: 0.075 } },
+      { id: 'gemini-3.7-flash', officialUsd: { input: 0.75, output: 3.75, cachedInput: 0.075 } },
+      { id: 'gemini-3.6-flash-tiered', officialUsd: { input: 0.75, output: 3.75, cachedInput: 0.075 } },
+      { id: 'gemini-3.6-flash', officialUsd: { input: 0.75, output: 3.75, cachedInput: 0.075 } },
+      { id: 'gemini-3.5-flash', officialUsd: { input: 1.5, output: 9, cachedInput: 0.15 } },
+      { id: 'gemini-3.1-pro-preview', officialUsd: { input: 2, output: 12, cachedInput: 0.2 } },
+      { id: 'gemini-3.1-flash-lite', officialUsd: { input: 0.25, output: 1.5, cachedInput: 0.025 } },
+      { id: 'gemini-3.1-flash-lite-preview', officialUsd: { input: 0.25, output: 1.5, cachedInput: 0.025 } },
+      { id: 'gemini-3-pro-preview', officialUsd: { input: 2, output: 12, cachedInput: 0.2 } },
+      { id: 'gemini-3-flash', officialUsd: { input: 0.5, output: 3, cachedInput: 0.05 } },
+      { id: 'gemini-3-flash-preview', officialUsd: { input: 0.5, output: 3, cachedInput: 0.05 } },
+      { id: 'gemini-2.5-pro', officialUsd: { input: 1.25, output: 10, cachedInput: 0.125 } },
+      { id: 'gemini-2.5-flash', officialUsd: { input: 0.3, output: 2.5, cachedInput: 0.03 } },
+      { id: 'gemini-2.5-flash-lite', officialUsd: { input: 0.1, output: 0.4, cachedInput: 0.01 } },
+    ],
+  )
+})
 
-  assert.deepEqual(models.get('gemini-3.7-flash').officialUsd, { input: 0.75, output: 3.75, cachedInput: 0.075 })
-  assert.deepEqual(models.get('gemini-3.6-flash').officialUsd, { input: 1.5, output: 7.5, cachedInput: 0.15 })
-  assert.deepEqual(models.get('gemini-3.1-pro-preview').officialUsd, { input: 2, output: 12, cachedInput: 0.2 })
-  assert.deepEqual(models.get('gemini-2.5-pro').officialUsd, { input: 1.25, output: 10, cachedInput: 0.125 })
+test('calculates Gemini 3.8 Flash with the existing Gemini group multiplier', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'gemini-antigravity')
+  const model = getTextModelsForGroup(group.id).find((item) => item.id === 'gemini-3.8-flash')
+
+  assert.equal(group.multiplier, 0.2)
+  assert.ok(model, 'Gemini 3.8 Flash should be available in the Gemini group')
+  const price = calculateTextPrice(model.officialUsd, group.multiplier)
+  assert.ok(isClose(price.group.input, 0.15))
+  assert.ok(isClose(price.group.output, 0.75))
+  assert.ok(isClose(price.group.cachedInput, 0.015))
+  assert.ok(isClose(price.group.total, 0.9))
 })
 
 test('keeps Gemini descriptions customer-facing with dates or concrete use cases', () => {
@@ -401,6 +428,9 @@ test('keeps Gemini descriptions customer-facing with dates or concrete use cases
     assert.doesNotMatch(model.description, forbidden, model.id)
   }
 
+  assert.ok(models.has('gemini-3.8-flash'))
+  assert.match(models.get('gemini-3.8-flash').description, /2026-09/)
+  assert.match(models.get('gemini-3.8-flash').description, /2026-12-31/)
   assert.match(models.get('gemini-3.7-flash').description, /2026-08/)
   assert.match(models.get('gemini-3.7-flash').description, /2026-12-31/)
   assert.match(models.get('gemini-3.6-flash').description, /2026-07/)
@@ -411,10 +441,13 @@ test('keeps Gemini descriptions customer-facing with dates or concrete use cases
   assert.match(models.get('gemini-2.5-flash-lite').description, /高频|低延迟/)
 })
 
-test('highlights Gemini 3.7 Flash as the featured model', () => {
-  const model = getTextModelsForGroup('gemini-antigravity')[0]
+test('highlights only Gemini 3.8 Flash as the featured model', () => {
+  const models = getTextModelsForGroup('gemini-antigravity')
+  const featuredModels = models.filter((item) => item.featured)
+  const model = featuredModels[0]
 
-  assert.equal(model.id, 'gemini-3.7-flash')
+  assert.equal(featuredModels.length, 1)
+  assert.equal(model.id, 'gemini-3.8-flash')
   assert.equal(model.featured, true)
   assert.equal(model.featuredLabel, '主推')
   assert.match(pricingComponentSource, /'is-featured-model': model\.featured/)
