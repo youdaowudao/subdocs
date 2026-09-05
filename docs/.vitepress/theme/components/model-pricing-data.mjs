@@ -6,6 +6,7 @@ export const DEEPSEEK_PRICE_PERIODS = {
 }
 
 const GPT_MODEL_IDS = [
+  'gpt-6-astra',
   'gpt-5.6-sol',
   'gpt-5.6-terra',
   'gpt-5.6-luna',
@@ -72,6 +73,7 @@ export const TEXT_GROUPS = [
     multiplier: 0.085,
     description: '低价入口，最近不稳定',
     modelIds: GPT_MODEL_IDS,
+    unavailableModels: { 'gpt-6-astra': '即将到来' },
   },
   {
     id: 'gpt-0.18',
@@ -79,6 +81,7 @@ export const TEXT_GROUPS = [
     multiplier: 0.135,
     description: '适合日常对话、普通代码和大多数任务',
     modelIds: GPT_MODEL_IDS,
+    unavailableModels: { 'gpt-6-astra': '即将到来' },
   },
   {
     id: 'full',
@@ -225,6 +228,12 @@ export const MODEL_CATEGORIES = [
 ]
 
 export const TEXT_MODELS = [
+  {
+    id: 'gpt-6-astra',
+    name: 'GPT-6 Astra',
+    description: 'OpenAI 旗舰模型，适合复杂推理、代码、研究和长程任务',
+    officialUsd: { input: 10, output: 50, cachedInput: 1 },
+  },
   {
     id: 'gpt-5.6-sol',
     name: 'GPT-5.6 Sol',

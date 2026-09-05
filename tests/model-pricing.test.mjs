@@ -120,6 +120,7 @@ test('keeps the GPT family models in the expected order', () => {
   assert.deepEqual(
     getTextModelsForGroup('pro-plus').map((model) => model.id),
     [
+      'gpt-6-astra',
       'gpt-5.6-sol',
       'gpt-5.6-terra',
       'gpt-5.6-luna',
@@ -128,6 +129,24 @@ test('keeps the GPT family models in the expected order', () => {
       'gpt-5.4-mini',
     ],
   )
+})
+
+test('prices GPT-6 Astra in Pro and marks the other GPT groups as coming soon', () => {
+  const proPlusModel = getTextModelsForGroup('pro-plus').find((model) => model.id === 'gpt-6-astra')
+  const mixedModel = getTextModelsForGroup('gpt-0.18').find((model) => model.id === 'gpt-6-astra')
+  const proModel = getTextModelsForGroup('full').find((model) => model.id === 'gpt-6-astra')
+
+  assert.ok(proPlusModel)
+  assert.ok(mixedModel)
+  assert.ok(proModel)
+  assert.deepEqual(proModel.officialUsd, { input: 10, output: 50, cachedInput: 1 })
+  assert.equal(proPlusModel.unavailableMessage, '即将到来')
+  assert.equal(mixedModel.unavailableMessage, '即将到来')
+  assert.equal(proModel.unavailableMessage, '')
+
+  const price = calculateTextPrice(proModel.officialUsd, 0.25)
+  assert.deepEqual(price.official, { input: 70, output: 350, cachedInput: 7, total: 420 })
+  assert.deepEqual(price.group, { input: 2.5, output: 12.5, cachedInput: 0.25, total: 15 })
 })
 
 test('orders all Anthropic groups from Opus 5 through Fable 5.1', () => {
@@ -376,7 +395,9 @@ test('keeps the copy below the pricing table concise', () => {
 
 test('uses the displayed official price baselines for GPT-5.6', () => {
   assert.deepEqual(
-    getTextModelsForGroup('gpt-0.18').slice(0, 3).map((model) => model.officialUsd),
+    getTextModelsForGroup('gpt-0.18')
+      .filter((model) => model.id.startsWith('gpt-5.6-'))
+      .map((model) => model.officialUsd),
     [
       { input: 5, output: 30, cachedInput: 0.5 },
       { input: 2.5, output: 15, cachedInput: 0.25 },
