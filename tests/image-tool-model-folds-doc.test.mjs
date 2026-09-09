@@ -6,8 +6,12 @@ const source = readFileSync(new URL('../docs/image-video-group-image.md', import
 
 const modelFolds = [
   {
-    summary: 'GPT Image 2：尺寸、质量、比例和接口',
-    required: ['`size`、`quality` 和 `output_format`', '`3:4`', '`768x1024`', '`quality`', '`n`'],
+    summary: 'GPT Image 2.5：当前主模型、尺寸、质量和比例',
+    required: ['`size`、`quality` 和 `output_format`', '`3:4`', '`768x1024`', '`xhigh`', '`max`'],
+  },
+  {
+    summary: 'GPT Image 2：旧版兼容差异',
+    required: ['`1024x1024`', '`low`、`medium`、`high`、`auto`', '用户明确指定'],
   },
   {
     summary: 'GPT Image 1K TH：固定尺寸、质量和接口',

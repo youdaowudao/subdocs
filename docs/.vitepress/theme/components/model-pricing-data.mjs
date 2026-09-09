@@ -137,7 +137,7 @@ export const TEXT_GROUPS = [
   {
     id: 'gemini-antigravity',
     name: 'Gemini 分组（反重力 Antigravity 反代）',
-    multiplier: 0.2,
+    multiplier: 0.3,
     description: '适合 Antigravity、代理式编程和 Gemini 模型测试',
     modelIds: GEMINI_MODEL_IDS,
   },
@@ -160,10 +160,18 @@ export const TEXT_GROUPS = [
   {
     id: 'kimi',
     name: 'Kimi 分组',
-    multiplier: 0.6,
+    multiplier: 0.45,
     currency: 'cny',
     description: 'K3 适合长程编程、知识工作和深度推理',
     modelIds: ['kimi-k3'],
+  },
+  {
+    id: 'hunyuan',
+    name: '腾讯混元分组',
+    multiplier: 0.45,
+    currency: 'cny',
+    description: '适合长程编程、复杂任务和工具调用',
+    modelIds: ['hy4-preview'],
   },
 ]
 
@@ -217,6 +225,13 @@ export const MODEL_CATEGORIES = [
     iconSrc: '/brand-icons/kimi.ico',
     kind: 'text',
     groupIds: ['kimi'],
+  },
+  {
+    id: 'hunyuan',
+    name: '腾讯混元',
+    iconSrc: '/brand-icons/hunyuan.png',
+    kind: 'text',
+    groupIds: ['hunyuan'],
   },
   {
     id: 'image',
@@ -478,6 +493,12 @@ export const TEXT_MODELS = [
     description: '旗舰模型，适合长程编程、知识工作和深度推理',
     officialCny: { input: 20, output: 100, cachedInput: 2 },
   },
+  {
+    id: 'hy4-preview',
+    name: 'hy4-preview',
+    description: '适合长程编程、复杂任务和工具调用',
+    officialCny: { input: 6, output: 18, cachedInput: 0.3 },
+  },
 ]
 
 export const IMAGE_GROUP = {
@@ -487,6 +508,34 @@ export const IMAGE_GROUP = {
 }
 
 export const IMAGE_MODELS = [
+  {
+    id: 'gpt-image-2.5-flare',
+    name: 'GPT Image 2.5 Flare',
+    description: '最新推荐模型，适合快速生成、普通生图和批量任务',
+    route: '/v1/images/generations',
+    spec: '1K / 2K / 4K',
+    groupCnyPerImage: 0.05,
+    sizePricesCny: [
+      { size: '1K', cnyPerImage: 0.04 },
+      { size: '2K', cnyPerImage: 0.05 },
+      { size: '4K', cnyPerImage: 0.08 },
+    ],
+    recommended: true,
+  },
+  {
+    id: 'gpt-image-2.5-sunburst',
+    name: 'GPT Image 2.5 Sunburst',
+    description: '最新推荐模型，适合高清、精修和重要成品',
+    route: '/v1/images/generations',
+    spec: '1K / 2K / 4K',
+    groupCnyPerImage: 0.05,
+    sizePricesCny: [
+      { size: '1K', cnyPerImage: 0.04 },
+      { size: '2K', cnyPerImage: 0.05 },
+      { size: '4K', cnyPerImage: 0.08 },
+    ],
+    recommended: true,
+  },
   {
     id: 'gpt-image-1k-th',
     name: 'GPT Image 1K',
