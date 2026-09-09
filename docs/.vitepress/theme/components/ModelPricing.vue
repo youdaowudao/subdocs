@@ -72,8 +72,8 @@ const textRows = computed(() =>
 
 const pricingRuleExample = computed(() => {
   if (isImageCategory.value) {
-    const imageModel = IMAGE_MODELS.find((model) => model.id === 'gpt-image-2')
-    return `示例：GPT Image 2 当前分组价 ${formatCny(calculateImagePriceCny(imageModel.groupCnyPerImage))} / 张`
+    const imageModel = IMAGE_MODELS.find((model) => model.id === 'gpt-image-2.5-flare')
+    return `示例：GPT Image 2.5 Flare 当前分组价 ${formatCny(calculateImagePriceCny(imageModel.groupCnyPerImage))} / 张`
   }
 
   const exampleModel = activeTextModels.value[0]
@@ -363,11 +363,11 @@ const copyModelId = async (modelId) => {
                   <div class="model-id-cell">
                     <div>
                       <strong
-                        v-if="model.id === 'gpt-image-2'"
+                        v-if="model.recommended"
                         class="image-model-id--recommended"
                       >{{ model.id }}</strong>
                       <span v-else class="image-model-id">{{ model.id }}</span>
-                      <span v-if="model.id === 'gpt-image-2'">推荐日常使用</span>
+                      <span v-if="model.recommended">最新推荐模型</span>
                     </div>
                     <button
                       type="button"
@@ -1190,6 +1190,8 @@ const copyModelId = async (modelId) => {
 .dark .model-pricing-page .pricing-table th { background: #2a2724; color: #c2b9b0; }
 .dark .pricing-description { border-color: #5a3b29; background: #2b211b; }
 .dark .copy-model-button span { background: #211f1d; }
+.dark .model-category-icon--hunyuan { filter: invert(1); }
+.dark .model-category-tabs button.is-active .model-category-icon--hunyuan { filter: none; }
 .dark .model-category-tabs button.is-active,
 .dark .pricing-group-card.is-active {
   border-color: #e78e45;

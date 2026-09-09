@@ -6,7 +6,7 @@ title: 安装生图工具
 
 UseGoodAI 中转站生图工具让 Codex 直接生成、修改并展示图片，适合已经完成[快速开始](/quick-start)、希望在 Codex 对话中使用图片模型的用户。
 
-安装后，Codex 会自动调用工具并把成品图显示在当前对话中。安装器会写入 `$CODEX_HOME/tools/usegoodai-imagines-tool/`、`$CODEX_HOME/skills/usegoodai-image-generation/` 和 `$CODEX_HOME/AGENTS.md`；用户不需要手动修改这些文件。
+安装后，Codex 会自动调用工具并把成品图显示在当前对话中。普通任务默认使用 `gpt-image-2.5-flare` 生成 2K 图片，明确要求高清、精修或重要成品时使用 `gpt-image-2.5-sunburst`；安装器会写入 `$CODEX_HOME/tools/usegoodai-imagines-tool/`、`$CODEX_HOME/skills/usegoodai-image-generation/` 和 `$CODEX_HOME/AGENTS.md`，用户不需要手动修改这些文件。
 
 ## 1. 创建专门画图分组的 API Key
 
@@ -31,15 +31,15 @@ irm https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.ps1 | iex
 看到“请粘贴专门画图分组的 Key”时，粘贴第 1 步复制的 Key，然后按回车。安装器只会下载 Windows x64 程序，不需要 Python、Node 或管理员权限。
 
 <details>
-<summary>Mac 用户看这里</summary>
+<summary>Linux 和 Mac 用户看这里</summary>
 
-Apple Silicon 和 Intel Mac 使用同一条命令，安装脚本会自动识别芯片。打开终端运行：
+64 位 x64 Linux、Apple Silicon Mac 和 Intel Mac 使用同一条命令，安装脚本会自动识别系统和芯片。打开终端运行：
 
 ```bash
 curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh | bash
 ```
 
-看到 Key 输入提示后，粘贴第 1 步复制的专门画图分组 Key，然后按回车。安装器只下载当前 Mac 对应的一个程序。
+看到 Key 输入提示后，粘贴第 1 步复制的专门画图分组 Key，然后按回车。安装器只下载当前 Linux 或 Mac 对应的一个程序。
 
 </details>
 
@@ -95,7 +95,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 对比模型：
 
 ```text
-用同一个要求分别调用 gpt-image-2 和 nano-banana-pro，各生成一张并显示出来。
+用同一个要求分别调用 gpt-image-2.5-flare 和 nano-banana-pro，各生成一张并显示出来。
 ```
 
 </details>
@@ -103,14 +103,16 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 <details>
 <summary>查看支持的模型、尺寸和参数</summary>
 
-| 模型 | 接口 | 尺寸或比例参数 | 其它参数和能力 |
+| 模型 | 使用场景 | 默认规格 | 专属限制 |
 | --- | --- | --- | --- |
-| `gpt-image-2` | Images | `size=WIDTHxHEIGHT`；1K、2K、4K 见下表 | `quality`、`output_format`，支持参考图、修图、多图 |
-| `gpt-image-1k-th` | Images | 固定 `1024x1024` | `quality=low/high`，支持参考图、修图、多图 |
-| `gpt-image-2-adobe` | Images | `1024x1536`、`1536x2304`、`2304x3456` | 固定 `quality=low`，只支持生图和多图 |
-| `grok-imagine-image` | Images | `resolution=1k/2k`、7 种 `aspect_ratio` | `quality=low/medium/high`，支持参考图、修图、多图 |
-| `nano-banana-2` | Responses | `resolution=512/1k/2k/4k`、15 种 `aspect_ratio` | 不使用 `size`、`quality`、`output_format`，支持参考图、修图、多图 |
-| `nano-banana-pro` | Responses | `resolution=1k/2k/4k`、工具支持的 15 种 `aspect_ratio` | 不使用 `size`、`quality`、`output_format`，支持参考图、修图、多图 |
+| `gpt-image-2.5-flare` | 普通生图、快速生成和批量任务 | `2048x2048`、`high` | 支持 `xhigh`、`max` |
+| `gpt-image-2.5-sunburst` | 高清、精修和重要成品 | `2048x2048`、`high` | 支持 `xhigh`、`max` |
+| `gpt-image-2` | 用户明确指定的旧版兼容任务 | `1024x1024`、`high` | 质量最高到 `high` |
+| `gpt-image-1k-th` | 固定 1K 方图 | `1024x1024`、`high` | 只使用 `low` 或 `high` |
+| `gpt-image-2-adobe` | Adobe 竖图 | `1024x1536`、`low` | 只支持生图和多图 |
+| `grok-imagine-image` | Grok 图片任务 | `1k`、`1:1` | 支持 7 种比例 |
+| `nano-banana-2` | 多规格 Banana 图片任务 | `1k`、`1:1` | 支持 `512`、2K、4K 和 15 种比例 |
+| `nano-banana-pro` | Banana Pro 图片任务 | `1k`、`1:1` | 支持 2K、4K 和 15 种比例 |
 
 Codex 会按照用户明确提出的模型、数量、尺寸和画面要求调用工具，不会替用户决定创作内容。价格见[模型价格](/models)。
 
@@ -135,7 +137,7 @@ Codex 会按照用户明确提出的模型、数量、尺寸和画面要求调�
 | 生图 Skill | `$CODEX_HOME/skills/usegoodai-image-generation/` |
 | Codex 全局调用规则 | `$CODEX_HOME/AGENTS.md` |
 
-未设置 `CODEX_HOME` 时，Windows 使用 `C:\Users\你的用户名\.codex\`，Mac 使用 `~/.codex/`。生成图片保存在当前项目的 `images` 文件夹；没有打开项目时保存在桌面的 `images` 文件夹。
+未设置 `CODEX_HOME` 时，Windows 使用 `C:\Users\你的用户名\.codex\`，Linux 和 Mac 使用 `~/.codex/`。生成图片保存在当前项目的 `images` 文件夹；没有打开项目时保存在桌面的 `images` 文件夹。
 
 需要卸载时，直接对 Codex 说“卸载中转站生图工具”。专门画图 Key 默认保留，永久删除前需要单独确认。
 
@@ -172,7 +174,7 @@ https://docs.usegoodai.com/image-video-group-image.html
 4. 为 UseGoodAI API Key 保留一个明显的配置项，创建完成后只让我填写这个值。
 5. 脚本是给 Codex 调用的，不要让我手工修改图片描述、模型或运行命令。
 6. 脚本必须接收 Codex 每次传入的完整图片描述、模型、数量、规格和可选原图文件，不能把图片描述写死在脚本里。
-7. 默认使用 gpt-image-2；用户指定其它已支持模型时，按页面中的模型和接口映射发送请求。
+7. 模型选择顺序固定为：用户明确指定模型时使用该模型；未指定模型且明确要求高清、高质量、精细细节、精修、严格保留原图或重要成品时使用 gpt-image-2.5-sunburst；其余未指定模型的任务默认使用 gpt-image-2.5-flare。
 8. 每个模型请求只发送一次，禁止自动重试或静默更换模型。
 9. 成功后只保存最终图片，并立即使用 view_image 打开每张图片，确认图片能够正常显示。
 10. view_image 成功后，最终回复仍必须用绝对路径 Markdown 图片语法再次嵌入每张图片，例如：`![生成结果](/absolute/path/image.png)`。不得只依赖中间工具输出，也不得只回复普通文件路径或普通 Markdown 文件链接。失败时显示脱敏错误，不创建空图片或运行记录。
@@ -182,53 +184,53 @@ https://docs.usegoodai.com/image-video-group-image.html
 
 </details>
 
-<span id="gpt-image-2"></span>
+<span id="gpt-image-2-5"></span>
 
 <details>
-<summary>GPT Image 2：尺寸、质量、比例和接口</summary>
+<summary>GPT Image 2.5：当前主模型、尺寸、质量和比例</summary>
 
-`gpt-image-2` 是默认模型，支持文生图、参考图、修图和多图。它使用 Images 接口，使用 `size`、`quality` 和 `output_format`，不能使用 Banana 的 `--aspect-ratio`。
+模型选择顺序固定为：用户明确指定模型时使用该模型；未指定模型且明确要求高清、高质量、精细细节、精修、严格保留原图或重要成品时使用 `gpt-image-2.5-sunburst`；其余未指定模型的任务默认使用 `gpt-image-2.5-flare`。
+
+快速生成、普通生图、普通参考图、普通修图和批量生成都属于 Flare 的默认范围；“批量生成”不会覆盖同一句要求中的高清、精修或重要成品条件。
+
+两个模型都支持文生图、参考图、修图和多图。文生图使用 `POST /v1/images/generations`，参考图和修图使用 `POST /v1/images/edits`；使用 `size`、`quality` 和 `output_format`，不使用 `resolution` 或 `aspect_ratio`。
 
 | 参数 | 写法 |
 | --- | --- |
-| `model` | 固定为 `gpt-image-2` |
+| `model` | `gpt-image-2.5-flare` 或 `gpt-image-2.5-sunburst` |
 | `prompt` | 必填，写完整图片描述或修改指令 |
-| 文生图接口 | `POST /v1/images/generations` |
-| 参考图和修图接口 | `POST /v1/images/edits` |
-| `size` | `auto` 或 `WIDTHxHEIGHT`；宽高为 16 的倍数，单边不超过 3840，长短边比例不超过 3:1，总像素 655360 至 8294400；一键工具默认 `1024x1024` |
-| `quality` | `low`、`medium`、`high`、`auto`；一键工具默认 `high` |
+| `size` | `auto` 或 `WIDTHxHEIGHT`；宽高为 16 的倍数，单边不超过 3840，长短边比例不超过 3:1，总像素为 655360 至 8294400；本站工具默认 `2048x2048` |
+| `quality` | `low`、`medium`、`high`、`xhigh`、`max`、`auto`；默认 `high` |
 | `output_format` | 当前工具使用 `png` |
 | `n` | `1` 至 `10`；工具把多图拆成独立单张请求 |
 | 参考图 | 使用 `edit`，每张图片重复传入 `--image` |
 
-上表的默认值是本站一键工具主动传入的值。直接编写 API 请求并省略 `size` 或 `quality` 时，OpenAI 官方接口对这两个字段的默认值都是 `auto`；需要固定结果时，在请求体中明确填写。
+本站工具主动传入 `2048x2048` 和 `high`；直接调用官方接口并省略 `size` 或 `quality` 时，这两个字段默认使用 `auto`。使用 `size=auto` 时，模型会根据提示词选择尺寸。
+
+`xhigh` 和 `max` 只适用于两个 GPT Image 2.5 模型。工具默认保持 `high`，只有用户明确指定对应质量档位时才传入 `xhigh` 或 `max`。
 
 ### 按 1K、2K、4K 选择尺寸
 
-1K、2K、4K 是分辨率档位，不是 `size` 的参数值。调用 `gpt-image-2` 时必须把档位和方向换成具体像素；不能填写 `size=1k`、`size=2k`、`size=4k`，也不能使用其它模型的 `resolution=1k/2k/4k`。
+1K、2K、4K 是分辨率档位，不是 `size` 的参数值。必须把档位和方向换成具体像素，不能填写 `size=1k`、`size=2k` 或 `size=4k`。
 
-| 用户要求 | `size` | 本站实测结果 |
-| --- | --- | --- |
-| 1K 方图 | `1024x1024` | 返回 `1024x1024` |
-| 1K 横图 | `1536x1024` | 返回 `1536x1024` |
-| 1K 竖图 | `1024x1536` | 返回 `1024x1536` |
-| 2K 方图 | `2048x2048` | 返回 `2048x2048` |
-| 2K 横图 | `2048x1152` | 返回 `2048x1152` |
-| 2K 竖图 | `1152x2048` | 返回 `1152x2048` |
-| 4K 横图 | `3840x2160` | 返回 `3840x2160` |
-| 4K 竖图 | `2160x3840` | 返回 `2160x3840` |
+| 用户要求 | `size` |
+| --- | --- |
+| 1K 方图 | `1024x1024` |
+| 1K 横图 | `1536x1024` |
+| 1K 竖图 | `1024x1536` |
+| 2K 方图 | `2048x2048` |
+| 2K 横图 | `2048x1152` |
+| 2K 竖图 | `1152x2048` |
+| 4K 横图 | `3840x2160` |
+| 4K 竖图 | `2160x3840` |
 
-需要控制分辨率档位时，直接使用表中的尺寸。`size=auto` 会让模型根据提示词选择尺寸；本站本次测试返回 `1024x1536`，这只代表本次结果，不表示 `auto` 固定使用 1K 或固定使用竖图。
-
-OpenAI 官方没有提供常用的 4K 方图尺寸。`2880x2880` 满足接口限制，总像素正好是上限 `8294400`，本站实测能够返回 `2880x2880`。它是最大像素方图，不是 OpenAI 官方命名的 4K 方图。
-
-总像素超过 `3686400` 的图片属于实验性输出。表中的 `2048x2048`、`3840x2160` 和 `2160x3840` 都在实验性范围内；请求成功不代表每次生成时间和稳定性都与较小尺寸相同。
+`2880x2880` 的总像素为上限 `8294400`，可作为最大像素方图，但不是官方命名的 4K 方图。超过 `2560x1440` 的输出属于实验性范围，生成时间和稳定性可能与较小尺寸不同。
 
 实际档位和扣费以后台 **使用记录** 为准，价格查看[模型价格](/models)。
 
 ### 使用其它比例
 
-用户说“3:4”时转换为 `--size 768x1024`，不要把 `3:4` 直接填进 `size`。下面这些尺寸已经验证能够生成，但不用于判断后台属于 1K、2K 还是 4K；需要控制档位时使用上面的三档尺寸表。
+用户说“3:4”时转换为 `--size 768x1024`，不要把 `3:4` 直接填进 `size`。
 
 | 比例 | `size` 示例 |
 | --- | --- |
@@ -247,6 +249,21 @@ OpenAI 官方没有提供常用的 4K 方图尺寸。`2880x2880` 满足接口限
 | 1:3 | `512x1536` |
 
 比例超过 3:1 的 `4:1`、`1:4`、`8:1`、`1:8` 不支持。`--aspect-ratio 3:4` 也不支持。
+
+</details>
+
+<span id="gpt-image-2"></span>
+
+<details>
+<summary>GPT Image 2：旧版兼容差异</summary>
+
+`gpt-image-2` 只用于用户明确指定该模型或已有项目需要继续保持原模型的任务，不再作为默认模型。
+
+| 项目 | 设置 |
+| --- | --- |
+| 模型名 | `gpt-image-2` |
+| 本站工具默认值 | `1024x1024`、`high` |
+| `quality` | `low`、`medium`、`high`、`auto` |
 
 </details>
 
@@ -496,6 +513,8 @@ Nano Banana 2 不接受任意 `--size` 像素尺寸。`--size 2048x2048` 会在�
 
 | 模型 | 生成接口 | 参考图和修图 |
 | --- | --- | --- |
+| `gpt-image-2.5-flare` | `/v1/images/generations` | `/v1/images/edits` |
+| `gpt-image-2.5-sunburst` | `/v1/images/generations` | `/v1/images/edits` |
 | `gpt-image-2` | `/v1/images/generations` | `/v1/images/edits` |
 | `gpt-image-1k-th` | `/v1/images/generations` | `/v1/images/edits` |
 | `gpt-image-2-adobe` | `/v1/images/generations` | 不开放 |

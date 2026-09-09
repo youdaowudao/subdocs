@@ -38,10 +38,11 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.45 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.3 },
-      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.2 },
+      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.3 },
       { id: 'deepseek', name: 'DeepSeek 分组', multiplier: 0.45 },
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },
-      { id: 'kimi', name: 'Kimi 分组', multiplier: 0.6 },
+      { id: 'kimi', name: 'Kimi 分组', multiplier: 0.45 },
+      { id: 'hunyuan', name: '腾讯混元分组', multiplier: 0.45 },
     ],
   )
 })
@@ -57,6 +58,7 @@ test('keeps the model category tabs in the requested order', () => {
       { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek'], defaultGroupId: undefined },
       { id: 'domestic', name: 'GLM', kind: 'text', groupIds: ['domestic'], defaultGroupId: undefined },
       { id: 'kimi', name: 'Kimi', kind: 'text', groupIds: ['kimi'], defaultGroupId: undefined },
+      { id: 'hunyuan', name: '腾讯混元', kind: 'text', groupIds: ['hunyuan'], defaultGroupId: undefined },
       { id: 'image', name: '生图', kind: 'image', groupIds: [], defaultGroupId: undefined },
     ],
   )
@@ -290,12 +292,12 @@ test('calculates GLM-5.3-Flash from the official RMB baseline at 0.45x', () => {
   assert.ok(isClose(price.group.total, 1.62))
 })
 
-test('shows only Kimi K3 at the verified RMB price with a 0.6 multiplier', () => {
+test('shows only Kimi K3 at the verified RMB price with a 0.45 multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'kimi')
   const models = getTextModelsForGroup('kimi')
 
   assert.equal(group.name, 'Kimi 分组')
-  assert.equal(group.multiplier, 0.6)
+  assert.equal(group.multiplier, 0.45)
   assert.equal(group.currency, 'cny')
   assert.deepEqual(
     models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
@@ -310,12 +312,40 @@ test('shows only Kimi K3 at the verified RMB price with a 0.6 multiplier', () =>
 
   const k3Price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
   assert.deepEqual(k3Price.official, { input: 20, output: 100, cachedInput: 2, total: 120 })
-  assert.ok(isClose(k3Price.group.input, 12))
-  assert.ok(isClose(k3Price.group.output, 60))
-  assert.ok(isClose(k3Price.group.cachedInput, 1.2))
-  assert.ok(isClose(k3Price.group.total, 72))
-  assert.equal(getEquivalentDiscount(group.multiplier, group.currency), '6.0折')
-  assert.equal(getSavingsPercent(group.multiplier, group.currency), 40)
+  assert.ok(isClose(k3Price.group.input, 9))
+  assert.ok(isClose(k3Price.group.output, 45))
+  assert.ok(isClose(k3Price.group.cachedInput, 0.9))
+  assert.ok(isClose(k3Price.group.total, 54))
+  assert.equal(getEquivalentDiscount(group.multiplier, group.currency), '4.5折')
+  assert.equal(getSavingsPercent(group.multiplier, group.currency), 55)
+})
+
+test('calculates hy4-preview from the official RMB baseline at a 0.45 multiplier', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'hunyuan')
+  const models = getTextModelsForGroup('hunyuan')
+
+  assert.equal(group.name, '腾讯混元分组')
+  assert.equal(group.multiplier, 0.45)
+  assert.equal(group.currency, 'cny')
+  assert.deepEqual(
+    models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
+    [
+      {
+        id: 'hy4-preview',
+        name: 'hy4-preview',
+        officialCny: { input: 6, output: 18, cachedInput: 0.3 },
+      },
+    ],
+  )
+
+  const price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
+  assert.deepEqual(price.official, { input: 6, output: 18, cachedInput: 0.3, total: 24 })
+  assert.ok(isClose(price.group.input, 2.7))
+  assert.ok(isClose(price.group.output, 8.1))
+  assert.ok(isClose(price.group.cachedInput, 0.135))
+  assert.ok(isClose(price.group.total, 10.8))
+  assert.equal(getEquivalentDiscount(group.multiplier, group.currency), '4.5折')
+  assert.equal(getSavingsPercent(group.multiplier, group.currency), 55)
 })
 
 test('shows DeepSeek Flash and Pro together in one RMB group at a 0.45 multiplier', () => {
@@ -428,17 +458,17 @@ test('uses the verified current Standard prices for every Gemini text model', ()
   )
 })
 
-test('calculates Gemini 3.8 Flash with the existing Gemini group multiplier', () => {
+test('calculates Gemini 3.8 Flash with a 0.3 group multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'gemini-antigravity')
   const model = getTextModelsForGroup(group.id).find((item) => item.id === 'gemini-3.8-flash')
 
-  assert.equal(group.multiplier, 0.2)
+  assert.equal(group.multiplier, 0.3)
   assert.ok(model, 'Gemini 3.8 Flash should be available in the Gemini group')
   const price = calculateTextPrice(model.officialUsd, group.multiplier)
-  assert.ok(isClose(price.group.input, 0.15))
-  assert.ok(isClose(price.group.output, 0.75))
-  assert.ok(isClose(price.group.cachedInput, 0.015))
-  assert.ok(isClose(price.group.total, 0.9))
+  assert.ok(isClose(price.group.input, 0.225))
+  assert.ok(isClose(price.group.output, 1.125))
+  assert.ok(isClose(price.group.cachedInput, 0.0225))
+  assert.ok(isClose(price.group.total, 1.35))
 })
 
 test('keeps Gemini descriptions customer-facing with dates or concrete use cases', () => {
@@ -543,7 +573,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['anthropic-max-external', 50.75],
     ['grok-free', 3.5],
     ['grok-4.5', 10.5],
-    ['gemini-antigravity', 7],
+    ['gemini-antigravity', 10.5],
   ])
 
   for (const [groupId, expectedTotal] of expectedTotals) {
@@ -606,6 +636,45 @@ test('keeps the requested drawing prices in RMB without applying USD conversion'
   assert.equal(gptImage2.spec, '1K / 2K / 4K')
   assert.match(pricingComponentSource, /v-if="model\.sizePricesCny"/)
   assert.match(pricingComponentSource, /按分辨率计费/)
+})
+
+test('places the latest recommended GPT Image 2.5 models first at GPT Image 2 prices', () => {
+  const gptImage2 = IMAGE_MODELS.find((model) => model.id === 'gpt-image-2')
+  const latestModels = IMAGE_MODELS.slice(0, 2)
+
+  assert.deepEqual(
+    latestModels.map(({ id, name, description, recommended }) => ({ id, name, description, recommended })),
+    [
+      {
+        id: 'gpt-image-2.5-flare',
+        name: 'GPT Image 2.5 Flare',
+        description: '最新推荐模型，适合快速生成、普通生图和批量任务',
+        recommended: true,
+      },
+      {
+        id: 'gpt-image-2.5-sunburst',
+        name: 'GPT Image 2.5 Sunburst',
+        description: '最新推荐模型，适合高清、精修和重要成品',
+        recommended: true,
+      },
+    ],
+  )
+
+  for (const model of latestModels) {
+    assert.equal(model.route, '/v1/images/generations')
+    assert.equal(model.spec, gptImage2.spec)
+    assert.equal(model.groupCnyPerImage, gptImage2.groupCnyPerImage)
+    assert.deepEqual(model.sizePricesCny, gptImage2.sizePricesCny)
+  }
+
+  assert.equal(gptImage2.recommended, undefined)
+  assert.deepEqual(
+    IMAGE_MODELS.filter((model) => model.recommended).map((model) => model.id),
+    ['gpt-image-2.5-flare', 'gpt-image-2.5-sunburst'],
+  )
+  assert.match(pricingComponentSource, /v-if="model\.recommended"/)
+  assert.match(pricingComponentSource, /<span v-if="model\.recommended">最新推荐模型<\/span>/)
+  assert.match(pricingComponentSource, /IMAGE_MODELS\.find\(\(model\) => model\.id === 'gpt-image-2\.5-flare'\)/)
 })
 
 test('shows the unified size-price note only for gpt-image-2-adobe', () => {

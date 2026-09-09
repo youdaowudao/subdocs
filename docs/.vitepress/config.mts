@@ -47,6 +47,7 @@ export default withSidebar(config, {
     'models.md',
     'clients',
     'kimi-code.md',
+    'hy4.md',
     'codex.md',
     'chatgpt-login-usegoodai.md',
     'codex-manual-config.md',
