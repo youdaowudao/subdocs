@@ -348,7 +348,7 @@ test('calculates hy4-preview from the official RMB baseline at a 0.45 multiplier
   assert.equal(getSavingsPercent(group.multiplier, group.currency), 55)
 })
 
-test('shows DeepSeek Flash and Pro together in one RMB group at a 0.45 multiplier', () => {
+test('shows DeepSeek V4.1 Flash first, followed by V4 Flash and Pro, at a 0.45 multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'deepseek')
   const models = getTextModelsForGroup(group.id)
 
@@ -360,9 +360,14 @@ test('shows DeepSeek Flash and Pro together in one RMB group at a 0.45 multiplie
     models.map(({ id, name, officialCny }) => ({ id, name, officialCny })),
     [
       {
+        id: 'deepseek-flash',
+        name: 'DeepSeek V4.1 Flash',
+        officialCny: { input: 1, output: 4, cachedInput: 0.02 },
+      },
+      {
         id: 'deepseek-v4-flash',
         name: 'DeepSeek V4 Flash 0731',
-        officialCny: { input: 1.5, output: 4.5, cachedInput: 0.05 },
+        officialCny: { input: 1, output: 4, cachedInput: 0.02 },
       },
       {
         id: 'deepseek-v4-pro',
@@ -373,18 +378,18 @@ test('shows DeepSeek Flash and Pro together in one RMB group at a 0.45 multiplie
   )
 
   const price = calculateTextPrice(models[0].officialCny, group.multiplier, group.currency)
-  assert.deepEqual(price.official, { input: 1.5, output: 4.5, cachedInput: 0.05, total: 6 })
-  assert.ok(isClose(price.group.input, 0.675))
-  assert.ok(isClose(price.group.output, 2.025))
-  assert.ok(isClose(price.group.cachedInput, 0.0225))
-  assert.ok(isClose(price.group.total, 2.7))
+  assert.deepEqual(price.official, { input: 1, output: 4, cachedInput: 0.02, total: 5 })
+  assert.ok(isClose(price.group.input, 0.45))
+  assert.ok(isClose(price.group.output, 1.8))
+  assert.ok(isClose(price.group.cachedInput, 0.009))
+  assert.ok(isClose(price.group.total, 2.25))
 
-  assert.deepEqual(models[0].officialPeakCny, { input: 3, output: 9, cachedInput: 0.1 })
+  assert.deepEqual(models[0].officialPeakCny, { input: 2, output: 8, cachedInput: 0.04 })
   const peakPrice = calculateTextPrice(models[0].officialPeakCny, group.multiplier, group.currency)
-  assert.ok(isClose(peakPrice.group.input, 1.35))
-  assert.ok(isClose(peakPrice.group.output, 4.05))
-  assert.ok(isClose(peakPrice.group.cachedInput, 0.045))
-  assert.ok(isClose(peakPrice.group.total, 5.4))
+  assert.ok(isClose(peakPrice.group.input, 0.9))
+  assert.ok(isClose(peakPrice.group.output, 3.6))
+  assert.ok(isClose(peakPrice.group.cachedInput, 0.018))
+  assert.ok(isClose(peakPrice.group.total, 4.5))
 })
 
 test('calculates DeepSeek V4 Pro peak and off-peak RMB prices at a 0.45 multiplier', () => {
@@ -410,7 +415,7 @@ test('calculates DeepSeek V4 Pro peak and off-peak RMB prices at a 0.45 multipli
 
 test('shows DeepSeek peak and off-peak rows with clear Beijing busy hours', () => {
   assert.match(pricingComponentSource, /<th v-if="isDeepSeekCategory" scope="col">计费时段<\/th>/)
-  assert.match(pricingComponentSource, /忙时为北京时间周一至周五 09:00-12:00、14:00-18:00，其余时间为闲时/)
+  assert.match(pricingComponentSource, /高峰时段为北京时间周一至周五 09:00-12:00、14:00-18:00，其余为空闲时段/)
   assert.match(pricingComponentSource, /officialPeakCny/)
   assert.doesNotMatch(pricingComponentSource, /暂按闲时基准全天收费/)
 })

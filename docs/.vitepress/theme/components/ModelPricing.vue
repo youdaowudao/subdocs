@@ -147,7 +147,7 @@ const copyModelId = async (modelId) => {
     <section class="pricing-rule" aria-label="计价规则">
       <div>
         <strong>计价规则</strong>
-        <span v-if="isDeepSeekCategory">DeepSeek 采用峰谷计价，忙时为北京时间周一至周五 09:00-12:00、14:00-18:00，其余时间为闲时</span>
+        <span v-if="isDeepSeekCategory">DeepSeek 采用峰谷计价，高峰时段为北京时间周一至周五 09:00-12:00、14:00-18:00，其余为空闲时段</span>
         <span v-else-if="isRmbTextCategory">官方人民币价格直接显示</span>
         <span v-else-if="!isImageCategory">官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
         <span v-if="isRmbTextCategory">分组价格 = 官方人民币价格 × 分组倍率</span>
@@ -243,7 +243,7 @@ const copyModelId = async (modelId) => {
           </template>
           <template v-else>
             <strong>官方价格：</strong>
-            <span v-if="isDeepSeekCategory">同时显示官方峰谷价格；忙时为北京时间每天 09:00-12:00、14:00-18:00，其余时间为闲时。</span>
+            <span v-if="isDeepSeekCategory">同时显示官方峰谷价格；高峰时段为北京时间周一至周五 09:00-12:00、14:00-18:00，其余为空闲时段。</span>
             <span v-else-if="isRmbTextCategory">按人民币官方基准显示，仅用于和分组价格对比。</span>
             <span v-else>按 $1 = ¥{{ EXCHANGE_RATE }} 折算成人民币，仅用于和分组价格对比。</span>
           </template>

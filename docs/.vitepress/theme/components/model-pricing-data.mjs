@@ -1,8 +1,8 @@
 export const EXCHANGE_RATE = 7
 
 export const DEEPSEEK_PRICE_PERIODS = {
-  offPeak: '闲时（其余时间）',
-  peak: '忙时（北京时间周一至周五 09:00-12:00、14:00-18:00）',
+  offPeak: '空闲时段（其余时间）',
+  peak: '高峰时段（北京时间周一至周五 09:00-12:00、14:00-18:00）',
 }
 
 const GPT_MODEL_IDS = [
@@ -146,8 +146,8 @@ export const TEXT_GROUPS = [
     name: 'DeepSeek 分组',
     multiplier: 0.45,
     currency: 'cny',
-    description: 'Flash 与 Pro 统一分组，忙时为北京时间周一至周五 09:00-12:00、14:00-18:00，其余时间为闲时',
-    modelIds: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+    description: 'V4.1 Flash、V4 Flash 与 Pro 统一分组，高峰时段为北京时间周一至周五 09:00-12:00、14:00-18:00，其余为空闲时段',
+    modelIds: ['deepseek-flash', 'deepseek-v4-flash', 'deepseek-v4-pro'],
   },
   {
     id: 'domestic',
@@ -450,16 +450,23 @@ export const TEXT_MODELS = [
     officialUsd: { input: 0.1, output: 0.4, cachedInput: 0.01 },
   },
   {
+    id: 'deepseek-flash',
+    name: 'DeepSeek V4.1 Flash',
+    description: '2026-09-10 发布，原生支持多模态，模型名使用 deepseek-flash',
+    officialCny: { input: 1, output: 4, cachedInput: 0.02 },
+    officialPeakCny: { input: 2, output: 8, cachedInput: 0.04 },
+  },
+  {
     id: 'deepseek-v4-flash',
     name: 'DeepSeek V4 Flash 0731',
-    description: 'V4-Flash-0731 正式版，支持思考模式、工具调用和 Responses API',
-    officialCny: { input: 1.5, output: 4.5, cachedInput: 0.05 },
-    officialPeakCny: { input: 3, output: 9, cachedInput: 0.1 },
+    description: '旧模型名现由 V4.1 Flash 提供服务，并按 V4.1 Flash 价格计费',
+    officialCny: { input: 1, output: 4, cachedInput: 0.02 },
+    officialPeakCny: { input: 2, output: 8, cachedInput: 0.04 },
   },
   {
     id: 'deepseek-v4-pro',
     name: 'DeepSeek V4 Pro 0813',
-    description: 'V4-Pro-0813 正式版，适合复杂代码、Agent 和长上下文任务',
+    description: 'V4-Pro-0813 正式版；2026-09-14 12:00 起将路由到 V4.1 Flash 并按 Flash 价格计费',
     officialCny: { input: 4.5, output: 13.5, cachedInput: 0.15 },
     officialPeakCny: { input: 9, output: 27, cachedInput: 0.3 },
   },
