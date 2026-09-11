@@ -133,7 +133,7 @@ test('keeps the GPT family models in the expected order', () => {
   )
 })
 
-test('prices GPT-6 Astra in Pro and marks the other GPT groups as coming soon', () => {
+test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () => {
   const proPlusModel = getTextModelsForGroup('pro-plus').find((model) => model.id === 'gpt-6-astra')
   const mixedModel = getTextModelsForGroup('gpt-0.18').find((model) => model.id === 'gpt-6-astra')
   const proModel = getTextModelsForGroup('full').find((model) => model.id === 'gpt-6-astra')
@@ -141,14 +141,29 @@ test('prices GPT-6 Astra in Pro and marks the other GPT groups as coming soon', 
   assert.ok(proPlusModel)
   assert.ok(mixedModel)
   assert.ok(proModel)
-  assert.deepEqual(proModel.officialUsd, { input: 10, output: 50, cachedInput: 1 })
-  assert.equal(proPlusModel.unavailableMessage, '即将到来')
-  assert.equal(mixedModel.unavailableMessage, '即将到来')
+  assert.deepEqual(proModel.officialUsd, {
+    input: 10,
+    output: 50,
+    cachedInput: 1,
+  })
+  assert.equal(proModel.billingMultiplier, 1.9)
+  assert.equal(proPlusModel.unavailableMessage, '')
+  assert.equal(mixedModel.unavailableMessage, '')
   assert.equal(proModel.unavailableMessage, '')
 
-  const price = calculateTextPrice(proModel.officialUsd, 0.25)
-  assert.deepEqual(price.official, { input: 70, output: 350, cachedInput: 7, total: 420 })
-  assert.deepEqual(price.group, { input: 2.5, output: 12.5, cachedInput: 0.25, total: 15 })
+  const price = calculateTextPrice(proModel.officialUsd, 0.25, 'usd', proModel.billingMultiplier)
+  assert.deepEqual(price.official, {
+    input: 70,
+    output: 350,
+    cachedInput: 7,
+    total: 420,
+  })
+  assert.deepEqual(price.group, {
+    input: 4.75,
+    output: 23.75,
+    cachedInput: 0.475,
+    total: 28.5,
+  })
 })
 
 test('orders all Anthropic groups from Opus 5 through Fable 5.1', () => {
@@ -420,10 +435,17 @@ test('shows DeepSeek peak and off-peak rows with clear Beijing busy hours', () =
   assert.doesNotMatch(pricingComponentSource, /暂按闲时基准全天收费/)
 })
 
-test('keeps the copy below the pricing table concise', () => {
+test('explains the Astra billing exception and removes the generic pricing footer', () => {
   assert.doesNotMatch(modelsDocSource, /DeepSeek V4 峰谷价格/)
   assert.doesNotMatch(modelsDocSource, /model not found|403/)
   assert.doesNotMatch(modelsDocSource, /我的 API Key 支持哪些模型|切换模型需要重新配置吗/)
+  assert.match(pricingComponentSource, /GPT-6 Astra 计费说明/)
+  assert.match(pricingComponentSource, /官方公开价为输入 \$10、输出 \$50、缓存读取 \$1/)
+  assert.match(pricingComponentSource, /社区长期观察并经大量用户实际调用验证/)
+  assert.match(pricingComponentSource, /本站三个 GPT 分组因此公开按 \$19、\$95、\$1\.9 作为计费基准/)
+  assert.match(pricingComponentSource, /官方价格或计费规则发生变化后，本站会尽快同步调整/)
+  assert.doesNotMatch(pricingComponentSource, /文本类模型官方价格按当前公开标准价和固定汇率换算/)
+  assert.doesNotMatch(pricingComponentSource, /页面价格用于说明和对比/)
   assert.match(modelsDocSource, /价格表第一列是模型 ID，点击旁边按钮复制/)
   assert.match(modelsDocSource, /只修改客户端里的 `Model`；Base URL 和 API Key 保持不变/)
 })

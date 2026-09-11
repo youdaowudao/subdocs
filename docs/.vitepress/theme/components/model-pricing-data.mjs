@@ -73,7 +73,6 @@ export const TEXT_GROUPS = [
     multiplier: 0.085,
     description: '低价入口，最近不稳定',
     modelIds: GPT_MODEL_IDS,
-    unavailableModels: { 'gpt-6-astra': '即将到来' },
   },
   {
     id: 'gpt-0.18',
@@ -81,7 +80,6 @@ export const TEXT_GROUPS = [
     multiplier: 0.135,
     description: '适合日常对话、普通代码和大多数任务',
     modelIds: GPT_MODEL_IDS,
-    unavailableModels: { 'gpt-6-astra': '即将到来' },
   },
   {
     id: 'full',
@@ -248,6 +246,7 @@ export const TEXT_MODELS = [
     name: 'GPT-6 Astra',
     description: 'OpenAI 旗舰模型，适合复杂推理、代码、研究和长程任务',
     officialUsd: { input: 10, output: 50, cachedInput: 1 },
+    billingMultiplier: 1.9,
   },
   {
     id: 'gpt-5.6-sol',
@@ -599,7 +598,7 @@ export const IMAGE_MODELS = [
   },
 ]
 
-export function calculateTextPrice(officialPrice, multiplier, currency = 'usd') {
+export function calculateTextPrice(officialPrice, multiplier, currency = 'usd', billingMultiplier = 1) {
   const exchangeRate = currency === 'cny' ? 1 : EXCHANGE_RATE
   const official = {
     input: officialPrice.input * exchangeRate,
@@ -609,10 +608,10 @@ export function calculateTextPrice(officialPrice, multiplier, currency = 'usd') 
   }
 
   const group = {
-    input: officialPrice.input * multiplier,
-    output: officialPrice.output * multiplier,
-    cachedInput: officialPrice.cachedInput * multiplier,
-    total: (officialPrice.input + officialPrice.output) * multiplier,
+    input: officialPrice.input * billingMultiplier * multiplier,
+    output: officialPrice.output * billingMultiplier * multiplier,
+    cachedInput: officialPrice.cachedInput * billingMultiplier * multiplier,
+    total: (officialPrice.input + officialPrice.output) * billingMultiplier * multiplier,
   }
 
   return { official, group }
