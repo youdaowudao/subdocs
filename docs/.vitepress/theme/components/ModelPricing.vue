@@ -12,7 +12,6 @@ import {
   formatCny,
   getTextModelsForGroup,
   getEquivalentDiscount,
-  getSavingsPercent,
 } from './model-pricing-data.mjs'
 
 const activeCategory = ref(MODEL_CATEGORIES[0].id)
@@ -47,17 +46,28 @@ const activeGroup = computed(
 const activeCurrency = computed(() => activeGroup.value.currency ?? 'usd')
 const isRmbTextCategory = computed(() => !isImageCategory.value && activeCurrency.value === 'cny')
 const isDeepSeekCategory = computed(() => activeCategoryConfig.value.id === 'deepseek')
+const isGptCategory = computed(() => activeCategoryConfig.value.id === 'gpt')
 
 const activeTextModels = computed(() => getTextModelsForGroup(activeGroupId.value))
 
 const textRows = computed(() =>
   activeTextModels.value.flatMap((model) => {
-    const createRow = (officialPrice, priceLabel = '') => ({
-      ...model,
-      priceLabel,
-      priceCurrency: activeCurrency.value,
-      prices: calculateTextPrice(officialPrice, activeGroup.value.multiplier, activeCurrency.value),
-    })
+    const createRow = (officialPrice, priceLabel = '') => {
+      const prices = calculateTextPrice(
+        officialPrice,
+        activeGroup.value.multiplier,
+        activeCurrency.value,
+        model.billingMultiplier,
+      )
+
+      return {
+        ...model,
+        priceLabel,
+        priceCurrency: activeCurrency.value,
+        prices,
+        savingsPercent: Math.round((1 - prices.group.total / prices.official.total) * 100),
+      }
+    }
 
     if (isDeepSeekCategory.value && model.officialPeakCny) {
       return [
@@ -82,6 +92,7 @@ const pricingRuleExample = computed(() => {
     officialPrice,
     activeGroup.value.multiplier,
     activeCurrency.value,
+    exampleModel.billingMultiplier,
   )
 
   return `示例：${exampleModel.name} 输入官方 ${formatCny(examplePrice.official.input)}，${activeGroup.value.name} 输入价 ${formatCny(examplePrice.group.input)}`
@@ -103,6 +114,16 @@ const copyModelId = async (modelId) => {
   window.setTimeout(() => {
     if (copiedModel.value === modelId) copiedModel.value = ''
   }, 1400)
+}
+
+const formatUsd = (value) => value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
+
+const getBillingBaseUsd = (model, field) => {
+  const officialValue = field === 'total'
+    ? model.officialUsd.input + model.officialUsd.output
+    : model.officialUsd[field]
+
+  return officialValue * model.billingMultiplier
 }
 
 </script>
@@ -150,7 +171,8 @@ const copyModelId = async (modelId) => {
         <span v-if="isDeepSeekCategory">DeepSeek 采用峰谷计价，高峰时段为北京时间周一至周五 09:00-12:00、14:00-18:00，其余为空闲时段</span>
         <span v-else-if="isRmbTextCategory">官方人民币价格直接显示</span>
         <span v-else-if="!isImageCategory">官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
-        <span v-if="isRmbTextCategory">分组价格 = 官方人民币价格 × 分组倍率</span>
+        <span v-if="isGptCategory">一般模型按官方价 × 分组倍率；GPT-6 Astra 实际按 1.9 倍计费</span>
+        <span v-else-if="isRmbTextCategory">分组价格 = 官方人民币价格 × 分组倍率</span>
         <span v-else-if="!isImageCategory">分组价格 = 官方美元价格 × 分组倍率</span>
         <span v-else>生图分组价格按人民币固定价计费</span>
       </div>
@@ -279,6 +301,7 @@ const copyModelId = async (modelId) => {
                         <span v-if="model.featured" class="featured-model-badge">
                           {{ model.featuredLabel ?? '主推' }}
                         </span>
+                        <span v-if="model.billingMultiplier" class="billing-model-badge">实际 1.9 倍计费</span>
                       </div>
                       <span>{{ model.description }}</span>
                     </div>
@@ -306,7 +329,11 @@ const copyModelId = async (modelId) => {
                     <template v-if="priceMode === 'group'">
                       <strong class="group-price">{{ formatCny(model.prices.group[field]) }}</strong>
                       <span class="price-unit">/ 1M tokens</span>
-                      <del>官方 {{ formatCny(model.prices.official[field]) }}</del>
+                      <span
+                        v-if="model.billingMultiplier && model.priceCurrency === 'usd'"
+                        class="astra-price-basis"
+                      >计费基准 ${{ formatUsd(getBillingBaseUsd(model, field)) }} × {{ activeGroup.multiplier }}</span>
+                      <del v-else>官方 {{ formatCny(model.prices.official[field]) }}</del>
                     </template>
                     <template v-else>
                       <strong class="official-price">{{ formatCny(model.prices.official[field]) }}</strong>
@@ -321,15 +348,21 @@ const copyModelId = async (modelId) => {
                   </td>
                   <td>
                     <span v-if="priceMode === 'group'" class="saving-badge">
-                      省 {{ getSavingsPercent(activeGroup.multiplier, activeGroup.currency) }}%
+                      省 {{ model.savingsPercent }}%
                     </span>
-                    <span v-else class="official-label">官方基准</span>
+                    <span v-else class="official-label">
+                      {{ model.billingMultiplier ? '官方公开价' : '官方基准' }}
+                    </span>
                   </td>
                 </template>
               </tr>
             </tbody>
           </table>
         </div>
+        <p v-if="isGptCategory" class="astra-pricing-note">
+          <strong>GPT-6 Astra 计费说明：</strong>
+          官方公开价为输入 $10、输出 $50、缓存读取 $1；社区长期观察并经大量用户实际调用验证，实际扣费按公开价的 1.9 倍计算。本站三个 GPT 分组因此公开按 $19、$95、$1.9 作为计费基准，再乘对应分组倍率。官方价格或计费规则发生变化后，本站会尽快同步调整。
+        </p>
       </div>
 
       <div v-else class="pricing-content">
@@ -411,12 +444,6 @@ const copyModelId = async (modelId) => {
       </div>
     </section>
 
-    <p class="pricing-footnote">
-      <span v-if="isRmbTextCategory">国产模型官方价格按人民币基准显示，不做美元换算。</span>
-      <span v-else-if="!isImageCategory">文本类模型官方价格按当前公开标准价和固定汇率换算。</span>
-      <span v-else>生图分组价格按当前模型默认人民币价格显示。</span>
-      切换模型时，Base URL 和 API Key 不变，只改客户端里的模型名；完整模型名以后台当前 Key 所属分组为准。页面价格用于说明和对比，实际扣费以定价配置和调用记录为准。
-    </p>
   </main>
 </template>
 
@@ -1154,11 +1181,39 @@ const copyModelId = async (modelId) => {
   color: var(--vp-c-text-2);
 }
 
-.pricing-footnote {
-  margin: 12px 2px 0 !important;
-  color: var(--vp-c-text-3) !important;
+.astra-pricing-note {
+  margin: 12px 0 0 !important;
+  padding: 10px 14px;
+  border-left: 3px solid #d96f35;
+  border-radius: 5px;
+  background: #fff8f3;
+  color: var(--vp-c-text-2) !important;
   font-size: 15px !important;
   line-height: 1.6 !important;
+}
+
+.astra-pricing-note strong {
+  color: #9f4a17;
+}
+
+.astra-price-basis {
+  display: block;
+  margin-top: 4px;
+  color: #a65a31;
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.billing-model-badge {
+  display: inline-flex;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #fff0e5;
+  color: #a84c14;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .dark .model-pricing-page { color: #f4eee5; }
@@ -1207,6 +1262,10 @@ const copyModelId = async (modelId) => {
 }
 .dark .pricing-group-placeholder .pricing-group-title strong { color: #d0c2b5; }
 .dark .pricing-group-placeholder .pricing-group-title em { background: #3a3028; color: #9f9083; }
+.dark .astra-pricing-note { border-color: #d97745; background: #2b211b; }
+.dark .astra-pricing-note strong { color: #f0a06d; }
+.dark .astra-price-basis { color: #e6a178; }
+.dark .billing-model-badge { background: #4a2d1d; color: #f0a06d; }
 
 @media (max-width: 1100px) {
   .price-mode-wrap > span,
