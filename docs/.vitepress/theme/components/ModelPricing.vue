@@ -57,7 +57,7 @@ const textRows = computed(() =>
         officialPrice,
         activeGroup.value.multiplier,
         activeCurrency.value,
-        model.billingMultiplier,
+        model.billingOverridesUsd,
       )
 
       return {
@@ -92,7 +92,7 @@ const pricingRuleExample = computed(() => {
     officialPrice,
     activeGroup.value.multiplier,
     activeCurrency.value,
-    exampleModel.billingMultiplier,
+    exampleModel.billingOverridesUsd,
   )
 
   return `示例：${exampleModel.name} 输入官方 ${formatCny(examplePrice.official.input)}，${activeGroup.value.name} 输入价 ${formatCny(examplePrice.group.input)}`
@@ -118,13 +118,7 @@ const copyModelId = async (modelId) => {
 
 const formatUsd = (value) => value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
 
-const getBillingBaseUsd = (model, field) => {
-  const officialValue = field === 'total'
-    ? model.officialUsd.input + model.officialUsd.output
-    : model.officialUsd[field]
-
-  return officialValue * model.billingMultiplier
-}
+const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] != null
 
 </script>
 
@@ -171,7 +165,7 @@ const getBillingBaseUsd = (model, field) => {
         <span v-if="isDeepSeekCategory">DeepSeek 采用峰谷计价，高峰时段为北京时间周一至周五 09:00-12:00、14:00-18:00，其余为空闲时段</span>
         <span v-else-if="isRmbTextCategory">官方人民币价格直接显示</span>
         <span v-else-if="!isImageCategory">官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
-        <span v-if="isGptCategory">一般模型按官方价 × 分组倍率；GPT-6 Astra 实际按 1.9 倍计费</span>
+        <span v-if="isGptCategory">一般模型按官方价 × 分组倍率；GPT-6 Astra 缓存读取按实测 $2 计费</span>
         <span v-else-if="isRmbTextCategory">分组价格 = 官方人民币价格 × 分组倍率</span>
         <span v-else-if="!isImageCategory">分组价格 = 官方美元价格 × 分组倍率</span>
         <span v-else>生图分组价格按人民币固定价计费</span>
@@ -301,7 +295,7 @@ const getBillingBaseUsd = (model, field) => {
                         <span v-if="model.featured" class="featured-model-badge">
                           {{ model.featuredLabel ?? '主推' }}
                         </span>
-                        <span v-if="model.billingMultiplier" class="billing-model-badge">实际 1.9 倍计费</span>
+                        <span v-if="model.billingOverridesUsd" class="billing-model-badge">缓存读取按实测</span>
                       </div>
                       <span>{{ model.description }}</span>
                     </div>
@@ -330,9 +324,9 @@ const getBillingBaseUsd = (model, field) => {
                       <strong class="group-price">{{ formatCny(model.prices.group[field]) }}</strong>
                       <span class="price-unit">/ 1M tokens</span>
                       <span
-                        v-if="model.billingMultiplier && model.priceCurrency === 'usd'"
+                        v-if="hasBillingOverride(model, field) && model.priceCurrency === 'usd'"
                         class="astra-price-basis"
-                      >计费基准 ${{ formatUsd(getBillingBaseUsd(model, field)) }} × {{ activeGroup.multiplier }}</span>
+                      >实测基准 ${{ formatUsd(model.billingOverridesUsd[field]) }} × {{ activeGroup.multiplier }}</span>
                       <del v-else>官方 {{ formatCny(model.prices.official[field]) }}</del>
                     </template>
                     <template v-else>
@@ -351,7 +345,7 @@ const getBillingBaseUsd = (model, field) => {
                       省 {{ model.savingsPercent }}%
                     </span>
                     <span v-else class="official-label">
-                      {{ model.billingMultiplier ? '官方公开价' : '官方基准' }}
+                      {{ model.billingOverridesUsd ? '官方公开价' : '官方基准' }}
                     </span>
                   </td>
                 </template>
@@ -361,7 +355,7 @@ const getBillingBaseUsd = (model, field) => {
         </div>
         <p v-if="isGptCategory" class="astra-pricing-note">
           <strong>GPT-6 Astra 计费说明：</strong>
-          官方公开价为输入 $10、输出 $50、缓存读取 $1；社区长期观察并经大量用户实际调用验证，实际扣费按公开价的 1.9 倍计算。本站三个 GPT 分组因此公开按 $19、$95、$1.9 作为计费基准，再乘对应分组倍率。官方价格或计费规则发生变化后，本站会尽快同步调整。
+          输入和输出按官方公开价 $10、$50 计算；缓存读取的官方公开价为 $1，但社区长期观察并经大量用户实际调用验证，实际按 $2 计费。本站三个 GPT 分组的 Astra 缓存读取因此按实测基准 $2 乘对应分组倍率计算。官方价格或计费规则发生变化后，本站会尽快同步调整。
         </p>
       </div>
 

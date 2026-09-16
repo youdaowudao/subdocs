@@ -30,8 +30,8 @@ test('includes the updated GPT pricing groups in order', () => {
     TEXT_GROUPS.map(({ id, name, multiplier }) => ({ id, name, multiplier })),
     [
       { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.085 },
-      { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.135 },
-      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.25 },
+      { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
+      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.28 },
       { id: 'anthropic-main', name: '低价分组', multiplier: 0.2 },
       { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.45 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
@@ -146,12 +146,12 @@ test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () 
     output: 50,
     cachedInput: 1,
   })
-  assert.equal(proModel.billingMultiplier, 1.9)
+  assert.deepEqual(proModel.billingOverridesUsd, { cachedInput: 2 })
   assert.equal(proPlusModel.unavailableMessage, '')
   assert.equal(mixedModel.unavailableMessage, '')
   assert.equal(proModel.unavailableMessage, '')
 
-  const price = calculateTextPrice(proModel.officialUsd, 0.25, 'usd', proModel.billingMultiplier)
+  const price = calculateTextPrice(proModel.officialUsd, 0.28, 'usd', proModel.billingOverridesUsd)
   assert.deepEqual(price.official, {
     input: 70,
     output: 350,
@@ -159,10 +159,10 @@ test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () 
     total: 420,
   })
   assert.deepEqual(price.group, {
-    input: 4.75,
-    output: 23.75,
-    cachedInput: 0.475,
-    total: 28.5,
+    input: 2.8000000000000003,
+    output: 14.000000000000002,
+    cachedInput: 0.56,
+    total: 16.8,
   })
 })
 
@@ -440,9 +440,10 @@ test('explains the Astra billing exception and removes the generic pricing foote
   assert.doesNotMatch(modelsDocSource, /model not found|403/)
   assert.doesNotMatch(modelsDocSource, /我的 API Key 支持哪些模型|切换模型需要重新配置吗/)
   assert.match(pricingComponentSource, /GPT-6 Astra 计费说明/)
-  assert.match(pricingComponentSource, /官方公开价为输入 \$10、输出 \$50、缓存读取 \$1/)
+  assert.match(pricingComponentSource, /输入和输出按官方公开价 \$10、\$50 计算/)
   assert.match(pricingComponentSource, /社区长期观察并经大量用户实际调用验证/)
-  assert.match(pricingComponentSource, /本站三个 GPT 分组因此公开按 \$19、\$95、\$1\.9 作为计费基准/)
+  assert.match(pricingComponentSource, /实际按 \$2 计费/)
+  assert.match(pricingComponentSource, /Astra 缓存读取因此按实测基准 \$2 乘对应分组倍率计算/)
   assert.match(pricingComponentSource, /官方价格或计费规则发生变化后，本站会尽快同步调整/)
   assert.doesNotMatch(pricingComponentSource, /文本类模型官方价格按当前公开标准价和固定汇率换算/)
   assert.doesNotMatch(pricingComponentSource, /页面价格用于说明和对比/)
@@ -592,8 +593,8 @@ test('calculates the revised group totals from the official USD baseline', () =>
   const officialUsd = { input: 5, output: 30, cachedInput: 0.5 }
   const expectedTotals = new Map([
     ['pro-plus', 2.975],
-    ['gpt-0.18', 4.725],
-    ['full', 8.75],
+    ['gpt-0.18', 5.25],
+    ['full', 9.8],
     ['anthropic-main', 7],
     ['anthropic-cc-test', 15.75],
     ['anthropic-max', 45.5],
