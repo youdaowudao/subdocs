@@ -31,7 +31,7 @@ test('includes the updated GPT pricing groups in order', () => {
     [
       { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.085 },
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
-      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.28 },
+      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.31 },
       { id: 'anthropic-main', name: '低价分组', multiplier: 0.2 },
       { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.45 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
@@ -151,7 +151,7 @@ test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () 
   assert.equal(mixedModel.unavailableMessage, '')
   assert.equal(proModel.unavailableMessage, '')
 
-  const price = calculateTextPrice(proModel.officialUsd, 0.28, 'usd', proModel.billingOverridesUsd)
+  const price = calculateTextPrice(proModel.officialUsd, 0.31, 'usd', proModel.billingOverridesUsd)
   assert.deepEqual(price.official, {
     input: 70,
     output: 350,
@@ -159,10 +159,10 @@ test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () 
     total: 420,
   })
   assert.deepEqual(price.group, {
-    input: 2.8000000000000003,
-    output: 14.000000000000002,
-    cachedInput: 0.56,
-    total: 16.8,
+    input: 3.1,
+    output: 15.5,
+    cachedInput: 0.62,
+    total: 18.6,
   })
 })
 
@@ -594,7 +594,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
   const expectedTotals = new Map([
     ['pro-plus', 2.975],
     ['gpt-0.18', 5.25],
-    ['full', 9.8],
+    ['full', 10.85],
     ['anthropic-main', 7],
     ['anthropic-cc-test', 15.75],
     ['anthropic-max', 45.5],
