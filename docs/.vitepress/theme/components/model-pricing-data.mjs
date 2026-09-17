@@ -84,7 +84,7 @@ export const TEXT_GROUPS = [
   {
     id: 'full',
     name: 'GPT 正价 Pro 满血分组',
-    multiplier: 0.28,
+    multiplier: 0.31,
     description: '完整能力，适合重要任务',
     modelIds: GPT_MODEL_IDS,
   },
