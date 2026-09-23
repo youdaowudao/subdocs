@@ -192,7 +192,7 @@ test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () 
   assert.ok(isClose(price.group.total, 16.8))
 })
 
-test('orders all Anthropic groups from Opus 5 through Fable 5.1', () => {
+test('orders all Anthropic groups from Fable 5.1 through Opus 5.5 to Opus 5', () => {
   const mainModels = getTextModelsForGroup('anthropic-main')
   const ccTestModels = getTextModelsForGroup('anthropic-cc-test')
   const ccMaxModels = getTextModelsForGroup('anthropic-max')
@@ -213,7 +213,7 @@ test('orders all Anthropic groups from Opus 5 through Fable 5.1', () => {
     'claude-sonnet-4-5-20250929',
     ...mainOrder.slice(7),
   ]
-  const ccMaxOrder = [...ccOrder, 'claude-fable-5-1']
+  const ccMaxOrder = ['claude-fable-5-1', 'claude-opus-5-5', ...ccOrder]
 
   assert.deepEqual(mainModels.map((model) => model.id), mainOrder)
   assert.deepEqual(ccTestModels.map((model) => model.id), ccOrder)
@@ -223,6 +223,26 @@ test('orders all Anthropic groups from Opus 5 through Fable 5.1', () => {
   assert.equal(ccTestModels.at(-1).unavailableMessage, '此分组无 Fable 5')
   assert.equal(ccMaxModels.at(-1).unavailableMessage, '')
   assert.equal(ccMaxExternalModels.at(-1).unavailableMessage, '')
+})
+
+test('uses Anthropic official pricing for Claude Opus 5.5 in the CC MAX groups', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-max')
+  const externalGroup = TEXT_GROUPS.find((item) => item.id === 'anthropic-max-external')
+  const model = getTextModelsForGroup(group.id).find((item) => item.id === 'claude-opus-5-5')
+
+  assert.deepEqual(model.officialUsd, { input: 4, output: 20, cachedInput: 0.2 })
+  assert.equal(group.multiplier, 1.3)
+  assert.equal(externalGroup.multiplier, 1.45)
+
+  const price = calculateTextPrice(model.officialUsd, group.multiplier)
+  assert.equal(price.official.input, 28)
+  assert.equal(price.official.output, 140)
+  assert.ok(isClose(price.official.cachedInput, 1.4))
+  assert.equal(price.official.total, 168)
+  assert.ok(isClose(price.group.input, 5.2))
+  assert.ok(isClose(price.group.output, 26))
+  assert.ok(isClose(price.group.cachedInput, 0.26))
+  assert.ok(isClose(price.group.total, 31.2))
 })
 
 test('uses Anthropic official pricing for Claude Fable 5.1 in the CC MAX groups', () => {
