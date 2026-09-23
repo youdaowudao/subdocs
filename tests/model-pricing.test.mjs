@@ -29,9 +29,9 @@ test('includes the updated GPT pricing groups in order', () => {
   assert.deepEqual(
     TEXT_GROUPS.map(({ id, name, multiplier }) => ({ id, name, multiplier })),
     [
-      { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.085 },
+      { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.1 },
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
-      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.31 },
+      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.28 },
       { id: 'anthropic-main', name: '低价分组', multiplier: 0.2 },
       { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.45 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
@@ -110,11 +110,11 @@ test('uses the requested Anthropic group recommendations', () => {
   assert.equal(ccTestGroup.description, '价格更低，适合 Claude Code 日常任务')
 })
 
-test('keeps the GPT Plus discount group at 0.085 with instability copy', () => {
+test('keeps the GPT Plus discount group at 0.1 with instability copy', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'pro-plus')
 
   assert.equal(group.name, 'GPT Plus 特惠分组（最近不稳定）')
-  assert.equal(group.multiplier, 0.085)
+  assert.equal(group.multiplier, 0.1)
   assert.match(group.description, /最近不稳定/)
 })
 
@@ -123,6 +123,7 @@ test('keeps the GPT family models in the expected order', () => {
     getTextModelsForGroup('pro-plus').map((model) => model.id),
     [
       'gpt-6-astra',
+      'gpt-6-sol',
       'gpt-5.6-sol',
       'gpt-5.6-terra',
       'gpt-5.6-luna',
@@ -131,6 +132,33 @@ test('keeps the GPT family models in the expected order', () => {
       'gpt-5.4-mini',
     ],
   )
+})
+
+test('prices GPT-6 Sol from the official Standard baseline in all three GPT groups', () => {
+  const officialUsd = { input: 2, output: 10, cachedInput: 0.2 }
+  const expectedGroupPrices = new Map([
+    ['pro-plus', { input: 0.2, output: 1, cachedInput: 0.02, total: 1.2 }],
+    ['gpt-0.18', { input: 0.3, output: 1.5, cachedInput: 0.03, total: 1.8 }],
+    ['full', { input: 0.56, output: 2.8, cachedInput: 0.056, total: 3.36 }],
+  ])
+
+  for (const [groupId, expectedGroup] of expectedGroupPrices) {
+    const group = TEXT_GROUPS.find((item) => item.id === groupId)
+    const model = getTextModelsForGroup(groupId).find((item) => item.id === 'gpt-6-sol')
+
+    assert.ok(model, `GPT-6 Sol should be available in ${groupId}`)
+    assert.deepEqual(model.officialUsd, officialUsd)
+
+    const price = calculateTextPrice(model.officialUsd, group.multiplier)
+    assert.equal(price.official.input, 14)
+    assert.equal(price.official.output, 70)
+    assert.ok(isClose(price.official.cachedInput, 1.4))
+    assert.equal(price.official.total, 84)
+    assert.ok(isClose(price.group.input, expectedGroup.input))
+    assert.ok(isClose(price.group.output, expectedGroup.output))
+    assert.ok(isClose(price.group.cachedInput, expectedGroup.cachedInput))
+    assert.ok(isClose(price.group.total, expectedGroup.total))
+  }
 })
 
 test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () => {
@@ -151,19 +179,17 @@ test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () 
   assert.equal(mixedModel.unavailableMessage, '')
   assert.equal(proModel.unavailableMessage, '')
 
-  const price = calculateTextPrice(proModel.officialUsd, 0.31, 'usd', proModel.billingOverridesUsd)
+  const price = calculateTextPrice(proModel.officialUsd, 0.28, 'usd', proModel.billingOverridesUsd)
   assert.deepEqual(price.official, {
     input: 70,
     output: 350,
     cachedInput: 7,
     total: 420,
   })
-  assert.deepEqual(price.group, {
-    input: 3.1,
-    output: 15.5,
-    cachedInput: 0.62,
-    total: 18.6,
-  })
+  assert.ok(isClose(price.group.input, 2.8))
+  assert.ok(isClose(price.group.output, 14))
+  assert.ok(isClose(price.group.cachedInput, 0.56))
+  assert.ok(isClose(price.group.total, 16.8))
 })
 
 test('orders all Anthropic groups from Opus 5 through Fable 5.1', () => {
@@ -592,9 +618,9 @@ test('expresses the active multipliers as rounded equivalent discounts', () => {
 test('calculates the revised group totals from the official USD baseline', () => {
   const officialUsd = { input: 5, output: 30, cachedInput: 0.5 }
   const expectedTotals = new Map([
-    ['pro-plus', 2.975],
+    ['pro-plus', 3.5],
     ['gpt-0.18', 5.25],
-    ['full', 10.85],
+    ['full', 9.8],
     ['anthropic-main', 7],
     ['anthropic-cc-test', 15.75],
     ['anthropic-max', 45.5],
