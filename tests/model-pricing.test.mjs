@@ -128,10 +128,29 @@ test('keeps the GPT family models in the expected order', () => {
       'gpt-5.6-terra',
       'gpt-5.6-luna',
       'gpt-5.5',
-      'gpt-5.4',
-      'gpt-5.4-mini',
     ],
   )
+})
+
+test('prices GPT-5.6 Terra from the $2 official input baseline in all three GPT groups', () => {
+  const officialUsd = { input: 2, output: 15, cachedInput: 0.25 }
+  const expectedGroupInputs = new Map([
+    ['pro-plus', 0.2],
+    ['gpt-0.18', 0.3],
+    ['full', 0.56],
+  ])
+
+  for (const [groupId, expectedInput] of expectedGroupInputs) {
+    const group = TEXT_GROUPS.find((item) => item.id === groupId)
+    const model = getTextModelsForGroup(groupId).find((item) => item.id === 'gpt-5.6-terra')
+
+    assert.ok(model, `GPT-5.6 Terra should be available in ${groupId}`)
+    assert.deepEqual(model.officialUsd, officialUsd)
+
+    const price = calculateTextPrice(model.officialUsd, group.multiplier)
+    assert.equal(price.official.input, 14)
+    assert.ok(isClose(price.group.input, expectedInput))
+  }
 })
 
 test('prices GPT-6 Sol from the official Standard baseline in all three GPT groups', () => {
@@ -504,7 +523,7 @@ test('uses the displayed official price baselines for GPT-5.6', () => {
       .map((model) => model.officialUsd),
     [
       { input: 5, output: 30, cachedInput: 0.5 },
-      { input: 2.5, output: 15, cachedInput: 0.25 },
+      { input: 2, output: 15, cachedInput: 0.25 },
       { input: 1, output: 6, cachedInput: 0.1 },
     ],
   )
