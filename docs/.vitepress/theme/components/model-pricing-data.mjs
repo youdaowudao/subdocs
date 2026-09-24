@@ -12,8 +12,6 @@ const GPT_MODEL_IDS = [
   'gpt-5.6-terra',
   'gpt-5.6-luna',
   'gpt-5.5',
-  'gpt-5.4',
-  'gpt-5.4-mini',
 ]
 
 const GEMINI_MODEL_IDS = [
@@ -266,7 +264,7 @@ export const TEXT_MODELS = [
     id: 'gpt-5.6-terra',
     name: 'GPT-5.6 Terra',
     description: '日常代码、通用任务和稳定对话',
-    officialUsd: { input: 2.5, output: 15, cachedInput: 0.25 },
+    officialUsd: { input: 2, output: 15, cachedInput: 0.25 },
   },
   {
     id: 'gpt-5.6-luna',
@@ -279,18 +277,6 @@ export const TEXT_MODELS = [
     name: 'GPT-5.5',
     description: '重要任务、复杂代码和专业分析',
     officialUsd: { input: 5, output: 30, cachedInput: 0.5 },
-  },
-  {
-    id: 'gpt-5.4',
-    name: 'GPT-5.4',
-    description: '普通工作、日常代码和稳定对话',
-    officialUsd: { input: 2.5, output: 15, cachedInput: 0.25 },
-  },
-  {
-    id: 'gpt-5.4-mini',
-    name: 'GPT-5.4 mini',
-    description: '简单操作、批量小任务和低成本场景',
-    officialUsd: { input: 0.75, output: 4.5, cachedInput: 0.075 },
   },
   {
     id: 'claude-fable-5',
