@@ -38,7 +38,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.45 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.3 },
-      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.3 },
+      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.4 },
       { id: 'deepseek', name: 'DeepSeek 分组', multiplier: 0.45 },
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },
       { id: 'kimi', name: 'Kimi 分组', multiplier: 0.45 },
@@ -551,17 +551,17 @@ test('uses the verified current Standard prices for every Gemini text model', ()
   )
 })
 
-test('calculates Gemini 3.8 Flash with a 0.3 group multiplier', () => {
+test('calculates Gemini 3.8 Flash with a 0.4 group multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'gemini-antigravity')
   const model = getTextModelsForGroup(group.id).find((item) => item.id === 'gemini-3.8-flash')
 
-  assert.equal(group.multiplier, 0.3)
+  assert.equal(group.multiplier, 0.4)
   assert.ok(model, 'Gemini 3.8 Flash should be available in the Gemini group')
   const price = calculateTextPrice(model.officialUsd, group.multiplier)
-  assert.ok(isClose(price.group.input, 0.225))
-  assert.ok(isClose(price.group.output, 1.125))
-  assert.ok(isClose(price.group.cachedInput, 0.0225))
-  assert.ok(isClose(price.group.total, 1.35))
+  assert.ok(isClose(price.group.input, 0.3))
+  assert.ok(isClose(price.group.output, 1.5))
+  assert.ok(isClose(price.group.cachedInput, 0.03))
+  assert.ok(isClose(price.group.total, 1.8))
 })
 
 test('keeps Gemini descriptions customer-facing with dates or concrete use cases', () => {
@@ -666,7 +666,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['anthropic-max-external', 50.75],
     ['grok-free', 3.5],
     ['grok-4.5', 10.5],
-    ['gemini-antigravity', 10.5],
+    ['gemini-antigravity', 14],
   ])
 
   for (const [groupId, expectedTotal] of expectedTotals) {
