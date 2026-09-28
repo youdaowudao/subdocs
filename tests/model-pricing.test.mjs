@@ -31,7 +31,7 @@ test('includes the updated GPT pricing groups in order', () => {
     [
       { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.1 },
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
-      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.28 },
+      { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
       { id: 'anthropic-main', name: '低价分组', multiplier: 0.2 },
       { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.45 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.3 },
@@ -137,7 +137,7 @@ test('prices GPT-5.6 Terra from the $2 official input baseline in all three GPT 
   const expectedGroupInputs = new Map([
     ['pro-plus', 0.2],
     ['gpt-0.18', 0.3],
-    ['full', 0.56],
+    ['full', 0.54],
   ])
 
   for (const [groupId, expectedInput] of expectedGroupInputs) {
@@ -158,7 +158,7 @@ test('prices GPT-6 Sol from the official Standard baseline in all three GPT grou
   const expectedGroupPrices = new Map([
     ['pro-plus', { input: 0.2, output: 1, cachedInput: 0.02, total: 1.2 }],
     ['gpt-0.18', { input: 0.3, output: 1.5, cachedInput: 0.03, total: 1.8 }],
-    ['full', { input: 0.56, output: 2.8, cachedInput: 0.056, total: 3.36 }],
+    ['full', { input: 0.54, output: 2.7, cachedInput: 0.054, total: 3.24 }],
   ])
 
   for (const [groupId, expectedGroup] of expectedGroupPrices) {
@@ -198,17 +198,17 @@ test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () 
   assert.equal(mixedModel.unavailableMessage, '')
   assert.equal(proModel.unavailableMessage, '')
 
-  const price = calculateTextPrice(proModel.officialUsd, 0.28, 'usd', proModel.billingOverridesUsd)
+  const price = calculateTextPrice(proModel.officialUsd, 0.27, 'usd', proModel.billingOverridesUsd)
   assert.deepEqual(price.official, {
     input: 70,
     output: 350,
     cachedInput: 7,
     total: 420,
   })
-  assert.ok(isClose(price.group.input, 2.8))
-  assert.ok(isClose(price.group.output, 14))
-  assert.ok(isClose(price.group.cachedInput, 0.56))
-  assert.ok(isClose(price.group.total, 16.8))
+  assert.ok(isClose(price.group.input, 2.7))
+  assert.ok(isClose(price.group.output, 13.5))
+  assert.ok(isClose(price.group.cachedInput, 0.54))
+  assert.ok(isClose(price.group.total, 16.2))
 })
 
 test('orders all Anthropic groups from Fable 5.1 through Opus 5.5 to Opus 5', () => {
@@ -291,6 +291,11 @@ test('shows the free and heavy Grok pools with the same models and requested mul
   const freeGroup = TEXT_GROUPS.find((item) => item.id === 'grok-free')
   const heavyGroup = TEXT_GROUPS.find((item) => item.id === 'grok-4.5')
   const expectedModels = [
+    {
+      id: 'grok-4.7',
+      description: 'xAI 新一代模型，适合复杂代码、智能体任务和实时搜索',
+      officialUsd: { input: 2, output: 6, cachedInput: 0.5 },
+    },
     {
       id: 'grok-4.6',
       description: 'XAI最新模型，性能直逼OPUS 5跟GPT 5.6 SOL，限制低，速度快，当前非常火热。',
@@ -659,7 +664,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
   const expectedTotals = new Map([
     ['pro-plus', 3.5],
     ['gpt-0.18', 5.25],
-    ['full', 9.8],
+    ['full', 9.45],
     ['anthropic-main', 7],
     ['anthropic-cc-test', 15.75],
     ['anthropic-max', 45.5],
