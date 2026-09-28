@@ -84,7 +84,7 @@ export const TEXT_GROUPS = [
   {
     id: 'full',
     name: 'GPT 正价 Pro 满血分组',
-    multiplier: 0.28,
+    multiplier: 0.27,
     description: '完整能力，适合重要任务',
     modelIds: GPT_MODEL_IDS,
   },
@@ -123,14 +123,14 @@ export const TEXT_GROUPS = [
     name: 'free号池',
     multiplier: 0.1,
     description: '低价号池，适合日常对话、搜索和工具调用',
-    modelIds: ['grok-4.6', 'grok-4.5'],
+    modelIds: ['grok-4.7', 'grok-4.6', 'grok-4.5'],
   },
   {
     id: 'grok-4.5',
     name: 'heavy号池',
     multiplier: 0.3,
     description: '速度比 GPT Pro / Plus 混池分组更快，风控相对低，支持实时搜索和工具调用',
-    modelIds: ['grok-4.6', 'grok-4.5'],
+    modelIds: ['grok-4.7', 'grok-4.6', 'grok-4.5'],
   },
   {
     id: 'gemini-antigravity',
@@ -349,6 +349,12 @@ export const TEXT_MODELS = [
     name: 'Claude Sonnet 5',
     description: 'Anthropic 新一代均衡模型，适合代码和长任务',
     officialUsd: { input: 3, output: 15, cachedInput: 0.3 },
+  },
+  {
+    id: 'grok-4.7',
+    name: 'Grok 4.7',
+    description: 'xAI 新一代模型，适合复杂代码、智能体任务和实时搜索',
+    officialUsd: { input: 2, output: 6, cachedInput: 0.5 },
   },
   {
     id: 'grok-4.6',
