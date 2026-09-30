@@ -119,17 +119,20 @@ test('keeps the GPT Plus discount group at 0.1 with instability copy', () => {
 })
 
 test('keeps the GPT family models in the expected order', () => {
-  assert.deepEqual(
-    getTextModelsForGroup('pro-plus').map((model) => model.id),
-    [
-      'gpt-6-astra',
-      'gpt-6-sol',
-      'gpt-5.6-sol',
-      'gpt-5.6-terra',
-      'gpt-5.6-luna',
-      'gpt-5.5',
-    ],
-  )
+  for (const groupId of ['pro-plus', 'gpt-0.18', 'full']) {
+    assert.deepEqual(
+      getTextModelsForGroup(groupId).map((model) => model.id),
+      [
+        'gpt-6-astra',
+        'gpt-6.1-sol',
+        'gpt-6-sol',
+        'gpt-5.6-sol',
+        'gpt-5.6-terra',
+        'gpt-5.6-luna',
+        'gpt-5.5',
+      ],
+    )
+  }
 })
 
 test('prices GPT-5.6 Terra from the $2 official input baseline in all three GPT groups', () => {
@@ -150,6 +153,33 @@ test('prices GPT-5.6 Terra from the $2 official input baseline in all three GPT 
     const price = calculateTextPrice(model.officialUsd, group.multiplier)
     assert.equal(price.official.input, 14)
     assert.ok(isClose(price.group.input, expectedInput))
+  }
+})
+
+test('prices GPT-6.1 Sol from the official Standard baseline in all three GPT groups', () => {
+  const officialUsd = { input: 2, output: 10, cachedInput: 0.1 }
+  const expectedGroupPrices = new Map([
+    ['pro-plus', { input: 0.2, output: 1, cachedInput: 0.01, total: 1.2 }],
+    ['gpt-0.18', { input: 0.3, output: 1.5, cachedInput: 0.015, total: 1.8 }],
+    ['full', { input: 0.54, output: 2.7, cachedInput: 0.027, total: 3.24 }],
+  ])
+
+  for (const [groupId, expectedGroup] of expectedGroupPrices) {
+    const group = TEXT_GROUPS.find((item) => item.id === groupId)
+    const model = getTextModelsForGroup(groupId).find((item) => item.id === 'gpt-6.1-sol')
+
+    assert.ok(model, `GPT-6.1 Sol should be available in ${groupId}`)
+    assert.deepEqual(model.officialUsd, officialUsd)
+
+    const price = calculateTextPrice(model.officialUsd, group.multiplier)
+    assert.equal(price.official.input, 14)
+    assert.equal(price.official.output, 70)
+    assert.ok(isClose(price.official.cachedInput, 0.7))
+    assert.equal(price.official.total, 84)
+    assert.ok(isClose(price.group.input, expectedGroup.input))
+    assert.ok(isClose(price.group.output, expectedGroup.output))
+    assert.ok(isClose(price.group.cachedInput, expectedGroup.cachedInput))
+    assert.ok(isClose(price.group.total, expectedGroup.total))
   }
 })
 
@@ -222,17 +252,22 @@ test('orders all Anthropic groups from Fable 5.1 through Opus 5.5 to Opus 5', ()
     'claude-opus-4-7',
     'claude-opus-4-6',
     'claude-opus-4-5-20251101',
+    'claude-sonnet-5-5',
     'claude-sonnet-5',
     'claude-sonnet-4-6',
     'claude-haiku-4-5-20251001',
     'claude-fable-5',
   ]
   const ccOrder = [
-    ...mainOrder.slice(0, 7),
-    'claude-sonnet-4-5-20250929',
-    ...mainOrder.slice(7),
+    ...mainOrder.filter((id) => !id.startsWith('claude-sonnet-')),
   ]
-  const ccMaxOrder = ['claude-fable-5-1', 'claude-opus-5-5', ...ccOrder]
+  const ccMaxOrder = [
+    'claude-fable-5-1',
+    'claude-opus-5-5',
+    ...mainOrder.slice(0, 8),
+    'claude-sonnet-4-5-20250929',
+    ...mainOrder.slice(8),
+  ]
 
   assert.deepEqual(mainModels.map((model) => model.id), mainOrder)
   assert.deepEqual(ccTestModels.map((model) => model.id), ccOrder)
@@ -242,6 +277,38 @@ test('orders all Anthropic groups from Fable 5.1 through Opus 5.5 to Opus 5', ()
   assert.equal(ccTestModels.at(-1).unavailableMessage, '此分组无 Fable 5')
   assert.equal(ccMaxModels.at(-1).unavailableMessage, '')
   assert.equal(ccMaxExternalModels.at(-1).unavailableMessage, '')
+})
+
+test('excludes every Sonnet model from the 0.45 CC TEST group', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test')
+
+  assert.equal(group.multiplier, 0.45)
+  assert.ok(group.modelIds.every((id) => !id.startsWith('claude-sonnet-')))
+})
+
+test('prices Claude Sonnet 5.5 in the low-price and both CC MAX groups', () => {
+  const expectedGroupPrices = new Map([
+    ['anthropic-main', { input: 0.4, output: 2, cachedInput: 0.04 }],
+    ['anthropic-max', { input: 2.6, output: 13, cachedInput: 0.26 }],
+    ['anthropic-max-external', { input: 2.9, output: 14.5, cachedInput: 0.29 }],
+  ])
+
+  for (const [groupId, expectedGroup] of expectedGroupPrices) {
+    const group = TEXT_GROUPS.find((item) => item.id === groupId)
+    const model = getTextModelsForGroup(groupId).find((item) => item.id === 'claude-sonnet-5-5')
+
+    assert.ok(model, `Claude Sonnet 5.5 should be available in ${groupId}`)
+    assert.deepEqual(model.officialUsd, { input: 2, output: 10, cachedInput: 0.2 })
+    assert.equal(model.unavailableMessage, '')
+
+    const price = calculateTextPrice(model.officialUsd, group.multiplier)
+    assert.equal(price.official.input, 14)
+    assert.equal(price.official.output, 70)
+    assert.ok(isClose(price.official.cachedInput, 1.4))
+    assert.ok(isClose(price.group.input, expectedGroup.input))
+    assert.ok(isClose(price.group.output, expectedGroup.output))
+    assert.ok(isClose(price.group.cachedInput, expectedGroup.cachedInput))
+  }
 })
 
 test('uses Anthropic official pricing for Claude Opus 5.5 in the CC MAX groups', () => {
