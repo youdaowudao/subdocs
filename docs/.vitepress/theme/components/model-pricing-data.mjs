@@ -33,6 +33,7 @@ const GEMINI_MODEL_IDS = [
 ]
 
 const ANTHROPIC_OPUS_MODEL_IDS = [
+  'claude-opus-5-5',
   'claude-opus-5',
   'claude-opus-4-8',
   'claude-opus-4-7',
@@ -57,7 +58,6 @@ const CC_TEST_MODEL_IDS = [
 
 const CC_MAX_MODEL_IDS = [
   'claude-fable-5-1',
-  'claude-opus-5-5',
   ...ANTHROPIC_OPUS_MODEL_IDS,
   'claude-sonnet-5-5',
   'claude-sonnet-5',
