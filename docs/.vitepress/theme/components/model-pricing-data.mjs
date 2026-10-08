@@ -367,13 +367,13 @@ export const TEXT_MODELS = [
     id: 'claude-sonnet-5-5',
     name: 'Claude Sonnet 5.5',
     description: 'Anthropic 均衡模型，适合代码、智能体任务和日常工作',
-    officialUsd: { input: 2, output: 10, cachedInput: 0.2 },
+    officialUsd: { input: 2, output: 10, cachedInput: 0.1 },
   },
   {
     id: 'claude-sonnet-5',
     name: 'Claude Sonnet 5',
     description: 'Anthropic 新一代均衡模型，适合代码和长任务',
-    officialUsd: { input: 3, output: 15, cachedInput: 0.3 },
+    officialUsd: { input: 2, output: 10, cachedInput: 0.2 },
   },
   {
     id: 'grok-4.7',
