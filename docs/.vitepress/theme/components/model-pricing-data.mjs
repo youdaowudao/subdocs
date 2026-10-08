@@ -113,14 +113,14 @@ export const TEXT_GROUPS = [
   {
     id: 'anthropic-max',
     name: 'CC MAX 满血版本',
-    multiplier: 1.3,
+    multiplier: 1.4,
     description: '满血高性能档，价格较高，重大任务使用',
     modelIds: CC_MAX_MODEL_IDS,
   },
   {
     id: 'anthropic-max-external',
     name: 'CC MAX 外接分组',
-    multiplier: 1.45,
+    multiplier: 1.4,
     description: '允许外接调用，满血高性能档，价格较高，重大任务使用',
     modelIds: CC_MAX_MODEL_IDS,
   },
