@@ -332,9 +332,9 @@ test('excludes every Sonnet model from the 0.45 CC TEST group', () => {
 
 test('prices Claude Sonnet 5.5 in the low-price and both CC MAX groups', () => {
   const expectedGroupPrices = new Map([
-    ['anthropic-main', { input: 0.4, output: 2, cachedInput: 0.04 }],
-    ['anthropic-max', { input: 2.6, output: 13, cachedInput: 0.26 }],
-    ['anthropic-max-external', { input: 2.9, output: 14.5, cachedInput: 0.29 }],
+    ['anthropic-main', { input: 0.4, output: 2, cachedInput: 0.02 }],
+    ['anthropic-max', { input: 2.6, output: 13, cachedInput: 0.13 }],
+    ['anthropic-max-external', { input: 2.9, output: 14.5, cachedInput: 0.145 }],
   ])
 
   for (const [groupId, expectedGroup] of expectedGroupPrices) {
@@ -342,16 +342,41 @@ test('prices Claude Sonnet 5.5 in the low-price and both CC MAX groups', () => {
     const model = getTextModelsForGroup(groupId).find((item) => item.id === 'claude-sonnet-5-5')
 
     assert.ok(model, `Claude Sonnet 5.5 should be available in ${groupId}`)
-    assert.deepEqual(model.officialUsd, { input: 2, output: 10, cachedInput: 0.2 })
+    assert.deepEqual(model.officialUsd, { input: 2, output: 10, cachedInput: 0.1 })
     assert.equal(model.unavailableMessage, '')
 
     const price = calculateTextPrice(model.officialUsd, group.multiplier)
     assert.equal(price.official.input, 14)
     assert.equal(price.official.output, 70)
-    assert.ok(isClose(price.official.cachedInput, 1.4))
+    assert.ok(isClose(price.official.cachedInput, 0.7))
     assert.ok(isClose(price.group.input, expectedGroup.input))
     assert.ok(isClose(price.group.output, expectedGroup.output))
     assert.ok(isClose(price.group.cachedInput, expectedGroup.cachedInput))
+  }
+})
+
+test('prices Claude Sonnet 5 at the reduced official baseline in all supported groups', () => {
+  const expectedGroupPrices = new Map([
+    ['anthropic-main', { input: 0.4, output: 2, cachedInput: 0.04, total: 2.4 }],
+    ['anthropic-max', { input: 2.6, output: 13, cachedInput: 0.26, total: 15.6 }],
+    ['anthropic-max-external', { input: 2.9, output: 14.5, cachedInput: 0.29, total: 17.4 }],
+  ])
+  const expectedOfficial = { input: 14, output: 70, cachedInput: 1.4, total: 84 }
+
+  for (const [groupId, expectedGroup] of expectedGroupPrices) {
+    const group = TEXT_GROUPS.find((item) => item.id === groupId)
+    const matches = getTextModelsForGroup(groupId).filter((item) => item.id === 'claude-sonnet-5')
+
+    assert.equal(matches.length, 1, `Claude Sonnet 5 should appear once in ${groupId}`)
+    const [model] = matches
+    assert.deepEqual(model.officialUsd, { input: 2, output: 10, cachedInput: 0.2 })
+    assert.equal(model.unavailableMessage, '')
+
+    const price = calculateTextPrice(model.officialUsd, group.multiplier)
+    for (const field of ['input', 'output', 'cachedInput', 'total']) {
+      assert.ok(isClose(price.official[field], expectedOfficial[field]))
+      assert.ok(isClose(price.group[field], expectedGroup[field]))
+    }
   }
 })
 
