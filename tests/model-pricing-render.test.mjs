@@ -16,8 +16,8 @@ test('renders Haiku 5.5 once with both context prices in the same row', async ()
   try {
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
     const expectedGroupPrices = new Map([
-      ['anthropic-max', ['¥0.13', '¥0.65', '¥0.65', '¥3.25', '¥0.013', '¥0.065', '¥0.78', '¥3.90']],
-      ['anthropic-max-external', ['¥0.14', '¥0.72', '¥0.72', '¥3.63', '¥0.0145', '¥0.0725', '¥0.87', '¥4.35']],
+      ['anthropic-max', ['¥0.14', '¥0.70', '¥0.70', '¥3.50', '¥0.014', '¥0.07', '¥0.84', '¥4.20']],
+      ['anthropic-max-external', ['¥0.14', '¥0.70', '¥0.70', '¥3.50', '¥0.014', '¥0.07', '¥0.84', '¥4.20']],
     ])
     const expectedOfficialPrices = ['¥0.70', '¥3.50', '¥3.50', '¥17.50', '¥0.07', '¥0.35', '¥4.20', '¥21.00']
 
