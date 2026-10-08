@@ -62,6 +62,7 @@ const textRows = computed(() =>
 
       return {
         ...model,
+        officialPrice,
         priceLabel,
         priceCurrency: activeCurrency.value,
         prices,
@@ -73,6 +74,13 @@ const textRows = computed(() =>
       return [
         createRow(model.officialCny, DEEPSEEK_PRICE_PERIODS.offPeak),
         createRow(model.officialPeakCny, DEEPSEEK_PRICE_PERIODS.peak),
+      ]
+    }
+
+    if (model.officialLongContextUsd) {
+      return [
+        createRow(model.officialUsd, '输入不超过 10 万 tokens'),
+        createRow(model.officialLongContextUsd, '输入超过 10 万 tokens'),
       ]
     }
 
@@ -297,6 +305,7 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                         </span>
                         <span v-if="model.billingOverridesUsd" class="billing-model-badge">缓存读取按实测</span>
                       </div>
+                      <span v-if="model.priceLabel && !isDeepSeekCategory">{{ model.priceLabel }}</span>
                       <span>{{ model.description }}</span>
                     </div>
                     <button
@@ -334,8 +343,8 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                       <span class="price-unit">/ 1M tokens</span>
                       <span v-if="model.priceCurrency === 'usd'" class="official-usd">
                         ${{ field === 'total'
-                          ? (model.officialUsd.input + model.officialUsd.output).toFixed(2)
-                          : model.officialUsd[field].toFixed(3).replace(/0+$/, '').replace(/\.$/, '') }}
+                          ? (model.officialPrice.input + model.officialPrice.output).toFixed(2)
+                          : model.officialPrice[field].toFixed(3).replace(/0+$/, '').replace(/\.$/, '') }}
                       </span>
                       <span v-else class="official-cny">人民币基准</span>
                     </template>
