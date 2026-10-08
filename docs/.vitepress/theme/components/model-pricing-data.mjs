@@ -63,6 +63,7 @@ const CC_MAX_MODEL_IDS = [
   'claude-sonnet-5',
   'claude-sonnet-4-6',
   'claude-sonnet-4-5-20250929',
+  'claude-haiku-5-5',
   'claude-haiku-4-5-20251001',
   'claude-fable-5',
 ]
@@ -306,6 +307,13 @@ export const TEXT_MODELS = [
     name: 'Claude Opus 5.5',
     description: 'Anthropic 新一代旗舰模型，适合复杂代码、智能体和专业工作',
     officialUsd: { input: 4, output: 20, cachedInput: 0.2 },
+  },
+  {
+    id: 'claude-haiku-5-5',
+    name: 'Claude Haiku 5.5',
+    description: 'Anthropic 快速低成本模型，适合分类、信息提取和批量处理',
+    officialUsd: { input: 0.1, output: 0.5, cachedInput: 0.01 },
+    officialLongContextUsd: { input: 0.5, output: 2.5, cachedInput: 0.05 },
   },
   {
     id: 'claude-haiku-4-5-20251001',

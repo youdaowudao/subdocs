@@ -266,6 +266,7 @@ test('orders all Anthropic groups from Fable 5.1 through Opus 5.5 to Opus 5', ()
     'claude-fable-5-1',
     ...mainOrder.slice(0, 9),
     'claude-sonnet-4-5-20250929',
+    'claude-haiku-5-5',
     ...mainOrder.slice(9),
   ]
 
@@ -277,6 +278,49 @@ test('orders all Anthropic groups from Fable 5.1 through Opus 5.5 to Opus 5', ()
   assert.equal(ccTestModels.at(-1).unavailableMessage, '此分组无 Fable 5')
   assert.equal(ccMaxModels.at(-1).unavailableMessage, '')
   assert.equal(ccMaxExternalModels.at(-1).unavailableMessage, '')
+})
+
+test('includes Claude Haiku 5.5 only in both CC MAX groups with both context prices', () => {
+  const expectedGroupPrices = new Map([
+    ['anthropic-max', [
+      { input: 0.13, output: 0.65, cachedInput: 0.013, total: 0.78 },
+      { input: 0.65, output: 3.25, cachedInput: 0.065, total: 3.9 },
+    ]],
+    ['anthropic-max-external', [
+      { input: 0.145, output: 0.725, cachedInput: 0.0145, total: 0.87 },
+      { input: 0.725, output: 3.625, cachedInput: 0.0725, total: 4.35 },
+    ]],
+  ])
+  const expectedOfficialPrices = [
+    { input: 0.7, output: 3.5, cachedInput: 0.07, total: 4.2 },
+    { input: 3.5, output: 17.5, cachedInput: 0.35, total: 21 },
+  ]
+
+  for (const [groupId, expectedPrices] of expectedGroupPrices) {
+    const group = TEXT_GROUPS.find((item) => item.id === groupId)
+    const matches = getTextModelsForGroup(groupId).filter((item) => item.id === 'claude-haiku-5-5')
+
+    assert.equal(matches.length, 1, `Claude Haiku 5.5 should appear once in ${groupId}`)
+    const [model] = matches
+    assert.equal(model.name, 'Claude Haiku 5.5')
+    assert.equal(model.unavailableMessage, '')
+    assert.deepEqual(model.officialUsd, { input: 0.1, output: 0.5, cachedInput: 0.01 })
+    assert.deepEqual(model.officialLongContextUsd, { input: 0.5, output: 2.5, cachedInput: 0.05 })
+
+    for (const [index, officialPrice] of [model.officialUsd, model.officialLongContextUsd].entries()) {
+      const price = calculateTextPrice(officialPrice, group.multiplier)
+      for (const field of ['input', 'output', 'cachedInput', 'total']) {
+        assert.ok(isClose(price.official[field], expectedOfficialPrices[index][field]))
+        assert.ok(isClose(price.group[field], expectedPrices[index][field]))
+      }
+    }
+
+    assert.ok(getTextModelsForGroup(groupId).some((item) => item.id === 'claude-haiku-4-5-20251001'))
+  }
+
+  for (const group of TEXT_GROUPS.filter((item) => !expectedGroupPrices.has(item.id))) {
+    assert.ok(!getTextModelsForGroup(group.id).some((item) => item.id === 'claude-haiku-5-5'))
+  }
 })
 
 test('excludes every Sonnet model from the 0.45 CC TEST group', () => {
