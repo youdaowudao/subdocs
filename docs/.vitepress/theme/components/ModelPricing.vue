@@ -78,10 +78,11 @@ const textRows = computed(() =>
     }
 
     if (model.officialLongContextUsd) {
-      return [
-        createRow(model.officialUsd, '输入不超过 10 万 tokens'),
-        createRow(model.officialLongContextUsd, '输入超过 10 万 tokens'),
+      const priceTiers = [
+        createRow(model.officialUsd, '输入 ≤ 10 万 tokens'),
+        createRow(model.officialLongContextUsd, '输入 > 10 万 tokens'),
       ]
+      return [{ ...priceTiers[0], priceLabel: '', priceTiers }]
     }
 
     return [createRow(model.officialCny ?? model.officialUsd)]
@@ -305,8 +306,10 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                         </span>
                         <span v-if="model.billingOverridesUsd" class="billing-model-badge">缓存读取按实测</span>
                       </div>
-                      <span v-if="model.priceLabel && !isDeepSeekCategory">{{ model.priceLabel }}</span>
                       <span>{{ model.description }}</span>
+                      <span v-if="model.priceTiers" class="model-context-note">
+                        按单次请求的输入 tokens 数分档；输入、输出和缓存读取均按对应档计费。
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -329,25 +332,32 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                     <strong>{{ model.priceLabel }}</strong>
                   </td>
                   <td v-for="field in ['input', 'output', 'cachedInput', 'total']" :key="field">
-                    <template v-if="priceMode === 'group'">
-                      <strong class="group-price">{{ formatCny(model.prices.group[field]) }}</strong>
-                      <span class="price-unit">/ 1M tokens</span>
-                      <span
-                        v-if="hasBillingOverride(model, field) && model.priceCurrency === 'usd'"
-                        class="astra-price-basis"
-                      >实测基准 ${{ formatUsd(model.billingOverridesUsd[field]) }} × {{ activeGroup.multiplier }}</span>
-                      <del v-else>官方 {{ formatCny(model.prices.official[field]) }}</del>
-                    </template>
-                    <template v-else>
-                      <strong class="official-price">{{ formatCny(model.prices.official[field]) }}</strong>
-                      <span class="price-unit">/ 1M tokens</span>
-                      <span v-if="model.priceCurrency === 'usd'" class="official-usd">
-                        ${{ field === 'total'
-                          ? (model.officialPrice.input + model.officialPrice.output).toFixed(2)
-                          : model.officialPrice[field].toFixed(3).replace(/0+$/, '').replace(/\.$/, '') }}
-                      </span>
-                      <span v-else class="official-cny">人民币基准</span>
-                    </template>
+                    <div
+                      v-for="tier in model.priceTiers ?? [model]"
+                      :key="tier.priceLabel || 'default'"
+                      :class="{ 'context-price-tier': model.priceTiers }"
+                    >
+                      <span v-if="model.priceTiers" class="context-tier-label">{{ tier.priceLabel }}</span>
+                      <template v-if="priceMode === 'group'">
+                        <strong class="group-price">{{ formatCny(tier.prices.group[field]) }}</strong>
+                        <span class="price-unit">/ 1M tokens</span>
+                        <span
+                          v-if="hasBillingOverride(tier, field) && tier.priceCurrency === 'usd'"
+                          class="astra-price-basis"
+                        >实测基准 ${{ formatUsd(tier.billingOverridesUsd[field]) }} × {{ activeGroup.multiplier }}</span>
+                        <del v-else>官方 {{ formatCny(tier.prices.official[field]) }}</del>
+                      </template>
+                      <template v-else>
+                        <strong class="official-price">{{ formatCny(tier.prices.official[field]) }}</strong>
+                        <span class="price-unit">/ 1M tokens</span>
+                        <span v-if="tier.priceCurrency === 'usd'" class="official-usd">
+                          ${{ field === 'total'
+                            ? (tier.officialPrice.input + tier.officialPrice.output).toFixed(2)
+                            : tier.officialPrice[field].toFixed(3).replace(/0+$/, '').replace(/\.$/, '') }}
+                        </span>
+                        <span v-else class="official-cny">人民币基准</span>
+                      </template>
+                    </div>
                   </td>
                   <td>
                     <span v-if="priceMode === 'group'" class="saving-badge">
@@ -1045,6 +1055,28 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
   color: var(--vp-c-text-3);
   font-size: 16px;
   line-height: 1.35;
+}
+
+.model-id-cell > div > .model-context-note {
+  margin-top: 6px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.context-price-tier + .context-price-tier {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.context-tier-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .model-id-cell .image-model-id {
