@@ -33,7 +33,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
       { id: 'anthropic-main', name: '低价分组', multiplier: 0.2 },
-      { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.45 },
+      { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.4 },
       { id: 'anthropic-cc-test-0.7', name: 'CC TEST 满分99缓（临时渠道，会下线）', multiplier: 0.7 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.4 },
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.4 },
@@ -324,10 +324,10 @@ test('includes Claude Haiku 5.5 only in both CC MAX groups with both context pri
   }
 })
 
-test('excludes every Sonnet model from the 0.45 CC TEST group', () => {
+test('excludes every Sonnet model from the 0.4 CC TEST group', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test')
 
-  assert.equal(group.multiplier, 0.45)
+  assert.equal(group.multiplier, 0.4)
   assert.ok(group.modelIds.every((id) => !id.startsWith('claude-sonnet-')))
 })
 
@@ -350,7 +350,7 @@ test('prices only the 11 screenshot models in the temporary 0.7 CC TEST group', 
 
   assert.equal(group.multiplier, 0.7)
   assert.match(group.name, /临时渠道，会下线/)
-  assert.equal(group.description, '不保证长久，缓存 96–99%，其余与 CC TEST 0.45 倍分组一致')
+  assert.equal(group.description, '不保证长久，缓存 96–99%，其余与 CC TEST 0.4 倍分组一致')
   assert.deepEqual(models.map((model) => model.id), [...expectedPrices.keys()])
 
   for (const model of models) {
@@ -416,7 +416,7 @@ test('prices Claude Sonnet 5 at the reduced official baseline in all supported g
 test('includes Claude Opus 5.5 once at official pricing in every Anthropic group', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-main', { input: 0.8, output: 4, cachedInput: 0.04, total: 4.8 }],
-    ['anthropic-cc-test', { input: 1.8, output: 9, cachedInput: 0.09, total: 10.8 }],
+    ['anthropic-cc-test', { input: 1.6, output: 8, cachedInput: 0.08, total: 9.6 }],
     ['anthropic-cc-test-0.7', { input: 2.8, output: 14, cachedInput: 0.14, total: 16.8 }],
     ['anthropic-max', { input: 5.6, output: 28, cachedInput: 0.28, total: 33.6 }],
     ['anthropic-max-external', { input: 5.6, output: 28, cachedInput: 0.28, total: 33.6 }],
@@ -847,7 +847,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['gpt-0.18', 5.25],
     ['full', 9.45],
     ['anthropic-main', 7],
-    ['anthropic-cc-test', 15.75],
+    ['anthropic-cc-test', 14],
     ['anthropic-max', 49],
     ['anthropic-max-external', 49],
     ['grok-free', 3.5],
