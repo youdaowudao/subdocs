@@ -34,6 +34,7 @@ test('includes the updated GPT pricing groups in order', () => {
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
       { id: 'anthropic-main', name: '低价分组', multiplier: 0.2 },
       { id: 'anthropic-cc-test', name: 'Anthropic CC TEST 满分渠道', multiplier: 0.45 },
+      { id: 'anthropic-cc-test-0.7', name: 'CC TEST 满分99缓（临时渠道，会下线）', multiplier: 0.7 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.4 },
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.4 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
@@ -52,7 +53,7 @@ test('keeps the model category tabs in the requested order', () => {
     MODEL_CATEGORIES.map(({ id, name, kind, groupIds, defaultGroupId }) => ({ id, name, kind, groupIds, defaultGroupId })),
     [
       { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full'], defaultGroupId: 'gpt-0.18' },
-      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-max', 'anthropic-max-external'], defaultGroupId: undefined },
+      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-cc-test-0.7', 'anthropic-max', 'anthropic-max-external'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity'], defaultGroupId: undefined },
       { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek'], defaultGroupId: undefined },
@@ -330,6 +331,38 @@ test('excludes every Sonnet model from the 0.45 CC TEST group', () => {
   assert.ok(group.modelIds.every((id) => !id.startsWith('claude-sonnet-')))
 })
 
+test('prices only the 11 screenshot models in the temporary 0.7 CC TEST group', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test-0.7')
+  const models = getTextModelsForGroup(group.id)
+  const expectedPrices = new Map([
+    ['claude-opus-5-5', [2.8, 14, 0.14, 16.8]],
+    ['claude-opus-5', [3.5, 17.5, 0.35, 21]],
+    ['claude-opus-4-8', [3.5, 17.5, 0.35, 21]],
+    ['claude-opus-4-7', [3.5, 17.5, 0.35, 21]],
+    ['claude-opus-4-6', [3.5, 17.5, 0.35, 21]],
+    ['claude-opus-4-5', [3.5, 17.5, 0.35, 21]],
+    ['claude-sonnet-5-5', [1.4, 7, 0.07, 8.4]],
+    ['claude-sonnet-5', [1.4, 7, 0.14, 8.4]],
+    ['claude-sonnet-4-6', [2.1, 10.5, 0.21, 12.6]],
+    ['claude-sonnet-4-5', [2.1, 10.5, 0.21, 12.6]],
+    ['claude-haiku-4-5', [0.7, 3.5, 0.07, 4.2]],
+  ])
+
+  assert.equal(group.multiplier, 0.7)
+  assert.match(group.name, /临时渠道，会下线/)
+  assert.equal(group.description, '不保证长久，缓存 96–99%，其余与 CC TEST 0.45 倍分组一致')
+  assert.deepEqual(models.map((model) => model.id), [...expectedPrices.keys()])
+
+  for (const model of models) {
+    assert.equal(model.unavailableMessage, '')
+    const price = calculateTextPrice(model.officialUsd, group.multiplier)
+    const expected = expectedPrices.get(model.id)
+    for (const [index, field] of ['input', 'output', 'cachedInput', 'total'].entries()) {
+      assert.ok(isClose(price.group[field], expected[index]), `${model.id}/${field}`)
+    }
+  }
+})
+
 test('prices Claude Sonnet 5.5 in the low-price and both CC MAX groups', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-main', { input: 0.4, output: 2, cachedInput: 0.02 }],
@@ -384,6 +417,7 @@ test('includes Claude Opus 5.5 once at official pricing in every Anthropic group
   const expectedGroupPrices = new Map([
     ['anthropic-main', { input: 0.8, output: 4, cachedInput: 0.04, total: 4.8 }],
     ['anthropic-cc-test', { input: 1.8, output: 9, cachedInput: 0.09, total: 10.8 }],
+    ['anthropic-cc-test-0.7', { input: 2.8, output: 14, cachedInput: 0.14, total: 16.8 }],
     ['anthropic-max', { input: 5.6, output: 28, cachedInput: 0.28, total: 33.6 }],
     ['anthropic-max-external', { input: 5.6, output: 28, cachedInput: 0.28, total: 33.6 }],
   ])

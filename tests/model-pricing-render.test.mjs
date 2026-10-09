@@ -5,6 +5,55 @@ import vue from '@vitejs/plugin-vue'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 
+test('renders only supported models and their exact copy IDs in the 0.7 CC TEST group', async () => {
+  const server = await createServer({
+    configFile: false,
+    plugins: [vue()],
+    server: { middlewareMode: true },
+    appType: 'custom',
+  })
+
+  try {
+    const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
+    const expectedIds = [
+      'claude-opus-5-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7',
+      'claude-opus-4-6', 'claude-opus-4-5', 'claude-sonnet-5-5', 'claude-sonnet-5',
+      'claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-haiku-4-5',
+    ]
+
+    for (const priceMode of ['group', 'official']) {
+      const component = {
+        ...pricing,
+        setup(props, context) {
+          const state = pricing.setup(props, context)
+          state.activeCategory.value = 'anthropic'
+          state.activeGroupId.value = 'anthropic-cc-test-0.7'
+          state.priceMode.value = priceMode
+          return state
+        },
+      }
+      const html = await renderToString(createSSRApp(component))
+      const rows = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)]
+        .map(([row]) => row)
+        .filter((row) => row.includes('class="model-id-cell"'))
+      const ids = rows.map((row) => row.match(/<strong>(claude-[^<]+)<\/strong>/)[1])
+
+      assert.deepEqual(ids, expectedIds, `${priceMode} should show only the 11 screenshot models`)
+      for (const [index, row] of rows.entries()) {
+        assert.ok(row.includes(`aria-label="复制 ${expectedIds[index]}"`))
+        const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'
+        assert.equal([...row.matchAll(new RegExp(`class="${priceClass}"`, 'g'))].length, 4)
+      }
+      if (priceMode === 'group') {
+        assert.match(html, /不保证长久，缓存 96–99%/)
+        assert.match(html, /0\.7 倍率/)
+      }
+    }
+  } finally {
+    await server.close()
+  }
+})
+
 test('renders Haiku 5.5 once with both context prices in the same row', async () => {
   const server = await createServer({
     configFile: false,
