@@ -56,6 +56,20 @@ const CC_TEST_MODEL_IDS = [
   'claude-fable-5',
 ]
 
+const CC_TEST_07_MODEL_IDS = [
+  'claude-opus-5-5',
+  'claude-opus-5',
+  'claude-opus-4-8',
+  'claude-opus-4-7',
+  'claude-opus-4-6',
+  'claude-opus-4-5',
+  'claude-sonnet-5-5',
+  'claude-sonnet-5',
+  'claude-sonnet-4-6',
+  'claude-sonnet-4-5',
+  'claude-haiku-4-5',
+]
+
 const CC_MAX_MODEL_IDS = [
   'claude-fable-5-1',
   ...ANTHROPIC_OPUS_MODEL_IDS,
@@ -109,6 +123,13 @@ export const TEXT_GROUPS = [
     description: '价格更低，适合 Claude Code 日常任务',
     modelIds: CC_TEST_MODEL_IDS,
     unavailableModels: { 'claude-fable-5': '此分组无 Fable 5' },
+  },
+  {
+    id: 'anthropic-cc-test-0.7',
+    name: 'CC TEST 满分99缓（临时渠道，会下线）',
+    multiplier: 0.7,
+    description: '不保证长久，缓存 96–99%，其余与 CC TEST 0.45 倍分组一致',
+    modelIds: CC_TEST_07_MODEL_IDS,
   },
   {
     id: 'anthropic-max',
@@ -193,7 +214,7 @@ export const MODEL_CATEGORIES = [
     name: 'Anthropic',
     iconSvg: CLAUDE_CODE_ICON,
     kind: 'text',
-    groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-max', 'anthropic-max-external'],
+    groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-cc-test-0.7', 'anthropic-max', 'anthropic-max-external'],
   },
   {
     id: 'grok',
@@ -317,12 +338,14 @@ export const TEXT_MODELS = [
   },
   {
     id: 'claude-haiku-4-5-20251001',
+    aliases: ['claude-haiku-4-5'],
     name: 'Claude Haiku 4.5',
     description: 'Anthropic 快速模型，适合日常任务和批量处理',
     officialUsd: { input: 1, output: 5, cachedInput: 0.1 },
   },
   {
     id: 'claude-opus-4-5-20251101',
+    aliases: ['claude-opus-4-5'],
     name: 'Claude Opus 4.5',
     description: 'Anthropic 高质量推理模型',
     officialUsd: { input: 5, output: 25, cachedInput: 0.5 },
@@ -353,6 +376,7 @@ export const TEXT_MODELS = [
   },
   {
     id: 'claude-sonnet-4-5-20250929',
+    aliases: ['claude-sonnet-4-5'],
     name: 'Claude Sonnet 4.5',
     description: 'Anthropic 均衡型模型，适合代码和综合任务',
     officialUsd: { input: 3, output: 15, cachedInput: 0.3 },
@@ -653,14 +677,21 @@ export function getTextModelsForGroup(groupId) {
   const group = TEXT_GROUPS.find((item) => item.id === groupId)
   if (!group) return []
 
-  const modelMap = new Map(TEXT_MODELS.map((model) => [model.id, model]))
+  const modelMap = new Map(TEXT_MODELS.flatMap((model) =>
+    [model.id, ...(model.aliases ?? [])].map((modelId) => [modelId, model]),
+  ))
   return group.modelIds
-    .map((modelId) => modelMap.get(modelId))
+    .map((modelId) => {
+      const model = modelMap.get(modelId)
+      if (!model) return null
+
+      return {
+        ...model,
+        id: modelId,
+        unavailableMessage: group.unavailableModels?.[modelId] ?? '',
+      }
+    })
     .filter(Boolean)
-    .map((model) => ({
-      ...model,
-      unavailableMessage: group.unavailableModels?.[model.id] ?? '',
-    }))
 }
 
 export function calculateImagePriceCny(cnyPerImage) {
