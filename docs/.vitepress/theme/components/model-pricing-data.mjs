@@ -119,7 +119,7 @@ export const TEXT_GROUPS = [
   {
     id: 'anthropic-cc-test',
     name: 'Anthropic CC TEST 满分渠道',
-    multiplier: 0.45,
+    multiplier: 0.4,
     description: '价格更低，适合 Claude Code 日常任务',
     modelIds: CC_TEST_MODEL_IDS,
     unavailableModels: { 'claude-fable-5': '此分组无 Fable 5' },
@@ -128,7 +128,7 @@ export const TEXT_GROUPS = [
     id: 'anthropic-cc-test-0.7',
     name: 'CC TEST 满分99缓（临时渠道，会下线）',
     multiplier: 0.7,
-    description: '不保证长久，缓存 96–99%，其余与 CC TEST 0.45 倍分组一致',
+    description: '不保证长久，缓存 96–99%，其余与 CC TEST 0.4 倍分组一致',
     modelIds: CC_TEST_07_MODEL_IDS,
   },
   {
