@@ -44,8 +44,8 @@ function Download-WithPercent {
     }
 }
 
-$ReleaseRevision = "V0.8.0"
-$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.8.0"
+$ReleaseRevision = "V0.8.1"
+$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.8.1"
 $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
     $env:PROCESSOR_ARCHITECTURE
 } else {
@@ -53,47 +53,51 @@ $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
 }
 
 if ($Architecture.ToUpperInvariant() -ne "AMD64") {
-    throw ("安装失败：V0.8.0 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
+    throw ("安装失败：V0.8.1 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
 }
-$Artifact = "usegoodai-imagines-tool-v0.8.0-windows-amd64.exe"
-$ExpectedSha256 = "68555bcc2f74b96cf260e21ee883fc3e5e1930c4edb5d11710187341eafa4676"
+$Artifact = "usegoodai-imagines-tool-v0.8.1-windows-amd64.exe"
+$ExpectedSha256 = "47b362cba62da3da3e110c80a80ed4a7d33108013e33bb9e483fb67fe864546b"
 
 $ToolCodexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { Join-Path $HOME ".codex" } else { $env:CODEX_HOME }
 $InstalledReleasePath = Join-Path $ToolCodexHome "tools\usegoodai-imagines-tool\RELEASE"
 $InstalledBinaryPath = Join-Path $ToolCodexHome "tools\usegoodai-imagines-tool\usegoodai-imagines-tool.exe"
 $NeedsDownload = $true
-if ((Test-Path -LiteralPath $InstalledReleasePath -PathType Leaf) -and (Test-Path -LiteralPath $InstalledBinaryPath -PathType Leaf)) {
-    $InstalledRelease = (Get-Content -LiteralPath $InstalledReleasePath -Raw).Trim()
-    if ($InstalledRelease -eq $ReleaseRevision) {
-        Write-Output "中转站生图工具 $ReleaseRevision 已是最新版，无需下载。"
-        $NeedsDownload = $false
+$BinaryPath = $InstalledBinaryPath
+$TemporaryRoot = $null
+
+try {
+    if ((Test-Path -LiteralPath $InstalledReleasePath -PathType Leaf) -and (Test-Path -LiteralPath $InstalledBinaryPath -PathType Leaf)) {
+        $InstalledRelease = (Get-Content -LiteralPath $InstalledReleasePath -Raw).Trim()
+        if ($InstalledRelease -eq $ReleaseRevision) {
+            $InstalledSha256 = (Get-FileHash -LiteralPath $InstalledBinaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($InstalledSha256 -eq $ExpectedSha256) {
+                Write-Output "中转站生图工具 $ReleaseRevision 已是最新版，无需下载，继续配置画图 Key。"
+                $NeedsDownload = $false
+            }
+        }
     }
-}
 
-$TemporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("usegoodai-imagines-tool-" + [System.Guid]::NewGuid().ToString("N"))
-$BinaryPath = Join-Path $TemporaryRoot $Artifact
-
-if ($NeedsDownload) {
-    try {
+    if ($NeedsDownload) {
+        $TemporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("usegoodai-imagines-tool-" + [System.Guid]::NewGuid().ToString("N"))
+        $BinaryPath = Join-Path $TemporaryRoot $Artifact
         New-Item -ItemType Directory -Path $TemporaryRoot | Out-Null
-        Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.8.0"
-
+        Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.8.1"
         $ActualSha256 = (Get-FileHash -LiteralPath $BinaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($ActualSha256 -ne $ExpectedSha256) {
             throw "安装程序 SHA-256 校验不通过，已停止安装。"
         }
+    }
 
-        & $BinaryPath install @args
-        if ($LASTEXITCODE -ne 0) {
-            throw "安装程序返回退出码 $LASTEXITCODE。"
-        }
+    & $BinaryPath install @args
+    if ($LASTEXITCODE -ne 0) {
+        throw "安装程序返回退出码 $LASTEXITCODE。"
     }
-    catch {
-        throw ("安装失败：" + $_.Exception.Message)
-    }
-    finally {
-        if (Test-Path -LiteralPath $TemporaryRoot) {
-            Remove-Item -LiteralPath $TemporaryRoot -Recurse -Force
-        }
+}
+catch {
+    throw ("安装失败：" + $_.Exception.Message)
+}
+finally {
+    if ($null -ne $TemporaryRoot -and (Test-Path -LiteralPath $TemporaryRoot)) {
+        Remove-Item -LiteralPath $TemporaryRoot -Recurse -Force
     }
 }
