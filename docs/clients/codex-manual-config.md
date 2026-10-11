@@ -94,8 +94,45 @@ ChatGPT 桌面应用用户先在右下角托盘找到 ChatGPT 图标，点击 **
 | 现象 | 检查动作 |
 | --- | --- |
 | `401 Unauthorized` | 重新复制后台的 `auth.json` 内容，确认 API Key 没有缺少字符 |
+| `401 Unauthorized`，API Key 确认完整 | 打开 `config.toml`，对照 [Key 写在哪个文件](#codex-auth-modes) 检查 `requires_openai_auth` 和 Key 的位置 |
 | `403 Forbidden` | 回到 **API 密钥** 页面，确认当前 Key 所属分组支持配置中的模型 |
 | Windows 修改后不生效 | 确认文件名不是 `config.toml.txt` 或 `auth.json.txt`，再彻底退出并重新打开 Codex |
 | 后台没有使用记录 | 确认两个文件位于当前 Codex 实际读取的 `.codex` 目录，并重新新建对话测试 |
 
 仍然无法使用时，返回 [快速开始](/quick-start) 改用一键脚本。
+
+<a id="codex-auth-modes"></a>
+
+## 进阶：Key 写在哪个文件
+
+手动修改配置时，`config.toml` 里 `[model_providers.OpenAI]` 下的 `requires_openai_auth` 决定 Codex 发请求时带哪个 Key：
+
+| `requires_openai_auth` | Codex 带哪个 Key |
+| --- | --- |
+| `true` | `auth.json` 里的 API Key |
+| `false` | `config.toml` 里 `experimental_bearer_token` 写的 API Key，不读取 `auth.json` |
+
+2026 年 8 月下旬起的 Codex 版本，`requires_openai_auth = false` 时不再读取 `auth.json`。旧配置把 Key 放在 `auth.json`、同时写 `requires_openai_auth = false`，请求不带 Key，返回 `401 Unauthorized`。
+
+现在可用的写法有两种，二选一：
+
+| | 写法一 | 写法二 |
+| --- | --- | --- |
+| 使用场景 | 一键脚本写入的默认配置 | 需要 Codex 内置生图工具 |
+| API Key 位置 | `auth.json` 的 `OPENAI_API_KEY` | `config.toml` 的 `experimental_bearer_token` |
+| `requires_openai_auth` | `true` | `false` |
+| 生图请求头 `http_headers` | 不写 | 写 |
+| Codex 内置生图工具 | 不提供 | 提供 |
+| `auth.json` | 写入 API Key，替换原来的 ChatGPT 登录信息 | 不使用 |
+
+写法二在 `[model_providers.OpenAI]` 下写这三行：
+
+```toml
+requires_openai_auth = false
+experimental_bearer_token = "这里完整填写你的中转站 API Key"
+http_headers = { "x-openai-actor-authorization" = "local-image-extension" }
+```
+
+`http_headers` 这一行是 Codex 内置生图工具的开关，只在 `requires_openai_auth = false` 时生效；它不负责验证 API Key。内置生图的完整步骤看 [Codex 内置生图](/images/codex-image-direct)。
+
+写法二的 API Key 保存在 `config.toml` 里。把 `config.toml` 发给别人或截图前，先删掉 `experimental_bearer_token` 这一行。
