@@ -28,7 +28,7 @@ Windows 按 `Win + X`，点击 **终端** 或 **Windows PowerShell**，粘贴运
 irm https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.ps1 | iex
 ```
 
-看到“请粘贴专门画图分组的 Key”时，粘贴第 1 步复制的 Key，然后按回车。安装器只会下载 Windows x64 程序，不需要 Python、Node 或管理员权限。
+每次执行命令都会输入并覆盖画图 Key。看到“请输入专门画图分组 Key”时，粘贴第 1 步复制的 Key，然后按回车。安装器只会下载 Windows x64 程序，不需要 Python、Node 或管理员权限。
 
 <details>
 <summary>Linux 和 Mac 用户看这里</summary>
@@ -39,7 +39,7 @@ irm https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.ps1 | iex
 curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh | bash
 ```
 
-看到 Key 输入提示后，粘贴第 1 步复制的专门画图分组 Key，然后按回车。安装器只下载当前 Linux 或 Mac 对应的一个程序。
+每次执行命令都会输入并覆盖画图 Key。看到 Key 输入提示后，粘贴第 1 步复制的专门画图分组 Key，然后按回车。安装器只下载当前 Linux 或 Mac 对应的一个程序。
 
 </details>
 
@@ -127,7 +127,7 @@ Codex 会按照用户明确提出的模型、数量、尺寸和画面要求调�
 更新生图工具。
 ```
 
-已经保存专门画图分组 Key 时，更新不会要求再次输入。
+每次执行安装或更新命令都会要求重新粘贴专门画图分组 Key，并覆盖旧 Key。显示“已是最新版”时只跳过下载，仍继续配置 Key。
 
 默认安装位置：
 
@@ -148,7 +148,7 @@ Codex 会按照用户明确提出的模型、数量、尺寸和画面要求调�
 
 | 遇到的问题 | 检查动作 |
 | --- | --- |
-| 安装器提示 Key 无效或生图返回鉴权错误 | 回到 API 密钥页面，确认复制的是 **专门画图分组** 的 Key，再重新安装 |
+| 安装器提示 Key 无效或生图返回鉴权错误 | 回到 API 密钥页面复制 **专门画图分组** 的 Key，重新执行上面的安装命令，粘贴后覆盖旧 Key |
 | 安装后 Codex 不知道生图工具 | 新建一个 Codex 任务，不要继续使用安装前的旧对话 |
 | Codex 只回复图片路径或图片只出现在折叠的中间过程 | 确认当前任务已经读取生图 Skill；最终回复必须用绝对路径 Markdown 图片语法再次嵌入图片 |
 | 生图接口返回错误 | 本次请求会直接停止，不会自动重试或更换模型；稍后重新发起一次新请求 |
