@@ -47,6 +47,8 @@ irm https://docs.usegoodai.com/install/codex.ps1 | iex
 
 看到输入 API Key 的提示时，粘贴第 1 步复制的 Key，然后按回车。
 
+脚本写入配置后会自动关闭正在运行的 ChatGPT 软件和 Codex，正在运行的任务会中断。
+
 <details>
 <summary>Mac 用户看这里</summary>
 
@@ -60,9 +62,9 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 
 </details>
 
-## 3. 关闭并重新打开 Codex
+## 3. 重新打开 Codex
 
-脚本完成后，彻底退出 Codex App，再重新打开并新建任务。
+脚本已经自动关闭 Codex App。重新打开并新建任务。
 
 发送 `测试`。
 
@@ -79,7 +81,7 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 | PowerShell 提示无法下载脚本 | 检查网络后重新运行第 2 步命令 | 仍然失败时，改用下面的 CC Switch 接入 |
 | 脚本提示未检测到 Codex App | 先安装 Codex App，再回到本页重新运行脚本 | 看 [Codex 接入](/clients/codex) |
 | Codex 提示 `INSUFFICIENT_BALANCE` 或 `Insufficient account balance` | 登录后台充值，充值后重新测试 | 仍然提示余额不足时，确认 Codex 使用的是当前账号的 API Key |
-| 脚本完成后 Codex 还是不能回复 | 彻底退出 Codex；Windows 用任务管理器结束所有 `ChatGPT` 进程，再重新打开 | 看 [报错与踩坑](/errors/) |
+| 脚本提示未能自动关闭，或脚本完成后 Codex 还是不能回复 | 重启电脑，再重新打开 Codex 并新建任务 | 看 [报错与踩坑](/errors/) |
 
 脚本已经完成，但 Codex 返回具体错误时，直接看 [报错与踩坑](/errors/)。
 
@@ -92,7 +94,7 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 https://github.com/usegoodai/usegoodai-codex-installer
 ```
 
-这个脚本只是帮不会手动改配置的用户写入 Codex 配置，不会修改系统设置。不放心就用下面的 CC Switch 或手动配置。
+这个脚本只做两件事：写入 Codex 配置；写入后关闭正在运行的 ChatGPT 软件和 Codex，让新配置生效。不会修改系统设置，也不会安装或改动其他软件。不放心就用下面的 CC Switch 或手动配置。
 
 | 文件 | 作用 |
 | --- | --- |
