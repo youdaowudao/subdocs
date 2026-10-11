@@ -88,7 +88,7 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 <details>
 <summary>脚本安全吗？</summary>
 
-脚本开源。
+脚本开源，完全公开，绝对无任何问题。
 
 这个脚本只做两件事：写入 Codex 配置；写入后关闭正在运行的 ChatGPT 软件和 Codex，让新配置生效。不会修改系统设置，也不会安装或改动其他软件。不放心就用下面的 CC Switch 或手动配置。
 
