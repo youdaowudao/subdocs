@@ -24,46 +24,122 @@ read_input() {
   read -r -u 3 -p "$prompt" "$var_name"
 }
 
-detect_running_clients() {
-  ps -axo comm= 2>/dev/null | awk '
+list_running_clients() {
+  ps -axo pid=,ppid=,uid=,stat=,comm= 2>/dev/null | awk -v uid="$(id -u)" -v self="$$" '
     {
+      parent[$1] = $2
+      if ($3 != uid || $4 ~ /^Z/) {
+        next
+      }
       name = $0
+      sub(/^[ \t]*[0-9]+[ \t]+[0-9]+[ \t]+[0-9]+[ \t]+[^ \t]+[ \t]+/, "", name)
       sub(/^.*\//, "", name)
       lower = tolower(name)
-      if (lower == "codex" || lower == "codex.exe" || lower == "chatgpt" || lower == "chatgpt.exe") {
-        print name
+      if (lower == "codex" || lower == "codex.exe") {
+        client[$1] = "codex"
+      } else if (lower == "chatgpt" || lower == "chatgpt.exe") {
+        client[$1] = "chatgpt"
       }
     }
-  ' | sort -fu
+    END {
+      for (pid = self; (pid in parent) && !(pid in own); pid = parent[pid]) {
+        own[pid] = 1
+      }
+      for (pid in client) {
+        print pid, client[pid], ((pid in own) ? "skip" : "stop")
+      }
+    }
+  '
+}
+
+client_is_alive() {
+  local state
+  state="$(ps -o stat= -p "$1" 2>/dev/null | tr -d '[:space:]')" || true
+  [ -n "$state" ] && [ "${state#Z}" = "$state" ]
+}
+
+wait_for_clients_exit() {
+  local attempts="$1"
+  local pid alive
+  while true; do
+    alive=""
+    for pid in $pending_pids; do
+      if client_is_alive "$pid"; then
+        alive="$alive $pid"
+      fi
+    done
+    pending_pids="$alive"
+    if [ -z "$pending_pids" ]; then
+      return 0
+    fi
+    if [ "$attempts" -le 0 ]; then
+      return 1
+    fi
+    sleep 0.5
+    attempts=$((attempts - 1))
+  done
+}
+
+stop_running_clients() {
+  local pid kind action
+  local pending_pids=""
+  chatgpt_running=false
+  codex_running=false
+  clients_left=false
+
+  while read -r pid kind action; do
+    case "$kind" in
+      chatgpt)
+        chatgpt_running=true
+        ;;
+      codex)
+        codex_running=true
+        ;;
+      *)
+        continue
+        ;;
+    esac
+    if [ "$action" = "stop" ]; then
+      pending_pids="$pending_pids $pid"
+    else
+      clients_left=true
+    fi
+  done <<EOF
+$(list_running_clients || true)
+EOF
+
+  if [ -z "$pending_pids" ]; then
+    return
+  fi
+
+  kill -TERM $pending_pids 2>/dev/null || true
+  if wait_for_clients_exit 10; then
+    return
+  fi
+  kill -KILL $pending_pids 2>/dev/null || true
+  if wait_for_clients_exit 4; then
+    return
+  fi
+  clients_left=true
 }
 
 report_running_clients() {
-  local running_clients
-  local codex_running=false
-  local chatgpt_running=false
-  running_clients="$(detect_running_clients)"
-
-  while IFS= read -r process_name; do
-    case "$(printf '%s' "$process_name" | tr '[:upper:]' '[:lower:]')" in
-      codex|codex.exe)
-        codex_running=true
-        ;;
-      chatgpt|chatgpt.exe)
-        chatgpt_running=true
-        ;;
-    esac
-  done <<EOF
-$running_clients
-EOF
-
+  local clients
   if [ "$chatgpt_running" = true ] && [ "$codex_running" = true ]; then
-    say "当前检测到 ChatGPT 软件和 Codex CLI 正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+    clients="ChatGPT 软件和 Codex"
   elif [ "$chatgpt_running" = true ]; then
-    say "当前检测到 ChatGPT 软件正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+    clients="ChatGPT 软件"
   elif [ "$codex_running" = true ]; then
-    say "当前检测到 Codex CLI 正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+    clients="Codex"
   else
     say "当前未检测到 ChatGPT/Codex CLI 运行，请启动软件后进行测试。"
+    return
+  fi
+
+  if [ "$clients_left" = true ]; then
+    say "未能自动关闭 ${clients}，请重启电脑后，重新打开并新建对话测试，如有问题请联系网站客服。"
+  else
+    say "已自动关闭 ${clients}，请重新打开并新建对话测试，如有问题请联系网站客服。"
   fi
 }
 
@@ -177,11 +253,14 @@ main() {
 
   show_write_plan
   say ""
+  say "配置完成后会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。"
+  say ""
 
   local api_key
   read_validated_api_key api_key
 
   write_codex_files "$api_key"
+  stop_running_clients
 
   say ""
   say "配置已经完成，可以关闭终端了。"

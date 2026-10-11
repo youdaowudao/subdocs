@@ -28,31 +28,91 @@ function Backup-IfExists([string]$Path) {
 }
 
 function Get-RunningCodexClients {
+  $sessionId = (Get-Process -Id $PID).SessionId
   return @(
-    Get-Process -ErrorAction SilentlyContinue |
-      Where-Object { $_.ProcessName -match "^(codex|chatgpt)$" } |
-      Select-Object -ExpandProperty ProcessName -Unique
+    Get-Process -Name "codex", "chatgpt" -ErrorAction SilentlyContinue |
+      Where-Object { $_.SessionId -eq $sessionId }
   )
 }
 
-function Report-RunningClients {
-  $runningClients = @(Get-RunningCodexClients)
-  $codexRunning = $runningClients -icontains "codex"
-  $chatgptRunning = $runningClients -icontains "chatgpt"
+function Get-OwnProcessIds {
+  $ids = @()
+  $current = $PID
+  while ($current -and ($ids -notcontains $current)) {
+    $ids += $current
+    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $current" -ErrorAction Stop
+    if ($process) {
+      $current = $process.ParentProcessId
+    } else {
+      $current = 0
+    }
+  }
+  return $ids
+}
 
-  if ($chatgptRunning -and $codexRunning) {
-    Say "当前检测到 ChatGPT 软件和 Codex CLI 正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+function Test-ProcessExited($Process) {
+  try {
+    return $Process.HasExited
+  } catch {
+    return $false
+  }
+}
+
+function Stop-RunningClients {
+  $result = @{ ChatGPT = $false; Codex = $false; Left = $false }
+  try {
+    $clients = @(Get-RunningCodexClients)
+    $result.ChatGPT = @($clients | Where-Object { $_.ProcessName -ieq "chatgpt" }).Count -gt 0
+    $result.Codex = @($clients | Where-Object { $_.ProcessName -ieq "codex" }).Count -gt 0
+    if ($clients.Count -eq 0) {
+      return $result
+    }
+
+    $ownIds = @(Get-OwnProcessIds)
+    $targets = @($clients | Where-Object { $ownIds -notcontains $_.Id })
+    if ($targets.Count -lt $clients.Count) {
+      $result.Left = $true
+    }
+    if ($targets.Count -gt 0) {
+      $targets | Stop-Process -Force -ErrorAction SilentlyContinue
+      for ($attempt = 0; $attempt -le 10; $attempt++) {
+        if ($attempt -gt 0) {
+          Start-Sleep -Milliseconds 500
+        }
+        $remaining = @($targets | Where-Object { -not (Test-ProcessExited $_) })
+        if ($remaining.Count -eq 0) {
+          break
+        }
+      }
+      if ($remaining.Count -gt 0) {
+        $result.Left = $true
+      }
+    }
+  } catch {
+    $result.Left = $true
+  }
+  return $result
+}
+
+function Report-RunningClients($Result) {
+  if ($Result.ChatGPT -and $Result.Codex) {
+    $clients = "ChatGPT 软件和 Codex"
+  } elseif ($Result.ChatGPT) {
+    $clients = "ChatGPT 软件"
+  } elseif ($Result.Codex) {
+    $clients = "Codex"
+  } elseif ($Result.Left) {
+    $clients = "ChatGPT 软件和 Codex"
+  } else {
+    Say "当前未检测到 ChatGPT/Codex CLI 运行，请启动软件后进行测试。"
     return
   }
-  if ($chatgptRunning) {
-    Say "当前检测到 ChatGPT 软件正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
+
+  if ($Result.Left) {
+    Say "未能自动关闭 ${clients}，请重启电脑后，重新打开并新建对话测试，如有问题请联系网站客服。"
     return
   }
-  if ($codexRunning) {
-    Say "当前检测到 Codex CLI 正在运行，请完全退出并结束任务后，重新打开测试连接，如有问题请联系网站客服。"
-    return
-  }
-  Say "当前未检测到 ChatGPT/Codex CLI 运行，请启动软件后进行测试。"
+  Say "已自动关闭 ${clients}，请重新打开并新建对话测试，如有问题请联系网站客服。"
 }
 
 function Show-WritePlan {
@@ -144,14 +204,17 @@ Say "本脚本不会安装、修改任何软件，只会配置用户目录下 .c
 
 Show-WritePlan
 Say ""
+Say "配置完成后会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。"
+Say ""
 
 $ApiKey = Read-ValidatedApiKey
 
 Write-CodexFiles -ApiKey $ApiKey
+$StopResult = Stop-RunningClients
 
 Say ""
 Say "配置已经完成，可以关闭 PowerShell 了。"
 Say ""
-Report-RunningClients
+Report-RunningClients $StopResult
 Say ""
 Say "感谢您对 UseGoodAI 中转站的支持，使用过程中如有问题请联系网站客服。"
