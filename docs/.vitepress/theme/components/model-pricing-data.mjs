@@ -16,6 +16,8 @@ const GPT_MODEL_IDS = [
 ]
 
 const GEMINI_MODEL_IDS = [
+  'gemini-4-argon',
+  'gemini-4-barium',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
   'gemini-3.6-flash-tiered',
@@ -162,7 +164,7 @@ export const TEXT_GROUPS = [
   {
     id: 'gemini-antigravity',
     name: 'Gemini 分组（反重力 Antigravity 反代）',
-    multiplier: 0.4,
+    multiplier: 0.35,
     description: '适合 Antigravity、代理式编程和 Gemini 模型测试',
     modelIds: GEMINI_MODEL_IDS,
   },
@@ -416,6 +418,21 @@ export const TEXT_MODELS = [
     name: 'Grok 4.5',
     description: '速度比 GPT 日常分组更快，风控相对低，支持实时搜索和工具调用',
     officialUsd: { input: 2, output: 6, cachedInput: 0.2 },
+  },
+  {
+    id: 'gemini-4-argon',
+    name: 'Gemini 4 Argon',
+    description: '2026-09 发布，适合复杂软件开发、长任务推理和企业知识工作；按官方首发价展示',
+    officialUsd: { input: 2, output: 10, cachedInput: 0.1 },
+  },
+  {
+    id: 'gemini-4-barium',
+    name: 'Gemini 4 Barium',
+    description: '已上线，与 Argon 同价，按渠道公开基准价展示',
+    // 2026-10-13 核实：https://yourapi.cn/api/pricing
+    // 模型倍率 1、输出倍率 5、缓存倍率 0.05；按每美元 500,000 配额点折算。
+    officialUsd: { input: 2, output: 10, cachedInput: 0.1 },
+    priceBasisLabel: '渠道基准',
   },
   {
     id: 'gemini-3.8-flash',
