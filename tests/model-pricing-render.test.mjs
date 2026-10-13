@@ -5,6 +5,56 @@ import vue from '@vitejs/plugin-vue'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 
+test('renders Gemini 4 models first with 0.35 pricing and the Barium channel baseline label', async () => {
+  const server = await createServer({
+    configFile: false,
+    plugins: [vue()],
+    server: { middlewareMode: true },
+    appType: 'custom',
+  })
+
+  try {
+    const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
+
+    for (const priceMode of ['group', 'official']) {
+      const component = {
+        ...pricing,
+        setup(props, context) {
+          const state = pricing.setup(props, context)
+          state.activeCategory.value = 'gemini'
+          state.activeGroupId.value = 'gemini-antigravity'
+          state.priceMode.value = priceMode
+          return state
+        },
+      }
+      const html = await renderToString(createSSRApp(component))
+      const rows = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)]
+        .map(([row]) => row)
+        .filter((row) => row.includes('class="model-id-cell"'))
+      const ids = rows.map((row) => row.match(/<strong>(gemini-[^<]+)<\/strong>/)[1])
+
+      assert.equal(ids.length, 16)
+      assert.deepEqual(ids.slice(0, 3), ['gemini-4-argon', 'gemini-4-barium', 'gemini-3.8-flash'])
+      assert.match(rows[0], /aria-label="复制 gemini-4-argon"/)
+      assert.match(rows[1], /aria-label="复制 gemini-4-barium"/)
+      assert.match(rows[1], /渠道基准/)
+      assert.doesNotMatch(rows[1], /官方|价格待确认|NaN/)
+
+      const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'
+      for (const row of rows.slice(0, 2)) {
+        const amounts = [...row.matchAll(new RegExp(`<strong class="${priceClass}">([^<]+)<`, 'g'))]
+          .map((match) => match[1])
+        assert.deepEqual(amounts, priceMode === 'group'
+          ? ['¥0.70', '¥3.50', '¥0.035', '¥4.20']
+          : ['¥14.00', '¥70.00', '¥0.70', '¥84.00'])
+      }
+      if (priceMode === 'group') assert.match(html, /0\.35 倍率/)
+    }
+  } finally {
+    await server.close()
+  }
+})
+
 test('renders only supported models and their exact copy IDs in the 0.7 CC TEST group', async () => {
   const server = await createServer({
     configFile: false,

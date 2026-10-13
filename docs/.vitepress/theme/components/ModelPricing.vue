@@ -345,7 +345,7 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                           v-if="hasBillingOverride(tier, field) && tier.priceCurrency === 'usd'"
                           class="astra-price-basis"
                         >实测基准 ${{ formatUsd(tier.billingOverridesUsd[field]) }} × {{ activeGroup.multiplier }}</span>
-                        <del v-else>官方 {{ formatCny(tier.prices.official[field]) }}</del>
+                        <del v-else>{{ tier.priceBasisLabel ?? '官方' }} {{ formatCny(tier.prices.official[field]) }}</del>
                       </template>
                       <template v-else>
                         <strong class="official-price">{{ formatCny(tier.prices.official[field]) }}</strong>
@@ -364,7 +364,7 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                       省 {{ model.savingsPercent }}%
                     </span>
                     <span v-else class="official-label">
-                      {{ model.billingOverridesUsd ? '官方公开价' : '官方基准' }}
+                      {{ model.priceBasisLabel ?? (model.billingOverridesUsd ? '官方公开价' : '官方基准') }}
                     </span>
                   </td>
                 </template>
