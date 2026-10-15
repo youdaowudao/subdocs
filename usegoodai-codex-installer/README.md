@@ -31,7 +31,7 @@ irm https://docs.usegoodai.com/install/codex-models.ps1 | iex
 Linux/macOS（同一入口自动识别系统）：
 
 ```bash
-curl -fsSL https://docs.usegoodai.com/install/codex-models.sh | bash
+curl -fsSL https://docs.usegoodai.com/install/codex-models.sh | sh
 ```
 
 Linux 使用本机已有 Node.js 16+，脚本不会自动安装依赖。模型设定、完整源码、自动测试、独立审查与桌面待验收项目在 [codex-domestic-models](codex-domestic-models/README.md) 内维护。

@@ -167,8 +167,8 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(before, {p.name: p.read_bytes() for p in (ROOT/'install').iterdir()})
 
     def test_syntax_and_platform_guard(self):
-        self.assertEqual(execute(['bash','-n','install/codex-models.sh']).returncode,0)
-        result = execute(['/bin/bash','-c','uname() { printf "FreeBSD\\n"; }; export -f uname; exec /bin/bash "$1"','guard','install/codex-models.sh'])
+        self.assertEqual(execute(['/bin/sh','-n','install/codex-models.sh']).returncode,0)
+        result = execute(['/bin/sh','-c','uname() { printf "FreeBSD\\n"; }; installer_path=$1; shift; . "$installer_path"','guard',str(ROOT/'install/codex-models.sh')])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('macOS', result.stderr)
         result = execute([PWSH,'-NoProfile','-File','install/codex-models.ps1'])
@@ -203,22 +203,22 @@ theme = "dark"
             (tools/name).symlink_to(executable)
         return target,tools
 
-    def run_linux_script(self, target, tools, backend=None, piped=False, running_backend=None):
+    def run_linux_script(self, target, tools, backend=None, piped=False, running_backend=None, shell=('/bin/sh',)):
         log=(target if target.exists() else tools)/'mock-kills.log'
         log.write_text('')
         env=dict(os.environ,CODEX_HOME=str(target),PATH=str(tools),LINUX_TEST_KILL_LOG=str(log),NO_COLOR='1')
-        wrapper='ps() { :; }; kill() { printf "%s\\n" "$*" >> "$LINUX_TEST_KILL_LOG"; }; export -f ps kill; '
+        wrapper='ps() { :; }; kill() { printf "%s\\n" "$*" >> "$LINUX_TEST_KILL_LOG"; }; '
         if running_backend is not None:
             env['LINUX_TEST_APP_BACKEND']=str(running_backend)
             env['LINUX_TEST_USER_UID']=str(os.getuid())
-            wrapper+='ps() { if [ "$1" = -axo ]; then printf "7001 1 %s S %s\\n" "$LINUX_TEST_USER_UID" "$LINUX_TEST_APP_BACKEND"; fi; }; readlink() { [ "$1" = /proc/7001/exe ] && printf "%s\\n" "$LINUX_TEST_APP_BACKEND"; }; export -f ps readlink; '
+            wrapper+='ps() { if [ "$1" = -axo ]; then printf "7001 1 %s S %s\\n" "$LINUX_TEST_USER_UID" "$LINUX_TEST_APP_BACKEND"; fi; }; readlink() { [ "$1" = /proc/7001/exe ] && printf "%s\\n" "$LINUX_TEST_APP_BACKEND"; }; '
         arguments=['--codex-home',str(target)]
         if backend is not None:arguments+=['--codex-path',str(backend)]
         if piped:
-            command=['/bin/bash','-c',wrapper+'exec /bin/bash -s -- "$@"','linux-test',*arguments]
+            command=[*shell,'-c',wrapper+'. /dev/stdin','linux-test',*arguments]
             content=(ROOT/'install/codex-models.sh').read_text()
         else:
-            command=['/bin/bash','-c',wrapper+'exec /bin/bash "$@"','linux-test',str(ROOT/'install/codex-models.sh'),*arguments]
+            command=[*shell,'-c',wrapper+'installer_path=$1; shift; . "$installer_path"','linux-test',str(ROOT/'install/codex-models.sh'),*arguments]
             content=None
         return subprocess.run(command,cwd=ROOT,env=env,input=content,text=True,capture_output=True,timeout=60)
 
@@ -256,6 +256,29 @@ theme = "dark"
             self.assertEqual((target/name).stat().st_mode & 0o777,0o600)
         self.assertFalse(list(target.glob('.usegoodai-models-*')))
         self.assertFalse(list(target.glob('.usegoodai-write-*')))
+
+    def test_system_shell_stdin_without_bash_in_path(self):
+        shells=[('/bin/sh',)]
+        if shutil.which('busybox'):shells.append((shutil.which('busybox'),'ash'))
+        # Previously published commands using Bash must continue to work too.
+        if Path('/bin/bash').exists():shells.append(('/bin/bash',))
+        for shell in shells:
+            with self.subTest(shell=shell):
+                target,tools=self.linux_fixture('shell-stdin')
+                (tools/'ps').write_text('#!/bin/sh\nexit 0\n')
+                (tools/'ps').chmod(0o755)
+                self.assertIsNone(shutil.which('bash',path=str(tools)))
+                before=tomllib.loads((target/'config.toml').read_text())
+                env=dict(os.environ,CODEX_HOME=str(target),PATH=str(tools),NO_COLOR='1')
+                result=subprocess.run([*shell,'-s','--'],input=(ROOT/'install/codex-models.sh').read_text(),
+                    cwd=ROOT,env=env,text=True,capture_output=True,timeout=60)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertIn('已导入 8 个国产模型',result.stdout)
+                after=tomllib.loads((target/'config.toml').read_text())
+                self.assertEqual(after.pop('model_catalog_json'),str(target/'usegoodai-models.json'))
+                after['desktop'].pop('enabled-reasoning-efforts')
+                self.assertEqual(after,before)
+                self.assertEqual((target/'auth.json').read_text(),'sentinel-do-not-read')
 
     def test_linux_import_accepts_official_and_arbitrary_providers(self):
         configs = {
@@ -330,7 +353,7 @@ requires_openai_auth=false
         target,tools=self.linux_fixture('linux-failure')
         config=(target/'config.toml').read_bytes()
         backend=tools/'failing-backend'
-        backend.write_text('#!/bin/bash\ncase "$CODEX_HOME" in */.usegoodai-models-*) printf "private-test-value" >&2; exit 1 ;; esac\nexec '+shlex.quote(str(CODEX))+' "$@"\n')
+        backend.write_text('#!/bin/sh\ncase "$CODEX_HOME" in */.usegoodai-models-*) printf "private-test-value" >&2; exit 1 ;; esac\nexec '+shlex.quote(str(CODEX))+' "$@"\n')
         backend.chmod(0o755)
         result=self.run_linux_script(target,tools,backend)
         self.assertNotEqual(result.returncode,0)
@@ -364,7 +387,7 @@ requires_openai_auth=false
     def test_linux_prefers_running_app_backend(self):
         target,tools=self.linux_fixture('linux-running-app')
         (tools/'codex').unlink()
-        (tools/'codex').write_text('#!/bin/bash\nprintf "wrong backend" >&2\nexit 1\n')
+        (tools/'codex').write_text('#!/bin/sh\nprintf "wrong backend" >&2\nexit 1\n')
         (tools/'codex').chmod(0o755)
         resource_dir=target/'app/resources'
         resource_dir.mkdir(parents=True)
@@ -443,7 +466,7 @@ requires_openai_auth=false
     def test_linux_backend_json_errors_identify_command(self):
         target,tools=self.linux_fixture('linux-backend-json-diagnostic')
         backend=tools/'bad-json-backend'
-        backend.write_text('#!/bin/bash\nprintf "private-credential-do-not-print"\n')
+        backend.write_text('#!/bin/sh\nprintf "private-credential-do-not-print"\n')
         backend.chmod(0o755)
         before=(target/'config.toml').read_bytes()
         result=self.run_linux_script(target,tools,backend)
@@ -454,7 +477,7 @@ requires_openai_auth=false
     def test_linux_backend_errors_expose_safe_reason_and_exit_code(self):
         target,tools=self.linux_fixture('linux-backend-stderr-diagnostic')
         backend=tools/'failing-toml-backend'
-        backend.write_text('#!/bin/bash\nprintf "TOML parse error at line 7, column 9\\napi_key=private-credential-do-not-print\\n" >&2\nexit 7\n')
+        backend.write_text('#!/bin/sh\nprintf "TOML parse error at line 7, column 9\\napi_key=private-credential-do-not-print\\n" >&2\nexit 7\n')
         backend.chmod(0o755)
         before=(target/'config.toml').read_bytes()
         result=self.run_linux_script(target,tools,backend)
@@ -466,7 +489,7 @@ requires_openai_auth=false
     def test_linux_backend_missing_provider_identifies_field_without_value(self):
         target,tools=self.linux_fixture('linux-provider-diagnostic')
         backend=tools/'failing-provider-backend'
-        backend.write_text("#!/bin/bash\nprintf 'Error: Model provider `private-credential-do-not-print` not found\\n' >&2\nexit 1\n")
+        backend.write_text("#!/bin/sh\nprintf 'Error: Model provider `private-credential-do-not-print` not found\\n' >&2\nexit 1\n")
         backend.chmod(0o755)
         before=(target/'config.toml').read_bytes()
         result=self.run_linux_script(target,tools,backend)
@@ -524,8 +547,8 @@ console.log(core.formatError(error));'''
     def test_shell_processes(self):
         functions=build.parent_process_functions()[0]
         fixture='''
-function id() { printf '1001\\n'; }
-function ps() {
+id() { printf '1001\\n'; }
+ps() {
   if [ "$1" = -axo ]; then
     cat <<EOF
 $$ $PPID 1001 S /Applications/Codex.app/Contents/MacOS/Codex
@@ -541,28 +564,28 @@ EOF
     return 0
   fi
 }
-function say() { printf '%s\\n' "$*"; }
-function sleep() { :; }
-function kill() { printf '%s\\n' "$*" >> "$process_log"; }
+say() { printf '%s\\n' "$*"; }
+sleep() { :; }
+kill() { printf '%s\\n' "$*" >> "$process_log"; }
 selection="$(list_running_clients)"
-[[ "$selection" == *"$$ codex skip"* ]] || exit 11
-[[ "$selection" == *"$PPID codex skip"* ]] || exit 12
-[[ "$selection" == *"7001 chatgpt stop"* ]] || exit 13
-[[ "$selection" == *"7005 codex stop"* ]] || exit 14
-[[ "$selection" != *"7002"* && "$selection" != *"7003"* && "$selection" != *"7004"* ]] || exit 15
+case "$selection" in *"$$ codex skip"*) ;; *) exit 11 ;; esac
+case "$selection" in *"$PPID codex skip"*) ;; *) exit 12 ;; esac
+case "$selection" in *"7001 chatgpt stop"*) ;; *) exit 13 ;; esac
+case "$selection" in *"7005 codex stop"*) ;; *) exit 14 ;; esac
+case "$selection" in *7002*|*7003*|*7004*) exit 15 ;; esac
 stop_running_clients
 [ "$codex_running" = true ] && [ "$chatgpt_running" = true ] && [ "$clients_left" = true ] || exit 16
 report_running_clients
-function list_running_clients() { printf '7001 codex stop\\n'; }
+list_running_clients() { printf '7001 codex stop\\n'; }
 stop_running_clients
 [ "$clients_left" = false ] || exit 17
 report_running_clients
-function list_running_clients() { :; }
+list_running_clients() { :; }
 stop_running_clients
 [ "$codex_running" = false ] && [ "$chatgpt_running" = false ] || exit 18
 report_running_clients
-function list_running_clients() { printf '7001 codex stop\\n'; }
-function client_is_alive() { return 0; }
+list_running_clients() { printf '7001 codex stop\\n'; }
+client_is_alive() { return 0; }
 stop_running_clients
 [ "$clients_left" = true ] || exit 19
 report_running_clients
@@ -570,16 +593,21 @@ report_running_clients
         script=WORK/'processes.sh'
         process_log=WORK/'mock-kills.log'
         process_log.write_text('')
-        script.write_text('set -euo pipefail\nprocess_log="$1"\n'+functions+'\n'+fixture)
-        result=execute(['bash',script,process_log])
-        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertIn('已自动关闭',result.stdout)
-        self.assertIn('未能自动关闭',result.stdout)
-        self.assertIn('当前未检测到',result.stdout)
-        calls=process_log.read_text().splitlines()
-        self.assertTrue(any('-KILL' in call for call in calls))
-        for call in calls:
-            self.assertTrue(set(call.split()[1:]).issubset({'7001','7005'}))
+        script.write_text('set -eu\nprocess_log="$1"\n'+functions+'\n'+fixture)
+        shells=[('/bin/sh',)]
+        if shutil.which('busybox'):shells.append((shutil.which('busybox'),'ash'))
+        for shell in shells:
+            with self.subTest(shell=shell):
+                process_log.write_text('')
+                result=execute([*shell,script,process_log])
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertIn('已自动关闭',result.stdout)
+                self.assertIn('未能自动关闭',result.stdout)
+                self.assertIn('当前未检测到',result.stdout)
+                calls=process_log.read_text().splitlines()
+                self.assertTrue(any('-KILL' in call for call in calls))
+                for call in calls:
+                    self.assertTrue(set(call.split()[1:]).issubset({'7001','7005'}))
 
 
 if __name__ == '__main__':
