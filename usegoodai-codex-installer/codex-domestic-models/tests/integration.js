@@ -14,9 +14,19 @@ let assertions = 0;
 function check(value) { assert.ok(value); assertions++; }
 function host(home, failure) {
     let faulted = false;
+    let unreadable = false;
     const io = createLinuxIO(home, core);
-    const write = io.write, backup = io.backup, exportAt = io.exportAt;
+    const write = io.write, read = io.read, backup = io.backup, exportAt = io.exportAt;
+    function currentFiles() { return ['config.toml','usegoodai-models.json','usegoodai-models.managed.json'].map(name => fs.existsSync(path.join(home,name)) ? fs.readFileSync(path.join(home,name)) : null); }
+    io.read = function(file) {
+        if (unreadable && file === path.join(home, 'usegoodai-models.json')) { const error = Error('injected unreadable file'); error.code='EACCES'; throw error; }
+        return read(file);
+    };
     io.write = function(file, text) {
+        if (failure === 'write_external' && !faulted && file === path.join(home, 'usegoodai-models.managed.json')) {
+            faulted = true; fs.appendFileSync(path.join(home, 'config.toml'), '# App saved a setting\n');
+            io.conflictFiles = currentFiles(); throw Error('injected write failure during external edit');
+        }
         if (failure === 'write' && !faulted && file === path.join(home, 'usegoodai-models.managed.json')) { faulted = true; throw Error('injected'); }
         write(file, text);
     };
@@ -28,9 +38,13 @@ function host(home, failure) {
             const final = target !== home && core.stringValue(core.configInfo(fs.readFileSync(path.join(target, 'config.toml'), 'utf8')).values.model_catalog_json) === path.join(home, 'usegoodai-models.json');
             if (failure === 'validation' && target !== home) { throw Error('injected'); }
             if (failure === 'postcommit' && final) { throw Error('injected'); }
-            if (final && ['changed_config', 'changed_managed', 'changed_catalog'].includes(failure)) {
-                const name = {changed_config:'config.toml', changed_managed:'usegoodai-models.managed.json', changed_catalog:'usegoodai-models.json'}[failure];
+            if (failure === 'deleted_config' && final) { fs.unlinkSync(path.join(home, 'config.toml')); io.conflictFiles = currentFiles(); }
+            if (failure === 'unreadable_catalog' && final) { unreadable = true; io.conflictFiles = currentFiles(); }
+            if (final && ['changed_config', 'changed_managed', 'changed_catalog', 'changed_then_fail'].includes(failure)) {
+                const name = {changed_config:'config.toml', changed_managed:'usegoodai-models.managed.json', changed_catalog:'usegoodai-models.json', changed_then_fail:'config.toml'}[failure];
                 fs.appendFileSync(path.join(home, name), '\n');
+                io.conflictFiles = currentFiles();
+                if (failure === 'changed_then_fail') { throw Error('injected after external edit'); }
             }
             if (failure === 'concurrent' && target !== home) { fs.appendFileSync(path.join(home, 'config.toml'), '# edited externally\n'); }
             const text = exportAt(exe, args, target);
@@ -74,17 +88,18 @@ function setup(name) {
     check(fs.readFileSync(path.join(home,'config.toml'),'utf8')===after);
     check(config.includes('wire_api = "responses"'));
 }
-for (const failure of ['write','backup','validation','wrong_catalog','concurrent','postcommit','wrong_metadata','changed_config','changed_managed','changed_catalog']) {
+for (const failure of ['write','backup','validation','wrong_catalog','concurrent','postcommit','wrong_metadata','changed_config','changed_managed','changed_catalog','changed_then_fail','deleted_config','unreadable_catalog','write_external']) {
     for (const existing of [false,true]) {
         const {home,config}=setup(failure);
         if (existing) { core.importModels(host(home),home,backend,domestic); }
         const paths=['config.toml','usegoodai-models.json','usegoodai-models.managed.json'];
         const before=paths.map(name=>fs.existsSync(path.join(home,name)) ? fs.readFileSync(path.join(home,name)) : null);
-        assert.throws(()=>core.importModels(host(home,failure),home,backend,domestic)); assertions++;
+        const io=host(home,failure);
+        assert.throws(()=>core.importModels(io,home,backend,domestic)); assertions++;
         paths.forEach((name,index)=>{
             const filename=path.join(home,name);
             const actual=fs.existsSync(filename) ? fs.readFileSync(filename) : null;
-            const expected=failure==='concurrent' && index===0 ? Buffer.concat([before[index],Buffer.from('# edited externally\n')]) : before[index];
+            const expected=io.conflictFiles ? io.conflictFiles[index] : (failure==='concurrent' && index===0 ? Buffer.concat([before[index],Buffer.from('# edited externally\n')]) : before[index]);
             assert.deepEqual(actual,expected); assertions++;
         });
         check(fs.readFileSync(path.join(home,'auth.json'),'utf8')==='sentinel-do-not-read');
@@ -96,11 +111,16 @@ for (const original of [null, '']) {
         const {home} = setup('new_config_rollback');
         const filename = path.join(home, 'config.toml');
         if (original === null) { fs.unlinkSync(filename); } else { fs.writeFileSync(filename, original); }
-        assert.throws(()=>core.importModels(host(home,failure),home,backend,domestic)); assertions++;
-        check(fs.existsSync(filename) === (original !== null));
-        if (original !== null) { check(fs.readFileSync(filename, 'utf8') === original); }
-        check(!fs.existsSync(path.join(home, 'usegoodai-models.json')));
-        check(!fs.existsSync(path.join(home, 'usegoodai-models.managed.json')));
+        const io=host(home,failure);
+        assert.throws(()=>core.importModels(io,home,backend,domestic)); assertions++;
+        if (io.conflictFiles) {
+            ['config.toml','usegoodai-models.json','usegoodai-models.managed.json'].forEach((name,index)=>{ assert.deepEqual(fs.readFileSync(path.join(home,name)),io.conflictFiles[index]); assertions++; });
+        } else {
+            check(fs.existsSync(filename) === (original !== null));
+            if (original !== null) { check(fs.readFileSync(filename, 'utf8') === original); }
+            check(!fs.existsSync(path.join(home, 'usegoodai-models.json')));
+            check(!fs.existsSync(path.join(home, 'usegoodai-models.managed.json')));
+        }
     }
 }
 {
@@ -136,5 +156,36 @@ for (const invalid of ['directory','symlink','dangling','managed_directory']) {
     fs.writeFileSync(filename,'model_instructions_file="instructions.md"\n'+fs.readFileSync(filename,'utf8'));
     check(core.importModels(host(home),home,backend,domestic)===8);
     check(fs.readFileSync(filename,'utf8').includes('model_instructions_file="instructions.md"'));
+}
+for (const kind of ['catalog', 'managed', 'source']) {
+    for (const phase of ['bundled', 'staged']) {
+        const {home} = setup('read_inputs_' + kind + '_' + phase);
+        core.importModels(host(home), home, backend, domestic);
+        let changedPath = path.join(home, kind === 'managed' ? 'usegoodai-models.managed.json' : 'usegoodai-models.json');
+        if (kind === 'source') {
+            const source = path.join(home, 'customer-models.json');
+            fs.copyFileSync(changedPath, source); changedPath = source;
+            const filename = path.join(home, 'config.toml');
+            fs.writeFileSync(filename, fs.readFileSync(filename, 'utf8').replace(JSON.stringify(path.join(home, 'usegoodai-models.json')), JSON.stringify(source)));
+        }
+        const paths = ['config.toml', 'usegoodai-models.json', 'usegoodai-models.managed.json'].map(name => path.join(home, name));
+        const before = paths.map(file => fs.readFileSync(file, 'utf8'));
+        const io = host(home), exportAt = io.exportAt;
+        let changed = null;
+        io.exportAt = function(exe, args, target) {
+            if (changed === null && (phase === 'bundled' ? args.includes('--bundled') : target !== home)) {
+                const value = JSON.parse(fs.readFileSync(changedPath, 'utf8'));
+                if (kind === 'managed') { value.push('user-managed-during-export'); }
+                else { value.models.push({...value.models[0], slug:'user-added-during-export'}); }
+                changed = JSON.stringify(value);
+                fs.writeFileSync(changedPath, changed);
+            }
+            return exportAt(exe, args, target);
+        };
+        assert.throws(() => core.importModels(io, home, backend, domestic), /被其他程序修改/); assertions++;
+        check(fs.readFileSync(changedPath, 'utf8') === changed);
+        paths.forEach((file, index) => { check(fs.readFileSync(file, 'utf8') === (file === changedPath ? changed : before[index])); });
+        check(!fs.readdirSync(home).some(name => name.startsWith('.usegoodai-models-')));
+    }
 }
 console.log(`JavaScript import/rollback: ${assertions} assertions passed`);

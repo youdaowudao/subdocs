@@ -93,6 +93,57 @@ function Report-RunningClients($Result) {
   Say "已自动关闭 ${clients}，请重新打开并新建对话测试，如有问题请联系网站客服。"
 }
 # Windows PowerShell 5.1 compatible. Keep behavior in sync with core.js via parity tests.
+function New-ModelImportError([string]$Message) {
+  $problem=New-Object System.Exception -ArgumentList $Message
+  $problem.Data['ModelImportSafe']=$true
+  return $problem
+}
+
+function Invoke-ModelStep([string]$Name, [string]$Target, [scriptblock]$Action) {
+  try { & $Action }
+  catch {
+    if (-not $_.Exception.Data.Contains('ModelImportStep')) { $_.Exception.Data['ModelImportStep']=$Name }
+    if ($Target -and -not $_.Exception.Data.Contains('ModelImportTarget')) { $_.Exception.Data['ModelImportTarget']=$Target }
+    throw
+  }
+}
+
+function Format-ModelImportError($Record) {
+  $problem=if ($Record -is [System.Management.Automation.ErrorRecord]) { $Record.Exception } elseif ($Record -is [Exception]) { $Record } else { $null }
+  $reason=$null; $step=$null; $target=$null; $exitStatus=$null; $kind='Error'; $systemCode=$null; $category=$null
+  while ($null -ne $problem) {
+    if (-not $reason -and $problem.Data['ModelImportSafe'] -eq $true) { $reason=$problem.Message }
+    if (-not $step -and $problem.Data['ModelImportStep']) { $step=[string]$problem.Data['ModelImportStep'] }
+    if (-not $target -and $problem.Data['ModelImportTarget']) { $target=[string]$problem.Data['ModelImportTarget'] }
+    if ($null -eq $exitStatus -and $problem.Data.Contains('ModelImportExitStatus')) { $exitStatus=$problem.Data['ModelImportExitStatus'] }
+    if ($problem.GetType().Name -cmatch '^[A-Za-z][A-Za-z0-9]*Exception$') { $kind=$problem.GetType().Name }
+    if ($problem -is [System.ComponentModel.Win32Exception]) { $systemCode=$problem.NativeErrorCode }
+    if ($problem -is [UnauthorizedAccessException]) { $category='权限不足，无法访问目标文件。' }
+    elseif ($problem -is [IO.FileNotFoundException]) { $category='文件不存在。' }
+    elseif ($problem -is [IO.DirectoryNotFoundException]) { $category='文件目录不存在。' }
+    elseif ($problem -is [IO.PathTooLongException]) { $category='文件路径过长。' }
+    elseif ($problem -is [Text.DecoderFallbackException]) { $category='文件包含无效的 UTF-8 字节。' }
+    elseif ($problem -is [IO.IOException]) { $category='文件系统读写失败。' }
+    $problem=$problem.InnerException
+  }
+  if (-not $reason) { if (-not $category) { $category='文件格式或系统操作失败。' }; $reason=$category+'（'+$kind+'）' }
+  if (-not $step) { $step='初始化模型导入' }
+  $lines=New-Object 'System.Collections.Generic.List[string]'
+  $lines.Add('导入失败'); $lines.Add('失败步骤：'+$step)
+  if ($target) { $lines.Add('文件或命令：'+$target) }
+  $lines.Add('原因：'+$reason)
+  if ($null -ne $exitStatus) { $lines.Add('后端退出码：'+$exitStatus) }
+  if ($null -ne $systemCode) { $lines.Add('系统错误码：'+$systemCode) }
+  return ($lines -join "`n")
+}
+
+function ConvertFrom-ModelJson([string]$Text, [string]$Step, [string]$Target) {
+  return (Invoke-ModelStep $Step $Target {
+    try { ConvertFrom-Json -InputObject $Text -ErrorAction Stop }
+    catch { throw (New-ModelImportError '内容不是有效的 JSON。') }
+  })
+}
+
 function New-OrdinalMap {
   return ,(New-Object 'System.Collections.Generic.Dictionary[string,object]' ([System.StringComparer]::Ordinal))
 }
@@ -127,9 +178,9 @@ function Get-TomlString([string]$Raw) {
         return $encoded.Substring(1,$encoded.Length-2)
       })
       return ($value | ConvertFrom-Json -ErrorAction Stop)
-    } catch { throw 'TOML 字符串格式无效。' }
+    } catch { throw (New-ModelImportError 'TOML 字符串格式无效。') }
   }
-  throw '模型目录、默认模型等目标字段须使用单行 TOML 字符串。'
+  throw (New-ModelImportError '模型目录、默认模型等目标字段须使用单行 TOML 字符串。')
 }
 
 function Get-TomlKeyParts([string]$Raw) {
@@ -138,16 +189,16 @@ function Get-TomlKeyParts([string]$Raw) {
   $pattern = '\s*("(?:[^"\\]|\\.)*"|''[^'']*''|[A-Za-z0-9_-]+)\s*'
   while ($pos -lt $Raw.Length) {
     $match = [regex]::Match($Raw.Substring($pos), '^' + $pattern)
-    if (-not $match.Success) { throw '无法识别 TOML 字段或配置段。' }
+    if (-not $match.Success) { throw (New-ModelImportError '无法识别 TOML 字段或配置段。') }
     $key = $match.Groups[1].Value
     if ($key.StartsWith('"') -or $key.StartsWith("'")) { $key = Get-TomlString $key }
     $parts.Add($key)
     $pos += $match.Length
     if ($pos -eq $Raw.Length) { break }
-    if ($Raw[$pos] -cne '.') { throw 'TOML 字段路径无效。' }
+    if ($Raw[$pos] -cne '.') { throw (New-ModelImportError 'TOML 字段路径无效。') }
     $pos += 1
   }
-  if (-not $parts.Count) { throw '空 TOML 字段。' }
+  if (-not $parts.Count) { throw (New-ModelImportError '空 TOML 字段。') }
   return ,$parts.ToArray()
 }
 
@@ -173,7 +224,7 @@ function Get-TomlStatements([string]$Text) {
           while ($run -lt 5 -and $i + $run -lt $Text.Length -and [string]$Text[$i + $run] -ceq $quote) { $run += 1 }
           [void]$clean.Append($Text.Substring($i + 1, $run - 1)); $i += $run - 1; $quote = ''; $triple = $false
         }
-      } elseif ($ch -ceq "`n" -and -not $triple) { throw 'TOML 字符串未闭合。' }
+      } elseif ($ch -ceq "`n" -and -not $triple) { throw (New-ModelImportError 'TOML 字符串未闭合。') }
       continue
     }
     if ($ch -ceq '#') { $comment = $true; [void]$clean.Append(' '); continue }
@@ -186,14 +237,14 @@ function Get-TomlStatements([string]$Text) {
     if ($ch -ceq '[' -or $ch -ceq '{') { $depth.Push([char]$ch) }
     if ($ch -ceq ']' -or $ch -ceq '}') {
       $expected = if ($ch -ceq ']') { '[' } else { '{' }
-      if (-not $depth.Count -or [string]$depth.Pop() -cne $expected) { throw 'TOML 括号不匹配。' }
+      if (-not $depth.Count -or [string]$depth.Pop() -cne $expected) { throw (New-ModelImportError 'TOML 括号不匹配。') }
     }
     [void]$clean.Append($ch)
     if ($ch -ceq "`n" -and -not $depth.Count) {
       $records.Add(@{Start=$start; End=$i+1; Code=$clean.ToString()}); $start=$i+1; [void]$clean.Clear()
     }
   }
-  if ($quote -or $depth.Count) { throw 'TOML 字符串或括号未闭合。' }
+  if ($quote -or $depth.Count) { throw (New-ModelImportError 'TOML 字符串或括号未闭合。') }
   if ($start -lt $Text.Length) { $records.Add(@{Start=$start; End=$Text.Length; Code=$clean.ToString()}) }
   return ,$records.ToArray()
 }
@@ -206,11 +257,11 @@ function Get-ConfigInfo([string]$Text) {
     if (-not $code) { continue }
     if ($code.StartsWith('[')) {
       $header = [regex]::Match($code, '^(\[\[?)([\s\S]*?)(\]\]?)$')
-      if (-not $header.Success -or $header.Groups[1].Length -ne $header.Groups[3].Length) { throw 'TOML 配置段无效。' }
+      if (-not $header.Success -or $header.Groups[1].Length -ne $header.Groups[3].Length) { throw (New-ModelImportError 'TOML 配置段无效。') }
       $scope = Get-TomlKeyParts $header.Groups[2].Value.Trim()
       $info.FirstHeader = [Math]::Min($info.FirstHeader, $rec.Start)
       if ($scope.Count -eq 1 -and $scope[0] -ceq 'desktop') {
-        if ($header.Groups[1].Value -ceq '[[' -or $null -ne $info.Desktop) { throw 'desktop 配置段重复或格式无效。' }
+        if ($header.Groups[1].Value -ceq '[[' -or $null -ne $info.Desktop) { throw (New-ModelImportError 'desktop 配置段重复或格式无效。') }
         $info.Desktop = $rec
       }
       continue
@@ -222,16 +273,16 @@ function Get-ConfigInfo([string]$Text) {
         if ($esc) { $esc=$false } elseif ($ch -ceq '\' -and $q -ceq '"') { $esc=$true } elseif ($ch -ceq $q) { $q='' }
       } elseif ($ch -ceq '"' -or $ch -ceq "'") { $q=$ch } elseif ($ch -ceq '=') { break }
     }
-    if ($eq -eq $rec.Code.Length) { throw 'TOML 配置行无效。' }
+    if ($eq -eq $rec.Code.Length) { throw (New-ModelImportError 'TOML 配置行无效。') }
     $parts = Get-TomlKeyParts $rec.Code.Substring(0,$eq).Trim().TrimStart([char]0xFEFF)
     $path = @($scope) + @($parts); $key = $path -join '.'
     if (-not $scope.Count -and $parts[0] -ceq 'desktop') {
       $info.DesktopInline = $parts.Count -eq 1
       $info.DesktopDotted = $parts.Count -gt 1 -or $info.DesktopDotted
     }
-    if ($path.Count -gt 1 -and $path[0] -ceq 'profiles' -and $path[-1] -ceq 'model_catalog_json') { throw 'profile 中另有 model_catalog_json；请先统一目录配置再导入。' }
+    if ($path.Count -gt 1 -and $path[0] -ceq 'profiles' -and $path[-1] -ceq 'model_catalog_json') { throw (New-ModelImportError 'profile 中另有 model_catalog_json；请先统一目录配置再导入。') }
     if (($path.Count -eq 1 -and @('model_catalog_json','model','review_model','profile','model_provider') -ccontains $key) -or ($path.Count -eq 2 -and $key -ceq 'desktop.enabled-reasoning-efforts')) {
-      if ($info.Edits.ContainsKey($key)) { throw '目标 TOML 字段重复。' }
+      if ($info.Edits.ContainsKey($key)) { throw (New-ModelImportError '目标 TOML 字段重复。') }
       $vstart = $eq + 1
       while ($vstart -lt $rec.Code.Length -and [char]::IsWhiteSpace($rec.Code[$vstart])) { $vstart += 1 }
       $vend = $rec.Code.TrimEnd().Length
@@ -239,24 +290,25 @@ function Get-ConfigInfo([string]$Text) {
       $info.Values[$key] = $rec.Code.Substring($vstart,$vend-$vstart)
     }
   }
-  if ($info.DesktopInline) { throw 'desktop 使用内联表；请改为 [desktop] 配置段后导入。' }
+  if ($info.DesktopInline) { throw (New-ModelImportError 'desktop 使用内联表；请改为 [desktop] 配置段后导入。') }
   return $info
 }
 
 function Get-TomlStringArray([string]$Raw) {
   $body = $Raw.Trim(); $items = New-Object 'System.Collections.Generic.List[string]'
-  if (-not $body.StartsWith('[') -or -not $body.EndsWith(']')) { throw '桌面推理档位必须是字符串数组。' }
+  if (-not $body.StartsWith('[') -or -not $body.EndsWith(']')) { throw (New-ModelImportError '桌面推理档位必须是字符串数组。') }
   $body = $body.Substring(1,$body.Length-2)
   $pos=0
   while ($pos -lt $body.Length -and $body.Substring($pos).Trim()) {
     $match = [regex]::Match($body.Substring($pos),'^\s*("(?:[^"\\]|\\.)*"|''[^'']*'')\s*(,|$)')
-    if (-not $match.Success) { throw '桌面推理档位必须是字符串数组。' }
+    if (-not $match.Success) { throw (New-ModelImportError '桌面推理档位必须是字符串数组。') }
     $items.Add((Get-TomlString $match.Groups[1].Value)); $pos += $match.Length
   }
   return ,$items.ToArray()
 }
 
 function Set-ModelConfig([string]$Text, $Info, [string]$CatalogPath, [string[]]$Efforts) {
+  if ($Text.StartsWith([string][char]0xFEFF)) { $Text=$Text.TrimStart([char]0xFEFF); $Info=Get-ConfigInfo $Text }
   $newline = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
   $changes = New-Object 'System.Collections.Generic.List[object]'
   $rootLines = New-Object 'System.Collections.Generic.List[string]'
@@ -291,23 +343,23 @@ function Set-ModelConfig([string]$Text, $Info, [string]$CatalogPath, [string[]]$
 }
 
 function Test-ModelCatalog($Catalog) {
-  if ($null -eq $Catalog -or $Catalog.models -isnot [Array] -or -not $Catalog.models.Count) { throw '模型目录必须包含非空 models 数组。' }
+  if ($null -eq $Catalog -or $Catalog.models -isnot [Array] -or -not $Catalog.models.Count) { throw (New-ModelImportError '模型目录必须包含非空 models 数组。') }
   $seen = New-OrdinalMap
   foreach ($model in $Catalog.models) {
-    if ($null -eq $model -or $model.slug -isnot [string] -or -not $model.slug -or $seen.ContainsKey($model.slug)) { throw '模型目录中有空 ID 或重复 ID。' }
+    if ($null -eq $model -or $model.slug -isnot [string] -or -not $model.slug -or $seen.ContainsKey($model.slug)) { throw (New-ModelImportError '模型目录中有空 ID 或重复 ID。') }
     $seen[$model.slug]=$true
-    if ($model.display_name -isnot [string] -or $model.supported_reasoning_levels -isnot [Array] -or -not $model.shell_type -or -not $model.visibility -or $model.supported_in_api -isnot [bool] -or $null -eq $model.priority -or $model.support_verbosity -isnot [bool] -or $null -eq $model.truncation_policy -or $model.experimental_supported_tools -isnot [Array]) { throw '模型目录缺少 Codex 必需元数据。' }
-    if ($model.model_messages.instructions_template -isnot [string] -and $model.base_instructions -isnot [string]) { throw '模型目录缺少模型指令。' }
+    if ($model.display_name -isnot [string] -or $model.supported_reasoning_levels -isnot [Array] -or -not $model.shell_type -or -not $model.visibility -or $model.supported_in_api -isnot [bool] -or $null -eq $model.priority -or $model.support_verbosity -isnot [bool] -or $null -eq $model.truncation_policy -or $model.experimental_supported_tools -isnot [Array]) { throw (New-ModelImportError '模型目录缺少 Codex 必需元数据。') }
+    if ($model.model_messages.instructions_template -isnot [string] -and $model.base_instructions -isnot [string]) { throw (New-ModelImportError '模型目录缺少模型指令。') }
   }
 }
 
 function Merge-ModelCatalog($Existing, $App, $Domestic, $Managed, $Info) {
   Test-ModelCatalog $App; Test-ModelCatalog $Domestic
   if ($null -ne $Existing) { Test-ModelCatalog $Existing }
-  if ($Managed -isnot [Array]) { throw '已管理模型记录格式无效。' }
+  if ($Managed -isnot [Array]) { throw (New-ModelImportError '已管理模型记录格式无效。') }
   foreach ($id in $Managed) {
-    if ($id -isnot [string] -or -not $id) { throw '已管理模型记录格式无效。' }
-    if ($id -match '^gpt-') { throw '管理记录包含 GPT，停止导入以保留 GPT。' }
+    if ($id -isnot [string] -or -not $id) { throw (New-ModelImportError '已管理模型记录格式无效。') }
+    if ($id -match '^gpt-') { throw (New-ModelImportError '管理记录包含 GPT，停止导入以保留 GPT。') }
   }
   $byId=New-OrdinalMap; $owned=New-OrdinalMap; $order=New-Object 'System.Collections.Generic.List[string]'
   foreach ($id in (@($Managed) + @($Domestic.models | ForEach-Object {$_.slug}))) { $owned[$id]=$true }
@@ -319,10 +371,7 @@ function Merge-ModelCatalog($Existing, $App, $Domestic, $Managed, $Info) {
   $source = if ($null -ne $Existing) { $Existing } else { $App }
   $result = ConvertFrom-Json -InputObject (ConvertTo-Json -InputObject $source -Depth 100)
   $result.models = @($order | ForEach-Object {$byId[$_]})
-  if (-not @($result.models | Where-Object {$_.slug -match '^gpt-'}).Count) { throw '未取得 GPT 完整目录，停止导入。' }
-  foreach ($key in @('model','review_model')) {
-    if ($Info.Values.ContainsKey($key) -and -not $byId.ContainsKey((Get-TomlString $Info.Values[$key]))) { throw '原默认模型或复核模型不在完整目录中，停止导入。' }
-  }
+  if (-not @($result.models | Where-Object {$_.slug -match '^gpt-'}).Count) { throw (New-ModelImportError '未取得 GPT 完整目录，停止导入。') }
   $levels = New-OrdinalMap
   $efforts = @()
   if ($Info.Values.ContainsKey('desktop.enabled-reasoning-efforts')) { $efforts = Get-TomlStringArray $Info.Values['desktop.enabled-reasoning-efforts'] }
@@ -330,7 +379,7 @@ function Merge-ModelCatalog($Existing, $App, $Domestic, $Managed, $Info) {
   $efforts += @($Domestic.models | ForEach-Object {$_.supported_reasoning_levels} | ForEach-Object {$_.effort})
   $effortOrder = @('none','minimal','low','medium','high','xhigh','ultra','max')
   foreach ($level in $efforts) {
-    if ($effortOrder -cnotcontains $level) { throw '桌面档位存在未知值，停止导入。' }
+    if ($effortOrder -cnotcontains $level) { throw (New-ModelImportError '桌面档位存在未知值，停止导入。') }
     $levels[$level]=$true
   }
   Test-ModelCatalog $result
@@ -341,38 +390,58 @@ function Invoke-ModelImport([string]$TargetHome, [string]$Backend, $Domestic) {
   $configPath = Join-Path $TargetHome 'config.toml'
   $catalogPath = Join-Path $TargetHome 'usegoodai-models.json'
   $managedPath = Join-Path $TargetHome 'usegoodai-models.managed.json'
-  if (-not (Test-PrivatePath $TargetHome)) { $null=[IO.Directory]::CreateDirectory($TargetHome) }
-  $original = if (Test-PrivatePath $configPath) { Read-PrivateText $configPath } else { $null }
-  $info = Get-ConfigInfo ([string]$original); $existing=$null; $managed=@()
+  Invoke-ModelStep '创建 Codex 配置目录' $TargetHome { if (-not (Test-PrivatePath $TargetHome)) { $null=[IO.Directory]::CreateDirectory($TargetHome) } }
+  $readSet=New-Object 'System.Collections.Generic.List[object]'
+  $original=Read-ModelInput $readSet $configPath '读取 Codex 配置'
+  $outputCatalog=Read-ModelInput $readSet $catalogPath '读取原输出模型目录'
+  $rawManaged=Read-ModelInput $readSet $managedPath '读取已管理模型记录'
+  $info=Invoke-ModelStep '解析 Codex 配置' $configPath { Get-ConfigInfo ([string]$original) }
+  $existing=$null; $managed=@(); $source=$null
   if ($info.Values.ContainsKey('model_catalog_json')) {
-    $source = Get-TomlString $info.Values['model_catalog_json']
-    if ($source.StartsWith('~/') -or $source.StartsWith('~\')) { $source=Join-Path $HOME $source.Substring(2) }
-    if (-not [IO.Path]::IsPathRooted($source)) { $source=Join-Path $TargetHome $source }
-    if (Test-PrivatePath $source) { $existing=ConvertFrom-Json -InputObject (Read-PrivateText $source) }
+    $source=Invoke-ModelStep '解析原模型目录路径' $configPath {
+      $value=Get-TomlString $info.Values['model_catalog_json']
+      if ($value.StartsWith('~/') -or $value.StartsWith('~\')) { $value=Join-Path $HOME $value.Substring(2) }
+      if (-not [IO.Path]::IsPathRooted($value)) { $value=Join-Path $TargetHome $value }
+      [IO.Path]::GetFullPath($value)
+    }
+    $sourceText=Read-ModelInput $readSet $source '读取原模型目录'
+    if ($null -ne $sourceText) {
+      $existing=ConvertFrom-ModelJson $sourceText '解析原模型目录' $source
+      Invoke-ModelStep '校验原模型目录' $source { Test-ModelCatalog $existing }
+    }
   }
-  if (Test-PrivatePath $managedPath) {
-    $rawManaged=Read-PrivateText $managedPath
-    if (-not $rawManaged.TrimStart().StartsWith('[')) { throw '已管理模型记录格式无效。' }
-    $managed=@(ConvertFrom-Json -InputObject $rawManaged)
+  if ($null -ne $rawManaged) {
+    $managed=Invoke-ModelStep '解析已管理模型记录' $managedPath {
+      if (-not $rawManaged.TrimStart().StartsWith('[')) { throw (New-ModelImportError '已管理模型记录格式无效。') }
+      ,@(ConvertFrom-ModelJson $rawManaged '解析已管理模型记录' $managedPath)
+    }
   }
-  $app = ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models','--bundled') $TargetHome)
+  $app=Invoke-ModelStep '导出并解析 Codex 内置模型目录' ($Backend+' debug models --bundled') {
+    ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models','--bundled') $TargetHome) '解析 Codex 内置模型目录' ($Backend+' debug models --bundled')
+  }
   if ($null -eq $existing) {
-    try { $candidate=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models') $TargetHome); Test-ModelCatalog $candidate; $existing=$candidate } catch { }
+    try { $candidate=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models') $TargetHome); Test-ModelCatalog $candidate; $existing=$candidate }
+    catch {
+      if ($_.Exception.Data['ConfigSyntax'] -eq $true) {
+        $_.Exception.Data['ModelImportStep']='解析已有 TOML 配置'; $_.Exception.Data['ModelImportTarget']=$configPath
+        throw
+      }
+    }
   }
-  $merged = Merge-ModelCatalog $existing $app $Domestic $managed $info
-  $config = Set-ModelConfig ([string]$original) $info $catalogPath $merged.Efforts
+  $merged=Invoke-ModelStep '校验并合并模型元数据' $catalogPath { Merge-ModelCatalog $existing $app $Domestic $managed $info }
+  $config=Invoke-ModelStep '合并模型目录指向和桌面档位' $configPath { Set-ModelConfig ([string]$original) $info $catalogPath $merged.Efforts }
   $files = @(
     @{Path=$catalogPath; Text=(ConvertTo-Json -InputObject $merged.Catalog -Depth 100)+"`n"},
     @{Path=$managedPath; Text=(ConvertTo-Json -InputObject @($merged.Managed) -Depth 100)+"`n"},
     @{Path=$configPath; Text=$config}
   )
-  Write-ModelTransaction $files $Backend $TargetHome $original
+  Invoke-ModelStep '写入并校验导入结果' $catalogPath { Write-ModelTransaction $files $Backend $TargetHome $original $readSet.ToArray() }
   return $merged.Managed.Count
 }
 
 function Read-PrivateText([string]$Path) {
   $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
-  if ($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw '目标文件不是普通文件，停止导入。' }
+  if ($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw (New-ModelImportError '目标文件不是普通文件，停止导入。') }
   return [IO.File]::ReadAllText($Path, (New-Object Text.UTF8Encoding($false,$true)))
 }
 
@@ -389,7 +458,51 @@ function Move-StagedFile([string]$From, [string]$To) {
   else { [IO.File]::Move($From,$To) }
 }
 
+function Read-ModelInput($ReadSet, [string]$Path, [string]$Step) {
+  $full=[IO.Path]::GetFullPath($Path)
+  foreach ($entry in $ReadSet) { if ([StringComparer]::OrdinalIgnoreCase.Equals($entry.Path,$full)) { return $entry.Text } }
+  $text=Invoke-ModelStep $Step $full { if (Test-PrivatePath $full) { Read-PrivateText $full } else { $null } }
+  $ReadSet.Add(@{Path=$full; Text=$text})
+  return $text
+}
+
+function Test-ModelReadSet($ReadSet) {
+  foreach ($entry in $ReadSet) {
+    Invoke-ModelStep '核对导入期间的输入文件' $entry.Path {
+      $now=if (Test-PrivatePath $entry.Path) { Read-PrivateText $entry.Path } else { $null }
+      if (($null -eq $now) -ne ($null -eq $entry.Text) -or $now -cne $entry.Text) { throw (New-ModelImportError '配置或模型目录在导入过程中被修改，请重新运行。') }
+    }
+  }
+}
+
+function New-ModelBackendError([string]$Stderr, [int]$ExitStatus) {
+  $reason='Codex 后端命令执行失败。'; $configSyntax=$false
+  $toml=[regex]::Match($Stderr,'TOML parse error at line (\d+), column (\d+)','IgnoreCase')
+  if (-not $toml.Success) { $toml=[regex]::Match($Stderr,'config\.toml:(\d+):(\d+):','IgnoreCase') }
+  if ($toml.Success) {
+    $reason='Codex 报告 TOML 配置语法错误：第 '+$toml.Groups[1].Value+' 行，第 '+$toml.Groups[2].Value+' 列。'
+    $configSyntax=$Stderr -match 'TOML parse error|duplicate key|invalid table header|unterminated|expected a newline|expected newline'
+  }
+  elseif ($Stderr -match 'missing field [`'']([a-z_][a-z0-9_]{0,80})[`'']') {
+    $known=@('slug','display_name','description','supported_reasoning_levels','shell_type','visibility','supported_in_api','priority','support_verbosity','default_verbosity','apply_patch_tool_type','truncation_policy','experimental_supported_tools','base_instructions','model_messages','instructions_template','supports_parallel_tool_calls')
+    $reason=if ($known -ccontains $Matches[1]) { 'Codex 报告模型目录缺少字段：'+$Matches[1]+'。' } else { 'Codex 报告模型目录缺少必需字段。' }
+  }
+  elseif ($Stderr -match 'Model provider [`''][^\r\n]*[`''] not found') { $reason='model_provider 指向的服务名称未在 model_providers 中定义，请核对名称和大小写。' }
+  elseif ($Stderr -match 'unrecognized subcommand|unknown subcommand|unexpected argument|unknown option') { $reason='Codex 后端未识别模型目录导出命令。' }
+  elseif ($Stderr -match 'unknown variant|invalid value.*expected') { $reason='模型目录含有当前 Codex 无法识别的字段值。' }
+  elseif ($Stderr -match 'failed to read model[_ ]instructions[_ ]file') { $reason='Codex 无法读取配置中的 model_instructions_file。' }
+  elseif ($Stderr -match 'failed to (?:read|parse) model_catalog_json') { $reason='Codex 无法读取或解析 model_catalog_json。' }
+  elseif ($Stderr -match '\b401\b|unauthorized|invalid api key') { $reason='Codex 后端请求被拒绝：鉴权失败。' }
+  elseif ($Stderr -match 'connection refused|failed to connect|error sending request') { $reason='Codex 后端连接接口失败。' }
+  elseif ($Stderr -match 'os error (\d+)') { $reason='Codex 后端报告系统错误，os error '+$Matches[1]+'。' }
+  $problem=New-ModelImportError $reason
+  $problem.Data['ModelImportExitStatus']=$ExitStatus
+  if ($configSyntax) { $problem.Data['ConfigSyntax']=$true }
+  return $problem
+}
+
 function Invoke-CodexExport([string]$Backend, [string[]]$Arguments, [string]$TargetHome) {
+  Invoke-ModelStep '运行 Codex 模型目录命令' ($Backend+' '+($Arguments -join ' ')) {
   $start = New-Object Diagnostics.ProcessStartInfo
   $start.FileName=$Backend; $start.Arguments=$Arguments -join ' '
   $start.WorkingDirectory=$TargetHome; $start.UseShellExecute=$false; $start.CreateNoWindow=$true
@@ -400,70 +513,99 @@ function Invoke-CodexExport([string]$Backend, [string[]]$Arguments, [string]$Tar
   $process = New-Object Diagnostics.Process
   $process.StartInfo=$start
   try {
-    if (-not $process.Start()) { throw '无法启动 App 自带的 Codex 后端。' }
+    if (-not $process.Start()) { throw (New-ModelImportError '无法启动 App 自带的 Codex 后端。') }
     $outputTask=$process.StandardOutput.ReadToEndAsync(); $errorTask=$process.StandardError.ReadToEndAsync()
-    if (-not $process.WaitForExit(30000)) { $process.Kill(); $process.WaitForExit(); throw 'App 后端校验超时，原配置未更改。' }
-    $output=$outputTask.GetAwaiter().GetResult(); $null=$errorTask.GetAwaiter().GetResult()
-    if ($process.ExitCode -ne 0) { throw 'App 后端校验失败，原配置未更改。' }
+    if (-not $process.WaitForExit(30000)) { $process.Kill(); $process.WaitForExit(); throw (New-ModelImportError 'App 后端校验超时，原配置未更改。') }
+    $output=$outputTask.GetAwaiter().GetResult(); $stderr=$errorTask.GetAwaiter().GetResult()
+    if ($process.ExitCode -ne 0) { throw (New-ModelBackendError $stderr $process.ExitCode) }
     return $output
   } finally { $process.Dispose() }
+  }
 }
 
-function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $Original) {
+function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $Original, $ReadSet=@()) {
   $id=(Get-Date -Format 'yyyyMMddHHmmss')+'.'+[Guid]::NewGuid().ToString('N')
   $stage=Join-Path $TargetHome ('.usegoodai-models-'+$id)
   $snapshots=New-Object 'System.Collections.Generic.List[object]'
   $committed=New-Object 'System.Collections.Generic.List[int]'
+  $written=New-Object 'System.Collections.Generic.List[int]'
+  Test-ModelReadSet $ReadSet
   foreach ($file in $Files) {
+    $snapshot=Invoke-ModelStep '检查并读取写入前的原文件' $file.Path {
     if (Test-PrivatePath $file.Path) {
       $content=Read-PrivateText $file.Path
       # Snapshot bytes as well as text, so rollback retains the original BOM/encoding exactly.
-      $snapshots.Add(@{Text=$content; Bytes=[IO.File]::ReadAllBytes($file.Path)})
-    } else { $snapshots.Add($null) }
+      @{Text=$content; Bytes=[IO.File]::ReadAllBytes($file.Path)}
+    } else { $null }
+    }
+    $snapshots.Add($snapshot)
   }
   $originalNow=if ($null -ne $snapshots[2]) { $snapshots[2].Text } else { $null }
-  if (($null -eq $originalNow) -ne ($null -eq $Original) -or $originalNow -cne $Original) { throw '配置在导入过程中被修改，请重新运行。' }
-  $null=[IO.Directory]::CreateDirectory($stage)
+  if (($null -eq $originalNow) -ne ($null -eq $Original) -or $originalNow -cne $Original) { throw (New-ModelImportError '配置在导入过程中被修改，请重新运行。') }
+  Invoke-ModelStep '创建私有暂存目录' $stage { $null=[IO.Directory]::CreateDirectory($stage) }
   try {
-    for ($index=0; $index -lt $Files.Count; $index++) { Write-PrivateText (Join-Path $stage ('file-'+$index)) $Files[$index].Text }
+    for ($index=0; $index -lt $Files.Count; $index++) { Invoke-ModelStep '写入暂存文件' (Join-Path $stage ('file-'+$index)) { Write-PrivateText (Join-Path $stage ('file-'+$index)) $Files[$index].Text } }
     $stagedCatalog=Join-Path $stage 'file-0'
     $info=Get-ConfigInfo $Files[2].Text
     $levels=Get-TomlStringArray $info.Values['desktop.enabled-reasoning-efforts']
     $validationConfig='model_catalog_json = '+(ConvertTo-Json -InputObject $stagedCatalog -Compress)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-Json -InputObject @($levels) -Compress)+"`n"
     Write-PrivateText (Join-Path $stage 'config.toml') $validationConfig
-    $validated=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models') $stage)
+    $validated=ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析暂存模型目录校验结果' ($Backend+' debug models')
     Test-ModelCatalog $validated
     $expected=ConvertFrom-Json -InputObject $Files[0].Text
     $actualIds=New-OrdinalMap; foreach ($model in $validated.models) { $actualIds[$model.slug]=$true }
-    if ($actualIds.Count -ne $expected.models.Count) { throw 'App 未读取暂存模型目录，停止导入。' }
-    foreach ($model in $expected.models) { if (-not $actualIds.ContainsKey($model.slug)) { throw 'App 未读取暂存模型目录，停止导入。' } }
+    if ($actualIds.Count -ne $expected.models.Count) { throw (New-ModelImportError 'App 未读取暂存模型目录，停止导入。') }
+    foreach ($model in $expected.models) { if (-not $actualIds.ContainsKey($model.slug)) { throw (New-ModelImportError 'App 未读取暂存模型目录，停止导入。') } }
+    Test-ModelReadSet $ReadSet
     for ($index=0; $index -lt $Files.Count; $index++) {
       $now=if (Test-PrivatePath $Files[$index].Path) { Read-PrivateText $Files[$index].Path } else { $null }
       $before=if ($null -ne $snapshots[$index]) { $snapshots[$index].Text } else { $null }
-      if ($now -cne $before) { throw '配置在导入过程中被修改，请重新运行。' }
+      if (($null -eq $now) -ne ($null -eq $before) -or $now -cne $before) { throw (New-ModelImportError '配置在导入过程中被修改，请重新运行。') }
     }
     for ($index=0; $index -lt $Files.Count; $index++) {
-      if ($null -ne $snapshots[$index]) { [IO.File]::Copy($Files[$index].Path,($Files[$index].Path+'.bak.'+$id),$false) }
+      if ($null -ne $snapshots[$index]) { Invoke-ModelStep '备份原文件' $Files[$index].Path { [IO.File]::Copy($Files[$index].Path,($Files[$index].Path+'.bak.'+$id),$false) } }
     }
     for ($index=0; $index -lt $Files.Count; $index++) {
       $committed.Add($index)
-      Move-StagedFile (Join-Path $stage ('file-'+$index)) $Files[$index].Path
+      Invoke-ModelStep '提交导入文件' $Files[$index].Path { Move-StagedFile (Join-Path $stage ('file-'+$index)) $Files[$index].Path }
+      $written.Add($index)
     }
     # Validate the committed catalog without loading or changing the user's provider/auth.
     $validationConfig='model_catalog_json = '+(ConvertTo-Json -InputObject $Files[0].Path -Compress)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-Json -InputObject @($levels) -Compress)+"`n"
     Write-PrivateText (Join-Path $stage 'config.toml') $validationConfig
-    $final=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models') $stage)
+    $final=ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析已写入模型目录校验结果' ($Backend+' debug models')
     Test-ModelCatalog $final
     $finalIds=New-OrdinalMap; foreach ($model in $final.models) { $finalIds[$model.slug]=$true }
-    if ($finalIds.Count -ne $expected.models.Count) { throw 'App 未读取新模型目录，停止导入。' }
-    foreach ($model in $expected.models) { if (-not $finalIds.ContainsKey($model.slug)) { throw 'App 未读取新模型目录，停止导入。' } }
+    if ($finalIds.Count -ne $expected.models.Count) { throw (New-ModelImportError 'App 未读取新模型目录，停止导入。') }
+    foreach ($model in $expected.models) { if (-not $finalIds.ContainsKey($model.slug)) { throw (New-ModelImportError 'App 未读取新模型目录，停止导入。') } }
     $normalized=ConvertTo-Json -InputObject (ConvertTo-CanonicalValue $validated.models) -Depth 100 -Compress
     $effective=ConvertTo-Json -InputObject (ConvertTo-CanonicalValue $final.models) -Depth 100 -Compress
-    if ($normalized -cne $effective) { throw '已写入的模型元数据与本次导入不一致，停止导入。' }
+    if ($normalized -cne $effective) { throw (New-ModelImportError '已写入的模型元数据与本次导入不一致，停止导入。') }
     foreach ($file in $Files) {
-      if ((Read-PrivateText $file.Path) -cne $file.Text) { throw '写入后的文件与本次导入不一致，停止导入。' }
+      if ((Read-PrivateText $file.Path) -cne $file.Text) { throw (New-ModelImportError '写入后的文件与本次导入不一致，停止导入。') }
     }
   } catch {
+    if ($committed.Count) {
+      $conflictPath=$null
+      for ($index=0; $index -lt $Files.Count; $index++) {
+        $now=$null; $found=$false
+        try {
+          $null=Get-Item -LiteralPath $Files[$index].Path -Force -ErrorAction Stop
+          $found=$true
+          $now=Read-PrivateText $Files[$index].Path
+        } catch {
+          if ($found -or $_.CategoryInfo.Category -ne [System.Management.Automation.ErrorCategory]::ObjectNotFound) { $conflictPath=$Files[$index].Path; break }
+        }
+        $matchesOutput=$null -ne $now -and $now -ceq $Files[$index].Text
+        $matchesBefore=if ($null -eq $snapshots[$index]) { $null -eq $now } else { $null -ne $now -and $now -ceq $snapshots[$index].Text }
+        if (-not $matchesOutput -and ($written.Contains($index) -or -not $matchesBefore)) { $conflictPath=$Files[$index].Path; break }
+      }
+      if ($conflictPath) {
+        $problem=New-ModelImportError '导入过程中出现外部修改，已保留当前内容和备份，软件未关闭。'
+        $problem.Data['ModelImportStep']='核对失败后的文件状态'; $problem.Data['ModelImportTarget']=$conflictPath
+        throw $problem
+      }
+    }
     $restoreFailed=$false
     for ($step=$committed.Count-1; $step -ge 0; $step--) {
       $index=$committed[$step]
@@ -476,7 +618,7 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
         }
       } catch { $restoreFailed=$true }
     }
-    if ($restoreFailed) { throw '写入失败且恢复未完成，请使用同目录的 .bak 备份恢复；软件未关闭。' }
+    if ($restoreFailed) { throw (New-ModelImportError '写入失败且恢复未完成，请使用同目录的 .bak 备份恢复；软件未关闭。') }
     throw
   } finally {
     if ([IO.Directory]::Exists($stage)) { try { [IO.Directory]::Delete($stage,$true) } catch { } }
@@ -486,7 +628,7 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
 function Find-DesktopBackend([string]$ExplicitPath) {
   if ($ExplicitPath) {
     $full=[IO.Path]::GetFullPath($ExplicitPath)
-    if (-not [IO.File]::Exists($full)) { throw '指定的 App 后端文件不存在。' }
+    if (-not [IO.File]::Exists($full)) { throw (New-ModelImportError '指定的 App 后端文件不存在。') }
     return $full
   }
   $roots=New-Object 'System.Collections.Generic.List[string]'
@@ -505,11 +647,11 @@ function Find-DesktopBackend([string]$ExplicitPath) {
       if ([IO.File]::Exists($candidate)) { return $candidate }
     }
   }
-  throw '未找到桌面 App 自带的 Codex 后端；用 -CodexPath 指定其 resources 中的 codex.exe。'
+  throw (New-ModelImportError '未找到桌面 App 自带的 Codex 后端；用 -CodexPath 指定其 resources 中的 codex.exe。')
 }
 
 function Start-ModelInstaller([string]$CodexHomePath, [string]$CodexPath) {
-  if ($env:OS -ne 'Windows_NT') { throw '这个脚本用于 Windows；macOS 请运行 codex-models.sh。' }
+  if ($env:OS -ne 'Windows_NT') { throw (New-ModelImportError '这个脚本用于 Windows；macOS 请运行 codex-models.sh。') }
   if (-not $CodexHomePath) { $CodexHomePath=if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME '.codex' } }
   $targetHome=[IO.Path]::GetFullPath($CodexHomePath)
   Write-Host '成功导入后会自动关闭 ChatGPT/Codex，运行中的任务会中断。'
@@ -522,8 +664,6 @@ function Start-ModelInstaller([string]$CodexHomePath, [string]$CodexPath) {
 
 try { Start-ModelInstaller $CodexHomePath $CodexPath }
 catch {
-  $message = $_.Exception.Message
-  if ($message -cnotmatch '^[\u3400-\u9fff]') { $message = '文件格式或系统操作失败。' }
-  Write-Host ('导入失败：' + $message + ' 软件未关闭。') -ForegroundColor Red
-  throw '国产模型导入未完成。'
+  Write-Host (Format-ModelImportError $_) -ForegroundColor Red
+  throw '国产模型导入未完成，软件未关闭。'
 }
