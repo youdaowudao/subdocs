@@ -7,6 +7,7 @@ say() { printf '%s\n' "$*"; }
 
 target_codex_home="${CODEX_HOME:-$HOME/.codex}"
 app_backend=""
+script_platform="$(uname -s)"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --codex-home|--codex-path)
@@ -14,14 +15,25 @@ while [ "$#" -gt 0 ]; do
       if [ "$1" = --codex-home ]; then target_codex_home="$2"; else app_backend="$2"; fi
       shift 2 ;;
     --help)
-      say '用法：bash codex-models.sh [--codex-home 配置目录] [--codex-path App自带后端路径]'
+      say '用法：bash codex-models.sh [--codex-home 配置目录] [--codex-path Codex后端路径]'
       exit 0 ;;
     *) say "未知参数。" >&2; exit 1 ;;
   esac
 done
-[ "$(uname -s)" = Darwin ] || { say "这个脚本用于 macOS；Windows 请运行 codex-models.ps1。" >&2; exit 1; }
+case "$script_platform" in
+  Darwin) js_runner=(/usr/bin/osascript -l JavaScript -) ;;
+  Linux)
+    js_runtime="$(command -v node || command -v nodejs || true)"
+    [ -n "$js_runtime" ] && "$js_runtime" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 16 ? 0 : 1)' >/dev/null 2>&1 || {
+      say 'Linux 需要本机已有 Node.js 16 或以上版本；未修改配置，也不会自动安装依赖。' >&2
+      exit 1
+    }
+    js_runner=("$js_runtime" -)
+    ;;
+  *) say '这个脚本用于 Linux/macOS；Windows 请运行 codex-models.ps1。' >&2; exit 1 ;;
+esac
 say '成功导入后会自动关闭 ChatGPT/Codex，运行中的任务会中断。'
-if [ -z "$app_backend" ]; then
+if [ -z "$app_backend" ] && [ "$script_platform" = Darwin ]; then
   for app_root in /Applications/Codex.app /Applications/ChatGPT.app "$HOME/Applications/Codex.app" "$HOME/Applications/ChatGPT.app"; do
     if [ -f "$app_root/Contents/Info.plist" ]; then
       bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_root/Contents/Info.plist" 2>/dev/null || true)"
@@ -33,20 +45,36 @@ if [ -z "$app_backend" ]; then
     [ -z "$app_backend" ] || break
   done
 fi
+if [ -z "$app_backend" ] && [ "$script_platform" = Linux ]; then
+  # Prefer the running App's backend when it is available, then the existing codex command.
+  while read -r client_pid client_kind client_action; do
+    [ "$client_kind" = codex ] || continue
+    candidate="$(readlink "/proc/$client_pid/exe" 2>/dev/null || true)"
+    case "$candidate" in
+      */resources/*|*/Resources/*)
+        if [ -f "$candidate" ] && [ -x "$candidate" ]; then app_backend="$candidate"; break; fi
+        ;;
+    esac
+  done <<EOF
+$(list_running_clients || true)
+EOF
+  if [ -z "$app_backend" ]; then app_backend="$(command -v codex || true)"; fi
+fi
 [ -n "$app_backend" ] && [ -f "$app_backend" ] && [ -x "$app_backend" ] || {
-  say '未找到桌面 App 自带的 Codex 后端；用 --codex-path 指定 Contents/Resources 中的 codex。' >&2
+  say '未找到 Codex 后端；请先安装 Codex，或用 --codex-path 指定现有的 Codex 后端。' >&2
   exit 1
 }
 
-if /usr/bin/osascript -l JavaScript - "$target_codex_home" "$app_backend" <<'USEGOODAI_JXA'
+if "${js_runner[@]}" "$target_codex_home" "$app_backend" <<'USEGOODAI_JAVASCRIPT'
 // @DOMESTIC_CATALOG@
 // @CORE@
 // @MACOS_HOST@
-USEGOODAI_JXA
+// @LINUX_HOST@
+USEGOODAI_JAVASCRIPT
 then
   stop_running_clients
   report_running_clients
-  say '重新打开 App，新建任务后选择模型；API Key 分组由你在中转站切换。'
+  say '重新打开 Codex，新建任务后选择模型；API Key 分组由你在中转站切换。'
 else
   say '导入未完成，软件未关闭。' >&2
   exit 1

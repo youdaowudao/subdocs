@@ -6,7 +6,9 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
+import uuid
 import tomllib
 import unittest
 
@@ -166,12 +168,143 @@ class ModelTests(unittest.TestCase):
 
     def test_syntax_and_platform_guard(self):
         self.assertEqual(execute(['bash','-n','install/codex-models.sh']).returncode,0)
-        result = execute(['bash','install/codex-models.sh'])
+        result = execute(['/bin/bash','-c','uname() { printf "FreeBSD\\n"; }; export -f uname; exec /bin/bash "$1"','guard','install/codex-models.sh'])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('macOS', result.stderr)
         result = execute([PWSH,'-NoProfile','-File','install/codex-models.ps1'])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Windows', result.stdout)
+
+    def linux_fixture(self, name):
+        target=WORK/(name+' 用户 '+uuid.uuid4().hex)
+        target.mkdir()
+        bundled=json.loads(execute([CODEX,'debug','models','--bundled'],check=True).stdout)
+        selected=next(m['slug'] for m in bundled['models'] if m['slug'].startswith('gpt-'))
+        original=f'''# preserve existing settings
+model = {json.dumps(selected)}
+review_model = {json.dumps(selected)}
+model_provider = "relay"
+model_reasoning_effort = "high"
+model_instructions_file = "instructions.md"
+[model_providers.relay]
+name = "relay"
+base_url = "https://example.invalid/v1"
+wire_api = "responses"
+requires_openai_auth = false
+[desktop]
+theme = "dark"
+'''
+        (target/'config.toml').write_text(original)
+        (target/'instructions.md').write_text('Test repository instructions.\n')
+        (target/'auth.json').write_text('sentinel-do-not-read')
+        tools=target/'bin'
+        tools.mkdir()
+        for name, executable in [('node',NODE),('codex',CODEX)]+[(name,Path(shutil.which(name))) for name in ('uname','awk','id','tr')]:
+            (tools/name).symlink_to(executable)
+        return target,tools
+
+    def run_linux_script(self, target, tools, backend=None, piped=False, running_backend=None):
+        log=target/'mock-kills.log'
+        log.write_text('')
+        env=dict(os.environ,CODEX_HOME=str(target),PATH=str(tools),LINUX_TEST_KILL_LOG=str(log),NO_COLOR='1')
+        wrapper='ps() { :; }; kill() { printf "%s\\n" "$*" >> "$LINUX_TEST_KILL_LOG"; }; export -f ps kill; '
+        if running_backend is not None:
+            env['LINUX_TEST_APP_BACKEND']=str(running_backend)
+            env['LINUX_TEST_USER_UID']=str(os.getuid())
+            wrapper+='ps() { if [ "$1" = -axo ]; then printf "7001 1 %s S %s\\n" "$LINUX_TEST_USER_UID" "$LINUX_TEST_APP_BACKEND"; fi; }; readlink() { [ "$1" = /proc/7001/exe ] && printf "%s\\n" "$LINUX_TEST_APP_BACKEND"; }; export -f ps readlink; '
+        arguments=['--codex-home',str(target)]
+        if backend is not None:arguments+=['--codex-path',str(backend)]
+        if piped:
+            command=['/bin/bash','-c',wrapper+'exec /bin/bash -s -- "$@"','linux-test',*arguments]
+            content=(ROOT/'install/codex-models.sh').read_text()
+        else:
+            command=['/bin/bash','-c',wrapper+'exec /bin/bash "$@"','linux-test',str(ROOT/'install/codex-models.sh'),*arguments]
+            content=None
+        return subprocess.run(command,cwd=ROOT,env=env,input=content,text=True,capture_output=True,timeout=60)
+
+    def test_linux_generated_entry_and_pipe_update(self):
+        target,tools=self.linux_fixture('linux-entry')
+        before=tomllib.loads((target/'config.toml').read_text())
+        result=self.run_linux_script(target,tools,CODEX)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('已导入 8 个国产模型',result.stdout)
+        first=json.loads((target/'usegoodai-models.json').read_text())
+        gpt=next(m for m in first['models'] if m['slug'].startswith('gpt-'))
+        gpt['keep_metadata']={'nested':True}
+        custom=copy.deepcopy(gpt);custom['slug']='user-custom'
+        removed=copy.deepcopy(gpt);removed['slug']='removed-domestic'
+        first['models'] += [custom,removed]
+        next(m for m in first['models'] if m['slug']=='qwen3.8-max')['obsolete']=True
+        (target/'usegoodai-models.json').write_text(json.dumps(first))
+        (target/'usegoodai-models.managed.json').write_text(json.dumps([m['slug'] for m in DOMESTIC['models']]+['removed-domestic']))
+        result=self.run_linux_script(target,tools,piped=True)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        actual=json.loads((target/'usegoodai-models.json').read_text())
+        by_id={m['slug']:m for m in actual['models']}
+        self.assertNotIn('removed-domestic',by_id)
+        self.assertEqual(by_id[gpt['slug']]['keep_metadata'],{'nested':True})
+        self.assertEqual(by_id['user-custom'],custom)
+        for model in DOMESTIC['models']:self.assertEqual(by_id[model['slug']],model)
+        after=tomllib.loads((target/'config.toml').read_text())
+        self.assertEqual(Path(after.pop('model_catalog_json')),target/'usegoodai-models.json')
+        after['desktop'].pop('enabled-reasoning-efforts')
+        self.assertEqual(after,before)
+        self.assertEqual((target/'auth.json').read_text(),'sentinel-do-not-read')
+        self.assertEqual((target/'mock-kills.log').read_text(),'')
+        self.assertTrue(list(target.glob('config.toml.bak.*')))
+        for name in ('config.toml','usegoodai-models.json','usegoodai-models.managed.json'):
+            self.assertEqual((target/name).stat().st_mode & 0o777,0o600)
+        self.assertFalse(list(target.glob('.usegoodai-models-*')))
+        self.assertFalse(list(target.glob('.usegoodai-write-*')))
+
+    def test_linux_failed_validation_preserves_config_and_processes(self):
+        target,tools=self.linux_fixture('linux-failure')
+        config=(target/'config.toml').read_bytes()
+        backend=tools/'failing-backend'
+        backend.write_text('#!/bin/bash\ncase "$CODEX_HOME" in */.usegoodai-models-*) printf "private-test-value" >&2; exit 1 ;; esac\nexec '+shlex.quote(str(CODEX))+' "$@"\n')
+        backend.chmod(0o755)
+        result=self.run_linux_script(target,tools,backend)
+        self.assertNotEqual(result.returncode,0)
+        self.assertNotIn('private-test-value',result.stdout+result.stderr)
+        self.assertEqual((target/'config.toml').read_bytes(),config)
+        self.assertFalse((target/'usegoodai-models.json').exists())
+        self.assertEqual((target/'mock-kills.log').read_text(),'')
+
+    def test_linux_missing_runtime_does_not_write(self):
+        target,tools=self.linux_fixture('linux-no-runtime')
+        (tools/'node').unlink()
+        config=(target/'config.toml').read_bytes()
+        result=self.run_linux_script(target,tools,CODEX)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('Node.js',result.stderr)
+        self.assertEqual((target/'config.toml').read_bytes(),config)
+        self.assertFalse((target/'usegoodai-models.json').exists())
+        self.assertEqual((target/'mock-kills.log').read_text(),'')
+
+    def test_linux_missing_codex_does_not_write(self):
+        target,tools=self.linux_fixture('linux-no-codex')
+        (tools/'codex').unlink()
+        config=(target/'config.toml').read_bytes()
+        result=self.run_linux_script(target,tools)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('未找到 Codex 后端',result.stderr)
+        self.assertEqual((target/'config.toml').read_bytes(),config)
+        self.assertFalse((target/'usegoodai-models.json').exists())
+        self.assertEqual((target/'mock-kills.log').read_text(),'')
+
+    def test_linux_prefers_running_app_backend(self):
+        target,tools=self.linux_fixture('linux-running-app')
+        (tools/'codex').unlink()
+        (tools/'codex').write_text('#!/bin/bash\nprintf "wrong backend" >&2\nexit 1\n')
+        (tools/'codex').chmod(0o755)
+        resource_dir=target/'app/resources'
+        resource_dir.mkdir(parents=True)
+        running_backend=resource_dir/'codex'
+        running_backend.symlink_to(CODEX)
+        result=self.run_linux_script(target,tools,running_backend=running_backend)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('已导入 8 个国产模型',result.stdout)
+        self.assertEqual((target/'mock-kills.log').read_text().strip(),'-TERM 7001')
 
     def test_actual_codex_deserializes_metadata(self):
         target=WORK/'actual-codex'

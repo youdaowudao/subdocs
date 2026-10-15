@@ -124,6 +124,7 @@ report_running_clients() {
 
 target_codex_home="${CODEX_HOME:-$HOME/.codex}"
 app_backend=""
+script_platform="$(uname -s)"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --codex-home|--codex-path)
@@ -131,14 +132,25 @@ while [ "$#" -gt 0 ]; do
       if [ "$1" = --codex-home ]; then target_codex_home="$2"; else app_backend="$2"; fi
       shift 2 ;;
     --help)
-      say '用法：bash codex-models.sh [--codex-home 配置目录] [--codex-path App自带后端路径]'
+      say '用法：bash codex-models.sh [--codex-home 配置目录] [--codex-path Codex后端路径]'
       exit 0 ;;
     *) say "未知参数。" >&2; exit 1 ;;
   esac
 done
-[ "$(uname -s)" = Darwin ] || { say "这个脚本用于 macOS；Windows 请运行 codex-models.ps1。" >&2; exit 1; }
+case "$script_platform" in
+  Darwin) js_runner=(/usr/bin/osascript -l JavaScript -) ;;
+  Linux)
+    js_runtime="$(command -v node || command -v nodejs || true)"
+    [ -n "$js_runtime" ] && "$js_runtime" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 16 ? 0 : 1)' >/dev/null 2>&1 || {
+      say 'Linux 需要本机已有 Node.js 16 或以上版本；未修改配置，也不会自动安装依赖。' >&2
+      exit 1
+    }
+    js_runner=("$js_runtime" -)
+    ;;
+  *) say '这个脚本用于 Linux/macOS；Windows 请运行 codex-models.ps1。' >&2; exit 1 ;;
+esac
 say '成功导入后会自动关闭 ChatGPT/Codex，运行中的任务会中断。'
-if [ -z "$app_backend" ]; then
+if [ -z "$app_backend" ] && [ "$script_platform" = Darwin ]; then
   for app_root in /Applications/Codex.app /Applications/ChatGPT.app "$HOME/Applications/Codex.app" "$HOME/Applications/ChatGPT.app"; do
     if [ -f "$app_root/Contents/Info.plist" ]; then
       bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_root/Contents/Info.plist" 2>/dev/null || true)"
@@ -150,12 +162,27 @@ if [ -z "$app_backend" ]; then
     [ -z "$app_backend" ] || break
   done
 fi
+if [ -z "$app_backend" ] && [ "$script_platform" = Linux ]; then
+  # Prefer the running App's backend when it is available, then the existing codex command.
+  while read -r client_pid client_kind client_action; do
+    [ "$client_kind" = codex ] || continue
+    candidate="$(readlink "/proc/$client_pid/exe" 2>/dev/null || true)"
+    case "$candidate" in
+      */resources/*|*/Resources/*)
+        if [ -f "$candidate" ] && [ -x "$candidate" ]; then app_backend="$candidate"; break; fi
+        ;;
+    esac
+  done <<EOF
+$(list_running_clients || true)
+EOF
+  if [ -z "$app_backend" ]; then app_backend="$(command -v codex || true)"; fi
+fi
 [ -n "$app_backend" ] && [ -f "$app_backend" ] && [ -x "$app_backend" ] || {
-  say '未找到桌面 App 自带的 Codex 后端；用 --codex-path 指定 Contents/Resources 中的 codex。' >&2
+  say '未找到 Codex 后端；请先安装 Codex，或用 --codex-path 指定现有的 Codex 后端。' >&2
   exit 1
 }
 
-if /usr/bin/osascript -l JavaScript - "$target_codex_home" "$app_backend" <<'USEGOODAI_JXA'
+if "${js_runner[@]}" "$target_codex_home" "$app_backend" <<'USEGOODAI_JAVASCRIPT'
 var DOMESTIC_CATALOG = {"models":[{"slug":"qwen3.8-max","display_name":"Qwen3.8 Max","description":"千问 Max","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":"xhigh","apply_patch_tool_type":null,"supports_parallel_tool_calls":true,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"medium","description":"中度推理"},{"effort":"xhigh","description":"深度推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":100,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"qwen3.8-flash","display_name":"Qwen3.8 Flash","description":"千问 Flash","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":"xhigh","apply_patch_tool_type":null,"supports_parallel_tool_calls":true,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"medium","description":"中度推理"},{"effort":"xhigh","description":"深度推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":101,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"glm-5.3-flash","display_name":"GLM-5.3 Flash","description":"智谱多模态 Flash","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":"max","apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"high","description":"增强推理"},{"effort":"max","description":"最大推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":102,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"deepseek-flash","display_name":"DeepSeek V4.1 Flash","description":"DeepSeek Flash","context_window":1048576,"input_modalities":["text","image"],"default_reasoning_level":"high","apply_patch_tool_type":"freeform","supports_parallel_tool_calls":true,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"high","description":"增强推理"},{"effort":"max","description":"最大推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":103,"availability_nux":null,"upgrade":null,"support_verbosity":true,"default_verbosity":"low","supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":true,"max_context_window":1048576,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"glm-5.3","display_name":"GLM-5.3","description":"智谱文本模型","context_window":1000000,"input_modalities":["text"],"default_reasoning_level":"max","apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"high","description":"增强推理"},{"effort":"max","description":"最大推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":104,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"kimi-k3","display_name":"Kimi K3","description":"月之暗面多模态模型","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":"max","apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"high","description":"增强推理"},{"effort":"max","description":"最大推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":105,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"minimax-m3","display_name":"MiniMax M3","description":"MiniMax 多模态模型","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":null,"apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":106,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":false,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"hy4-preview","display_name":"Hy4 preview","description":"腾讯混元","context_window":1000000,"input_modalities":["text"],"default_reasoning_level":"high","apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[{"effort":"none","description":"关闭推理"},{"effort":"high","description":"增强推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":107,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false}]};
 /* Pure ES5: used by macOS JXA and the isolated test runner. */
 var DomesticModels = (function () {
@@ -417,7 +444,7 @@ var DomesticModels = (function () {
 if (typeof module !== 'undefined') { module.exports = DomesticModels; }
 
 /* macOS built-in JavaScript for Automation; no Node installation required. */
-ObjC.import('Foundation');
+if (typeof ObjC !== 'undefined') { ObjC.import('Foundation'); }
 function run(argv) {
     'use strict';
     var fm = $.NSFileManager.defaultManager, utf8 = $.NSUTF8StringEncoding;
@@ -511,11 +538,82 @@ function run(argv) {
     }
 }
 
-USEGOODAI_JXA
+/* Linux adapter: existing Node.js only; the model/config core is shared with macOS. */
+function createLinuxIO(home, core) {
+    'use strict';
+    var fs = require('fs'), path = require('path'), os = require('os');
+    var crypto = require('crypto'), child = require('child_process');
+    function exists(file) {
+        try { fs.lstatSync(file); return true; }
+        catch (error) { if (error.code === 'ENOENT') { return false; } throw error; }
+    }
+    function isFile(file) { return fs.lstatSync(file).isFile(); }
+    function read(file) {
+        if (!isFile(file)) { throw new Error('文件不存在或不是普通文件。'); }
+        return new (require('util').TextDecoder)('utf-8', {fatal: true, ignoreBOM: true}).decode(fs.readFileSync(file));
+    }
+    function write(file, text) {
+        if (exists(file) && !isFile(file)) { throw new Error('目标文件不是普通文件，停止导入。'); }
+        var temp = path.join(path.dirname(file), '.usegoodai-write-' + crypto.randomUUID());
+        try {
+            fs.writeFileSync(temp, text, {encoding: 'utf8', flag: 'wx', mode: 384});
+            fs.renameSync(temp, file);
+        } finally { if (exists(temp)) { fs.unlinkSync(temp); } }
+    }
+    function exportAt(executable, args, target) {
+        try {
+            return child.execFileSync(executable, args, {
+                cwd: target, env: Object.assign({}, process.env, {CODEX_HOME: target}),
+                timeout: 30000, killSignal: 'SIGKILL', maxBuffer: 64 * 1024 * 1024,
+                encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
+            });
+        } catch (error) {
+            /* External stderr can contain private config. Report only a fixed message. */
+            throw new Error(error.code === 'ETIMEDOUT' ? 'Codex 后端校验超时，原配置未更改。' : 'Codex 后端校验失败，原配置未更改。');
+        }
+    }
+    var io = {
+        join: path.join, exists: exists, isFile: isFile, read: read, write: write,
+        resolve: function (base, file) {
+            if (file === '~' || file.slice(0, 2) === '~/') { file = path.join(os.homedir(), file.slice(1)); }
+            return path.resolve(base, file);
+        },
+        remove: function (file) { fs.rmSync(file, {force: true, recursive: true}); },
+        mkdir: function (directory) { fs.mkdirSync(directory, {mode: 448}); },
+        stamp: function () { return new Date().toISOString().replace(/[^0-9]/g, '') + '.' + crypto.randomUUID(); },
+        backup: function (from, to) { fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL); fs.chmodSync(to, 384); },
+        exportAt: exportAt,
+        exportCatalog: function (backend, bundled) { return exportAt(backend, bundled ? ['debug', 'models', '--bundled'] : ['debug', 'models'], home); },
+        transaction: function (files, backend, unused, original) { core.transaction(io, files, backend, home, original); }
+    };
+    return io;
+}
+
+function runLinuxInstaller(argv, core, domestic) {
+    'use strict';
+    try {
+        var path = require('path'), homeArg = argv[0];
+        if (homeArg === '~' || homeArg.slice(0, 2) === '~/') { homeArg = path.join(require('os').homedir(), homeArg.slice(1)); }
+        var home = path.resolve(homeArg), backend = path.resolve(argv[1]);
+        var count = core.importModels(createLinuxIO(home, core), home, backend, domestic);
+        process.stdout.write('已导入 ' + count + ' 个国产模型，原 GPT 和其他模型已保留。\n');
+    } catch (error) {
+        var message = /^[\u3400-\u9fff]/.test(error.message) ? error.message : '文件格式或系统操作失败。';
+        process.stderr.write('导入失败：' + message + ' 软件未关闭。\n');
+        process.exitCode = 1;
+    }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {createLinuxIO: createLinuxIO, runLinuxInstaller: runLinuxInstaller};
+    if (typeof DOMESTIC_CATALOG !== 'undefined') { runLinuxInstaller(process.argv.slice(2), DomesticModels, DOMESTIC_CATALOG); }
+}
+
+USEGOODAI_JAVASCRIPT
 then
   stop_running_clients
   report_running_clients
-  say '重新打开 App，新建任务后选择模型；API Key 分组由你在中转站切换。'
+  say '重新打开 Codex，新建任务后选择模型；API Key 分组由你在中转站切换。'
 else
   say '导入未完成，软件未关闭。' >&2
   exit 1

@@ -51,6 +51,7 @@ def build():
         '// @DOMESTIC_CATALOG@': 'var DOMESTIC_CATALOG = ' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';',
         '// @CORE@': (ROOT / 'src/core.js').read_text(),
         '// @MACOS_HOST@': (ROOT / 'src/macos-host.js').read_text(),
+        '// @LINUX_HOST@': (ROOT / 'src/linux-host.js').read_text(),
     }.items():
         assert shell.count(marker) == 1
         shell = shell.replace(marker, content)

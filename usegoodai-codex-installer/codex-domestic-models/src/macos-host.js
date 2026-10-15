@@ -1,5 +1,5 @@
 /* macOS built-in JavaScript for Automation; no Node installation required. */
-ObjC.import('Foundation');
+if (typeof ObjC !== 'undefined') { ObjC.import('Foundation'); }
 function run(argv) {
     'use strict';
     var fm = $.NSFileManager.defaultManager, utf8 = $.NSUTF8StringEncoding;
