@@ -16,8 +16,8 @@ Windows 在 PowerShell 中执行：
 
 Linux/macOS 在终端执行，脚本自动识别系统：
 
-```bash
-bash install/codex-models.sh
+```sh
+sh install/codex-models.sh
 ```
 
 重新打开 Codex，新建任务，选择 GPT 或国产模型。测试消息写“测试”；分组由用户在中转站切换。
@@ -26,7 +26,7 @@ bash install/codex-models.sh
 
 脚本读取 `CODEX_HOME`；未设置时使用用户的 `.codex`。桌面 App 与命令行共用这里的模型目录。Windows 用 `-CodexPath`、Linux/macOS 用 `--codex-path` 指定现有 Codex 后端；配置目录参数分别为 `-CodexHomePath` 和 `--codex-home`。
 
-macOS 自动定位 App 后端；Linux 优先读取正在运行的 App 后端，未找到时使用本机已有的 `codex` 命令。Linux 使用已有 Node.js 16+ 执行相同的模型处理逻辑，缺少时明确提示并退出，不自动安装依赖。
+Linux/macOS 入口由系统 `sh` 执行。macOS 自动定位 App 后端；Linux 优先读取正在运行的 App 后端，未找到时使用本机已有的 `codex` 命令。Linux 使用已有 Node.js 16+ 执行相同的模型处理逻辑，缺少时明确提示并退出，不自动安装依赖。
 
 找不到 App 后端、目录无效、默认模型不在目录或写入失败时，停止导入并保留或恢复原文件，软件不会被关闭。`desktop` 使用内联表或 profile 覆盖模型目录时，脚本会说明需要整理的位置，再停止写入。
 

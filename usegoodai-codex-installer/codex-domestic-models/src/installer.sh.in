@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 say() { printf '%s\n' "$*"; }
 
@@ -15,20 +15,20 @@ while [ "$#" -gt 0 ]; do
       if [ "$1" = --codex-home ]; then target_codex_home="$2"; else app_backend="$2"; fi
       shift 2 ;;
     --help)
-      say '用法：bash codex-models.sh [--codex-home 配置目录] [--codex-path Codex后端路径]'
+      say '用法：sh codex-models.sh [--codex-home 配置目录] [--codex-path Codex后端路径]'
       exit 0 ;;
     *) say "未知参数。" >&2; exit 1 ;;
   esac
 done
 case "$script_platform" in
-  Darwin) js_runner=(/usr/bin/osascript -l JavaScript -) ;;
+  Darwin) run_model_import() { /usr/bin/osascript -l JavaScript - "$@"; } ;;
   Linux)
     js_runtime="$(command -v node || command -v nodejs || true)"
     [ -n "$js_runtime" ] && "$js_runtime" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 16 ? 0 : 1)' >/dev/null 2>&1 || {
       say 'Linux 需要本机已有 Node.js 16 或以上版本；未修改配置，也不会自动安装依赖。' >&2
       exit 1
     }
-    js_runner=("$js_runtime" -)
+    run_model_import() { "$js_runtime" - "$@"; }
     ;;
   *) say '这个脚本用于 Linux/macOS；Windows 请运行 codex-models.ps1。' >&2; exit 1 ;;
 esac
@@ -65,7 +65,7 @@ fi
   exit 1
 }
 
-if "${js_runner[@]}" "$target_codex_home" "$app_backend" <<'USEGOODAI_JAVASCRIPT'
+if run_model_import "$target_codex_home" "$app_backend" <<'USEGOODAI_JAVASCRIPT'
 // @DOMESTIC_CATALOG@
 // @CORE@
 // @MACOS_HOST@
