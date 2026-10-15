@@ -188,7 +188,47 @@ var DOMESTIC_CATALOG = {"models":[{"slug":"qwen3.8-max","display_name":"Qwen3.8 
 var DomesticModels = (function () {
     'use strict';
     var effortOrder = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'ultra', 'max'];
-    function fail(message) { throw new Error(message); }
+    function fail(message) { var error = new Error(message); error.safeMessage = message; throw error; }
+    function atStep(name, target, action) {
+        try { return action(); }
+        catch (error) {
+            if (!error || typeof error !== 'object') { error = new Error('Unexpected failure'); }
+            if (!error.importStep) { error.importStep = name; }
+            if (!error.importTarget && target) { error.importTarget = target; }
+            throw error;
+        }
+    }
+    function formatError(error) {
+        if (!error || typeof error !== 'object') { error = new Error('Unexpected failure'); }
+        var messages = {
+            EACCES: '权限不足，无法执行该文件操作。', EPERM: '系统拒绝该操作。',
+            ENOENT: '文件或目录不存在。', ENOTDIR: '路径中的某一项不是目录。',
+            EISDIR: '需要普通文件，实际路径是目录。', ENOSPC: '磁盘空间不足。',
+            EROFS: '目标文件系统只读。', EEXIST: '目标路径已经存在。',
+            EBUSY: '目标文件被占用，或是不能直接替换的挂载文件。',
+            ELOOP: '路径包含循环符号链接。', ENAMETOOLONG: '文件路径过长。',
+            ERR_FS_FILE_TOO_LARGE: '文件过大，无法完整读取。',
+            EIO: '文件系统读写失败。', EMFILE: '打开的文件过多。',
+            ERR_ENCODING_INVALID_ENCODED_DATA: '文件包含无效的 UTF-8 字节。',
+            ERR_ACCESS_DENIED: 'Node.js 的运行权限限制拒绝了该操作。'
+        };
+        var code = error && typeof error.code === 'string' && /^[A-Z][A-Z0-9_]{1,60}$/.test(error.code) ? error.code : '';
+        var reason = error.safeMessage || messages[code];
+        if (!reason) {
+            var kind = ['TypeError', 'ReferenceError', 'RangeError', 'SyntaxError', 'Error'].indexOf(error.name) >= 0 ? error.name : 'Error';
+            reason = '脚本内部异常（' + kind + '）。';
+        }
+        var lines = ['导入失败', '失败步骤：' + (error.importStep || '初始化模型导入')];
+        if (error.importTarget) { lines.push('文件或命令：' + error.importTarget); }
+        lines.push('原因：' + reason + (code ? ' [' + code + ']' : ''));
+        if (typeof error.exitStatus === 'number') { lines.push('后端退出码：' + error.exitStatus); }
+        if (error.signal && /^SIG[A-Z0-9]+$/.test(error.signal)) { lines.push('后端信号：' + error.signal); }
+        if (!error.safeMessage && !messages[code] && typeof error.stack === 'string') {
+            var location = /(?:\[stdin\]|core\.js|linux-host\.js):(\d+):(\d+)/.exec(error.stack);
+            if (location) { lines.push('脚本位置：' + location[0]); }
+        }
+        return lines.join('\n');
+    }
     function own(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key); }
     function dict() { return Object.create(null); }
     function canonical(value) {
@@ -350,11 +390,17 @@ var DomesticModels = (function () {
     function validateCatalog(catalog) {
         if (!catalog || !Array.isArray(catalog.models) || !catalog.models.length) { fail('模型目录必须包含非空 models 数组。'); }
         var seen = dict();
-        catalog.models.forEach(function (model) {
-            if (!model || typeof model.slug !== 'string' || !model.slug || own(seen, model.slug)) { fail('模型目录中有空 ID 或重复 ID。'); }
+        catalog.models.forEach(function (model, modelIndex) {
+            var location = 'models[' + modelIndex + ']';
+            if (!model || typeof model.slug !== 'string' || !model.slug || own(seen, model.slug)) { fail('模型目录 ' + location + '.slug 为空或重复。'); }
             seen[model.slug] = true;
-            if (typeof model.display_name !== 'string' || !Array.isArray(model.supported_reasoning_levels) || !model.shell_type || !model.visibility || typeof model.supported_in_api !== 'boolean' || typeof model.priority !== 'number' || typeof model.support_verbosity !== 'boolean' || !model.truncation_policy || !Array.isArray(model.experimental_supported_tools)) { fail('模型目录缺少 Codex 必需元数据。'); }
-            if (!(model.model_messages && typeof model.model_messages.instructions_template === 'string') && typeof model.base_instructions !== 'string') { fail('模型目录缺少模型指令。'); }
+            var invalid = [];
+            [['display_name', typeof model.display_name === 'string'], ['supported_reasoning_levels', Array.isArray(model.supported_reasoning_levels)], ['shell_type', Boolean(model.shell_type)], ['visibility', Boolean(model.visibility)], ['supported_in_api', typeof model.supported_in_api === 'boolean'], ['priority', typeof model.priority === 'number'], ['support_verbosity', typeof model.support_verbosity === 'boolean'], ['truncation_policy', Boolean(model.truncation_policy)], ['experimental_supported_tools', Array.isArray(model.experimental_supported_tools)]].forEach(function (field) { if (!field[1]) { invalid.push(field[0]); } });
+            if (invalid.length) { fail('模型目录 ' + location + ' 缺少或包含无效字段：' + invalid.join('、') + '。'); }
+            if (!(model.model_messages && typeof model.model_messages.instructions_template === 'string') && typeof model.base_instructions !== 'string') { fail('模型目录 ' + location + ' 缺少 model_messages.instructions_template 或 base_instructions。'); }
+            model.supported_reasoning_levels.forEach(function (level, index) {
+                if (!level || typeof level !== 'object' || typeof level.effort !== 'string' || !level.effort) { fail('模型目录 ' + location + '.supported_reasoning_levels[' + index + '] 缺少有效的 effort。'); }
+            });
         });
         return catalog;
     }
@@ -383,29 +429,33 @@ var DomesticModels = (function () {
     function transaction(io, files, backend, home, original) {
         var stamp = io.stamp(), stage = io.join(home, '.usegoodai-models-' + stamp), snapshots = [], committed = [];
         files.forEach(function (file) {
-            if (io.exists(file.path) && !io.isFile(file.path)) { fail('目标文件不是普通文件，停止导入。'); }
-            snapshots.push(io.exists(file.path) ? io.read(file.path) : null);
+            snapshots.push(atStep('检查并读取写入前的原文件', file.path, function () {
+                if (io.exists(file.path) && !io.isFile(file.path)) { fail('目标文件不是普通文件，停止导入。'); }
+                return io.exists(file.path) ? io.read(file.path) : null;
+            }));
         });
         if (snapshots[2] !== original) { fail('配置在导入过程中被修改，请重新运行。'); }
-        io.mkdir(stage);
+        atStep('创建私有暂存目录', stage, function () { io.mkdir(stage); });
         try {
-            files.forEach(function (file, index) { io.write(io.join(stage, 'file-' + index), file.text); });
+            files.forEach(function (file, index) { var target = io.join(stage, 'file-' + index); atStep('写入暂存文件', target, function () { io.write(target, file.text); }); });
             var stagedCatalog = io.join(stage, 'file-0'), info = configInfo(files[2].text);
             var levels = stringArray(info.values['desktop.enabled-reasoning-efforts']);
-            io.write(io.join(stage, 'config.toml'), 'model_catalog_json = ' + JSON.stringify(stagedCatalog) + '\n[desktop]\nenabled-reasoning-efforts = ' + JSON.stringify(levels) + '\n');
+            atStep('写入校验配置', io.join(stage, 'config.toml'), function () { io.write(io.join(stage, 'config.toml'), 'model_catalog_json = ' + JSON.stringify(stagedCatalog) + '\n[desktop]\nenabled-reasoning-efforts = ' + JSON.stringify(levels) + '\n'); });
             var expected = JSON.stringify(parseJSON(files[0].text).models.map(function (m) { return m.slug; }).sort());
             function verifyAt(target) {
-                var validated = validateCatalog(parseJSON(io.exportAt(backend, ['debug', 'models'], target)));
+                var validated = atStep(target === home ? '校验实际生效的配置和模型目录' : '校验暂存模型目录', backend + ' debug models', function () { return validateCatalog(parseJSON(io.exportAt(backend, ['debug', 'models'], target))); });
                 if (JSON.stringify(validated.models.map(function (m) { return m.slug; }).sort()) !== expected) { fail('App 未读取新模型目录，停止导入。'); }
                 return JSON.stringify(canonical(validated.models));
             }
             var normalized = verifyAt(stage);
             files.forEach(function (file, index) {
-                var now = io.exists(file.path) ? io.read(file.path) : null;
-                if (now !== snapshots[index]) { fail('配置在导入过程中被修改，请重新运行。'); }
+                atStep('核对导入期间的文件变化', file.path, function () {
+                    var now = io.exists(file.path) ? io.read(file.path) : null;
+                    if (now !== snapshots[index]) { fail('配置在导入过程中被修改，请重新运行。'); }
+                });
             });
-            files.forEach(function (file, index) { if (snapshots[index] !== null) { io.backup(file.path, file.path + '.bak.' + stamp); } });
-            files.forEach(function (file, index) { committed.push(index); io.write(file.path, file.text); });
+            files.forEach(function (file, index) { if (snapshots[index] !== null) { atStep('备份原文件', file.path, function () { io.backup(file.path, file.path + '.bak.' + stamp); }); } });
+            files.forEach(function (file, index) { committed.push(index); atStep('提交导入文件', file.path, function () { io.write(file.path, file.text); }); });
             /* Use the original home so relative paths and active profile precedence remain real. */
             if (verifyAt(home) !== normalized) { fail('App 生效的模型元数据与本次导入不一致，停止导入。'); }
         } catch (error) {
@@ -417,29 +467,42 @@ var DomesticModels = (function () {
             try { io.remove(stage); } catch (ignored) { /* A leftover private stage does not invalidate a successful import. */ }
         }
     }
-    function parseJSON(text) { return JSON.parse(text.replace(/^\uFEFF/, '')); }
+    function parseJSON(text) {
+        try { return JSON.parse(text.replace(/^\uFEFF/, '')); }
+        catch (error) {
+            var message = !text.trim() ? '内容为空，不是有效的 JSON。' : '内容不是有效的 JSON。';
+            var position = /(?:position|offset)\s+(\d+)/i.exec(error.message || '');
+            var line = /line\s+(\d+)\s+column\s+(\d+)/i.exec(error.message || '');
+            if (position) { message += ' 字符位置：' + position[1] + '。'; }
+            if (line) { message += ' 第 ' + line[1] + ' 行，第 ' + line[2] + ' 列。'; }
+            error.safeMessage = message; error.code = 'EJSON_PARSE'; throw error;
+        }
+    }
     function importModels(io, home, executable, domestic) {
         var configPath = io.join(home, 'config.toml'), catalogPath = io.join(home, 'usegoodai-models.json'), managedPath = io.join(home, 'usegoodai-models.managed.json');
-        if (!io.exists(configPath)) { fail('没有找到 config.toml；请先运行原 GPT 接入脚本。'); }
-        var original = io.read(configPath), info = configInfo(original), existing = null, source, managed = [];
+        var original = atStep('读取 Codex 配置', configPath, function () {
+            if (!io.exists(configPath)) { fail('没有找到 config.toml；请先运行原 GPT 接入脚本。'); }
+            return io.read(configPath);
+        });
+        var info = atStep('解析 Codex 配置', configPath, function () { return configInfo(original); }), existing = null, source, managed = [];
         if (own(info.values, 'model_catalog_json')) {
             source = io.resolve(home, stringValue(info.values.model_catalog_json));
-            if (io.exists(source)) { existing = parseJSON(io.read(source)); }
+            existing = atStep('读取并解析原模型目录', source, function () { return io.exists(source) ? validateCatalog(parseJSON(io.read(source))) : null; });
         }
-        if (io.exists(managedPath)) { managed = parseJSON(io.read(managedPath)); }
-        var app = parseJSON(io.exportCatalog(executable, true));
+        managed = atStep('读取并解析已管理模型记录', managedPath, function () { return io.exists(managedPath) ? parseJSON(io.read(managedPath)) : []; });
+        var app = atStep('导出并解析 Codex 内置模型目录', executable + ' debug models --bundled', function () { return validateCatalog(parseJSON(io.exportCatalog(executable, true))); });
         if (!existing) {
             try { existing = validateCatalog(parseJSON(io.exportCatalog(executable, false))); }
             catch (ignored) { /* Missing custom file or unavailable refresh: bundled catalog remains complete. */ }
         }
-        var merged = merge(existing, app, domestic, managed, info);
-        var config = patchConfig(original, info, catalogPath, merged.efforts);
+        var merged = atStep('校验并合并模型元数据', source || executable + ' debug models --bundled', function () { return merge(existing, app, domestic, managed, info); });
+        var config = atStep('合并模型目录指向和桌面档位', configPath, function () { return patchConfig(original, info, catalogPath, merged.efforts); });
         var files = [{path: catalogPath, text: JSON.stringify(merged.catalog, null, 2) + '\n'}, {path: managedPath, text: JSON.stringify(merged.managed, null, 2) + '\n'}, {path: configPath, text: config}];
         /* Host stages all files, validates with the selected App backend, then commits with rollback. */
-        io.transaction(files, executable, catalogPath, original);
+        atStep('写入并校验导入结果', catalogPath, function () { io.transaction(files, executable, catalogPath, original); });
         return merged.managed.length;
     }
-    return {statements: statements, configInfo: configInfo, stringValue: stringValue, stringArray: stringArray, patchConfig: patchConfig, validateCatalog: validateCatalog, merge: merge, transaction: transaction, importModels: importModels};
+    return {statements: statements, configInfo: configInfo, stringValue: stringValue, stringArray: stringArray, patchConfig: patchConfig, validateCatalog: validateCatalog, merge: merge, transaction: transaction, importModels: importModels, formatError: formatError};
 }());
 if (typeof module !== 'undefined') { module.exports = DomesticModels; }
 
@@ -448,7 +511,7 @@ if (typeof ObjC !== 'undefined') { ObjC.import('Foundation'); }
 function run(argv) {
     'use strict';
     var fm = $.NSFileManager.defaultManager, utf8 = $.NSUTF8StringEncoding;
-    function nativeError(message) { throw new Error(message); }
+    function nativeError(message) { var error = new Error(message); error.safeMessage = message; throw error; }
     function attrs(path) { var error = Ref(); return fm.attributesOfItemAtPathError($(path), error); }
     function exists(path) { return !attrs(path).isNil(); }
     function isFile(path) { var value = attrs(path); return !value.isNil() && ObjC.unwrap(value.objectForKey($.NSFileType)) === ObjC.unwrap($.NSFileTypeRegular); }
@@ -534,7 +597,7 @@ function run(argv) {
         return '已导入 ' + count + ' 个国产模型，原 GPT 和其他模型已保留。';
     } catch (error) {
         /* Never echo external process stderr, original TOML, or JSON (may contain credentials). */
-        throw new Error('导入失败：' + (/^[\u3400-\u9fff]/.test(error.message) ? error.message : '文件格式或系统操作失败，软件未关闭。'));
+        throw new Error(DomesticModels.formatError(error) + '\n软件未关闭。');
     }
 }
 
@@ -543,17 +606,18 @@ function createLinuxIO(home, core) {
     'use strict';
     var fs = require('fs'), path = require('path'), os = require('os');
     var crypto = require('crypto'), child = require('child_process');
+    function failure(message) { var error = new Error(message); error.safeMessage = message; return error; }
     function exists(file) {
         try { fs.lstatSync(file); return true; }
         catch (error) { if (error.code === 'ENOENT') { return false; } throw error; }
     }
     function isFile(file) { return fs.lstatSync(file).isFile(); }
     function read(file) {
-        if (!isFile(file)) { throw new Error('文件不存在或不是普通文件。'); }
+        if (!isFile(file)) { throw failure('文件不存在或不是普通文件。'); }
         return new (require('util').TextDecoder)('utf-8', {fatal: true, ignoreBOM: true}).decode(fs.readFileSync(file));
     }
     function write(file, text) {
-        if (exists(file) && !isFile(file)) { throw new Error('目标文件不是普通文件，停止导入。'); }
+        if (exists(file) && !isFile(file)) { throw failure('目标文件不是普通文件，停止导入。'); }
         var temp = path.join(path.dirname(file), '.usegoodai-write-' + crypto.randomUUID());
         try {
             fs.writeFileSync(temp, text, {encoding: 'utf8', flag: 'wx', mode: 384});
@@ -568,8 +632,29 @@ function createLinuxIO(home, core) {
                 encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
             });
         } catch (error) {
-            /* External stderr can contain private config. Report only a fixed message. */
-            throw new Error(error.code === 'ETIMEDOUT' ? 'Codex 后端校验超时，原配置未更改。' : 'Codex 后端校验失败，原配置未更改。');
+            /* Extract known diagnostics, never arbitrary stderr or config excerpts. */
+            var reason = 'Codex 后端命令执行失败。';
+            var stderr = error.stderr ? String(error.stderr) : '';
+            var toml = /TOML parse error at line (\d+), column (\d+)/i.exec(stderr);
+            var missing = /missing field [`']([a-z_][a-z0-9_]{0,80})[`']/i.exec(stderr);
+            var osError = /os error (\d+)/i.exec(stderr);
+            if (error.code === 'ETIMEDOUT') { reason = 'Codex 后端命令执行超过 30 秒。'; }
+            else if (error.code === 'ENOENT') { reason = '无法启动 Codex 后端：找不到可执行文件或启动器解释器。'; }
+            else if (error.code === 'EACCES') { reason = '无法启动 Codex 后端：没有执行权限。'; }
+            else if (toml) { reason = 'Codex 报告 TOML 配置语法错误：第 ' + toml[1] + ' 行，第 ' + toml[2] + ' 列。'; }
+            else if (missing) {
+                var knownFields = ['slug', 'display_name', 'description', 'supported_reasoning_levels', 'shell_type', 'visibility', 'supported_in_api', 'priority', 'support_verbosity', 'default_verbosity', 'apply_patch_tool_type', 'truncation_policy', 'experimental_supported_tools', 'base_instructions', 'model_messages', 'instructions_template'];
+                reason = knownFields.indexOf(missing[1]) >= 0 ? 'Codex 报告模型目录缺少字段：' + missing[1] + '。' : 'Codex 报告模型目录缺少必需字段。';
+            }
+            else if (/unrecognized subcommand|unknown subcommand|unexpected argument|unknown option/i.test(stderr)) { reason = 'Codex 后端未识别模型目录导出命令。'; }
+            else if (/failed to read model[_ ]instructions[_ ]file/i.test(stderr)) { reason = 'Codex 无法读取配置中的 model_instructions_file。'; }
+            else if (/failed to (?:read|parse) model_catalog_json/i.test(stderr)) { reason = 'Codex 无法读取或解析 model_catalog_json。'; }
+            else if (/\b401\b|unauthorized|invalid api key/i.test(stderr)) { reason = 'Codex 后端请求被拒绝：鉴权失败。'; }
+            else if (/connection refused|failed to connect|error sending request/i.test(stderr)) { reason = 'Codex 后端连接接口失败。'; }
+            else if (osError) { reason = 'Codex 后端报告系统错误，os error ' + osError[1] + '。'; }
+            var reported = failure(reason);
+            reported.code = error.code; reported.exitStatus = error.status; reported.signal = error.signal;
+            throw reported;
         }
     }
     var io = {
@@ -598,8 +683,7 @@ function runLinuxInstaller(argv, core, domestic) {
         var count = core.importModels(createLinuxIO(home, core), home, backend, domestic);
         process.stdout.write('已导入 ' + count + ' 个国产模型，原 GPT 和其他模型已保留。\n');
     } catch (error) {
-        var message = /^[\u3400-\u9fff]/.test(error.message) ? error.message : '文件格式或系统操作失败。';
-        process.stderr.write('导入失败：' + message + ' 软件未关闭。\n');
+        process.stderr.write(core.formatError(error) + '\n软件未关闭。\n');
         process.exitCode = 1;
     }
 }

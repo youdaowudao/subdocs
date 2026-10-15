@@ -3,7 +3,7 @@ if (typeof ObjC !== 'undefined') { ObjC.import('Foundation'); }
 function run(argv) {
     'use strict';
     var fm = $.NSFileManager.defaultManager, utf8 = $.NSUTF8StringEncoding;
-    function nativeError(message) { throw new Error(message); }
+    function nativeError(message) { var error = new Error(message); error.safeMessage = message; throw error; }
     function attrs(path) { var error = Ref(); return fm.attributesOfItemAtPathError($(path), error); }
     function exists(path) { return !attrs(path).isNil(); }
     function isFile(path) { var value = attrs(path); return !value.isNil() && ObjC.unwrap(value.objectForKey($.NSFileType)) === ObjC.unwrap($.NSFileTypeRegular); }
@@ -89,6 +89,6 @@ function run(argv) {
         return '已导入 ' + count + ' 个国产模型，原 GPT 和其他模型已保留。';
     } catch (error) {
         /* Never echo external process stderr, original TOML, or JSON (may contain credentials). */
-        throw new Error('导入失败：' + (/^[\u3400-\u9fff]/.test(error.message) ? error.message : '文件格式或系统操作失败，软件未关闭。'));
+        throw new Error(DomesticModels.formatError(error) + '\n软件未关闭。');
     }
 }
