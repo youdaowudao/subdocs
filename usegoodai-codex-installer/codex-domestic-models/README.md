@@ -1,8 +1,8 @@
-# 给 Codex 桌面 App 导入国产模型
+# 给 Codex 导入国产模型
 
-这个脚本供已经通过 UseGoodAI 使用 GPT 的 Codex 桌面 App 用户导入 8 个国产模型，GPT 与国产模型并列可选。它只修改用户配置目录的 `config.toml` 中两项设置，并生成完整的本地模型目录；默认模型、接口、Key 和其他配置继续保留。
+这个脚本供已经通过 UseGoodAI 使用 GPT 的 Codex 用户导入 8 个国产模型，GPT 与国产模型并列可选。它只修改用户配置目录的 `config.toml` 中两项设置，并生成完整的本地模型目录；默认模型、接口、Key 和其他配置继续保留。
 
-当前交付物是 [Windows 脚本](install/codex-models.ps1) 和 [macOS 脚本](install/codex-models.sh)。源码、设定和测试都在本子项目；交付物已按用户要求迁移到上级安装目录与站点发布目录，用于桌面实机测试。
+当前交付物是 [Windows 脚本](install/codex-models.ps1) 和 [Linux/macOS 共用脚本](install/codex-models.sh)。源码、设定和测试都在本子项目；交付物按用户要求迁移到上级安装目录与站点发布目录，供用户实机测试。
 
 ## 运行脚本
 
@@ -14,15 +14,17 @@ Windows 在 PowerShell 中执行：
 & .\install\codex-models.ps1
 ```
 
-macOS 在终端执行：
+Linux/macOS 在终端执行，脚本自动识别系统：
 
 ```bash
 bash install/codex-models.sh
 ```
 
-重新打开 App，新建任务，在模型菜单中选择 GPT 或国产模型。测试消息写“测试”；分组由用户在中转站切换。
+重新打开 Codex，新建任务，选择 GPT 或国产模型。测试消息写“测试”；分组由用户在中转站切换。
 
-脚本读取 `CODEX_HOME`；未设置时使用用户的 `.codex`。App 安装在自选位置时，Windows 用 `-CodexPath`、macOS 用 `--codex-path` 指定 App 自带的后端文件；配置目录参数分别为 `-CodexHomePath` 和 `--codex-home`。脚本不会从 PATH 中随意取另一份 CLI。
+脚本读取 `CODEX_HOME`；未设置时使用用户的 `.codex`。桌面 App 与命令行共用这里的模型目录。Windows 用 `-CodexPath`、Linux/macOS 用 `--codex-path` 指定现有 Codex 后端；配置目录参数分别为 `-CodexHomePath` 和 `--codex-home`。
+
+macOS 自动定位 App 后端；Linux 优先读取正在运行的 App 后端，未找到时使用本机已有的 `codex` 命令。Linux 使用已有 Node.js 16+ 执行相同的模型处理逻辑，缺少时明确提示并退出，不自动安装依赖。
 
 找不到 App 后端、目录无效、默认模型不在目录或写入失败时，停止导入并保留或恢复原文件，软件不会被关闭。`desktop` 使用内联表或 profile 覆盖模型目录时，脚本会说明需要整理的位置，再停止写入。
 
@@ -34,7 +36,7 @@ bash install/codex-models.sh
 python3 build.py
 ```
 
-生成的两个脚本内嵌同一份数据，不依赖相邻文件，支持后续发布为下载执行或管道执行入口。运行脚本使用 Windows 内置 PowerShell / macOS 内置 JXA，不要求客户安装 Node、Python、jq 或独立 Codex CLI。
+生成的两个脚本内嵌同一份数据，不依赖相邻文件，支持下载执行或管道执行。Windows 使用内置 PowerShell，macOS 使用内置 JXA，Linux 使用已有 Node.js；Linux/macOS 共用同一份 JavaScript 模型处理核心。脚本不自动安装运行环境或另一份 Codex。
 
 进程检测、祖先排除、结束和结果报告在构建时直接从上级 `install/codex.ps1`、`install/codex.sh` 取出。测试核对生成结果与原函数一致。
 

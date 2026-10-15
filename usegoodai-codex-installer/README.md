@@ -18,9 +18,9 @@ irm https://docs.usegoodai.com/install/codex.ps1 | iex
 curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 ```
 
-## 给桌面 App 增加国产模型
+## 给 Codex 增加国产模型
 
-已完成上面的 GPT 接入后，运行对应命令导入 8 个国产模型。模型与原 GPT 并列，默认模型、接口和 Key 保留；成功后会自动关闭客户端，重新打开 App 并新建任务选择模型。重复运行同一命令就是更新。
+已完成上面的 GPT 接入后，运行对应命令导入 8 个国产模型。模型与原 GPT 并列，默认模型、接口和 Key 保留；成功后会自动关闭客户端，重新打开 Codex 并新建任务选择模型。重复运行同一命令就是更新。
 
 Windows：
 
@@ -28,13 +28,13 @@ Windows：
 irm https://docs.usegoodai.com/install/codex-models.ps1 | iex
 ```
 
-macOS：
+Linux/macOS（同一入口自动识别系统）：
 
 ```bash
 curl -fsSL https://docs.usegoodai.com/install/codex-models.sh | bash
 ```
 
-本次入口供桌面实机测试，跨平台自动测试和独立代码审查已通过。模型设定、完整源码、测试与待验收项目在 [codex-domestic-models](codex-domestic-models/README.md) 内维护。
+Linux 使用本机已有 Node.js 16+，脚本不会自动安装依赖。模型设定、完整源码、自动测试、独立审查与桌面待验收项目在 [codex-domestic-models](codex-domestic-models/README.md) 内维护。
 
 ## 使用过程
 

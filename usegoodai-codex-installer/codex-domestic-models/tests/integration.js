@@ -4,6 +4,7 @@ const path = require('path');
 const cp = require('child_process');
 const assert = require('assert/strict');
 const core = require('../src/core.js');
+const createLinuxIO = require('../src/linux-host.js').createLinuxIO;
 const root = path.resolve(__dirname, '..');
 const work = path.join(__dirname, '.work', 'js-integration');
 const backend = process.env.TEST_CODEX || path.join(root, '.dev-tools/codex/codex-x86_64-unknown-linux-musl');
@@ -14,37 +15,27 @@ function check(value) { assert.ok(value); assertions++; }
 function host(home, failure) {
     let faulted = false;
     let staged = false;
-    const io = {
-        join: path.join,
-        resolve: (base, input) => path.resolve(base, input),
-        exists: file => { try { fs.lstatSync(file); return true; } catch (e) { if (e.code === 'ENOENT') { return false; } throw e; } },
-        isFile: file => fs.lstatSync(file).isFile(),
-        read: file => fs.readFileSync(file, 'utf8'),
-        write(file, text) {
-            if (failure === 'write' && !faulted && file === path.join(home, 'usegoodai-models.managed.json')) { faulted = true; throw Error('injected'); }
-            const temp = file + '.atomic';
-            fs.writeFileSync(temp, text, {mode:0o600}); fs.renameSync(temp, file);
-        },
-        remove: file => fs.rmSync(file, {force:true, recursive:true}),
-        mkdir: dir => fs.mkdirSync(dir, {mode:0o700}),
-        stamp: () => 'test.' + require('crypto').randomUUID(),
-        backup(from, to) {
-            if (failure === 'backup') { throw Error('injected'); }
-            fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL);
-        },
-        exportAt(exe, args, target) {
+    const io = createLinuxIO(home, core);
+    const write = io.write, backup = io.backup, exportAt = io.exportAt;
+    io.write = function(file, text) {
+        if (failure === 'write' && !faulted && file === path.join(home, 'usegoodai-models.managed.json')) { faulted = true; throw Error('injected'); }
+        write(file, text);
+    };
+    io.backup = function(from, to) {
+        if (failure === 'backup') { throw Error('injected'); }
+        backup(from, to);
+    };
+    io.exportAt = function(exe, args, target) {
             if (target!==home) { staged=true; }
             if (failure === 'validation' && target !== home) { throw Error('injected'); }
             if (failure === 'postcommit' && staged && target === home) { throw Error('injected'); }
             if (failure === 'concurrent' && target !== home) { fs.appendFileSync(path.join(home, 'config.toml'), '# edited externally\n'); }
-            const text = cp.execFileSync(exe, args, {cwd:target, env:{...process.env,CODEX_HOME:target}, timeout:30000, encoding:'utf8', stdio:['ignore','pipe','pipe']});
+            const text = exportAt(exe, args, target);
             if (failure === 'wrong_catalog' && target !== home) { return JSON.stringify(domestic); }
             if (failure === 'wrong_metadata' && staged && target === home) { const data=JSON.parse(text); data.models.find(m=>m.slug===domestic.models[0].slug).context_window=42; return JSON.stringify(data); }
             return text;
-        },
-        exportCatalog: (exe,bundled) => io.exportAt(exe, bundled ? ['debug','models','--bundled'] : ['debug','models'], home),
-        transaction: (files,exe,unused,original) => core.transaction(io,files,exe,home,original)
     };
+    io.exportCatalog = (exe,bundled) => io.exportAt(exe, bundled ? ['debug','models','--bundled'] : ['debug','models'], home);
     return io;
 }
 function setup(name) {
