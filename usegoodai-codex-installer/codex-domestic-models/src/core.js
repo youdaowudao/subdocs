@@ -254,14 +254,14 @@ var DomesticModels = (function () {
             files.forEach(function (file, index) { var target = io.join(stage, 'file-' + index); atStep('写入暂存文件', target, function () { io.write(target, file.text); }); });
             var stagedCatalog = io.join(stage, 'file-0'), info = configInfo(files[2].text);
             var levels = stringArray(info.values['desktop.enabled-reasoning-efforts']);
-            atStep('写入校验配置', io.join(stage, 'config.toml'), function () { io.write(io.join(stage, 'config.toml'), 'model_catalog_json = ' + JSON.stringify(stagedCatalog) + '\n[desktop]\nenabled-reasoning-efforts = ' + JSON.stringify(levels) + '\n'); });
             var expected = JSON.stringify(parseJSON(files[0].text).models.map(function (m) { return m.slug; }).sort());
-            function verifyAt(target) {
-                var validated = atStep(target === home ? '校验实际生效的配置和模型目录' : '校验暂存模型目录', backend + ' debug models', function () { return validateCatalog(parseJSON(io.exportAt(backend, ['debug', 'models'], target))); });
+            function verifyCatalog(target, step) {
+                atStep('写入校验配置', io.join(stage, 'config.toml'), function () { io.write(io.join(stage, 'config.toml'), 'model_catalog_json = ' + JSON.stringify(target) + '\n[desktop]\nenabled-reasoning-efforts = ' + JSON.stringify(levels) + '\n'); });
+                var validated = atStep(step, backend + ' debug models', function () { return validateCatalog(parseJSON(io.exportAt(backend, ['debug', 'models'], stage))); });
                 if (JSON.stringify(validated.models.map(function (m) { return m.slug; }).sort()) !== expected) { fail('App 未读取新模型目录，停止导入。'); }
                 return JSON.stringify(canonical(validated.models));
             }
-            var normalized = verifyAt(stage);
+            var normalized = verifyCatalog(stagedCatalog, '校验暂存模型目录');
             files.forEach(function (file, index) {
                 atStep('核对导入期间的文件变化', file.path, function () {
                     var now = io.exists(file.path) ? io.read(file.path) : null;
@@ -270,8 +270,13 @@ var DomesticModels = (function () {
             });
             files.forEach(function (file, index) { if (snapshots[index] !== null) { atStep('备份原文件', file.path, function () { io.backup(file.path, file.path + '.bak.' + stamp); }); } });
             files.forEach(function (file, index) { committed.push(index); atStep('提交导入文件', file.path, function () { io.write(file.path, file.text); }); });
-            /* Use the original home so relative paths and active profile precedence remain real. */
-            if (verifyAt(home) !== normalized) { fail('App 生效的模型元数据与本次导入不一致，停止导入。'); }
+            /* Validate the committed catalog without loading or changing the user's provider/auth. */
+            if (verifyCatalog(files[0].path, '校验已写入的模型目录') !== normalized) { fail('已写入的模型元数据与本次导入不一致，停止导入。'); }
+            files.forEach(function (file) {
+                atStep('核对写入后的文件', file.path, function () {
+                    if (io.read(file.path) !== file.text) { fail('写入后的文件与本次导入不一致，停止导入。'); }
+                });
+            });
         } catch (error) {
             var restoreFailed = false;
             committed.reverse().forEach(function (index) { try { if (snapshots[index] === null) { io.remove(files[index].path); } else { io.write(files[index].path, snapshots[index]); } } catch (ignored) { restoreFailed = true; } });
@@ -294,11 +299,11 @@ var DomesticModels = (function () {
     }
     function importModels(io, home, executable, domestic) {
         var configPath = io.join(home, 'config.toml'), catalogPath = io.join(home, 'usegoodai-models.json'), managedPath = io.join(home, 'usegoodai-models.managed.json');
+        atStep('创建 Codex 配置目录', home, function () { if (!io.exists(home)) { io.mkdir(home, true); } });
         var original = atStep('读取 Codex 配置', configPath, function () {
-            if (!io.exists(configPath)) { fail('没有找到 config.toml；请先运行原 GPT 接入脚本。'); }
-            return io.read(configPath);
+            return io.exists(configPath) ? io.read(configPath) : null;
         });
-        var info = atStep('解析 Codex 配置', configPath, function () { return configInfo(original); }), existing = null, source, managed = [];
+        var info = atStep('解析 Codex 配置', configPath, function () { return configInfo(original || ''); }), existing = null, source, managed = [];
         if (own(info.values, 'model_catalog_json')) {
             source = io.resolve(home, stringValue(info.values.model_catalog_json));
             existing = atStep('读取并解析原模型目录', source, function () { return io.exists(source) ? validateCatalog(parseJSON(io.read(source))) : null; });
@@ -310,7 +315,7 @@ var DomesticModels = (function () {
             catch (ignored) { /* Missing custom file or unavailable refresh: bundled catalog remains complete. */ }
         }
         var merged = atStep('校验并合并模型元数据', source || executable + ' debug models --bundled', function () { return merge(existing, app, domestic, managed, info); });
-        var config = atStep('合并模型目录指向和桌面档位', configPath, function () { return patchConfig(original, info, catalogPath, merged.efforts); });
+        var config = atStep('合并模型目录指向和桌面档位', configPath, function () { return patchConfig(original || '', info, catalogPath, merged.efforts); });
         var files = [{path: catalogPath, text: JSON.stringify(merged.catalog, null, 2) + '\n'}, {path: managedPath, text: JSON.stringify(merged.managed, null, 2) + '\n'}, {path: configPath, text: config}];
         /* Host stages all files, validates with the selected App backend, then commits with rollback. */
         atStep('写入并校验导入结果', catalogPath, function () { io.transaction(files, executable, catalogPath, original); });

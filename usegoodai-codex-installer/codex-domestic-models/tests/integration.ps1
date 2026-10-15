@@ -57,23 +57,29 @@ Assert ((Read-PrivateText (Join-Path $target 'config.toml')) -ceq $beforeConfig)
 
 $script:realExport=${function:Invoke-CodexExport}
 $script:realMove=${function:Move-StagedFile}
-foreach ($failure in @('write','validation','concurrent','wrong_catalog','postcommit','wrong_metadata')) {
+foreach ($failure in @('write','validation','concurrent','wrong_catalog','postcommit','wrong_metadata','changed_config','changed_managed','changed_catalog')) {
   foreach ($existing in @($false,$true)) {
     $target=Setup $failure
     if ($existing) { $null=Invoke-ModelImport $target $Backend $Domestic }
     $paths=@('config.toml','usegoodai-models.json','usegoodai-models.managed.json')
     $before=@($paths | ForEach-Object { $p=Join-Path $target $_; if ([IO.File]::Exists($p)) { [Convert]::ToBase64String([IO.File]::ReadAllBytes($p)) } else { '' } })
-    $script:faulted=$false; $script:staged=$false; $script:failure=$failure; $script:target=$target
+    $script:faulted=$false; $script:failure=$failure; $script:target=$target
     function Invoke-CodexExport([string]$Exe,[string[]]$Arguments,[string]$TargetHome) {
+      $final=$false
       if ($TargetHome -cne $script:target) {
-        $script:staged=$true
+        $validationInfo=Get-ConfigInfo (Read-PrivateText (Join-Path $TargetHome 'config.toml'))
+        $final=(Get-TomlString $validationInfo.Values['model_catalog_json']) -ceq (Join-Path $script:target 'usegoodai-models.json')
         if ($script:failure -ceq 'validation') { throw 'injected validation' }
         if ($script:failure -ceq 'concurrent') { [IO.File]::AppendAllText((Join-Path $script:target 'config.toml'),"# edited externally`n") }
         if ($script:failure -ceq 'wrong_catalog') { return (ConvertTo-Json -InputObject $Domestic -Depth 100) }
       }
-      if ($TargetHome -ceq $script:target -and $script:staged -and $script:failure -ceq 'postcommit') { throw 'injected final validation' }
+      if ($final -and $script:failure -ceq 'postcommit') { throw 'injected final validation' }
+      if ($final -and $script:failure -in @('changed_config','changed_managed','changed_catalog')) {
+        $names=@{changed_config='config.toml'; changed_managed='usegoodai-models.managed.json'; changed_catalog='usegoodai-models.json'}
+        [IO.File]::AppendAllText((Join-Path $script:target $names[$script:failure]),"`n")
+      }
       $text=& $script:realExport $Exe $Arguments $TargetHome
-      if ($TargetHome -ceq $script:target -and $script:staged -and $script:failure -ceq 'wrong_metadata') {
+      if ($final -and $script:failure -ceq 'wrong_metadata') {
         $data=ConvertFrom-Json -InputObject $text
         @($data.models | Where-Object {$_.slug -ceq $Domestic.models[0].slug})[0].context_window=42
         return (ConvertTo-Json -InputObject $data -Depth 100)
@@ -131,4 +137,49 @@ Write-PrivateText (Join-Path $target 'instructions.md') "Test repository instruc
 Write-PrivateText $configPath ('model_instructions_file="instructions.md"'+"`n"+(Read-PrivateText $configPath))
 Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
 Assert ((Read-PrivateText $configPath).Contains('model_instructions_file="instructions.md"'))
+
+# Official accounts and arbitrary service names/URLs do not depend on a relay installer.
+foreach ($text in @('', 'model_provider="OpenAI"', "model_provider=`"customer`"`n[model_providers.customer]`nname=`"customer`"`nbase_url=`"https://customer.example.invalid/custom/v1`"`nwire_api=`"responses`"`nrequires_openai_auth=false`nexperimental_bearer_token=`"private-credential-do-not-print`"")) {
+  $target=Setup 'provider-independent'
+  $configPath=Join-Path $target 'config.toml'
+  Write-PrivateText $configPath $text
+  Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+  $after=Read-PrivateText $configPath
+  $restored=[regex]::Replace($after,'(?m)^model_catalog_json = [^\r\n]*\r?\n','')
+  $restored=[regex]::Replace($restored,'\r?\n\[desktop\]\r?\nenabled-reasoning-efforts = [^\r\n]*\r?\n$','')
+  Assert ($restored.TrimEnd("`r","`n") -ceq $text.TrimEnd("`r","`n"))
+  Assert ((Read-PrivateText (Join-Path $target 'auth.json')) -ceq 'sentinel-do-not-read')
+}
+foreach ($mode in @('missing','empty','new_home')) {
+  $target=Setup ('initial-'+$mode)
+  if ($mode -ceq 'missing') { [IO.File]::Delete((Join-Path $target 'config.toml')) }
+  elseif ($mode -ceq 'empty') { Write-PrivateText (Join-Path $target 'config.toml') '' }
+  else { $target=Join-Path $target 'new/codex-home' }
+  Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+  $newConfig=Read-PrivateText (Join-Path $target 'config.toml')
+  Assert ($newConfig -notmatch '(?m)^model_provider\s*=|^model\s*=|^base_url\s*=|^review_model\s*=')
+  if ($mode -ceq 'new_home') { Assert (-not (Test-PrivatePath (Join-Path $target 'auth.json'))) }
+}
+
+# A failed final catalog validation restores absence and zero-byte configs separately.
+foreach ($missing in @($false,$true)) {
+  $target=Setup 'initial-rollback'
+  $configPath=Join-Path $target 'config.toml'
+  if ($missing) { [IO.File]::Delete($configPath) } else { Write-PrivateText $configPath '' }
+  $script:target=$target
+  function Invoke-CodexExport([string]$Exe,[string[]]$Arguments,[string]$TargetHome) {
+    if ($TargetHome -cne $script:target) {
+      $info=Get-ConfigInfo (Read-PrivateText (Join-Path $TargetHome 'config.toml'))
+      if ((Get-TomlString $info.Values['model_catalog_json']) -ceq (Join-Path $script:target 'usegoodai-models.json')) { throw 'injected final validation' }
+    }
+    return (& $script:realExport $Exe $Arguments $TargetHome)
+  }
+  $failed=$false; try { $null=Invoke-ModelImport $target $Backend $Domestic } catch { $failed=$true }
+  Assert $failed
+  Assert ((Test-PrivatePath $configPath) -ne $missing)
+  if (-not $missing) { Assert (([IO.FileInfo]$configPath).Length -eq 0) }
+  Assert (-not (Test-PrivatePath (Join-Path $target 'usegoodai-models.json')))
+  Assert (-not (Test-PrivatePath (Join-Path $target 'usegoodai-models.managed.json')))
+  Set-Item Function:Invoke-CodexExport $script:realExport
+}
 Write-Output "PowerShell import/rollback: $script:assertions assertions passed"
