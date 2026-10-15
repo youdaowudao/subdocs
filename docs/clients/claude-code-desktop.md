@@ -66,7 +66,7 @@ APP 和 CLI 的配置互不替代。CLI 用户也可以在 [一键导入不可�
 <a id="claude-desktop-gateway"></a>
 ## 备用：直接在 Claude Desktop 配置 Gateway
 
-CC Switch 不适用时，在 Claude Desktop APP 内完成下面配置。这个入口不需要 CC Switch，但也不能使用后台 **导入到 CCS**。
+CC Switch 不适用时，在 Claude Desktop APP 内完成下面配置。这个入口不需要 CC Switch；填好连接信息后，还要向下填写模型列表、测试连接并应用配置。
 
 ### 1. 打开第三方推理设置
 
@@ -89,19 +89,39 @@ macOS 从系统菜单栏进入，Windows 从登录页左上角的菜单进入：
 | Gateway API key | UseGoodAI API Key |
 | Gateway auth scheme | `Bearer` |
 
-Gateway base URL 不要添加 `/v1`。Claude Desktop 会自动请求 Anthropic Messages API，UseGoodAI 会按当前 API Key 所属分组转发 Claude 模型请求。
+Gateway base URL 不要添加 `/v1`。填完后继续配置下面的模型列表，再运行连接测试。
 
-### 3. 应用配置并测试
+### 3. 向下滚动，填写模型列表
 
-点击 **Apply locally**。Claude Desktop 会重新启动，在登录页选择使用第三方配置进入。
+在配置窗口向下找到 **Models**（模型）区域；带左侧导航的界面直接点击 **Models**。关闭 **Model discovery**，在 **Model list** 中手动添加模型。
 
-发送：
+先添加一个当前 Key 所属分组支持的 Claude 模型。下面以 `claude-sonnet-4-6` 为例：
+
+| 字段 | 填写 |
+| --- | --- |
+| Model ID | `claude-sonnet-4-6`；换模型时填写当前 Key 所属分组可用的完整模型 ID |
+| Display name | `Claude Sonnet 4.6`，只用于界面显示；留空会自动显示名称 |
+| Tier alias | `sonnet` |
+| Default for tier | 开启，将该模型作为 `sonnet` 的默认模型 |
+| Offer 1M-context variant | 先保持关闭 |
+
+**Model ID 必须与 UseGoodAI 接受的模型 ID 完全一致**，不能只填 `sonnet` 或显示名称 `Claude Sonnet 4.6`。模型 ID 见 [模型价格](/models)。填写 Display name 不会替代 Model ID。
+
+需要加入其它模型时，每个模型单独添加一条，Tier alias 按模型系列选择：Sonnet 选 `sonnet`，Opus 选 `opus`，Haiku 选 `haiku`。同一系列只把一个模型设为 **Default for tier**；整个列表的第一条是默认模型，把最常用的模型放在第一条。
+
+### 4. 测试连接并应用配置
+
+回到 **Connection → Gateway credentials**，点击 **Test connection**。看到绿色的连接测试成功提示后，再应用配置。测试提示模型不存在或不可用时，返回 **Models**，检查 Model ID 的拼写及当前 Key 所属分组是否支持该模型，修正后重新测试。
+
+点击 **Apply Changes**（旧版按钮名为 **Apply locally**），按提示重新启动 Claude Desktop，在登录页选择使用第三方配置进入。
+
+重新打开后，新建一个对话或任务，在模型选择器中选中刚才配置的模型，再发送：
 
 ```text
 测试
 ```
 
-能正常回复后，直接使用 APP 内的模型选择器切换模型，不需要新开对话。
+能正常回复后，使用 APP 内的模型选择器切换已添加的模型。
 
 ## 配置 Claude Code CLI
 
@@ -143,7 +163,7 @@ claude
 
 ## Claude 模型怎么切换
 
-Claude Desktop 和 Claude Code CLI 里直接选择 Claude 模型。UseGoodAI 会按当前 API Key 所属分组调用对应的 Anthropic 模型。
+Claude Desktop 和 Claude Code CLI 里直接选择 Claude 模型。通过 Gateway 手动配置的 Desktop 从已添加的模型列表中选择。UseGoodAI 会按当前 API Key 所属分组调用对应的 Anthropic 模型。
 
 不要在 APP 或 CLI 里填写 GPT 模型名，也不需要设置 `ANTHROPIC_MODEL` 或 `ANTHROPIC_DEFAULT_*_MODEL`。可用模型以 Claude 的模型选择器和后台当前 Key 所属分组为准，价格看 [模型价格](/models)。
 
@@ -155,6 +175,8 @@ Claude Desktop 和 Claude Code CLI 里直接选择 Claude 模型。UseGoodAI 会
 | --- | --- |
 | APP 找不到第三方推理入口 | 回到登录页，按 **Help → Troubleshooting → Enable Developer Mode** 开启后再进入 **Developer** 菜单 |
 | APP 应用配置后仍显示普通登录页 | 彻底退出并重新打开 APP，再选择第三方配置入口 |
+| APP 的 Gateway 测试提示模型不存在或不可用 | 回到 **Models → Model list**，核对 Model ID 的完整拼写，换成当前 Key 所属分组支持的 Claude 模型，再点 **Test connection** |
+| APP 的 Gateway 模型选择器为空 | 在 **Models → Model list** 中添加完整模型 ID，应用配置并重新打开 APP |
 | CLI 仍在使用原来的服务 | 确认在执行 `export` 的同一个终端里启动了 `claude` |
 | `401 Unauthorized` | 重新复制 UseGoodAI API Key，确认 APP 使用 `Bearer`，CLI 使用 `ANTHROPIC_AUTH_TOKEN` |
 | 请求地址错误 | APP 和 CLI 都只填 `https://api.usegoodai.com`，不要添加 `/v1` |
