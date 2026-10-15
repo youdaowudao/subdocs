@@ -74,7 +74,7 @@ function run(argv) {
     }
     var homeValue = $(argv[0]).stringByExpandingTildeInPath.stringByStandardizingPath, executable = argv[1];
     if (!homeValue.isAbsolutePath) { homeValue = fm.currentDirectoryPath.stringByAppendingPathComponent(homeValue).stringByStandardizingPath; }
-    var home = ObjC.unwrap(homeValue);
+    var home = ObjC.unwrap(homeValue), action = argv[2] || 'import';
     function resolve(base, path) {
         var value = $(path).stringByExpandingTildeInPath;
         if (!value.isAbsolutePath) { value = $(base).stringByAppendingPathComponent(value); }
@@ -99,10 +99,11 @@ function run(argv) {
         }
     };
     try {
+        if (action === 'uninstall') { return DomesticModels.uninstallMessage(DomesticModels.uninstallModels(io, home)); }
         var count = DomesticModels.importModels(io, home, executable, DOMESTIC_CATALOG);
         return '已导入 ' + count + ' 个国产模型，原 GPT 和其他模型已保留。';
     } catch (error) {
         /* Never echo external process stderr, original TOML, or JSON (may contain credentials). */
-        throw new Error(DomesticModels.formatError(error) + '\n软件未关闭。');
+        throw new Error(DomesticModels.formatError(error, action) + '\n软件未关闭。');
     }
 }

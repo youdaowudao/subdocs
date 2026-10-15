@@ -14,7 +14,7 @@ function Invoke-ModelStep([string]$Name, [string]$Target, [scriptblock]$Action) 
   }
 }
 
-function Format-ModelImportError($Record) {
+function Format-ModelImportError($Record, [switch]$Uninstall) {
   $problem=if ($Record -is [System.Management.Automation.ErrorRecord]) { $Record.Exception } elseif ($Record -is [Exception]) { $Record } else { $null }
   $reason=$null; $step=$null; $target=$null; $exitStatus=$null; $kind='Error'; $systemCode=$null; $category=$null
   while ($null -ne $problem) {
@@ -33,9 +33,9 @@ function Format-ModelImportError($Record) {
     $problem=$problem.InnerException
   }
   if (-not $reason) { if (-not $category) { $category='文件格式或系统操作失败。' }; $reason=$category+'（'+$kind+'）' }
-  if (-not $step) { $step='初始化模型导入' }
+  if (-not $step) { $step=if ($Uninstall) { '初始化模型卸载' } else { '初始化模型导入' } }
   $lines=New-Object 'System.Collections.Generic.List[string]'
-  $lines.Add('导入失败'); $lines.Add('失败步骤：'+$step)
+  $lines.Add($(if ($Uninstall) { '卸载失败' } else { '导入失败' })); $lines.Add('失败步骤：'+$step)
   if ($target) { $lines.Add('文件或命令：'+$target) }
   $lines.Add('原因：'+$reason)
   if ($null -ne $exitStatus) { $lines.Add('后端退出码：'+$exitStatus) }
@@ -155,8 +155,8 @@ function Get-TomlStatements([string]$Text) {
   return ,$records.ToArray()
 }
 
-function Get-ConfigInfo([string]$Text) {
-  $info = @{Values=(New-OrdinalMap); Edits=(New-OrdinalMap); FirstHeader=$Text.Length; Desktop=$null; DesktopInline=$false; DesktopDotted=$false}
+function Get-ConfigInfo([string]$Text, [switch]$ReadOnly) {
+  $info = @{Values=(New-OrdinalMap); Edits=(New-OrdinalMap); FirstHeader=$Text.Length; Desktop=$null; DesktopInline=$false; DesktopDotted=$false; ProfileCatalog=$false}
   $scope = @()
   foreach ($rec in (Get-TomlStatements $Text)) {
     $code = $rec.Code.Trim([char[]]@(' ', "`r", "`n", "`t", [char]0xFEFF))
@@ -186,7 +186,10 @@ function Get-ConfigInfo([string]$Text) {
       $info.DesktopInline = $parts.Count -eq 1
       $info.DesktopDotted = $parts.Count -gt 1 -or $info.DesktopDotted
     }
-    if ($path.Count -gt 1 -and $path[0] -ceq 'profiles' -and $path[-1] -ceq 'model_catalog_json') { throw (New-ModelImportError 'profile 中另有 model_catalog_json；请先统一目录配置再导入。') }
+    if ($path.Count -gt 1 -and $path[0] -ceq 'profiles' -and $path[-1] -ceq 'model_catalog_json') {
+      if ($ReadOnly) { $info.ProfileCatalog=$true }
+      else { throw (New-ModelImportError 'profile 中另有 model_catalog_json；请先统一目录配置再导入。') }
+    }
     if (($path.Count -eq 1 -and @('model_catalog_json','model','review_model','profile','model_provider') -ccontains $key) -or ($path.Count -eq 2 -and $key -ceq 'desktop.enabled-reasoning-efforts')) {
       if ($info.Edits.ContainsKey($key)) { throw (New-ModelImportError '目标 TOML 字段重复。') }
       $vstart = $eq + 1
@@ -196,7 +199,7 @@ function Get-ConfigInfo([string]$Text) {
       $info.Values[$key] = $rec.Code.Substring($vstart,$vend-$vstart)
     }
   }
-  if ($info.DesktopInline) { throw (New-ModelImportError 'desktop 使用内联表；请改为 [desktop] 配置段后导入。') }
+  if ($info.DesktopInline -and -not $ReadOnly) { throw (New-ModelImportError 'desktop 使用内联表；请改为 [desktop] 配置段后导入。') }
   return $info
 }
 
@@ -343,4 +346,59 @@ function Invoke-ModelImport([string]$TargetHome, [string]$Backend, $Domestic) {
   )
   Invoke-ModelStep '写入并校验导入结果' $catalogPath { Write-ModelTransaction $files $Backend $TargetHome $original $readSet.ToArray() }
   return $merged.Managed.Count
+}
+
+function Remove-ImportedModels([string]$TargetHome) {
+  $configPath=Join-Path $TargetHome 'config.toml'
+  $catalogPath=Join-Path $TargetHome 'usegoodai-models.json'
+  $managedPath=Join-Path $TargetHome 'usegoodai-models.managed.json'
+  $readSet=New-Object 'System.Collections.Generic.List[object]'
+  $rawManaged=Read-ModelInput $readSet $managedPath '读取已管理模型记录'
+  if ($null -eq $rawManaged) { return @{Changed=$false; Active=$false; Count=0} }
+  $managed=Invoke-ModelStep '解析已管理模型记录' $managedPath {
+    if (-not $rawManaged.TrimStart().StartsWith('[')) { throw (New-ModelImportError '已管理模型记录格式无效。') }
+    $null=ConvertFrom-ModelJson $rawManaged '解析已管理模型记录' $managedPath
+    # A wrapper preserves nested/empty arrays even when PS 5.1 enumerates the root array.
+    $wrapper=ConvertFrom-ModelJson ('{"ids":'+$rawManaged+'}') '解析已管理模型记录' $managedPath
+    ,$wrapper.ids
+  }
+  $owned=New-OrdinalMap
+  Invoke-ModelStep '校验已管理模型记录' $managedPath {
+    foreach ($id in $managed) {
+      if ($id -isnot [string] -or -not $id) { throw (New-ModelImportError '已管理模型记录格式无效。') }
+      if ($id -match '^gpt-') { throw (New-ModelImportError '管理记录包含 GPT，停止卸载以保留 GPT。') }
+      $owned[$id]=$true
+    }
+  }
+  if (-not $owned.Count) { return @{Changed=$false; Active=$false; Count=0} }
+  $catalogText=Invoke-ModelStep '读取原导入模型目录' $catalogPath {
+    $text=Read-ModelInput $readSet $catalogPath '读取原导入模型目录'
+    if ($null -eq $text) { throw (New-ModelImportError '原导入模型目录不存在，停止卸载。') }
+    $text
+  }
+  $catalog=ConvertFrom-ModelJson $catalogText '解析原导入模型目录' $catalogPath
+  Invoke-ModelStep '校验原导入模型目录' $catalogPath { Test-ModelCatalog $catalog }
+  $beforeCount=$catalog.models.Count
+  $catalog.models=@($catalog.models | Where-Object { -not $owned.ContainsKey($_.slug) })
+  Invoke-ModelStep '校验卸载后的模型目录' $catalogPath { Test-ModelCatalog $catalog }
+  $count=$beforeCount-$catalog.models.Count
+  $original=Read-ModelInput $readSet $configPath '读取 Codex 配置'
+  $info=Invoke-ModelStep '解析 Codex 配置' $configPath { Get-ConfigInfo ([string]$original) -ReadOnly }
+  $active=$false
+  if ($count -gt 0 -and -not $info.ProfileCatalog -and $info.Values.ContainsKey('model_catalog_json')) {
+    $source=Invoke-ModelStep '解析当前模型目录路径' $configPath {
+      $value=Get-TomlString $info.Values['model_catalog_json']
+      if ($value.StartsWith('~/') -or $value.StartsWith('~\')) { $value=Join-Path $HOME $value.Substring(2) }
+      if (-not [IO.Path]::IsPathRooted($value)) { $value=Join-Path $TargetHome $value }
+      [IO.Path]::GetFullPath($value)
+    }
+    $active=[StringComparer]::OrdinalIgnoreCase.Equals($source,[IO.Path]::GetFullPath($catalogPath))
+  }
+  $files=@(
+    @{Path=$catalogPath; Text=(ConvertTo-Json -InputObject $catalog -Depth 100)+"`n"},
+    @{Path=$managedPath; Text="[]`n"},
+    @{Path=$configPath; Text=$original; Keep=$true}
+  )
+  Invoke-ModelStep '写入并校验卸载结果' $catalogPath { Write-ModelTransaction $files '' $TargetHome $original $readSet.ToArray() }
+  return @{Changed=$true; Active=$active; Count=$count}
 }
