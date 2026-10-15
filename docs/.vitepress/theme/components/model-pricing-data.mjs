@@ -12,7 +12,6 @@ const GPT_MODEL_IDS = [
   'gpt-5.6-sol',
   'gpt-5.6-terra',
   'gpt-5.6-luna',
-  'gpt-5.5',
 ]
 
 const GEMINI_MODEL_IDS = [
@@ -25,8 +24,6 @@ const GEMINI_MODEL_IDS = [
   'gemini-3.5-flash',
   'gemini-3.1-pro-preview',
   'gemini-3.1-flash-lite',
-  'gemini-3.1-flash-lite-preview',
-  'gemini-3-pro-preview',
   'gemini-3-flash',
   'gemini-3-flash-preview',
   'gemini-2.5-pro',
@@ -308,12 +305,6 @@ export const TEXT_MODELS = [
     officialUsd: { input: 1, output: 6, cachedInput: 0.1 },
   },
   {
-    id: 'gpt-5.5',
-    name: 'GPT-5.5',
-    description: '重要任务、复杂代码和专业分析',
-    officialUsd: { input: 5, output: 30, cachedInput: 0.5 },
-  },
-  {
     id: 'claude-fable-5',
     name: 'Claude Fable 5',
     description: 'Anthropic 写作向模型，适合长文创作、文案润色和自然表达',
@@ -380,7 +371,7 @@ export const TEXT_MODELS = [
     id: 'claude-sonnet-4-5-20250929',
     aliases: ['claude-sonnet-4-5'],
     name: 'Claude Sonnet 4.5',
-    description: 'Anthropic 均衡型模型，适合代码和综合任务',
+    description: '2026-11-30 停止官方 API 服务，新任务使用 Claude Sonnet 5.5',
     officialUsd: { input: 3, output: 15, cachedInput: 0.3 },
   },
   {
@@ -479,18 +470,6 @@ export const TEXT_MODELS = [
     officialUsd: { input: 0.25, output: 1.5, cachedInput: 0.025 },
   },
   {
-    id: 'gemini-3.1-flash-lite-preview',
-    name: 'Gemini 3.1 Flash-Lite Preview',
-    description: '2026-03 更新，适合高频轻量任务和低成本批量处理',
-    officialUsd: { input: 0.25, output: 1.5, cachedInput: 0.025 },
-  },
-  {
-    id: 'gemini-3-pro-preview',
-    name: 'Gemini 3 Pro Preview',
-    description: '2025-11 更新，适合复杂推理、多模态理解和代码规划',
-    officialUsd: { input: 2, output: 12, cachedInput: 0.2 },
-  },
-  {
     id: 'gemini-3-flash',
     name: 'Gemini 3 Flash',
     description: '3 系列 Flash 入口，适合速度、成本和代理能力平衡',
@@ -537,7 +516,7 @@ export const TEXT_MODELS = [
   {
     id: 'deepseek-v4-pro',
     name: 'DeepSeek V4 Pro 0813',
-    description: 'V4-Pro-0813 正式版；2026-09-14 12:00 起将路由到 V4.1 Flash 并按 Flash 价格计费',
+    description: 'V4-Pro-0813 正式版；官方继续提供 API 服务，计费方式保持不变',
     officialCny: { input: 4.5, output: 13.5, cachedInput: 0.15 },
     officialPeakCny: { input: 9, output: 27, cachedInput: 0.3 },
   },

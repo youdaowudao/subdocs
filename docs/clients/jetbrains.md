@@ -51,7 +51,7 @@ JetBrains 新版 AI Assistant 里可以直接选择 **Codex**。打开 **AI Chat
 claude-opus-5
 ```
 
-也可以改成当前分组里的 `claude-fable-5`、`gemini-3.6-flash`、`grok-4.5` 或 `gpt-5.5`。一次只填一个模型名，模型名必须和 UseGoodAI 管理后台分组里的 ID 完全一致。
+也可以改成当前分组里的 `claude-fable-5`、`gemini-3.6-flash`、`grok-4.5` 或 `gpt-6.1-sol`。一次只填一个模型名，模型名必须和 UseGoodAI 管理后台分组里的 ID 完全一致。
 
 点击 **Test Connection**，测试通过后保存。打开 **AI Chat**，在顶部模型选择器里选择刚添加的 UseGoodAI 模型，再发送 `测试`。
 

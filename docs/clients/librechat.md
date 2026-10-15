@@ -54,7 +54,7 @@ endpoints:
       modelDisplayLabel: "UseGoodAI"
 ```
 
-把 `claude-fable-5` 换成当前 Key 分组可用模型。也可以填 `gpt-5.5`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`。第一次只写一个模型，能正常回复后再增加其它模型。
+把 `claude-fable-5` 换成当前 Key 分组可用模型。也可以填 `gpt-6.1-sol`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`。第一次只写一个模型，能正常回复后再增加其它模型。
 
 ## 挂载配置
 

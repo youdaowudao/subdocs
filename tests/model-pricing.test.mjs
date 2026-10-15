@@ -130,7 +130,6 @@ test('keeps the GPT family models in the expected order', () => {
         'gpt-5.6-sol',
         'gpt-5.6-terra',
         'gpt-5.6-luna',
-        'gpt-5.5',
       ],
     )
   }
@@ -514,8 +513,6 @@ test('shows Gemini 4 Argon and Barium first in the Gemini Antigravity group', ()
       'gemini-3.5-flash',
       'gemini-3.1-pro-preview',
       'gemini-3.1-flash-lite',
-      'gemini-3.1-flash-lite-preview',
-      'gemini-3-pro-preview',
       'gemini-3-flash',
       'gemini-3-flash-preview',
       'gemini-2.5-pro',
@@ -730,8 +727,6 @@ test('keeps verified Gemini price baselines including the published Barium chann
       { id: 'gemini-3.5-flash', officialUsd: { input: 1.5, output: 9, cachedInput: 0.15 } },
       { id: 'gemini-3.1-pro-preview', officialUsd: { input: 2, output: 12, cachedInput: 0.2 } },
       { id: 'gemini-3.1-flash-lite', officialUsd: { input: 0.25, output: 1.5, cachedInput: 0.025 } },
-      { id: 'gemini-3.1-flash-lite-preview', officialUsd: { input: 0.25, output: 1.5, cachedInput: 0.025 } },
-      { id: 'gemini-3-pro-preview', officialUsd: { input: 2, output: 12, cachedInput: 0.2 } },
       { id: 'gemini-3-flash', officialUsd: { input: 0.5, output: 3, cachedInput: 0.05 } },
       { id: 'gemini-3-flash-preview', officialUsd: { input: 0.5, output: 3, cachedInput: 0.05 } },
       { id: 'gemini-2.5-pro', officialUsd: { input: 1.25, output: 10, cachedInput: 0.125 } },
@@ -770,7 +765,6 @@ test('keeps Gemini descriptions customer-facing with dates or concrete use cases
   assert.match(models.get('gemini-3.6-flash').description, /2026-07/)
   assert.match(models.get('gemini-3.5-flash').description, /2026-05/)
   assert.match(models.get('gemini-3.1-pro-preview').description, /2026-02/)
-  assert.match(models.get('gemini-3-pro-preview').description, /2025-11/)
   assert.match(models.get('gemini-2.5-pro').description, /2025-06/)
   assert.match(models.get('gemini-2.5-flash-lite').description, /高频|低延迟/)
 })
