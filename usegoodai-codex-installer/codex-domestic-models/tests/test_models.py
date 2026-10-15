@@ -66,6 +66,8 @@ add('crlf', case('model="gpt-original"\r\n[desktop]\r\ntheme="dark"\r\n'))
 add('no_final_newline', case('model="gpt-original"\n[desktop]'))
 add('only_root_no_newline', case('model="gpt-original"'))
 add('bom', case('\ufeffmodel="gpt-original"\n'))
+add('bom_first_desktop_header', case('\ufeff[desktop]\ntheme="dark"\n'))
+add('bom_first_other_header', case('\ufeff[features]\nx=true\n'))
 add('windows_path', case(path='C:\\Users\\测试\\.codex\\usegoodai-models.json'))
 add('path_quotes', case(path='/Users/a"b\\c/.codex/usegoodai-models.json'))
 add('multiline_string', case('model="gpt-original"\ninstructions = """\n[desktop]\nmodel_catalog_json = "fake"\n# inside string\n"""\n[features]\nx=true\n'))
@@ -77,8 +79,8 @@ add('escaped_windows_existing_path', case('model="gpt-original"\nmodel_catalog_j
 add('escaped_unicode_looking_path', case('model="gpt-original"\nmodel_catalog_json="C:\\\\U00000041\\\\models.json"\n'))
 add('unicode_large_escape', case('model="gpt-ori\\U00000067inal"\n'))
 add('empty_desktop_array', case('[desktop]\nenabled-reasoning-efforts=[]\n'))
-add('missing_default', case('model="gpt-missing"\n'), False)
-add('missing_review', case('model="gpt-original"\nreview_model="gone"\n'), False)
+add('unlisted_default_alias', case('model="customer-gpt-alias"\n'))
+add('unlisted_review_alias', case('model="gpt-original"\nreview_model="customer-review-alias"\n'))
 add('no_gpt', case('model="user-custom"\n', app={'models':[model('user-custom')]}), False)
 add('invalid_existing', case(existing={'models':[{'slug':'gpt-old'}]}), False)
 add('duplicate_slugs', case(app={'models':[GPT,GPT]}), False)
@@ -203,11 +205,15 @@ theme = "dark"
             (tools/name).symlink_to(executable)
         return target,tools
 
-    def run_linux_script(self, target, tools, backend=None, piped=False, running_backend=None, shell=('/bin/sh',)):
+    def run_linux_script(self, target, tools, backend=None, piped=False, running_backend=None, shell=('/bin/sh',), env_overrides=None, platform=None):
         log=(target if target.exists() else tools)/'mock-kills.log'
         log.write_text('')
         env=dict(os.environ,CODEX_HOME=str(target),PATH=str(tools),LINUX_TEST_KILL_LOG=str(log),NO_COLOR='1')
+        env.update(env_overrides or {})
         wrapper='ps() { :; }; kill() { printf "%s\\n" "$*" >> "$LINUX_TEST_KILL_LOG"; }; '
+        if platform:
+            env['LINUX_TEST_PLATFORM']=platform
+            wrapper+='uname() { printf "%s\\n" "$LINUX_TEST_PLATFORM"; }; '
         if running_backend is not None:
             env['LINUX_TEST_APP_BACKEND']=str(running_backend)
             env['LINUX_TEST_USER_UID']=str(os.getuid())
@@ -221,6 +227,102 @@ theme = "dark"
             command=[*shell,'-c',wrapper+'installer_path=$1; shift; . "$installer_path"','linux-test',str(ROOT/'install/codex-models.sh'),*arguments]
             content=None
         return subprocess.run(command,cwd=ROOT,env=env,input=content,text=True,capture_output=True,timeout=60)
+
+    def test_linux_module_default_cannot_skip_import(self):
+        target,tools=self.linux_fixture('linux-module-default')
+        result=self.run_linux_script(target,tools,CODEX,piped=True,
+            env_overrides={'NODE_OPTIONS':'--experimental-default-type=module'})
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('已导入 8 个国产模型',result.stdout)
+        for name in ('config.toml','usegoodai-models.json','usegoodai-models.managed.json'):
+            self.assertTrue((target/name).is_file())
+        self.assertEqual(len(json.loads((target/'usegoodai-models.managed.json').read_text())),8)
+
+    def test_linux_zero_exit_without_import_never_closes_clients(self):
+        target,tools=self.linux_fixture('linux-no-receipt')
+        preload=tools/'exit-before-import.js'
+        preload.write_text('process.exit(0);\n')
+        original=(target/'config.toml').read_bytes()
+        result=self.run_linux_script(target,tools,CODEX,piped=True,running_backend=CODEX,
+            env_overrides={'NODE_OPTIONS':'--require '+json.dumps(str(preload),ensure_ascii=False)})
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('运行器没有返回完整导入结果',result.stderr)
+        self.assertEqual((target/'config.toml').read_bytes(),original)
+        self.assertFalse((target/'usegoodai-models.json').exists())
+        self.assertEqual((target/'mock-kills.log').read_text(),'')
+
+    def test_linux_tries_nodejs_after_unusable_node(self):
+        target,tools=self.linux_fixture('linux-nodejs-fallback')
+        (tools/'node').unlink()
+        (tools/'node').write_text('#!/bin/sh\nexit 1\n')
+        (tools/'node').chmod(0o755)
+        (tools/'nodejs').symlink_to(NODE)
+        result=self.run_linux_script(target,tools,CODEX,piped=True)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertEqual(len(json.loads((target/'usegoodai-models.managed.json').read_text())),8)
+
+    def test_linux_relative_path_keeps_node_launchers_working(self):
+        target,tools=self.linux_fixture('linux-relative-path')
+        (tools/'codex').unlink()
+        (tools/'codex').write_text('#!/usr/bin/env node\nconst r=require("child_process").spawnSync('+json.dumps(str(CODEX))+',process.argv.slice(2),{stdio:"inherit"});process.exit(r.status===null?1:r.status);\n')
+        (tools/'codex').chmod(0o755)
+        relative=os.path.relpath(tools,ROOT)
+        before=subprocess.run([str(tools/'codex'),'--version'],cwd=ROOT,
+            env=dict(os.environ,PATH=relative),text=True,capture_output=True,timeout=30)
+        self.assertEqual(before.returncode,0,before.stderr)
+        result=self.run_linux_script(target,tools,piped=True,env_overrides={'PATH':relative})
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertEqual(len(json.loads((target/'usegoodai-models.managed.json').read_text())),8)
+
+    def test_macos_cli_fallback_reaches_system_runner(self):
+        target,tools=self.linux_fixture('macos-cli-discovery')
+        result=self.run_linux_script(target,tools,piped=True,platform='Darwin')
+        # Only exercises shell discovery; this Linux host has no macOS JXA runtime.
+        self.assertNotEqual(result.returncode,0)
+        self.assertNotIn('未找到 Codex 后端',result.stderr)
+        self.assertIn('osascript',result.stderr)
+        self.assertFalse((target/'usegoodai-models.json').exists())
+        self.assertEqual((target/'mock-kills.log').read_text(),'')
+
+    def test_linux_bom_first_header_remains_valid_for_real_codex(self):
+        target,tools=self.linux_fixture('linux-bom-header')
+        config=target/'config.toml'
+        config.write_text('\ufeff[desktop]\ntheme="dark"\n')
+        env=dict(os.environ,CODEX_HOME=str(target))
+        before=subprocess.run([str(CODEX),'debug','models'],cwd=target,env=env,text=True,capture_output=True,timeout=30)
+        self.assertEqual(before.returncode,0,before.stderr)
+        result=self.run_linux_script(target,tools,CODEX,piped=True)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        after=subprocess.run([str(CODEX),'debug','models'],cwd=target,env=env,text=True,capture_output=True,timeout=30)
+        self.assertEqual(after.returncode,0,after.stderr)
+        text=config.read_text()
+        self.assertTrue(text.startswith('\ufeff'))
+        self.assertEqual(text.count('\ufeff'),1)
+        self.assertEqual(tomllib.loads(text.lstrip('\ufeff'))['desktop']['theme'],'dark')
+
+    def test_linux_keeps_unlisted_default_and_review_aliases(self):
+        target,tools=self.linux_fixture('linux-model-alias')
+        config=target/'config.toml'
+        config.write_text('model="customer-gpt-alias"\nreview_model="customer-review-alias"\n')
+        result=self.run_linux_script(target,tools,CODEX,piped=True)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        after=tomllib.loads(config.read_text())
+        self.assertEqual(after['model'],'customer-gpt-alias')
+        self.assertEqual(after['review_model'],'customer-review-alias')
+        ids=[model['slug'] for model in json.loads((target/'usegoodai-models.json').read_text())['models']]
+        self.assertNotIn('customer-gpt-alias',ids)
+        self.assertNotIn('customer-review-alias',ids)
+
+    def test_linux_known_toml_parse_error_is_not_hidden_by_discovery(self):
+        target,tools=self.linux_fixture('linux-duplicate-original-key')
+        config=target/'config.toml'
+        config.write_text('notify=[]\nnotify=[]\n')
+        original=config.read_bytes()
+        result=self.run_linux_script(target,tools,CODEX,piped=True)
+        self.assert_linux_diagnostic(result,target,'解析已有 TOML 配置')
+        self.assertIn('第 2 行',result.stderr)
+        self.assertEqual(config.read_bytes(),original)
+        self.assertFalse((target/'usegoodai-models.json').exists())
 
     def test_linux_generated_entry_and_pipe_update(self):
         target,tools=self.linux_fixture('linux-entry')

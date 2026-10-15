@@ -24,35 +24,12 @@ function createLinuxIO(home, core) {
     function exportAt(executable, args, target) {
         try {
             return child.execFileSync(executable, args, {
-                cwd: target, env: Object.assign({}, process.env, {CODEX_HOME: target}),
+                cwd: target, env: Object.assign({}, process.env, {CODEX_HOME: target, PATH: (process.env.PATH || '').split(path.delimiter).map(function (entry) { return path.resolve(entry || '.'); }).join(path.delimiter)}),
                 timeout: 30000, killSignal: 'SIGKILL', maxBuffer: 64 * 1024 * 1024,
                 encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
             });
         } catch (error) {
-            /* Extract known diagnostics, never arbitrary stderr or config excerpts. */
-            var reason = 'Codex 后端命令执行失败。';
-            var stderr = error.stderr ? String(error.stderr) : '';
-            var toml = /TOML parse error at line (\d+), column (\d+)/i.exec(stderr);
-            var missing = /missing field [`']([a-z_][a-z0-9_]{0,80})[`']/i.exec(stderr);
-            var osError = /os error (\d+)/i.exec(stderr);
-            if (error.code === 'ETIMEDOUT') { reason = 'Codex 后端命令执行超过 30 秒。'; }
-            else if (error.code === 'ENOENT') { reason = '无法启动 Codex 后端：找不到可执行文件或启动器解释器。'; }
-            else if (error.code === 'EACCES') { reason = '无法启动 Codex 后端：没有执行权限。'; }
-            else if (toml) { reason = 'Codex 报告 TOML 配置语法错误：第 ' + toml[1] + ' 行，第 ' + toml[2] + ' 列。'; }
-            else if (missing) {
-                var knownFields = ['slug', 'display_name', 'description', 'supported_reasoning_levels', 'shell_type', 'visibility', 'supported_in_api', 'priority', 'support_verbosity', 'default_verbosity', 'apply_patch_tool_type', 'truncation_policy', 'experimental_supported_tools', 'base_instructions', 'model_messages', 'instructions_template'];
-                reason = knownFields.indexOf(missing[1]) >= 0 ? 'Codex 报告模型目录缺少字段：' + missing[1] + '。' : 'Codex 报告模型目录缺少必需字段。';
-            }
-            else if (/Model provider [`'][^\r\n]*[`'] not found/i.test(stderr)) { reason = 'model_provider 指向的服务名称未在 model_providers 中定义，请核对名称和大小写。'; }
-            else if (/unrecognized subcommand|unknown subcommand|unexpected argument|unknown option/i.test(stderr)) { reason = 'Codex 后端未识别模型目录导出命令。'; }
-            else if (/failed to read model[_ ]instructions[_ ]file/i.test(stderr)) { reason = 'Codex 无法读取配置中的 model_instructions_file。'; }
-            else if (/failed to (?:read|parse) model_catalog_json/i.test(stderr)) { reason = 'Codex 无法读取或解析 model_catalog_json。'; }
-            else if (/\b401\b|unauthorized|invalid api key/i.test(stderr)) { reason = 'Codex 后端请求被拒绝：鉴权失败。'; }
-            else if (/connection refused|failed to connect|error sending request/i.test(stderr)) { reason = 'Codex 后端连接接口失败。'; }
-            else if (osError) { reason = 'Codex 后端报告系统错误，os error ' + osError[1] + '。'; }
-            var reported = failure(reason);
-            reported.code = error.code; reported.exitStatus = error.status; reported.signal = error.signal;
-            throw reported;
+            throw core.backendFailure(error.stderr, error);
         }
     }
     var io = {
@@ -67,7 +44,7 @@ function createLinuxIO(home, core) {
         backup: function (from, to) { fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL); fs.chmodSync(to, 384); },
         exportAt: exportAt,
         exportCatalog: function (backend, bundled) { return exportAt(backend, bundled ? ['debug', 'models', '--bundled'] : ['debug', 'models'], home); },
-        transaction: function (files, backend, unused, original) { core.transaction(io, files, backend, home, original); }
+        transaction: function (files, backend, unused, original, readSet) { core.transaction(io, files, backend, home, original, readSet); }
     };
     return io;
 }

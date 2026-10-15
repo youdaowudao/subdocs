@@ -3,23 +3,28 @@ if (typeof ObjC !== 'undefined') { ObjC.import('Foundation'); }
 function run(argv) {
     'use strict';
     var fm = $.NSFileManager.defaultManager, utf8 = $.NSUTF8StringEncoding;
-    function nativeError(message) { var error = new Error(message); error.safeMessage = message; throw error; }
+    function nativeError(message, path, native) {
+        var error = new Error(message); error.safeMessage = message;
+        if (path) { error.importTarget = path; }
+        try { if (native && native[0]) { var code = Number(native[0].code); if (isFinite(code)) { error.systemCode = code; } } } catch (ignored) {}
+        throw error;
+    }
     function attrs(path) { var error = Ref(); return fm.attributesOfItemAtPathError($(path), error); }
     function exists(path) { return !attrs(path).isNil(); }
     function isFile(path) { var value = attrs(path); return !value.isNil() && ObjC.unwrap(value.objectForKey($.NSFileType)) === ObjC.unwrap($.NSFileTypeRegular); }
     function read(path) {
-        if (!isFile(path)) { nativeError('文件不存在或不是普通文件。'); }
+        if (!isFile(path)) { nativeError('文件不存在或不是普通文件。', path); }
         var error = Ref(), value = $.NSString.stringWithContentsOfFileEncodingError($(path), utf8, error);
-        if (value.isNil()) { nativeError('无法按 UTF-8 读取文件。'); }
+        if (value.isNil()) { nativeError('无法按 UTF-8 读取文件。', path, error); }
         return ObjC.unwrap(value);
     }
     function permissions(path) {
         var error = Ref();
-        if (!fm.setAttributesOfItemAtPathError($.NSDictionary.dictionaryWithObjectForKey($(384), $.NSFilePosixPermissions), $(path), error)) { nativeError('无法设置文件权限。'); }
+        if (!fm.setAttributesOfItemAtPathError($.NSDictionary.dictionaryWithObjectForKey($(384), $.NSFilePosixPermissions), $(path), error)) { nativeError('无法设置文件权限。', path, error); }
     }
     function write(path, text) {
         var error = Ref();
-        if (!$(text).writeToFileAtomicallyEncodingError($(path), true, utf8, error)) { nativeError('无法写入文件。'); }
+        if (!$(text).writeToFileAtomicallyEncodingError($(path), true, utf8, error)) { nativeError('无法写入文件。', path, error); }
         permissions(path);
     }
     function remove(path) {
@@ -27,17 +32,22 @@ function run(argv) {
     }
     function execute(executable, args, env) {
         var task = $.NSTask.alloc.init, outputPath = join(env.CODEX_HOME, '.usegoodai-export-' + ObjC.unwrap($.NSUUID.UUID.UUIDString));
-        write(outputPath, '');
-        var output = $.NSFileHandle.fileHandleForWritingAtPath($(outputPath));
-        if (output.isNil()) { nativeError('无法打开校验输出文件。'); }
-        task.executableURL = $.NSURL.fileURLWithPath($(executable)); task.arguments = $(args);
-        task.standardOutput = output; task.standardError = $.NSFileHandle.fileHandleWithNullDevice;
-        task.currentDirectoryURL = $.NSURL.fileURLWithPath($(env.CODEX_HOME));
-        var environment = $.NSProcessInfo.processInfo.environment.mutableCopy;
-        environment.setObjectForKey($(env.CODEX_HOME), $('CODEX_HOME'));
-        task.environment = environment;
+        var errorPath = outputPath + '.stderr', output = null, errors = null;
         try {
-            if (!task.launchAndReturnError(Ref())) { nativeError('无法启动 App 自带的 Codex 后端。'); }
+            write(outputPath, ''); write(errorPath, '');
+            output = $.NSFileHandle.fileHandleForWritingAtPath($(outputPath));
+            errors = $.NSFileHandle.fileHandleForWritingAtPath($(errorPath));
+            if (output.isNil() || errors.isNil()) { nativeError('无法打开后端校验输出文件。', outputPath); }
+            task.executableURL = $.NSURL.fileURLWithPath($(executable)); task.arguments = $(args);
+            task.standardOutput = output; task.standardError = errors;
+            task.currentDirectoryURL = $.NSURL.fileURLWithPath($(env.CODEX_HOME));
+            var environment = $.NSProcessInfo.processInfo.environment.mutableCopy;
+            environment.setObjectForKey($(env.CODEX_HOME), $('CODEX_HOME'));
+            var searchPath = ObjC.unwrap(environment.objectForKey($('PATH'))) || '';
+            environment.setObjectForKey($(searchPath.split(':').map(function (entry) { return resolve(ObjC.unwrap(fm.currentDirectoryPath), entry || '.'); }).join(':')), $('PATH'));
+            task.environment = environment;
+            var launchError = Ref();
+            if (!task.launchAndReturnError(launchError)) { nativeError('无法启动 Codex 后端。', executable, launchError); }
             var deadline = Date.now() + 30000;
             while (task.running && Date.now() < deadline) { $.NSThread.sleepForTimeInterval(0.05); }
             if (task.running) {
@@ -51,12 +61,16 @@ function run(argv) {
                     killer.waitUntilExit;
                 }
                 task.waitUntilExit;
-                nativeError('App 后端校验超时，原配置未更改。');
+                throw DomesticModels.backendFailure('', {code: 'ETIMEDOUT'});
             }
             task.waitUntilExit;
-            if (task.terminationStatus !== 0) { nativeError('App 后端校验失败，原配置未更改。'); }
+            if (task.terminationStatus !== 0) { throw DomesticModels.backendFailure(read(errorPath), {status: Number(task.terminationStatus)}); }
             return read(outputPath);
-        } finally { output.closeFile; remove(outputPath); }
+        } finally {
+            if (output && !output.isNil()) { output.closeFile; }
+            if (errors && !errors.isNil()) { errors.closeFile; }
+            try { remove(outputPath); remove(errorPath); } catch (ignored) {}
+        }
     }
     var homeValue = $(argv[0]).stringByExpandingTildeInPath.stringByStandardizingPath, executable = argv[1];
     if (!homeValue.isAbsolutePath) { homeValue = fm.currentDirectoryPath.stringByAppendingPathComponent(homeValue).stringByStandardizingPath; }
@@ -80,8 +94,8 @@ function run(argv) {
         },
         exportAt: function (backend, args, target) { return execute(backend, args, {CODEX_HOME: target}); },
         exportCatalog: function (backend, bundled) { return execute(backend, bundled ? ['debug', 'models', '--bundled'] : ['debug', 'models'], {CODEX_HOME: home}); },
-        transaction: function (files, backend, catalogPath, original) {
-            DomesticModels.transaction(io, files, backend, home, original);
+        transaction: function (files, backend, catalogPath, original, readSet) {
+            DomesticModels.transaction(io, files, backend, home, original, readSet);
         }
     };
     try {

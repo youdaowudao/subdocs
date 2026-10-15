@@ -47,6 +47,7 @@ def build():
     shell_processes, ps_processes = parent_process_functions()
     shell = (ROOT / 'src/installer.sh.in').read_text()
     for marker, content in {
+        '@MODEL_COUNT@': str(len(data['models'])),
         '# @PARENT_PROCESS_FUNCTIONS@': shell_processes,
         '// @DOMESTIC_CATALOG@': 'var DOMESTIC_CATALOG = ' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';',
         '// @CORE@': (ROOT / 'src/core.js').read_text(),
@@ -65,10 +66,8 @@ function Say([string]$Message) { Write-Host $Message }
     ps += '''
 try { Start-ModelInstaller $CodexHomePath $CodexPath }
 catch {
-  $message = $_.Exception.Message
-  if ($message -cnotmatch '^[\\u3400-\\u9fff]') { $message = '文件格式或系统操作失败。' }
-  Write-Host ('导入失败：' + $message + ' 软件未关闭。') -ForegroundColor Red
-  throw '国产模型导入未完成。'
+  Write-Host (Format-ModelImportError $_) -ForegroundColor Red
+  throw '国产模型导入未完成，软件未关闭。'
 }
 '''
     target = ROOT / 'install'

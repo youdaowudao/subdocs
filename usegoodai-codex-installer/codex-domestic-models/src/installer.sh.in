@@ -23,12 +23,19 @@ done
 case "$script_platform" in
   Darwin) run_model_import() { /usr/bin/osascript -l JavaScript - "$@"; } ;;
   Linux)
-    js_runtime="$(command -v node || command -v nodejs || true)"
-    [ -n "$js_runtime" ] && "$js_runtime" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 16 ? 0 : 1)' >/dev/null 2>&1 || {
+    js_runtime=""
+    for runtime_name in node nodejs; do
+      runtime_candidate="$(command -v "$runtime_name" || true)"
+      if [ -n "$runtime_candidate" ] && "$runtime_candidate" --input-type=commonjs -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 16 ? 0 : 1)' >/dev/null 2>&1; then
+        js_runtime="$runtime_candidate"
+        break
+      fi
+    done
+    [ -n "$js_runtime" ] || {
       say 'Linux 需要本机已有 Node.js 16 或以上版本；未修改配置，也不会自动安装依赖。' >&2
       exit 1
     }
-    run_model_import() { "$js_runtime" - "$@"; }
+    run_model_import() { "$js_runtime" --input-type=commonjs - "$@"; }
     ;;
   *) say '这个脚本用于 Linux/macOS；Windows 请运行 codex-models.ps1。' >&2; exit 1 ;;
 esac
@@ -58,20 +65,26 @@ if [ -z "$app_backend" ] && [ "$script_platform" = Linux ]; then
   done <<EOF
 $(list_running_clients || true)
 EOF
-  if [ -z "$app_backend" ]; then app_backend="$(command -v codex || true)"; fi
 fi
+if [ -z "$app_backend" ]; then app_backend="$(command -v codex || true)"; fi
 [ -n "$app_backend" ] && [ -f "$app_backend" ] && [ -x "$app_backend" ] || {
   say '未找到 Codex 后端；请先安装 Codex，或用 --codex-path 指定现有的 Codex 后端。' >&2
   exit 1
 }
 
-if run_model_import "$target_codex_home" "$app_backend" <<'USEGOODAI_JAVASCRIPT'
+if import_message="$(run_model_import "$target_codex_home" "$app_backend" <<'USEGOODAI_JAVASCRIPT'
 // @DOMESTIC_CATALOG@
 // @CORE@
 // @MACOS_HOST@
 // @LINUX_HOST@
 USEGOODAI_JAVASCRIPT
+)"
 then
+  if [ "$import_message" != '已导入 @MODEL_COUNT@ 个国产模型，原 GPT 和其他模型已保留。' ]; then
+    say '导入未确认：运行器没有返回完整导入结果。软件未关闭。' >&2
+    exit 1
+  fi
+  say "$import_message"
   stop_running_clients
   report_running_clients
   say '重新打开 Codex，新建任务后选择模型；API Key 分组由你在中转站切换。'
