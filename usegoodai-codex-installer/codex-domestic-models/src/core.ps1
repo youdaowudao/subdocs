@@ -247,8 +247,9 @@ function Invoke-ModelImport([string]$TargetHome, [string]$Backend, $Domestic) {
   $configPath = Join-Path $TargetHome 'config.toml'
   $catalogPath = Join-Path $TargetHome 'usegoodai-models.json'
   $managedPath = Join-Path $TargetHome 'usegoodai-models.managed.json'
-  if (-not [IO.File]::Exists($configPath)) { throw '没有找到 config.toml；请先运行原 GPT 接入脚本。' }
-  $original = Read-PrivateText $configPath; $info = Get-ConfigInfo $original; $existing=$null; $managed=@()
+  if (-not (Test-PrivatePath $TargetHome)) { $null=[IO.Directory]::CreateDirectory($TargetHome) }
+  $original = if (Test-PrivatePath $configPath) { Read-PrivateText $configPath } else { $null }
+  $info = Get-ConfigInfo ([string]$original); $existing=$null; $managed=@()
   if ($info.Values.ContainsKey('model_catalog_json')) {
     $source = Get-TomlString $info.Values['model_catalog_json']
     if ($source.StartsWith('~/') -or $source.StartsWith('~\')) { $source=Join-Path $HOME $source.Substring(2) }
@@ -265,7 +266,7 @@ function Invoke-ModelImport([string]$TargetHome, [string]$Backend, $Domestic) {
     try { $candidate=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models') $TargetHome); Test-ModelCatalog $candidate; $existing=$candidate } catch { }
   }
   $merged = Merge-ModelCatalog $existing $app $Domestic $managed $info
-  $config = Set-ModelConfig $original $info $catalogPath $merged.Efforts
+  $config = Set-ModelConfig ([string]$original) $info $catalogPath $merged.Efforts
   $files = @(
     @{Path=$catalogPath; Text=(ConvertTo-Json -InputObject $merged.Catalog -Depth 100)+"`n"},
     @{Path=$managedPath; Text=(ConvertTo-Json -InputObject @($merged.Managed) -Depth 100)+"`n"},

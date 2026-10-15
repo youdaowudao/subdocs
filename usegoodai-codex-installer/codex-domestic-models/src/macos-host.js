@@ -71,8 +71,8 @@ function run(argv) {
         join: join, resolve: resolve, read: read, write: write, isFile: isFile, remove: remove,
         exists: exists,
         stamp: function () { return new Date().toISOString().replace(/[^0-9]/g, '') + '.' + ObjC.unwrap($.NSUUID.UUID.UUIDString); },
-        mkdir: function (path) {
-            if (!fm.createDirectoryAtPathWithIntermediateDirectoriesAttributesError($(path), false, $.NSDictionary.dictionaryWithObjectForKey($(448), $.NSFilePosixPermissions), Ref())) { nativeError('无法创建暂存目录。'); }
+        mkdir: function (path, recursive) {
+            if (!fm.createDirectoryAtPathWithIntermediateDirectoriesAttributesError($(path), !!recursive, $.NSDictionary.dictionaryWithObjectForKey($(448), $.NSFilePosixPermissions), Ref())) { nativeError('无法创建配置或暂存目录。'); }
         },
         backup: function (from, to) {
             if (!fm.copyItemAtPathToPathError($(from), $(to), Ref())) { nativeError('备份失败，停止导入。'); }

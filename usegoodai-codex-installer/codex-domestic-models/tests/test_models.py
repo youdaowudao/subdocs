@@ -204,7 +204,7 @@ theme = "dark"
         return target,tools
 
     def run_linux_script(self, target, tools, backend=None, piped=False, running_backend=None):
-        log=target/'mock-kills.log'
+        log=(target if target.exists() else tools)/'mock-kills.log'
         log.write_text('')
         env=dict(os.environ,CODEX_HOME=str(target),PATH=str(tools),LINUX_TEST_KILL_LOG=str(log),NO_COLOR='1')
         wrapper='ps() { :; }; kill() { printf "%s\\n" "$*" >> "$LINUX_TEST_KILL_LOG"; }; export -f ps kill; '
@@ -256,6 +256,75 @@ theme = "dark"
             self.assertEqual((target/name).stat().st_mode & 0o777,0o600)
         self.assertFalse(list(target.glob('.usegoodai-models-*')))
         self.assertFalse(list(target.glob('.usegoodai-write-*')))
+
+    def test_linux_import_accepts_official_and_arbitrary_providers(self):
+        configs = {
+            'official': '# official account; no relay configured\n[tui]\nnotifications=false\n',
+            'other-provider': '''model_provider="my-company"
+[model_providers.my-company]
+name="my-company"
+base_url="https://company.example.invalid/custom/v1"
+wire_api="responses"
+requires_openai_auth=false
+experimental_bearer_token="private-credential-do-not-print"
+''',
+            'uppercase-provider': '''model_provider="OpenAI"
+[model_providers.OpenAI]
+name="customer-service"
+base_url="https://customer.example.invalid/another/v1"
+wire_api="responses"
+requires_openai_auth=false
+''',
+            # Reproduces the user's exact backend error on the original config.
+            'missing-provider': 'model_provider="OpenAI"\n',
+            'missing-instructions': 'model_instructions_file="missing.md"\n',
+        }
+        for name,original in configs.items():
+            with self.subTest(name=name):
+                target,tools=self.linux_fixture('linux-provider-'+name)
+                config=target/'config.toml'
+                config.write_text(original)
+                before=tomllib.loads(original)
+                if name=='missing-provider':
+                    failed=subprocess.run([str(CODEX),'debug','models'],cwd=target,
+                        env=dict(os.environ,CODEX_HOME=str(target)),text=True,capture_output=True,timeout=30)
+                    self.assertNotEqual(failed.returncode,0)
+                    self.assertIn('Model provider `OpenAI` not found',failed.stderr)
+                result=self.run_linux_script(target,tools,CODEX,piped=True)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertNotIn('private-credential-do-not-print',result.stdout+result.stderr)
+                after=tomllib.loads(config.read_text())
+                self.assertEqual(after.pop('model_catalog_json'),str(target/'usegoodai-models.json'))
+                after['desktop'].pop('enabled-reasoning-efforts')
+                if not after['desktop']:after.pop('desktop')
+                self.assertEqual(after,before)
+                self.assertEqual((target/'auth.json').read_text(),'sentinel-do-not-read')
+                self.assertEqual((target/'mock-kills.log').read_text(),'')
+                ids=[m['slug'] for m in json.loads((target/'usegoodai-models.json').read_text())['models']]
+                self.assertTrue(any(slug.startswith('gpt-') for slug in ids))
+                self.assertTrue(all(m['slug'] in ids for m in DOMESTIC['models']))
+
+    def test_linux_import_without_existing_config_or_home(self):
+        for name in ('missing-config','empty-config','missing-home'):
+            with self.subTest(name=name):
+                target,tools=self.linux_fixture('linux-new-'+name)
+                if name=='missing-config':(target/'config.toml').unlink()
+                elif name=='empty-config':(target/'config.toml').write_text('')
+                else:target=target/'new'/'codex-home'
+                result=self.run_linux_script(target,tools,CODEX,piped=True)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                config=tomllib.loads((target/'config.toml').read_text())
+                self.assertEqual(set(config),{'model_catalog_json','desktop'})
+                if name=='missing-home':
+                    self.assertFalse((target/'auth.json').exists())
+                    self.assertEqual(target.stat().st_mode & 0o777,0o700)
+                else:self.assertEqual((target/'auth.json').read_text(),'sentinel-do-not-read')
+                for filename in ('config.toml','usegoodai-models.json','usegoodai-models.managed.json'):
+                    self.assertEqual((target/filename).stat().st_mode & 0o777,0o600)
+                if name!='empty-config':self.assertFalse(list(target.glob('config.toml.bak.*')))
+                ids=[m['slug'] for m in json.loads((target/'usegoodai-models.json').read_text())['models']]
+                self.assertTrue(any(slug.startswith('gpt-') for slug in ids))
+                self.assertTrue(all(m['slug'] in ids for m in DOMESTIC['models']))
 
     def test_linux_failed_validation_preserves_config_and_processes(self):
         target,tools=self.linux_fixture('linux-failure')
@@ -392,6 +461,19 @@ theme = "dark"
         self.assert_linux_diagnostic(result,target,'导出并解析 Codex 内置模型目录')
         self.assertIn('第 7 行，第 9 列',result.stderr)
         self.assertIn('后端退出码：7',result.stderr)
+        self.assertEqual((target/'config.toml').read_bytes(),before)
+
+    def test_linux_backend_missing_provider_identifies_field_without_value(self):
+        target,tools=self.linux_fixture('linux-provider-diagnostic')
+        backend=tools/'failing-provider-backend'
+        backend.write_text("#!/bin/bash\nprintf 'Error: Model provider `private-credential-do-not-print` not found\\n' >&2\nexit 1\n")
+        backend.chmod(0o755)
+        before=(target/'config.toml').read_bytes()
+        result=self.run_linux_script(target,tools,backend)
+        self.assert_linux_diagnostic(result,target,'导出并解析 Codex 内置模型目录')
+        self.assertIn('model_provider',result.stderr)
+        self.assertIn('model_providers',result.stderr)
+        self.assertIn('后端退出码：1',result.stderr)
         self.assertEqual((target/'config.toml').read_bytes(),before)
 
     def test_linux_internal_error_reports_location_without_message(self):

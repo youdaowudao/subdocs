@@ -43,6 +43,7 @@ function createLinuxIO(home, core) {
                 var knownFields = ['slug', 'display_name', 'description', 'supported_reasoning_levels', 'shell_type', 'visibility', 'supported_in_api', 'priority', 'support_verbosity', 'default_verbosity', 'apply_patch_tool_type', 'truncation_policy', 'experimental_supported_tools', 'base_instructions', 'model_messages', 'instructions_template'];
                 reason = knownFields.indexOf(missing[1]) >= 0 ? 'Codex 报告模型目录缺少字段：' + missing[1] + '。' : 'Codex 报告模型目录缺少必需字段。';
             }
+            else if (/Model provider [`'][^\r\n]*[`'] not found/i.test(stderr)) { reason = 'model_provider 指向的服务名称未在 model_providers 中定义，请核对名称和大小写。'; }
             else if (/unrecognized subcommand|unknown subcommand|unexpected argument|unknown option/i.test(stderr)) { reason = 'Codex 后端未识别模型目录导出命令。'; }
             else if (/failed to read model[_ ]instructions[_ ]file/i.test(stderr)) { reason = 'Codex 无法读取配置中的 model_instructions_file。'; }
             else if (/failed to (?:read|parse) model_catalog_json/i.test(stderr)) { reason = 'Codex 无法读取或解析 model_catalog_json。'; }
@@ -61,7 +62,7 @@ function createLinuxIO(home, core) {
             return path.resolve(base, file);
         },
         remove: function (file) { fs.rmSync(file, {force: true, recursive: true}); },
-        mkdir: function (directory) { fs.mkdirSync(directory, {mode: 448}); },
+        mkdir: function (directory, recursive) { fs.mkdirSync(directory, {mode: 448, recursive: !!recursive}); },
         stamp: function () { return new Date().toISOString().replace(/[^0-9]/g, '') + '.' + crypto.randomUUID(); },
         backup: function (from, to) { fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL); fs.chmodSync(to, 384); },
         exportAt: exportAt,

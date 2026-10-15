@@ -14,7 +14,6 @@ let assertions = 0;
 function check(value) { assert.ok(value); assertions++; }
 function host(home, failure) {
     let faulted = false;
-    let staged = false;
     const io = createLinuxIO(home, core);
     const write = io.write, backup = io.backup, exportAt = io.exportAt;
     io.write = function(file, text) {
@@ -26,13 +25,17 @@ function host(home, failure) {
         backup(from, to);
     };
     io.exportAt = function(exe, args, target) {
-            if (target!==home) { staged=true; }
+            const final = target !== home && core.stringValue(core.configInfo(fs.readFileSync(path.join(target, 'config.toml'), 'utf8')).values.model_catalog_json) === path.join(home, 'usegoodai-models.json');
             if (failure === 'validation' && target !== home) { throw Error('injected'); }
-            if (failure === 'postcommit' && staged && target === home) { throw Error('injected'); }
+            if (failure === 'postcommit' && final) { throw Error('injected'); }
+            if (final && ['changed_config', 'changed_managed', 'changed_catalog'].includes(failure)) {
+                const name = {changed_config:'config.toml', changed_managed:'usegoodai-models.managed.json', changed_catalog:'usegoodai-models.json'}[failure];
+                fs.appendFileSync(path.join(home, name), '\n');
+            }
             if (failure === 'concurrent' && target !== home) { fs.appendFileSync(path.join(home, 'config.toml'), '# edited externally\n'); }
             const text = exportAt(exe, args, target);
             if (failure === 'wrong_catalog' && target !== home) { return JSON.stringify(domestic); }
-            if (failure === 'wrong_metadata' && staged && target === home) { const data=JSON.parse(text); data.models.find(m=>m.slug===domestic.models[0].slug).context_window=42; return JSON.stringify(data); }
+            if (failure === 'wrong_metadata' && final) { const data=JSON.parse(text); data.models.find(m=>m.slug===domestic.models[0].slug).context_window=42; return JSON.stringify(data); }
             return text;
     };
     io.exportCatalog = (exe,bundled) => io.exportAt(exe, bundled ? ['debug','models','--bundled'] : ['debug','models'], home);
@@ -71,7 +74,7 @@ function setup(name) {
     check(fs.readFileSync(path.join(home,'config.toml'),'utf8')===after);
     check(config.includes('wire_api = "responses"'));
 }
-for (const failure of ['write','backup','validation','wrong_catalog','concurrent','postcommit','wrong_metadata']) {
+for (const failure of ['write','backup','validation','wrong_catalog','concurrent','postcommit','wrong_metadata','changed_config','changed_managed','changed_catalog']) {
     for (const existing of [false,true]) {
         const {home,config}=setup(failure);
         if (existing) { core.importModels(host(home),home,backend,domestic); }
@@ -86,6 +89,18 @@ for (const failure of ['write','backup','validation','wrong_catalog','concurrent
         });
         check(fs.readFileSync(path.join(home,'auth.json'),'utf8')==='sentinel-do-not-read');
         check(!fs.readdirSync(home).some(name=>name.startsWith('.usegoodai-models-')));
+    }
+}
+for (const original of [null, '']) {
+    for (const failure of ['postcommit', 'changed_config']) {
+        const {home} = setup('new_config_rollback');
+        const filename = path.join(home, 'config.toml');
+        if (original === null) { fs.unlinkSync(filename); } else { fs.writeFileSync(filename, original); }
+        assert.throws(()=>core.importModels(host(home,failure),home,backend,domestic)); assertions++;
+        check(fs.existsSync(filename) === (original !== null));
+        if (original !== null) { check(fs.readFileSync(filename, 'utf8') === original); }
+        check(!fs.existsSync(path.join(home, 'usegoodai-models.json')));
+        check(!fs.existsSync(path.join(home, 'usegoodai-models.managed.json')));
     }
 }
 {

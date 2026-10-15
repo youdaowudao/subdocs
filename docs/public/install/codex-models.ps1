@@ -341,8 +341,9 @@ function Invoke-ModelImport([string]$TargetHome, [string]$Backend, $Domestic) {
   $configPath = Join-Path $TargetHome 'config.toml'
   $catalogPath = Join-Path $TargetHome 'usegoodai-models.json'
   $managedPath = Join-Path $TargetHome 'usegoodai-models.managed.json'
-  if (-not [IO.File]::Exists($configPath)) { throw '没有找到 config.toml；请先运行原 GPT 接入脚本。' }
-  $original = Read-PrivateText $configPath; $info = Get-ConfigInfo $original; $existing=$null; $managed=@()
+  if (-not (Test-PrivatePath $TargetHome)) { $null=[IO.Directory]::CreateDirectory($TargetHome) }
+  $original = if (Test-PrivatePath $configPath) { Read-PrivateText $configPath } else { $null }
+  $info = Get-ConfigInfo ([string]$original); $existing=$null; $managed=@()
   if ($info.Values.ContainsKey('model_catalog_json')) {
     $source = Get-TomlString $info.Values['model_catalog_json']
     if ($source.StartsWith('~/') -or $source.StartsWith('~\')) { $source=Join-Path $HOME $source.Substring(2) }
@@ -359,7 +360,7 @@ function Invoke-ModelImport([string]$TargetHome, [string]$Backend, $Domestic) {
     try { $candidate=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models') $TargetHome); Test-ModelCatalog $candidate; $existing=$candidate } catch { }
   }
   $merged = Merge-ModelCatalog $existing $app $Domestic $managed $info
-  $config = Set-ModelConfig $original $info $catalogPath $merged.Efforts
+  $config = Set-ModelConfig ([string]$original) $info $catalogPath $merged.Efforts
   $files = @(
     @{Path=$catalogPath; Text=(ConvertTo-Json -InputObject $merged.Catalog -Depth 100)+"`n"},
     @{Path=$managedPath; Text=(ConvertTo-Json -InputObject @($merged.Managed) -Depth 100)+"`n"},
@@ -408,7 +409,7 @@ function Invoke-CodexExport([string]$Backend, [string[]]$Arguments, [string]$Tar
   } finally { $process.Dispose() }
 }
 
-function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, [string]$Original) {
+function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $Original) {
   $id=(Get-Date -Format 'yyyyMMddHHmmss')+'.'+[Guid]::NewGuid().ToString('N')
   $stage=Join-Path $TargetHome ('.usegoodai-models-'+$id)
   $snapshots=New-Object 'System.Collections.Generic.List[object]'
@@ -420,7 +421,8 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, [
       $snapshots.Add(@{Text=$content; Bytes=[IO.File]::ReadAllBytes($file.Path)})
     } else { $snapshots.Add($null) }
   }
-  if ($null -eq $snapshots[2] -or $snapshots[2].Text -cne $Original) { throw '配置在导入过程中被修改，请重新运行。' }
+  $originalNow=if ($null -ne $snapshots[2]) { $snapshots[2].Text } else { $null }
+  if (($null -eq $originalNow) -ne ($null -eq $Original) -or $originalNow -cne $Original) { throw '配置在导入过程中被修改，请重新运行。' }
   $null=[IO.Directory]::CreateDirectory($stage)
   try {
     for ($index=0; $index -lt $Files.Count; $index++) { Write-PrivateText (Join-Path $stage ('file-'+$index)) $Files[$index].Text }
@@ -447,15 +449,20 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, [
       $committed.Add($index)
       Move-StagedFile (Join-Path $stage ('file-'+$index)) $Files[$index].Path
     }
-    # Validate the effective final config in its real home: relative paths and profiles still apply.
-    $final=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models') $TargetHome)
+    # Validate the committed catalog without loading or changing the user's provider/auth.
+    $validationConfig='model_catalog_json = '+(ConvertTo-Json -InputObject $Files[0].Path -Compress)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-Json -InputObject @($levels) -Compress)+"`n"
+    Write-PrivateText (Join-Path $stage 'config.toml') $validationConfig
+    $final=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models') $stage)
     Test-ModelCatalog $final
     $finalIds=New-OrdinalMap; foreach ($model in $final.models) { $finalIds[$model.slug]=$true }
     if ($finalIds.Count -ne $expected.models.Count) { throw 'App 未读取新模型目录，停止导入。' }
     foreach ($model in $expected.models) { if (-not $finalIds.ContainsKey($model.slug)) { throw 'App 未读取新模型目录，停止导入。' } }
     $normalized=ConvertTo-Json -InputObject (ConvertTo-CanonicalValue $validated.models) -Depth 100 -Compress
     $effective=ConvertTo-Json -InputObject (ConvertTo-CanonicalValue $final.models) -Depth 100 -Compress
-    if ($normalized -cne $effective) { throw 'App 生效的模型元数据与本次导入不一致，停止导入。' }
+    if ($normalized -cne $effective) { throw '已写入的模型元数据与本次导入不一致，停止导入。' }
+    foreach ($file in $Files) {
+      if ((Read-PrivateText $file.Path) -cne $file.Text) { throw '写入后的文件与本次导入不一致，停止导入。' }
+    }
   } catch {
     $restoreFailed=$false
     for ($step=$committed.Count-1; $step -ge 0; $step--) {
