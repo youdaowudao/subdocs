@@ -205,7 +205,7 @@ theme = "dark"
             (tools/name).symlink_to(executable)
         return target,tools
 
-    def run_linux_script(self, target, tools, backend=None, piped=False, running_backend=None, shell=('/bin/sh',), env_overrides=None, platform=None):
+    def run_linux_script(self, target, tools, backend=None, piped=False, running_backend=None, shell=('/bin/sh',), env_overrides=None, platform=None, extra_args=()):
         log=(target if target.exists() else tools)/'mock-kills.log'
         log.write_text('')
         env=dict(os.environ,CODEX_HOME=str(target),PATH=str(tools),LINUX_TEST_KILL_LOG=str(log),NO_COLOR='1')
@@ -220,6 +220,7 @@ theme = "dark"
             wrapper+='ps() { if [ "$1" = -axo ]; then printf "7001 1 %s S %s\\n" "$LINUX_TEST_USER_UID" "$LINUX_TEST_APP_BACKEND"; fi; }; readlink() { [ "$1" = /proc/7001/exe ] && printf "%s\\n" "$LINUX_TEST_APP_BACKEND"; }; '
         arguments=['--codex-home',str(target)]
         if backend is not None:arguments+=['--codex-path',str(backend)]
+        arguments+=list(extra_args)
         if piped:
             command=[*shell,'-c',wrapper+'. /dev/stdin','linux-test',*arguments]
             content=(ROOT/'install/codex-models.sh').read_text()
@@ -645,6 +646,80 @@ console.log(core.formatError(error));'''
         result=execute([PWSH,'-NoProfile','-File','tests/processes.ps1','-GeneratedScript',ROOT/'install/codex-models.ps1'])
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         print(result.stdout.strip())
+
+    def test_javascript_uninstall(self):
+        result=execute([NODE,'tests/uninstall.js'])
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        print(result.stdout.strip())
+
+    def test_powershell_uninstall(self):
+        result=execute([PWSH,'-NoProfile','-File','tests/uninstall.ps1','-Backend',CODEX,'-WorkRoot',WORK/'ps-uninstall'])
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        print(result.stdout.strip())
+
+    def test_linux_uninstall_entry_without_backend(self):
+        target,tools=self.linux_fixture('uninstall-entry')
+        result=self.run_linux_script(target,tools,CODEX)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        config=(target/'config.toml').read_bytes()
+        before=json.loads((target/'usegoodai-models.json').read_text())
+        remaining=[m for m in before['models'] if m['slug'] not in {d['slug'] for d in DOMESTIC['models']}]
+        (tools/'codex').unlink()
+        result=self.run_linux_script(target,tools,piped=True,running_backend='/fake/codex',extra_args=('--uninstall',))
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('已移除本工具导入的国产模型',result.stdout)
+        self.assertIn('TERM', (target/'mock-kills.log').read_text())
+        self.assertEqual((target/'config.toml').read_bytes(),config)
+        self.assertEqual(json.loads((target/'usegoodai-models.json').read_text())['models'],remaining)
+        self.assertEqual(json.loads((target/'usegoodai-models.managed.json').read_text()),[])
+        loaded=subprocess.run([str(CODEX),'debug','models'],cwd=target,env=dict(os.environ,CODEX_HOME=str(target)),text=True,capture_output=True,timeout=30)
+        self.assertEqual(loaded.returncode,0,loaded.stderr)
+        self.assertEqual([m['slug'] for m in json.loads(loaded.stdout)['models']],[m['slug'] for m in remaining])
+        before={p.name:p.read_bytes() for p in target.iterdir() if p.is_file() and p.name!='mock-kills.log'}
+        result=self.run_linux_script(target,tools,piped=True,running_backend='/fake/codex',extra_args=('--uninstall',))
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('没有需要移除',result.stdout)
+        self.assertEqual((target/'mock-kills.log').read_text(),'')
+        self.assertEqual({p.name:p.read_bytes() for p in target.iterdir() if p.is_file() and p.name!='mock-kills.log'},before)
+
+    def test_linux_uninstall_stdin_command_and_inactive_catalog(self):
+        target,tools=self.linux_fixture('uninstall-stdin')
+        result=self.run_linux_script(target,tools,CODEX)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        external=target/'my-models.json'
+        external.write_bytes((target/'usegoodai-models.json').read_bytes())
+        config=(target/'config.toml').read_text().replace(str(target/'usegoodai-models.json'),str(external))
+        (target/'config.toml').write_text(config)
+        before=external.read_bytes()
+        (tools/'codex').unlink()
+        (tools/'ps').write_text('#!/bin/sh\nexit 0\n'); (tools/'ps').chmod(0o755)
+        env=dict(os.environ,CODEX_HOME=str(target),PATH=str(tools))
+        result=subprocess.run(['/bin/sh','-s','--','--uninstall'],input=(ROOT/'install/codex-models.sh').read_text(),cwd=ROOT,env=env,text=True,capture_output=True,timeout=60)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('已清理原导入目录；软件未关闭',result.stdout)
+        self.assertEqual(external.read_bytes(),before)
+        self.assertEqual((target/'config.toml').read_text(),config)
+
+    def test_linux_uninstall_bad_record_never_closes_clients(self):
+        target,tools=self.linux_fixture('uninstall-invalid')
+        (target/'usegoodai-models.managed.json').write_text('{"key":"private-do-not-print"}')
+        config=(target/'config.toml').read_bytes()
+        result=self.run_linux_script(target,tools,piped=True,running_backend='/fake/codex',extra_args=('--uninstall',))
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('卸载失败',result.stderr)
+        self.assertIn('校验已管理模型记录',result.stderr)
+        self.assertNotIn('private-do-not-print',result.stdout+result.stderr)
+        self.assertEqual((target/'mock-kills.log').read_text(),'')
+        self.assertEqual((target/'config.toml').read_bytes(),config)
+
+    def test_linux_uninstall_missing_home_does_not_create_it(self):
+        target,tools=self.linux_fixture('uninstall-no-home')
+        missing=target/'never-created'
+        result=self.run_linux_script(missing,tools,piped=True,running_backend='/fake/codex',extra_args=('--uninstall',))
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('没有需要移除',result.stdout)
+        self.assertFalse(missing.exists())
+        self.assertEqual((tools/'mock-kills.log').read_text(),'')
 
     def test_shell_processes(self):
         functions=build.parent_process_functions()[0]

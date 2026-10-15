@@ -124,15 +124,17 @@ report_running_clients() {
 
 target_codex_home="${CODEX_HOME:-$HOME/.codex}"
 app_backend=""
+model_action="import"
 script_platform="$(uname -s)"
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --uninstall) model_action="uninstall"; shift ;;
     --codex-home|--codex-path)
       [ "$#" -ge 2 ] || { say "参数缺少路径。" >&2; exit 1; }
       if [ "$1" = --codex-home ]; then target_codex_home="$2"; else app_backend="$2"; fi
       shift 2 ;;
     --help)
-      say '用法：sh codex-models.sh [--codex-home 配置目录] [--codex-path Codex后端路径]'
+      say '用法：sh codex-models.sh [--uninstall] [--codex-home 配置目录] [--codex-path Codex后端路径]'
       exit 0 ;;
     *) say "未知参数。" >&2; exit 1 ;;
   esac
@@ -156,7 +158,12 @@ case "$script_platform" in
     ;;
   *) say '这个脚本用于 Linux/macOS；Windows 请运行 codex-models.ps1。' >&2; exit 1 ;;
 esac
-say '成功导入后会自动关闭 ChatGPT/Codex，运行中的任务会中断。'
+if [ "$model_action" = uninstall ]; then
+  say '移除当前启用目录中的国产模型后会自动关闭 ChatGPT/Codex，运行中的任务会中断。'
+else
+  say '成功导入后会自动关闭 ChatGPT/Codex，运行中的任务会中断。'
+fi
+if [ "$model_action" = import ]; then
 if [ -z "$app_backend" ] && [ "$script_platform" = Darwin ]; then
   for app_root in /Applications/Codex.app /Applications/ChatGPT.app "$HOME/Applications/Codex.app" "$HOME/Applications/ChatGPT.app"; do
     if [ -f "$app_root/Contents/Info.plist" ]; then
@@ -188,8 +195,9 @@ if [ -z "$app_backend" ]; then app_backend="$(command -v codex || true)"; fi
   say '未找到 Codex 后端；请先安装 Codex，或用 --codex-path 指定现有的 Codex 后端。' >&2
   exit 1
 }
+fi
 
-if import_message="$(run_model_import "$target_codex_home" "$app_backend" <<'USEGOODAI_JAVASCRIPT'
+if import_message="$(run_model_import "$target_codex_home" "$app_backend" "$model_action" <<'USEGOODAI_JAVASCRIPT'
 var DOMESTIC_CATALOG = {"models":[{"slug":"qwen3.8-max","display_name":"Qwen3.8 Max","description":"千问 Max","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":"xhigh","apply_patch_tool_type":null,"supports_parallel_tool_calls":true,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"medium","description":"中度推理"},{"effort":"xhigh","description":"深度推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":100,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"qwen3.8-flash","display_name":"Qwen3.8 Flash","description":"千问 Flash","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":"xhigh","apply_patch_tool_type":null,"supports_parallel_tool_calls":true,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"medium","description":"中度推理"},{"effort":"xhigh","description":"深度推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":101,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"glm-5.3-flash","display_name":"GLM-5.3 Flash","description":"智谱多模态 Flash","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":"max","apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"high","description":"增强推理"},{"effort":"max","description":"最大推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":102,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"deepseek-flash","display_name":"DeepSeek V4.1 Flash","description":"DeepSeek Flash","context_window":1048576,"input_modalities":["text","image"],"default_reasoning_level":"high","apply_patch_tool_type":"freeform","supports_parallel_tool_calls":true,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"high","description":"增强推理"},{"effort":"max","description":"最大推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":103,"availability_nux":null,"upgrade":null,"support_verbosity":true,"default_verbosity":"low","supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":true,"max_context_window":1048576,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"glm-5.3","display_name":"GLM-5.3","description":"智谱文本模型","context_window":1000000,"input_modalities":["text"],"default_reasoning_level":"max","apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"high","description":"增强推理"},{"effort":"max","description":"最大推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":104,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"kimi-k3","display_name":"Kimi K3","description":"月之暗面多模态模型","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":"max","apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[{"effort":"low","description":"轻度推理"},{"effort":"high","description":"增强推理"},{"effort":"max","description":"最大推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":105,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"minimax-m3","display_name":"MiniMax M3","description":"MiniMax 多模态模型","context_window":1000000,"input_modalities":["text","image"],"default_reasoning_level":null,"apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":106,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":false,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false},{"slug":"hy4-preview","display_name":"Hy4 preview","description":"腾讯混元","context_window":1000000,"input_modalities":["text"],"default_reasoning_level":"high","apply_patch_tool_type":null,"supports_parallel_tool_calls":false,"supported_reasoning_levels":[{"effort":"none","description":"关闭推理"},{"effort":"high","description":"增强推理"}],"shell_type":"shell_command","visibility":"list","supported_in_api":true,"priority":107,"availability_nux":null,"upgrade":null,"support_verbosity":false,"default_verbosity":null,"supports_reasoning_summaries":true,"supports_reasoning_summary_parameter":false,"default_reasoning_summary":"none","prefer_websockets":false,"web_search_tool_type":"text","supports_search_tool":false,"truncation_policy":{"mode":"tokens","limit":10000},"supports_image_detail_original":false,"max_context_window":1000000,"auto_compact_token_limit":null,"effective_context_window_percent":95,"experimental_supported_tools":[],"base_instructions":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence.","model_messages":{"instructions_template":"You are a coding assistant running in Codex. Follow the user's instructions and the repository's AGENTS.md. Inspect relevant files before editing, use the available tools to complete the task, preserve unrelated changes, and verify changes with appropriate checks. Give concise, accurate progress updates and a final report. Do not claim to have run checks or completed actions without evidence."},"use_responses_lite":false}]};
 /* Pure ES5: used by macOS JXA and the isolated test runner. */
 var DomesticModels = (function () {
@@ -232,7 +240,7 @@ var DomesticModels = (function () {
         error.configSyntax = !!toml && /TOML parse error|duplicate key|invalid table header|unterminated|expected a newline|expected newline/i.test(stderr);
         return error;
     }
-    function formatError(error) {
+    function formatError(error, action) {
         if (!error || typeof error !== 'object') { error = new Error('Unexpected failure'); }
         var messages = {
             EACCES: '权限不足，无法执行该文件操作。', EPERM: '系统拒绝该操作。',
@@ -252,7 +260,7 @@ var DomesticModels = (function () {
             var kind = ['TypeError', 'ReferenceError', 'RangeError', 'SyntaxError', 'Error'].indexOf(error.name) >= 0 ? error.name : 'Error';
             reason = '脚本内部异常（' + kind + '）。';
         }
-        var lines = ['导入失败', '失败步骤：' + (error.importStep || '初始化模型导入')];
+        var lines = [action === 'uninstall' ? '卸载失败' : '导入失败', '失败步骤：' + (error.importStep || (action === 'uninstall' ? '初始化模型卸载' : '初始化模型导入'))];
         if (error.importTarget) { lines.push('文件或命令：' + error.importTarget); }
         lines.push('原因：' + reason + (code ? ' [' + code + ']' : ''));
         if (typeof error.exitStatus === 'number') { lines.push('后端退出码：' + error.exitStatus); }
@@ -343,8 +351,8 @@ var DomesticModels = (function () {
         if (start < text.length) { records.push({start: start, end: text.length, code: clean}); }
         return records;
     }
-    function configInfo(text) {
-        var result = {values: dict(), edits: dict(), firstHeader: text.length, desktop: null, desktopInline: false, desktopDotted: false}, scope = [], records = statements(text);
+    function configInfo(text, readOnly) {
+        var result = {values: dict(), edits: dict(), firstHeader: text.length, desktop: null, desktopInline: false, desktopDotted: false, profileCatalog: false}, scope = [], records = statements(text);
         records.forEach(function (rec) {
             var code = rec.code.trim(), header, eq, parts, path, key, vstart, vend;
             if (!code) { return; }
@@ -373,7 +381,10 @@ var DomesticModels = (function () {
                 result.desktopInline = parts.length === 1;
                 result.desktopDotted = parts.length > 1 || result.desktopDotted;
             }
-            if (path.length > 1 && path[0] === 'profiles' && path[path.length - 1] === 'model_catalog_json') { fail('profile 中另有 model_catalog_json；请先统一目录配置再导入。'); }
+            if (path.length > 1 && path[0] === 'profiles' && path[path.length - 1] === 'model_catalog_json') {
+                result.profileCatalog = true;
+                if (!readOnly) { fail('profile 中另有 model_catalog_json；请先统一目录配置再导入。'); }
+            }
             if ((path.length === 1 && ['model_catalog_json', 'model', 'review_model', 'profile', 'model_provider'].indexOf(key) >= 0) || (path.length === 2 && key === 'desktop.enabled-reasoning-efforts')) {
                 if (own(result.edits, key)) { fail('目标 TOML 字段重复。'); }
                 vstart = eq + 1;
@@ -383,7 +394,7 @@ var DomesticModels = (function () {
                 result.values[key] = rec.code.slice(vstart, vend);
             }
         });
-        if (result.desktopInline) { fail('desktop 使用内联表；请改为 [desktop] 配置段后导入。'); }
+        if (result.desktopInline && !readOnly) { fail('desktop 使用内联表；请改为 [desktop] 配置段后导入。'); }
         return result;
     }
     function stringArray(raw) {
@@ -480,11 +491,12 @@ var DomesticModels = (function () {
         if (snapshots[2] !== original) { fail('配置在导入过程中被修改，请重新运行。'); }
         atStep('创建私有暂存目录', stage, function () { io.mkdir(stage); });
         try {
-            files.forEach(function (file, index) { var target = io.join(stage, 'file-' + index); atStep('写入暂存文件', target, function () { io.write(target, file.text); }); });
-            var stagedCatalog = io.join(stage, 'file-0'), info = configInfo(files[2].text);
-            var levels = stringArray(info.values['desktop.enabled-reasoning-efforts']);
+            files.forEach(function (file, index) { if (file.keep) { return; } var target = io.join(stage, 'file-' + index); atStep('写入暂存文件', target, function () { io.write(target, file.text); }); });
+            var stagedCatalog = io.join(stage, 'file-0'), info = backend ? configInfo(files[2].text || '') : {values: dict()};
+            var levels = own(info.values, 'desktop.enabled-reasoning-efforts') ? stringArray(info.values['desktop.enabled-reasoning-efforts']) : [];
             var expected = JSON.stringify(parseJSON(files[0].text).models.map(function (m) { return m.slug; }).sort());
             function verifyCatalog(target, step) {
+                if (!backend) { return atStep(step, target, function () { return JSON.stringify(canonical(validateCatalog(parseJSON(io.read(target))).models)); }); }
                 atStep('写入校验配置', io.join(stage, 'config.toml'), function () { io.write(io.join(stage, 'config.toml'), 'model_catalog_json = ' + JSON.stringify(target) + '\n[desktop]\nenabled-reasoning-efforts = ' + JSON.stringify(levels) + '\n'); });
                 var validated = atStep(step, backend + ' debug models', function () { return validateCatalog(parseJSON(io.exportAt(backend, ['debug', 'models'], stage))); });
                 if (JSON.stringify(validated.models.map(function (m) { return m.slug; }).sort()) !== expected) { fail('App 未读取新模型目录，停止导入。'); }
@@ -498,13 +510,14 @@ var DomesticModels = (function () {
                     if (now !== snapshots[index]) { fail('配置在导入过程中被修改，请重新运行。'); }
                 });
             });
-            files.forEach(function (file, index) { if (snapshots[index] !== null) { atStep('备份原文件', file.path, function () { io.backup(file.path, file.path + '.bak.' + stamp); }); } });
-            files.forEach(function (file, index) { committed.push(index); atStep('提交导入文件', file.path, function () { io.write(file.path, file.text); }); written[index] = true; });
+            files.forEach(function (file, index) { if (!file.keep && snapshots[index] !== null) { atStep('备份原文件', file.path, function () { io.backup(file.path, file.path + '.bak.' + stamp); }); } });
+            files.forEach(function (file, index) { if (file.keep) { return; } committed.push(index); atStep('提交导入文件', file.path, function () { io.write(file.path, file.text); }); written[index] = true; });
             /* Validate the committed catalog without loading or changing the user's provider/auth. */
             if (verifyCatalog(files[0].path, '校验已写入的模型目录') !== normalized) { fail('已写入的模型元数据与本次导入不一致，停止导入。'); }
             files.forEach(function (file) {
                 atStep('核对写入后的文件', file.path, function () {
-                    if (io.read(file.path) !== file.text) { fail('写入后的文件与本次导入不一致，停止导入。'); }
+                    var now = io.exists(file.path) ? io.read(file.path) : null;
+                    if (now !== file.text) { fail('写入后的文件与本次导入不一致，停止导入。'); }
                 });
             });
         } catch (error) {
@@ -572,7 +585,38 @@ var DomesticModels = (function () {
         atStep('写入并校验导入结果', catalogPath, function () { io.transaction(files, executable, catalogPath, original, readSet); });
         return merged.managed.length;
     }
-    return {statements: statements, configInfo: configInfo, stringValue: stringValue, stringArray: stringArray, patchConfig: patchConfig, validateCatalog: validateCatalog, merge: merge, transaction: transaction, importModels: importModels, formatError: formatError, backendFailure: backendFailure};
+    function uninstallModels(io, home) {
+        var configPath = io.join(home, 'config.toml'), catalogPath = io.join(home, 'usegoodai-models.json'), managedPath = io.join(home, 'usegoodai-models.managed.json');
+        var managedText = atStep('读取已管理模型记录', managedPath, function () { return io.exists(managedPath) ? io.read(managedPath) : null; });
+        var managed = atStep('校验已管理模型记录', managedPath, function () {
+            var ids = managedText === null ? [] : parseJSON(managedText);
+            if (!Array.isArray(ids) || ids.some(function (id) { return typeof id !== 'string' || !id || /^gpt-/i.test(id); })) { fail('已管理模型记录无效或包含 GPT，未移除任何模型。'); }
+            return ids;
+        });
+        if (!managed.length) { return {changed: false, active: false, count: 0}; }
+        var original = atStep('读取 Codex 配置', configPath, function () { return io.exists(configPath) ? io.read(configPath) : null; });
+        var info = atStep('解析 Codex 配置', configPath, function () { return configInfo(original || '', true); });
+        var catalogText = atStep('读取本工具的模型目录', catalogPath, function () { return io.read(catalogPath); });
+        var catalog = atStep('校验本工具的模型目录', catalogPath, function () { return validateCatalog(parseJSON(catalogText)); });
+        var owned = dict(), before = catalog.models.length;
+        managed.forEach(function (id) { owned[id] = true; });
+        catalog.models = catalog.models.filter(function (model) { return !own(owned, model.slug); });
+        atStep('校验移除后的模型目录', catalogPath, function () { validateCatalog(catalog); });
+        var count = before - catalog.models.length;
+        var active = atStep('核对当前模型目录指向', configPath, function () {
+            return !info.profileCatalog && own(info.values, 'model_catalog_json') && io.resolve(home, stringValue(info.values.model_catalog_json)) === catalogPath;
+        });
+        var files = [{path: catalogPath, text: JSON.stringify(catalog, null, 2) + '\n'}, {path: managedPath, text: '[]\n'}, {path: configPath, text: original, keep: true}];
+        var readSet = [{path: configPath, text: original}, {path: catalogPath, text: catalogText}, {path: managedPath, text: managedText}];
+        atStep('移除并校验国产模型', catalogPath, function () { io.transaction(files, '', catalogPath, original, readSet); });
+        return {changed: true, active: active && count > 0, count: count};
+    }
+    function uninstallMessage(result) {
+        if (result.active) { return '已移除本工具导入的国产模型，原 GPT 和其他模型已保留。'; }
+        if (result.changed) { return '已清理原导入目录；软件未关闭。'; }
+        return '没有需要移除的国产模型，软件未关闭。';
+    }
+    return {statements: statements, configInfo: configInfo, stringValue: stringValue, stringArray: stringArray, patchConfig: patchConfig, validateCatalog: validateCatalog, merge: merge, transaction: transaction, importModels: importModels, uninstallModels: uninstallModels, uninstallMessage: uninstallMessage, formatError: formatError, backendFailure: backendFailure};
 }());
 if (typeof module !== 'undefined') { module.exports = DomesticModels; }
 
@@ -652,7 +696,7 @@ function run(argv) {
     }
     var homeValue = $(argv[0]).stringByExpandingTildeInPath.stringByStandardizingPath, executable = argv[1];
     if (!homeValue.isAbsolutePath) { homeValue = fm.currentDirectoryPath.stringByAppendingPathComponent(homeValue).stringByStandardizingPath; }
-    var home = ObjC.unwrap(homeValue);
+    var home = ObjC.unwrap(homeValue), action = argv[2] || 'import';
     function resolve(base, path) {
         var value = $(path).stringByExpandingTildeInPath;
         if (!value.isAbsolutePath) { value = $(base).stringByAppendingPathComponent(value); }
@@ -677,11 +721,12 @@ function run(argv) {
         }
     };
     try {
+        if (action === 'uninstall') { return DomesticModels.uninstallMessage(DomesticModels.uninstallModels(io, home)); }
         var count = DomesticModels.importModels(io, home, executable, DOMESTIC_CATALOG);
         return '已导入 ' + count + ' 个国产模型，原 GPT 和其他模型已保留。';
     } catch (error) {
         /* Never echo external process stderr, original TOML, or JSON (may contain credentials). */
-        throw new Error(DomesticModels.formatError(error) + '\n软件未关闭。');
+        throw new Error(DomesticModels.formatError(error, action) + '\n软件未关闭。');
     }
 }
 
@@ -738,14 +783,19 @@ function createLinuxIO(home, core) {
 
 function runLinuxInstaller(argv, core, domestic) {
     'use strict';
+    var action = argv[2] || 'import';
     try {
         var path = require('path'), homeArg = argv[0];
         if (homeArg === '~' || homeArg.slice(0, 2) === '~/') { homeArg = path.join(require('os').homedir(), homeArg.slice(1)); }
-        var home = path.resolve(homeArg), backend = path.resolve(argv[1]);
+        var home = path.resolve(homeArg), backend = argv[1] ? path.resolve(argv[1]) : '';
+        if (action === 'uninstall') {
+            process.stdout.write(core.uninstallMessage(core.uninstallModels(createLinuxIO(home, core), home)) + '\n');
+            return;
+        }
         var count = core.importModels(createLinuxIO(home, core), home, backend, domestic);
         process.stdout.write('已导入 ' + count + ' 个国产模型，原 GPT 和其他模型已保留。\n');
     } catch (error) {
-        process.stderr.write(core.formatError(error) + '\n软件未关闭。\n');
+        process.stderr.write(core.formatError(error, action) + '\n软件未关闭。\n');
         process.exitCode = 1;
     }
 }
@@ -758,15 +808,25 @@ if (typeof module !== 'undefined' && module.exports) {
 USEGOODAI_JAVASCRIPT
 )"
 then
-  if [ "$import_message" != '已导入 8 个国产模型，原 GPT 和其他模型已保留。' ]; then
+  if [ "$model_action" = uninstall ]; then
+    case "$import_message" in
+      '没有需要移除的国产模型，软件未关闭。'|'已清理原导入目录；软件未关闭。') say "$import_message"; exit 0 ;;
+      '已移除本工具导入的国产模型，原 GPT 和其他模型已保留。') ;;
+      *) say '卸载未确认：运行器没有返回完整卸载结果。软件未关闭。' >&2; exit 1 ;;
+    esac
+  elif [ "$import_message" != '已导入 8 个国产模型，原 GPT 和其他模型已保留。' ]; then
     say '导入未确认：运行器没有返回完整导入结果。软件未关闭。' >&2
     exit 1
   fi
   say "$import_message"
   stop_running_clients
   report_running_clients
-  say '重新打开 Codex，新建任务后选择模型；API Key 分组由你在中转站切换。'
+  if [ "$model_action" = uninstall ]; then
+    say '重新打开 Codex，新建任务后选择模型。'
+  else
+    say '重新打开 Codex，新建任务后选择模型；API Key 分组由你在中转站切换。'
+  fi
 else
-  say '导入未完成，软件未关闭。' >&2
+  if [ "$model_action" = uninstall ]; then say '卸载未完成，软件未关闭。' >&2; else say '导入未完成，软件未关闭。' >&2; fi
   exit 1
 fi

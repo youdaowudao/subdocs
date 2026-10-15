@@ -51,14 +51,19 @@ function createLinuxIO(home, core) {
 
 function runLinuxInstaller(argv, core, domestic) {
     'use strict';
+    var action = argv[2] || 'import';
     try {
         var path = require('path'), homeArg = argv[0];
         if (homeArg === '~' || homeArg.slice(0, 2) === '~/') { homeArg = path.join(require('os').homedir(), homeArg.slice(1)); }
-        var home = path.resolve(homeArg), backend = path.resolve(argv[1]);
+        var home = path.resolve(homeArg), backend = argv[1] ? path.resolve(argv[1]) : '';
+        if (action === 'uninstall') {
+            process.stdout.write(core.uninstallMessage(core.uninstallModels(createLinuxIO(home, core), home)) + '\n');
+            return;
+        }
         var count = core.importModels(createLinuxIO(home, core), home, backend, domestic);
         process.stdout.write('已导入 ' + count + ' 个国产模型，原 GPT 和其他模型已保留。\n');
     } catch (error) {
-        process.stderr.write(core.formatError(error) + '\n软件未关闭。\n');
+        process.stderr.write(core.formatError(error, action) + '\n软件未关闭。\n');
         process.exitCode = 1;
     }
 }

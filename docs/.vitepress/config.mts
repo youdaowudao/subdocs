@@ -44,6 +44,7 @@ export default withSidebar(config, {
     'quick-start.md',
     'codex-cc-switch.md',
     'image-video-group-image.md',
+    'codex-models.md',
     'models.md',
     'clients',
     'kimi-code.md',

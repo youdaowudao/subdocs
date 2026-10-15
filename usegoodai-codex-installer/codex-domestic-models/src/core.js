@@ -39,7 +39,7 @@ var DomesticModels = (function () {
         error.configSyntax = !!toml && /TOML parse error|duplicate key|invalid table header|unterminated|expected a newline|expected newline/i.test(stderr);
         return error;
     }
-    function formatError(error) {
+    function formatError(error, action) {
         if (!error || typeof error !== 'object') { error = new Error('Unexpected failure'); }
         var messages = {
             EACCES: '权限不足，无法执行该文件操作。', EPERM: '系统拒绝该操作。',
@@ -59,7 +59,7 @@ var DomesticModels = (function () {
             var kind = ['TypeError', 'ReferenceError', 'RangeError', 'SyntaxError', 'Error'].indexOf(error.name) >= 0 ? error.name : 'Error';
             reason = '脚本内部异常（' + kind + '）。';
         }
-        var lines = ['导入失败', '失败步骤：' + (error.importStep || '初始化模型导入')];
+        var lines = [action === 'uninstall' ? '卸载失败' : '导入失败', '失败步骤：' + (error.importStep || (action === 'uninstall' ? '初始化模型卸载' : '初始化模型导入'))];
         if (error.importTarget) { lines.push('文件或命令：' + error.importTarget); }
         lines.push('原因：' + reason + (code ? ' [' + code + ']' : ''));
         if (typeof error.exitStatus === 'number') { lines.push('后端退出码：' + error.exitStatus); }
@@ -150,8 +150,8 @@ var DomesticModels = (function () {
         if (start < text.length) { records.push({start: start, end: text.length, code: clean}); }
         return records;
     }
-    function configInfo(text) {
-        var result = {values: dict(), edits: dict(), firstHeader: text.length, desktop: null, desktopInline: false, desktopDotted: false}, scope = [], records = statements(text);
+    function configInfo(text, readOnly) {
+        var result = {values: dict(), edits: dict(), firstHeader: text.length, desktop: null, desktopInline: false, desktopDotted: false, profileCatalog: false}, scope = [], records = statements(text);
         records.forEach(function (rec) {
             var code = rec.code.trim(), header, eq, parts, path, key, vstart, vend;
             if (!code) { return; }
@@ -180,7 +180,10 @@ var DomesticModels = (function () {
                 result.desktopInline = parts.length === 1;
                 result.desktopDotted = parts.length > 1 || result.desktopDotted;
             }
-            if (path.length > 1 && path[0] === 'profiles' && path[path.length - 1] === 'model_catalog_json') { fail('profile 中另有 model_catalog_json；请先统一目录配置再导入。'); }
+            if (path.length > 1 && path[0] === 'profiles' && path[path.length - 1] === 'model_catalog_json') {
+                result.profileCatalog = true;
+                if (!readOnly) { fail('profile 中另有 model_catalog_json；请先统一目录配置再导入。'); }
+            }
             if ((path.length === 1 && ['model_catalog_json', 'model', 'review_model', 'profile', 'model_provider'].indexOf(key) >= 0) || (path.length === 2 && key === 'desktop.enabled-reasoning-efforts')) {
                 if (own(result.edits, key)) { fail('目标 TOML 字段重复。'); }
                 vstart = eq + 1;
@@ -190,7 +193,7 @@ var DomesticModels = (function () {
                 result.values[key] = rec.code.slice(vstart, vend);
             }
         });
-        if (result.desktopInline) { fail('desktop 使用内联表；请改为 [desktop] 配置段后导入。'); }
+        if (result.desktopInline && !readOnly) { fail('desktop 使用内联表；请改为 [desktop] 配置段后导入。'); }
         return result;
     }
     function stringArray(raw) {
@@ -287,11 +290,12 @@ var DomesticModels = (function () {
         if (snapshots[2] !== original) { fail('配置在导入过程中被修改，请重新运行。'); }
         atStep('创建私有暂存目录', stage, function () { io.mkdir(stage); });
         try {
-            files.forEach(function (file, index) { var target = io.join(stage, 'file-' + index); atStep('写入暂存文件', target, function () { io.write(target, file.text); }); });
-            var stagedCatalog = io.join(stage, 'file-0'), info = configInfo(files[2].text);
-            var levels = stringArray(info.values['desktop.enabled-reasoning-efforts']);
+            files.forEach(function (file, index) { if (file.keep) { return; } var target = io.join(stage, 'file-' + index); atStep('写入暂存文件', target, function () { io.write(target, file.text); }); });
+            var stagedCatalog = io.join(stage, 'file-0'), info = backend ? configInfo(files[2].text || '') : {values: dict()};
+            var levels = own(info.values, 'desktop.enabled-reasoning-efforts') ? stringArray(info.values['desktop.enabled-reasoning-efforts']) : [];
             var expected = JSON.stringify(parseJSON(files[0].text).models.map(function (m) { return m.slug; }).sort());
             function verifyCatalog(target, step) {
+                if (!backend) { return atStep(step, target, function () { return JSON.stringify(canonical(validateCatalog(parseJSON(io.read(target))).models)); }); }
                 atStep('写入校验配置', io.join(stage, 'config.toml'), function () { io.write(io.join(stage, 'config.toml'), 'model_catalog_json = ' + JSON.stringify(target) + '\n[desktop]\nenabled-reasoning-efforts = ' + JSON.stringify(levels) + '\n'); });
                 var validated = atStep(step, backend + ' debug models', function () { return validateCatalog(parseJSON(io.exportAt(backend, ['debug', 'models'], stage))); });
                 if (JSON.stringify(validated.models.map(function (m) { return m.slug; }).sort()) !== expected) { fail('App 未读取新模型目录，停止导入。'); }
@@ -305,13 +309,14 @@ var DomesticModels = (function () {
                     if (now !== snapshots[index]) { fail('配置在导入过程中被修改，请重新运行。'); }
                 });
             });
-            files.forEach(function (file, index) { if (snapshots[index] !== null) { atStep('备份原文件', file.path, function () { io.backup(file.path, file.path + '.bak.' + stamp); }); } });
-            files.forEach(function (file, index) { committed.push(index); atStep('提交导入文件', file.path, function () { io.write(file.path, file.text); }); written[index] = true; });
+            files.forEach(function (file, index) { if (!file.keep && snapshots[index] !== null) { atStep('备份原文件', file.path, function () { io.backup(file.path, file.path + '.bak.' + stamp); }); } });
+            files.forEach(function (file, index) { if (file.keep) { return; } committed.push(index); atStep('提交导入文件', file.path, function () { io.write(file.path, file.text); }); written[index] = true; });
             /* Validate the committed catalog without loading or changing the user's provider/auth. */
             if (verifyCatalog(files[0].path, '校验已写入的模型目录') !== normalized) { fail('已写入的模型元数据与本次导入不一致，停止导入。'); }
             files.forEach(function (file) {
                 atStep('核对写入后的文件', file.path, function () {
-                    if (io.read(file.path) !== file.text) { fail('写入后的文件与本次导入不一致，停止导入。'); }
+                    var now = io.exists(file.path) ? io.read(file.path) : null;
+                    if (now !== file.text) { fail('写入后的文件与本次导入不一致，停止导入。'); }
                 });
             });
         } catch (error) {
@@ -379,6 +384,37 @@ var DomesticModels = (function () {
         atStep('写入并校验导入结果', catalogPath, function () { io.transaction(files, executable, catalogPath, original, readSet); });
         return merged.managed.length;
     }
-    return {statements: statements, configInfo: configInfo, stringValue: stringValue, stringArray: stringArray, patchConfig: patchConfig, validateCatalog: validateCatalog, merge: merge, transaction: transaction, importModels: importModels, formatError: formatError, backendFailure: backendFailure};
+    function uninstallModels(io, home) {
+        var configPath = io.join(home, 'config.toml'), catalogPath = io.join(home, 'usegoodai-models.json'), managedPath = io.join(home, 'usegoodai-models.managed.json');
+        var managedText = atStep('读取已管理模型记录', managedPath, function () { return io.exists(managedPath) ? io.read(managedPath) : null; });
+        var managed = atStep('校验已管理模型记录', managedPath, function () {
+            var ids = managedText === null ? [] : parseJSON(managedText);
+            if (!Array.isArray(ids) || ids.some(function (id) { return typeof id !== 'string' || !id || /^gpt-/i.test(id); })) { fail('已管理模型记录无效或包含 GPT，未移除任何模型。'); }
+            return ids;
+        });
+        if (!managed.length) { return {changed: false, active: false, count: 0}; }
+        var original = atStep('读取 Codex 配置', configPath, function () { return io.exists(configPath) ? io.read(configPath) : null; });
+        var info = atStep('解析 Codex 配置', configPath, function () { return configInfo(original || '', true); });
+        var catalogText = atStep('读取本工具的模型目录', catalogPath, function () { return io.read(catalogPath); });
+        var catalog = atStep('校验本工具的模型目录', catalogPath, function () { return validateCatalog(parseJSON(catalogText)); });
+        var owned = dict(), before = catalog.models.length;
+        managed.forEach(function (id) { owned[id] = true; });
+        catalog.models = catalog.models.filter(function (model) { return !own(owned, model.slug); });
+        atStep('校验移除后的模型目录', catalogPath, function () { validateCatalog(catalog); });
+        var count = before - catalog.models.length;
+        var active = atStep('核对当前模型目录指向', configPath, function () {
+            return !info.profileCatalog && own(info.values, 'model_catalog_json') && io.resolve(home, stringValue(info.values.model_catalog_json)) === catalogPath;
+        });
+        var files = [{path: catalogPath, text: JSON.stringify(catalog, null, 2) + '\n'}, {path: managedPath, text: '[]\n'}, {path: configPath, text: original, keep: true}];
+        var readSet = [{path: configPath, text: original}, {path: catalogPath, text: catalogText}, {path: managedPath, text: managedText}];
+        atStep('移除并校验国产模型', catalogPath, function () { io.transaction(files, '', catalogPath, original, readSet); });
+        return {changed: true, active: active && count > 0, count: count};
+    }
+    function uninstallMessage(result) {
+        if (result.active) { return '已移除本工具导入的国产模型，原 GPT 和其他模型已保留。'; }
+        if (result.changed) { return '已清理原导入目录；软件未关闭。'; }
+        return '没有需要移除的国产模型，软件未关闭。';
+    }
+    return {statements: statements, configInfo: configInfo, stringValue: stringValue, stringArray: stringArray, patchConfig: patchConfig, validateCatalog: validateCatalog, merge: merge, transaction: transaction, importModels: importModels, uninstallModels: uninstallModels, uninstallMessage: uninstallMessage, formatError: formatError, backendFailure: backendFailure};
 }());
 if (typeof module !== 'undefined') { module.exports = DomesticModels; }

@@ -103,13 +103,20 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
   if (($null -eq $originalNow) -ne ($null -eq $Original) -or $originalNow -cne $Original) { throw (New-ModelImportError '配置在导入过程中被修改，请重新运行。') }
   Invoke-ModelStep '创建私有暂存目录' $stage { $null=[IO.Directory]::CreateDirectory($stage) }
   try {
-    for ($index=0; $index -lt $Files.Count; $index++) { Invoke-ModelStep '写入暂存文件' (Join-Path $stage ('file-'+$index)) { Write-PrivateText (Join-Path $stage ('file-'+$index)) $Files[$index].Text } }
+    for ($index=0; $index -lt $Files.Count; $index++) {
+      if ($Files[$index].Keep) { continue }
+      Invoke-ModelStep '写入暂存文件' (Join-Path $stage ('file-'+$index)) { Write-PrivateText (Join-Path $stage ('file-'+$index)) $Files[$index].Text }
+    }
     $stagedCatalog=Join-Path $stage 'file-0'
-    $info=Get-ConfigInfo $Files[2].Text
-    $levels=Get-TomlStringArray $info.Values['desktop.enabled-reasoning-efforts']
+    $levels=@()
+    if ($Backend) {
+      $info=Get-ConfigInfo ([string]$Files[2].Text)
+      if ($info.Values.ContainsKey('desktop.enabled-reasoning-efforts')) { $levels=Get-TomlStringArray $info.Values['desktop.enabled-reasoning-efforts'] }
+    }
     $validationConfig='model_catalog_json = '+(ConvertTo-Json -InputObject $stagedCatalog -Compress)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-Json -InputObject @($levels) -Compress)+"`n"
     Write-PrivateText (Join-Path $stage 'config.toml') $validationConfig
-    $validated=ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析暂存模型目录校验结果' ($Backend+' debug models')
+    $validated=if ($Backend) { ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析暂存模型目录校验结果' ($Backend+' debug models') }
+      else { ConvertFrom-ModelJson (Read-PrivateText $stagedCatalog) '解析暂存模型目录校验结果' $stagedCatalog }
     Test-ModelCatalog $validated
     $expected=ConvertFrom-Json -InputObject $Files[0].Text
     $actualIds=New-OrdinalMap; foreach ($model in $validated.models) { $actualIds[$model.slug]=$true }
@@ -122,9 +129,11 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
       if (($null -eq $now) -ne ($null -eq $before) -or $now -cne $before) { throw (New-ModelImportError '配置在导入过程中被修改，请重新运行。') }
     }
     for ($index=0; $index -lt $Files.Count; $index++) {
+      if ($Files[$index].Keep) { continue }
       if ($null -ne $snapshots[$index]) { Invoke-ModelStep '备份原文件' $Files[$index].Path { [IO.File]::Copy($Files[$index].Path,($Files[$index].Path+'.bak.'+$id),$false) } }
     }
     for ($index=0; $index -lt $Files.Count; $index++) {
+      if ($Files[$index].Keep) { continue }
       $committed.Add($index)
       Invoke-ModelStep '提交导入文件' $Files[$index].Path { Move-StagedFile (Join-Path $stage ('file-'+$index)) $Files[$index].Path }
       $written.Add($index)
@@ -132,7 +141,8 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
     # Validate the committed catalog without loading or changing the user's provider/auth.
     $validationConfig='model_catalog_json = '+(ConvertTo-Json -InputObject $Files[0].Path -Compress)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-Json -InputObject @($levels) -Compress)+"`n"
     Write-PrivateText (Join-Path $stage 'config.toml') $validationConfig
-    $final=ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析已写入模型目录校验结果' ($Backend+' debug models')
+    $final=if ($Backend) { ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析已写入模型目录校验结果' ($Backend+' debug models') }
+      else { ConvertFrom-ModelJson (Read-PrivateText $Files[0].Path) '解析已写入模型目录校验结果' $Files[0].Path }
     Test-ModelCatalog $final
     $finalIds=New-OrdinalMap; foreach ($model in $final.models) { $finalIds[$model.slug]=$true }
     if ($finalIds.Count -ne $expected.models.Count) { throw (New-ModelImportError 'App 未读取新模型目录，停止导入。') }
@@ -141,7 +151,8 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
     $effective=ConvertTo-Json -InputObject (ConvertTo-CanonicalValue $final.models) -Depth 100 -Compress
     if ($normalized -cne $effective) { throw (New-ModelImportError '已写入的模型元数据与本次导入不一致，停止导入。') }
     foreach ($file in $Files) {
-      if ((Read-PrivateText $file.Path) -cne $file.Text) { throw (New-ModelImportError '写入后的文件与本次导入不一致，停止导入。') }
+      $now=if (Test-PrivatePath $file.Path) { Read-PrivateText $file.Path } else { $null }
+      if (($null -eq $now) -ne ($null -eq $file.Text) -or $now -cne $file.Text) { throw (New-ModelImportError '写入后的文件与本次导入不一致，停止导入。') }
     }
   } catch {
     if ($committed.Count) {
@@ -209,10 +220,20 @@ function Find-DesktopBackend([string]$ExplicitPath) {
   throw (New-ModelImportError '未找到桌面 App 自带的 Codex 后端；用 -CodexPath 指定其 resources 中的 codex.exe。')
 }
 
-function Start-ModelInstaller([string]$CodexHomePath, [string]$CodexPath) {
+function Start-ModelInstaller([string]$CodexHomePath, [string]$CodexPath, [switch]$Uninstall) {
   if ($env:OS -ne 'Windows_NT') { throw (New-ModelImportError '这个脚本用于 Windows；macOS 请运行 codex-models.sh。') }
   if (-not $CodexHomePath) { $CodexHomePath=if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME '.codex' } }
   $targetHome=[IO.Path]::GetFullPath($CodexHomePath)
+  if ($Uninstall) {
+    Write-Host '移除当前启用目录中的国产模型后会自动关闭 ChatGPT/Codex，运行中的任务会中断。'
+    $result=Remove-ImportedModels $targetHome
+    if (-not $result.Changed) { Write-Host '没有需要移除的国产模型，软件未关闭。'; return }
+    if (-not $result.Active) { Write-Host '已清理原导入目录；软件未关闭。'; return }
+    Write-Host '已移除本工具导入的国产模型，原 GPT 和其他模型已保留。'
+    Report-RunningClients (Stop-RunningClients)
+    Write-Host '重新打开 App，新建任务后选择模型。'
+    return
+  }
   Write-Host '成功导入后会自动关闭 ChatGPT/Codex，运行中的任务会中断。'
   $backend=Find-DesktopBackend $CodexPath
   $count=Invoke-ModelImport $targetHome $backend $DomesticCatalog

@@ -57,16 +57,17 @@ def build():
         assert shell.count(marker) == 1
         shell = shell.replace(marker, content)
     ps = '''#Requires -Version 5.1
-param([string]$CodexHomePath, [string]$CodexPath)
+param([string]$CodexHomePath, [string]$CodexPath, [switch]$Uninstall)
 $ErrorActionPreference = 'Stop'
 function Say([string]$Message) { Write-Host $Message }
 '''
     ps += '$DomesticCatalog = ConvertFrom-Json -InputObject @\'\n' + json.dumps(data, ensure_ascii=False) + "\n'@\n"
     ps += ps_processes + '\n' + (ROOT / 'src/core.ps1').read_text() + '\n' + (ROOT / 'src/windows-host.ps1').read_text()
     ps += '''
-try { Start-ModelInstaller $CodexHomePath $CodexPath }
+try { Start-ModelInstaller $CodexHomePath $CodexPath -Uninstall:$Uninstall }
 catch {
-  Write-Host (Format-ModelImportError $_) -ForegroundColor Red
+  Write-Host (Format-ModelImportError $_ -Uninstall:$Uninstall) -ForegroundColor Red
+  if ($Uninstall) { throw '国产模型卸载未完成，软件未关闭。' }
   throw '国产模型导入未完成，软件未关闭。'
 }
 '''
