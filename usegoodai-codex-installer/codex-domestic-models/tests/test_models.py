@@ -306,6 +306,107 @@ theme = "dark"
         self.assertIn('已导入 8 个国产模型',result.stdout)
         self.assertEqual((target/'mock-kills.log').read_text().strip(),'-TERM 7001')
 
+    def assert_linux_diagnostic(self, result, target, step, code=None):
+        output=result.stdout+result.stderr
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('失败步骤：'+step,output)
+        self.assertIn('文件或命令：',output)
+        self.assertIn('原因：',output)
+        self.assertIn('软件未关闭',output)
+        self.assertNotIn('文件格式或系统操作失败',output)
+        self.assertNotIn('private-credential-do-not-print',output)
+        if code:self.assertIn(code,output)
+        self.assertEqual((target/'mock-kills.log').read_text(),'')
+
+    def test_linux_json_errors_identify_file_without_contents(self):
+        for name,content,step in [
+            ('usegoodai-models.managed.json','', '读取并解析已管理模型记录'),
+            ('usegoodai-models.managed.json','{"key":"private-credential-do-not-print"', '读取并解析已管理模型记录'),
+            ('old-models.json','private-credential-do-not-print', '读取并解析原模型目录'),
+        ]:
+            with self.subTest(name=name,empty=not content):
+                target,tools=self.linux_fixture('linux-json-diagnostic')
+                (target/name).write_text(content)
+                if name=='old-models.json':
+                    config=target/'config.toml'
+                    config.write_text('model_catalog_json="old-models.json"\n'+config.read_text())
+                before=(target/'config.toml').read_bytes()
+                result=self.run_linux_script(target,tools,CODEX)
+                self.assert_linux_diagnostic(result,target,step,'EJSON_PARSE')
+                self.assertIn(str(target/name),result.stderr)
+                self.assertEqual((target/'config.toml').read_bytes(),before)
+                self.assertFalse((target/'usegoodai-models.json').exists())
+
+    def test_linux_invalid_utf8_identifies_config(self):
+        target,tools=self.linux_fixture('linux-utf8-diagnostic')
+        config=target/'config.toml'
+        data=config.read_bytes()+b'\xffprivate-credential-do-not-print'
+        config.write_bytes(data)
+        result=self.run_linux_script(target,tools,CODEX)
+        self.assert_linux_diagnostic(result,target,'读取 Codex 配置','ERR_ENCODING_INVALID_ENCODED_DATA')
+        self.assertIn(str(config),result.stderr)
+        self.assertEqual(config.read_bytes(),data)
+
+    def test_linux_filesystem_errors_identify_operation(self):
+        target,tools=self.linux_fixture('linux-path-diagnostic')
+        (target/'not-directory').write_text('private-credential-do-not-print')
+        config=target/'config.toml'
+        config.write_text('model_catalog_json="not-directory/models.json"\n'+config.read_text())
+        before=config.read_bytes()
+        result=self.run_linux_script(target,tools,CODEX)
+        self.assert_linux_diagnostic(result,target,'读取并解析原模型目录','ENOTDIR')
+        self.assertIn(str(target/'not-directory/models.json'),result.stderr)
+        self.assertEqual(config.read_bytes(),before)
+
+    @unittest.skipIf(os.getuid()==0,'root bypasses chmod permission restrictions')
+    def test_linux_permission_errors_identify_config(self):
+        target,tools=self.linux_fixture('linux-permission-diagnostic')
+        config=target/'config.toml'
+        before=config.read_bytes()
+        config.chmod(0o000)
+        try:
+            result=self.run_linux_script(target,tools,CODEX)
+            self.assert_linux_diagnostic(result,target,'读取 Codex 配置','EACCES')
+            self.assertIn(str(config),result.stderr)
+        finally:config.chmod(0o600)
+        self.assertEqual(config.read_bytes(),before)
+
+    def test_linux_backend_json_errors_identify_command(self):
+        target,tools=self.linux_fixture('linux-backend-json-diagnostic')
+        backend=tools/'bad-json-backend'
+        backend.write_text('#!/bin/bash\nprintf "private-credential-do-not-print"\n')
+        backend.chmod(0o755)
+        before=(target/'config.toml').read_bytes()
+        result=self.run_linux_script(target,tools,backend)
+        self.assert_linux_diagnostic(result,target,'导出并解析 Codex 内置模型目录','EJSON_PARSE')
+        self.assertIn(str(backend)+' debug models --bundled',result.stderr)
+        self.assertEqual((target/'config.toml').read_bytes(),before)
+
+    def test_linux_backend_errors_expose_safe_reason_and_exit_code(self):
+        target,tools=self.linux_fixture('linux-backend-stderr-diagnostic')
+        backend=tools/'failing-toml-backend'
+        backend.write_text('#!/bin/bash\nprintf "TOML parse error at line 7, column 9\\napi_key=private-credential-do-not-print\\n" >&2\nexit 7\n')
+        backend.chmod(0o755)
+        before=(target/'config.toml').read_bytes()
+        result=self.run_linux_script(target,tools,backend)
+        self.assert_linux_diagnostic(result,target,'导出并解析 Codex 内置模型目录')
+        self.assertIn('第 7 行，第 9 列',result.stderr)
+        self.assertIn('后端退出码：7',result.stderr)
+        self.assertEqual((target/'config.toml').read_bytes(),before)
+
+    def test_linux_internal_error_reports_location_without_message(self):
+        source='''const core=require('./src/core.js');
+const error=new TypeError('private-credential-do-not-print');
+error.importStep='测试内部异常'; error.importTarget='/tmp/example-models.json';
+error.stack='TypeError: private-credential-do-not-print\\n    at test ([stdin]:12:34)';
+console.log(core.formatError(error));'''
+        result=execute([NODE,'-e',source])
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('失败步骤：测试内部异常',result.stdout)
+        self.assertIn('TypeError',result.stdout)
+        self.assertIn('[stdin]:12:34',result.stdout)
+        self.assertNotIn('private-credential-do-not-print',result.stdout)
+
     def test_actual_codex_deserializes_metadata(self):
         target=WORK/'actual-codex'
         target.mkdir(exist_ok=True)

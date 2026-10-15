@@ -3,17 +3,18 @@ function createLinuxIO(home, core) {
     'use strict';
     var fs = require('fs'), path = require('path'), os = require('os');
     var crypto = require('crypto'), child = require('child_process');
+    function failure(message) { var error = new Error(message); error.safeMessage = message; return error; }
     function exists(file) {
         try { fs.lstatSync(file); return true; }
         catch (error) { if (error.code === 'ENOENT') { return false; } throw error; }
     }
     function isFile(file) { return fs.lstatSync(file).isFile(); }
     function read(file) {
-        if (!isFile(file)) { throw new Error('文件不存在或不是普通文件。'); }
+        if (!isFile(file)) { throw failure('文件不存在或不是普通文件。'); }
         return new (require('util').TextDecoder)('utf-8', {fatal: true, ignoreBOM: true}).decode(fs.readFileSync(file));
     }
     function write(file, text) {
-        if (exists(file) && !isFile(file)) { throw new Error('目标文件不是普通文件，停止导入。'); }
+        if (exists(file) && !isFile(file)) { throw failure('目标文件不是普通文件，停止导入。'); }
         var temp = path.join(path.dirname(file), '.usegoodai-write-' + crypto.randomUUID());
         try {
             fs.writeFileSync(temp, text, {encoding: 'utf8', flag: 'wx', mode: 384});
@@ -28,8 +29,29 @@ function createLinuxIO(home, core) {
                 encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
             });
         } catch (error) {
-            /* External stderr can contain private config. Report only a fixed message. */
-            throw new Error(error.code === 'ETIMEDOUT' ? 'Codex 后端校验超时，原配置未更改。' : 'Codex 后端校验失败，原配置未更改。');
+            /* Extract known diagnostics, never arbitrary stderr or config excerpts. */
+            var reason = 'Codex 后端命令执行失败。';
+            var stderr = error.stderr ? String(error.stderr) : '';
+            var toml = /TOML parse error at line (\d+), column (\d+)/i.exec(stderr);
+            var missing = /missing field [`']([a-z_][a-z0-9_]{0,80})[`']/i.exec(stderr);
+            var osError = /os error (\d+)/i.exec(stderr);
+            if (error.code === 'ETIMEDOUT') { reason = 'Codex 后端命令执行超过 30 秒。'; }
+            else if (error.code === 'ENOENT') { reason = '无法启动 Codex 后端：找不到可执行文件或启动器解释器。'; }
+            else if (error.code === 'EACCES') { reason = '无法启动 Codex 后端：没有执行权限。'; }
+            else if (toml) { reason = 'Codex 报告 TOML 配置语法错误：第 ' + toml[1] + ' 行，第 ' + toml[2] + ' 列。'; }
+            else if (missing) {
+                var knownFields = ['slug', 'display_name', 'description', 'supported_reasoning_levels', 'shell_type', 'visibility', 'supported_in_api', 'priority', 'support_verbosity', 'default_verbosity', 'apply_patch_tool_type', 'truncation_policy', 'experimental_supported_tools', 'base_instructions', 'model_messages', 'instructions_template'];
+                reason = knownFields.indexOf(missing[1]) >= 0 ? 'Codex 报告模型目录缺少字段：' + missing[1] + '。' : 'Codex 报告模型目录缺少必需字段。';
+            }
+            else if (/unrecognized subcommand|unknown subcommand|unexpected argument|unknown option/i.test(stderr)) { reason = 'Codex 后端未识别模型目录导出命令。'; }
+            else if (/failed to read model[_ ]instructions[_ ]file/i.test(stderr)) { reason = 'Codex 无法读取配置中的 model_instructions_file。'; }
+            else if (/failed to (?:read|parse) model_catalog_json/i.test(stderr)) { reason = 'Codex 无法读取或解析 model_catalog_json。'; }
+            else if (/\b401\b|unauthorized|invalid api key/i.test(stderr)) { reason = 'Codex 后端请求被拒绝：鉴权失败。'; }
+            else if (/connection refused|failed to connect|error sending request/i.test(stderr)) { reason = 'Codex 后端连接接口失败。'; }
+            else if (osError) { reason = 'Codex 后端报告系统错误，os error ' + osError[1] + '。'; }
+            var reported = failure(reason);
+            reported.code = error.code; reported.exitStatus = error.status; reported.signal = error.signal;
+            throw reported;
         }
     }
     var io = {
@@ -58,8 +80,7 @@ function runLinuxInstaller(argv, core, domestic) {
         var count = core.importModels(createLinuxIO(home, core), home, backend, domestic);
         process.stdout.write('已导入 ' + count + ' 个国产模型，原 GPT 和其他模型已保留。\n');
     } catch (error) {
-        var message = /^[\u3400-\u9fff]/.test(error.message) ? error.message : '文件格式或系统操作失败。';
-        process.stderr.write('导入失败：' + message + ' 软件未关闭。\n');
+        process.stderr.write(core.formatError(error) + '\n软件未关闭。\n');
         process.exitCode = 1;
     }
 }
