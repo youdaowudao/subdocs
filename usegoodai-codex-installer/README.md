@@ -18,6 +18,24 @@ irm https://docs.usegoodai.com/install/codex.ps1 | iex
 curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 ```
 
+## 给桌面 App 增加国产模型
+
+已完成上面的 GPT 接入后，运行对应命令导入 8 个国产模型。模型与原 GPT 并列，默认模型、接口和 Key 保留；成功后会自动关闭客户端，重新打开 App 并新建任务选择模型。重复运行同一命令就是更新。
+
+Windows：
+
+```powershell
+irm https://docs.usegoodai.com/install/codex-models.ps1 | iex
+```
+
+macOS：
+
+```bash
+curl -fsSL https://docs.usegoodai.com/install/codex-models.sh | bash
+```
+
+本次入口供桌面实机测试，跨平台自动测试和独立代码审查已通过。模型设定、完整源码、测试与待验收项目在 [codex-domestic-models](codex-domestic-models/README.md) 内维护。
+
 ## 使用过程
 
 1. 在终端明文输入 UseGoodAI中转站API Key。Key 必须以 `sk-` 开头；输入为空或格式错误时会提示重新输入。
@@ -44,6 +62,13 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 install/
   codex.ps1
   codex.sh
+  codex-models.ps1
+  codex-models.sh
+codex-domestic-models/
+  README.md
+  src/
+  tests/
+  install/
 tests/
   installers.sh
 ```
@@ -56,10 +81,12 @@ bash tests/installers.sh
 
 ## 部署
 
-脚本只在 `install/` 里修改。本地检查通过后，把两个脚本复制到文档站的部署位置，再提交并推送：
+原 GPT 脚本在 `install/` 里维护；国产模型导入脚本只在 `codex-domestic-models/` 内开发、构建和测试，再手动复制交付物到本目录的 `install/`。把要发布的脚本复制到文档站部署位置，再提交并推送：
 
 ```bash
 cp install/codex.sh install/codex.ps1 ../docs/public/install/
+cp codex-domestic-models/install/codex-models.sh codex-domestic-models/install/codex-models.ps1 install/
+cp install/codex-models.sh install/codex-models.ps1 ../docs/public/install/
 ```
 
 线上下发的是 `docs/public/install/` 里的那一份。文档站的测试会检查两处内容一致，忘记复制时测试不通过。
