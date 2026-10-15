@@ -20,7 +20,7 @@
 
 | 想使用的模型 | Model 示例 |
 | --- | --- |
-| GPT | `gpt-5.5` |
+| GPT | `gpt-6.1-sol` |
 | Claude | `claude-opus-5`、`claude-fable-5` |
 | Gemini | `gemini-3.6-flash` |
 | Grok | `grok-4.5` |

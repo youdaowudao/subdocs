@@ -49,7 +49,7 @@ Base URL 只填到 `/v1`，不要追加其它路径。
 claude-fable-5
 ```
 
-也可以填 `gpt-5.5`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`。模型名要和当前 Key 分组里的模型完全一致。
+也可以填 `gpt-6.1-sol`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`。模型名要和当前 Key 分组里的模型完全一致。
 
 ## 测试
 

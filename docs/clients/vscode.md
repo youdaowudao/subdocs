@@ -73,7 +73,7 @@ VS Code 打开 `chatLanguageModels.json` 后，关键字段按下面写：
 
 配置后，在 VS Code Chat 的模型选择器里选中刚添加的模型。只有选中了这个 BYOK 模型，VS Code Chat 的请求才会通过对应的第三方 API 发出。
 
-`id` 和 `name` 也可以改成当前 Key 分组里的 `gpt-5.5`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`；`url` 和 `apiKey` 不变。模型不在当前分组时，VS Code 会显示模型不可用。
+`id` 和 `name` 也可以改成当前 Key 分组里的 `gpt-6.1-sol`、`claude-opus-5`、`gemini-3.6-flash` 或 `grok-4.5`；`url` 和 `apiKey` 不变。模型不在当前分组时，VS Code 会显示模型不可用。
 
 BYOK 主要覆盖 VS Code 的 Chat 体验、工具调用和工具任务。代码补全、语义搜索、依赖 embeddings 的能力，仍受 GitHub 登录、Copilot 支持或组织策略影响。
 

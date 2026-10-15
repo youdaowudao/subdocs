@@ -28,7 +28,7 @@ Trae 同时有官方模型市场和自定义 API 配置时，进入自定义 API
 claude-fable-5
 ```
 
-也可以填 `gpt-5.5`、`claude-opus-5` 或其它当前 Key 分组里的模型名。模型名要和当前 Key 分组里的模型完全一致。
+也可以填 `gpt-6.1-sol`、`claude-opus-5` 或其它当前 Key 分组里的模型名。模型名要和当前 Key 分组里的模型完全一致。
 
 ## 测试
 

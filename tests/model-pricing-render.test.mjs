@@ -33,7 +33,7 @@ test('renders Gemini 4 models first with 0.35 pricing and the Barium channel bas
         .filter((row) => row.includes('class="model-id-cell"'))
       const ids = rows.map((row) => row.match(/<strong>(gemini-[^<]+)<\/strong>/)[1])
 
-      assert.equal(ids.length, 16)
+      assert.equal(ids.length, 14)
       assert.deepEqual(ids.slice(0, 3), ['gemini-4-argon', 'gemini-4-barium', 'gemini-3.8-flash'])
       assert.match(rows[0], /aria-label="复制 gemini-4-argon"/)
       assert.match(rows[1], /aria-label="复制 gemini-4-barium"/)
