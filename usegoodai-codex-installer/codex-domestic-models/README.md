@@ -88,4 +88,4 @@ sh install/codex-models.sh --uninstall
 
 本次用户要求先发布入口并自行实机测试，因此已手动迁移 `install/codex-models.ps1`、`install/codex-models.sh` 到上级 `usegoodai-codex-installer/install/` 和站点 `docs/public/install/`。发布入口分别是 `https://docs.usegoodai.com/install/codex-models.ps1` 与 `https://docs.usegoodai.com/install/codex-models.sh`。实机验收状态仍以测试记录为准。
 
-后续继续在本子项目开发、构建和测试，再复制两个交付物到同样位置。保留完整源码与审阅、测试记录；站点测试检查三处脚本逐字节一致，原 GPT 安装入口继续使用原文件名。
+后续继续在本子项目开发、构建和测试，再迁移两个交付物到同样位置。PowerShell 本地交付物及上级安装目录保留 UTF-8 BOM，让 Windows PowerShell 5.1 正确读取中文；站点发布副本只去掉文件开头的 BOM，并通过 `text/plain; charset=utf-8` 提供，支持原有 `irm | iex` 入口。站点测试核对源码和上级副本逐字节一致、站点副本仅少开头三个 BOM 字节；Shell 三处仍逐字节一致。原 GPT 安装入口继续使用原文件名。

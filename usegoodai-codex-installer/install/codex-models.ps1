@@ -148,6 +148,34 @@ function New-OrdinalMap {
   return ,(New-Object 'System.Collections.Generic.Dictionary[string,object]' ([System.StringComparer]::Ordinal))
 }
 
+function ConvertTo-TomlString([string]$Value) {
+  # Windows paths are literal TOML strings, so backslashes never become escapes.
+  if ($Value.Contains('\') -and -not $Value.Contains("'") -and $Value -notmatch '[\x00-\x1f\x7f]') { return "'"+$Value+"'" }
+  $encoded=New-Object System.Text.StringBuilder
+  [void]$encoded.Append('"')
+  foreach ($character in $Value.ToCharArray()) {
+    $number=[int]$character
+    if ($number -eq 34) { [void]$encoded.Append('\"') }
+    elseif ($number -eq 92) { [void]$encoded.Append('\\') }
+    elseif ($number -lt 32 -or $number -eq 127) { [void]$encoded.Append(('\u{0:x4}' -f $number)) }
+    else { [void]$encoded.Append($character) }
+  }
+  [void]$encoded.Append('"')
+  return $encoded.ToString()
+}
+
+function ConvertTo-TomlStringArray([string[]]$Values) {
+  if ($null -eq $Values -or -not $Values.Count) { return '[]' }
+  return '['+((@($Values) | ForEach-Object { ConvertTo-TomlString $_ }) -join ',')+']'
+}
+
+function New-TomlSyntaxError([string]$Message, [string]$Text, [int]$Offset) {
+  $prefix=$Text.Substring(0,[Math]::Min($Offset,$Text.Length))
+  $line=1; foreach ($character in $prefix.ToCharArray()) { if ([int]$character -eq 10) { $line++ } }
+  $column=$prefix.Length-$prefix.LastIndexOf("`n")
+  return (New-ModelImportError ($Message+' 第 '+$line+' 行，第 '+$column+' 列。'))
+}
+
 function ConvertTo-CanonicalValue($Value) {
   if ($null -eq $Value) { return $null }
   if ($Value -is [Array]) {
@@ -206,7 +234,7 @@ function Get-TomlStatements([string]$Text) {
   $records = New-Object 'System.Collections.Generic.List[object]'
   $depth = New-Object 'System.Collections.Generic.Stack[char]'
   $clean = New-Object System.Text.StringBuilder
-  $start = 0; $quote = ''; $triple = $false; $escaped = $false; $comment = $false
+  $start = 0; $quote = ''; $quoteStart = 0; $triple = $false; $escaped = $false; $comment = $false
   for ($i = 0; $i -lt $Text.Length; $i++) {
     $ch = [string]$Text[$i]
     if ($comment) {
@@ -224,12 +252,12 @@ function Get-TomlStatements([string]$Text) {
           while ($run -lt 5 -and $i + $run -lt $Text.Length -and [string]$Text[$i + $run] -ceq $quote) { $run += 1 }
           [void]$clean.Append($Text.Substring($i + 1, $run - 1)); $i += $run - 1; $quote = ''; $triple = $false
         }
-      } elseif ($ch -ceq "`n" -and -not $triple) { throw (New-ModelImportError 'TOML 字符串未闭合。') }
+      } elseif ($ch -ceq "`n" -and -not $triple) { throw (New-TomlSyntaxError 'TOML 字符串未闭合。' $Text $quoteStart) }
       continue
     }
     if ($ch -ceq '#') { $comment = $true; [void]$clean.Append(' '); continue }
     if ($ch -ceq '"' -or $ch -ceq "'") {
-      $quote = $ch; $triple = $i + 2 -lt $Text.Length -and $Text.Substring($i, 3) -ceq ($ch * 3)
+      $quote = $ch; $quoteStart = $i; $triple = $i + 2 -lt $Text.Length -and $Text.Substring($i, 3) -ceq ($ch * 3)
       [void]$clean.Append($ch)
       if ($triple) { [void]$clean.Append($ch * 2); $i += 2 }
       continue
@@ -237,14 +265,15 @@ function Get-TomlStatements([string]$Text) {
     if ($ch -ceq '[' -or $ch -ceq '{') { $depth.Push([char]$ch) }
     if ($ch -ceq ']' -or $ch -ceq '}') {
       $expected = if ($ch -ceq ']') { '[' } else { '{' }
-      if (-not $depth.Count -or [string]$depth.Pop() -cne $expected) { throw (New-ModelImportError 'TOML 括号不匹配。') }
+      if (-not $depth.Count -or [string]$depth.Pop() -cne $expected) { throw (New-TomlSyntaxError 'TOML 括号不匹配。' $Text $i) }
     }
     [void]$clean.Append($ch)
     if ($ch -ceq "`n" -and -not $depth.Count) {
       $records.Add(@{Start=$start; End=$i+1; Code=$clean.ToString()}); $start=$i+1; [void]$clean.Clear()
     }
   }
-  if ($quote -or $depth.Count) { throw (New-ModelImportError 'TOML 字符串或括号未闭合。') }
+  if ($quote) { throw (New-TomlSyntaxError 'TOML 字符串未闭合。' $Text $quoteStart) }
+  if ($depth.Count) { throw (New-TomlSyntaxError 'TOML 括号未闭合。' $Text $Text.Length) }
   if ($start -lt $Text.Length) { $records.Add(@{Start=$start; End=$Text.Length; Code=$clean.ToString()}) }
   return ,$records.ToArray()
 }
@@ -316,8 +345,8 @@ function Set-ModelConfig([string]$Text, $Info, [string]$CatalogPath, [string[]]$
   $changes = New-Object 'System.Collections.Generic.List[object]'
   $rootLines = New-Object 'System.Collections.Generic.List[string]'
   $values = @{
-    'model_catalog_json'= (ConvertTo-Json -InputObject $CatalogPath -Compress)
-    'desktop.enabled-reasoning-efforts'= (ConvertTo-Json -InputObject @($Efforts) -Compress)
+    'model_catalog_json'= (ConvertTo-TomlString $CatalogPath)
+    'desktop.enabled-reasoning-efforts'= (ConvertTo-TomlStringArray $Efforts)
   }
   foreach ($key in @('model_catalog_json','desktop.enabled-reasoning-efforts')) {
     if ($Info.Edits.ContainsKey($key)) { $changes.Add(@{Start=$Info.Edits[$key].Start; End=$Info.Edits[$key].End; Value=$values[$key]}); continue }
@@ -612,7 +641,7 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
       $info=Get-ConfigInfo ([string]$Files[2].Text)
       if ($info.Values.ContainsKey('desktop.enabled-reasoning-efforts')) { $levels=Get-TomlStringArray $info.Values['desktop.enabled-reasoning-efforts'] }
     }
-    $validationConfig='model_catalog_json = '+(ConvertTo-Json -InputObject $stagedCatalog -Compress)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-Json -InputObject @($levels) -Compress)+"`n"
+    $validationConfig='model_catalog_json = '+(ConvertTo-TomlString $stagedCatalog)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-TomlStringArray $levels)+"`n"
     Write-PrivateText (Join-Path $stage 'config.toml') $validationConfig
     $validated=if ($Backend) { ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析暂存模型目录校验结果' ($Backend+' debug models') }
       else { ConvertFrom-ModelJson (Read-PrivateText $stagedCatalog) '解析暂存模型目录校验结果' $stagedCatalog }
@@ -638,7 +667,7 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
       $written.Add($index)
     }
     # Validate the committed catalog without loading or changing the user's provider/auth.
-    $validationConfig='model_catalog_json = '+(ConvertTo-Json -InputObject $Files[0].Path -Compress)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-Json -InputObject @($levels) -Compress)+"`n"
+    $validationConfig='model_catalog_json = '+(ConvertTo-TomlString $Files[0].Path)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-TomlStringArray $levels)+"`n"
     Write-PrivateText (Join-Path $stage 'config.toml') $validationConfig
     $final=if ($Backend) { ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析已写入模型目录校验结果' ($Backend+' debug models') }
       else { ConvertFrom-ModelJson (Read-PrivateText $Files[0].Path) '解析已写入模型目录校验结果' $Files[0].Path }
