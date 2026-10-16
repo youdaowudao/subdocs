@@ -5,7 +5,7 @@ sidebarTitle: 导入国产模型
 
 # 给 Codex 导入国产模型
 
-这个脚本把 8 个国产模型加入 Codex 的模型列表，适合已经接入 UseGoodAI、希望在 GPT 和国产模型之间选择的用户。脚本自动更新用户目录中的 `.codex/config.toml` 和本地模型目录，保留原有 GPT、默认模型、接口和 Key。
+这个脚本把 10 个国产模型加入 Codex 的模型列表，适合已经接入 UseGoodAI、希望在 GPT 和国产模型之间选择的用户。脚本自动更新用户目录中的 `.codex/config.toml` 和本地模型目录，保留原有 GPT、默认模型、接口和 Key。
 
 ## 一键导入
 
@@ -32,9 +32,17 @@ irm https://docs.usegoodai.com/install/codex-models.ps1 | iex
 重新打开 Codex，**新建任务**，在模型选择器中选择要用的国产模型，发送 `测试`。
 
 <details>
-<summary>查看本次导入的 8 个模型</summary>
+<summary>查看本次导入的 10 个模型</summary>
 
-`qwen3.8-max`、`qwen3.8-flash`、`glm-5.3-flash`、`deepseek-flash`、`glm-5.3`、`kimi-k3`、`minimax-m3`、`hy4-preview`。
+| 厂商 | 模型 ID（按导入顺序） |
+| --- | --- |
+| DeepSeek | `deepseek-flash` |
+| GLM | `glm-5.3`、`glm-5.3-flash` |
+| Qwen 千问 | `qwen3.8-max`、`qwen3.8-flash` |
+| Kimi | `kimi-k3` |
+| MiniMax | `minimax-m3` |
+| 腾讯混元 | `hy4-preview` |
+| 小米 MiMo | `mimo-v2.6-pro`、`mimo-v2.6-flash` |
 
 </details>
 

@@ -30,7 +30,7 @@ theme = "dark"
 }
 $null=[IO.Directory]::CreateDirectory($WorkRoot)
 $target=Setup 'success'
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
 $catalogPath=Join-Path $target 'usegoodai-models.json'
 $value=ConvertFrom-Json -InputObject (Read-PrivateText $catalogPath)
 Assert (@($value.models | Where-Object {$_.slug -like 'gpt-*'}).Count -gt 0)
@@ -45,7 +45,7 @@ $removed=ConvertFrom-Json -InputObject (ConvertTo-Json -InputObject $gpt -Depth 
 $value.models+=@($user,$removed)
 Write-PrivateText $catalogPath (ConvertTo-Json -InputObject $value -Depth 100)
 Write-PrivateText (Join-Path $target 'usegoodai-models.managed.json') (ConvertTo-Json -InputObject (@($Domestic.models | ForEach-Object {$_.slug})+@('removed-domestic')))
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
 $value=ConvertFrom-Json -InputObject (Read-PrivateText $catalogPath)
 Assert (@($value.models | Where-Object {$_.slug -ceq 'removed-domestic'}).Count -eq 0)
 Assert (@($value.models | Where-Object {$_.slug -ceq 'user-custom'})[0].custom_metadata.keep)
@@ -171,12 +171,12 @@ foreach ($invalid in @('directory','symlink','dangling','managed_directory')) {
 $target=Setup 'missing_source'
 $configPath=Join-Path $target 'config.toml'
 Write-PrivateText $configPath ('model_catalog_json="missing.json"'+"`n"+(Read-PrivateText $configPath))
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
 $target=Setup 'relative_instructions'
 $configPath=Join-Path $target 'config.toml'
 Write-PrivateText (Join-Path $target 'instructions.md') "Test repository instructions.`n"
 Write-PrivateText $configPath ('model_instructions_file="instructions.md"'+"`n"+(Read-PrivateText $configPath))
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
 Assert ((Read-PrivateText $configPath).Contains('model_instructions_file="instructions.md"'))
 
 # Official accounts and arbitrary service names/URLs do not depend on a relay installer.
@@ -184,7 +184,7 @@ foreach ($text in @('', 'model_provider="OpenAI"', "model_provider=`"customer`"`
   $target=Setup 'provider-independent'
   $configPath=Join-Path $target 'config.toml'
   Write-PrivateText $configPath $text
-  Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+  Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
   $after=Read-PrivateText $configPath
   $restored=[regex]::Replace($after,'(?m)^model_catalog_json = [^\r\n]*\r?\n','')
   $restored=[regex]::Replace($restored,'\r?\n\[desktop\]\r?\nenabled-reasoning-efforts = [^\r\n]*\r?\n$','')
@@ -196,7 +196,7 @@ foreach ($mode in @('missing','empty','new_home')) {
   if ($mode -ceq 'missing') { [IO.File]::Delete((Join-Path $target 'config.toml')) }
   elseif ($mode -ceq 'empty') { Write-PrivateText (Join-Path $target 'config.toml') '' }
   else { $target=Join-Path $target 'new/codex-home' }
-  Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+  Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
   $newConfig=Read-PrivateText (Join-Path $target 'config.toml')
   Assert ($newConfig -notmatch '(?m)^model_provider\s*=|^model\s*=|^base_url\s*=|^review_model\s*=')
   if ($mode -ceq 'new_home') { Assert (-not (Test-PrivatePath (Join-Path $target 'auth.json'))) }
@@ -228,7 +228,7 @@ $target=Setup 'custom-default-alias'
 $configPath=Join-Path $target 'config.toml'
 $aliasConfig="model=`"customer-gpt-alias`"`nreview_model=`"customer-review-alias`"`n"
 Write-PrivateText $configPath $aliasConfig
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
 $aliasInfo=Get-ConfigInfo (Read-PrivateText $configPath)
 Assert ((Get-TomlString $aliasInfo.Values['model']) -ceq 'customer-gpt-alias')
 Assert ((Get-TomlString $aliasInfo.Values['review_model']) -ceq 'customer-review-alias')
@@ -243,7 +243,7 @@ Assert ($bomPatched.StartsWith('model_catalog_json'))
 $target=Setup 'bom-header'
 $configPath=Join-Path $target 'config.toml'
 [IO.File]::WriteAllText($configPath,"[desktop]`ntheme=`"dark`"`n",(New-Object Text.UTF8Encoding($true)))
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq 8)
+Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
 Assert (-not (Read-PrivateText $configPath).Contains([string][char]0xFEFF))
 $null=Invoke-CodexExport $Backend @('debug','models') $target
 
