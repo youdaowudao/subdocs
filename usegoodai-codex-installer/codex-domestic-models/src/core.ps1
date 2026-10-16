@@ -324,7 +324,31 @@ function Merge-ModelCatalog($Existing, $App, $Domestic, $Managed, $Info) {
   return @{Catalog=$result; Efforts=@($effortOrder | Where-Object {$levels.ContainsKey($_)}); Managed=@($Domestic.models | ForEach-Object {$_.slug})}
 }
 
-function Invoke-ModelImport([string]$TargetHome, [string]$Backend, $Domestic) {
+function Get-LocalModelCatalog([string]$TargetHome, $ReadSet, $Fallback) {
+  Test-ModelCatalog $Fallback
+  $cached=$null
+  $cachePath=Join-Path $TargetHome 'models_cache.json'
+  # The App cache is optional. An absent, unreadable or older cache must not
+  # introduce an executable or network dependency into this file installer.
+  try {
+    $cacheText=Read-ModelInput $ReadSet $cachePath '读取本地 GPT 模型缓存'
+    if ($null -ne $cacheText) {
+      $cached=ConvertFrom-ModelJson $cacheText '解析本地 GPT 模型缓存' $cachePath
+      Test-ModelCatalog $cached
+    }
+  } catch { $cached=$null }
+  $models=New-Object 'System.Collections.Generic.List[object]'
+  $seen=New-OrdinalMap
+  $candidates=@(); if ($null -ne $cached) { $candidates=@($cached.models) }
+  foreach ($model in (@($candidates)+@($Fallback.models))) {
+    if ($model.slug -cmatch '^gpt-' -and -not $seen.ContainsKey($model.slug)) {
+      $seen[$model.slug]=$true; $models.Add($model)
+    }
+  }
+  return [pscustomobject]@{models=@($models.ToArray())}
+}
+
+function Invoke-ModelImport([string]$TargetHome, $Domestic) {
   $configPath = Join-Path $TargetHome 'config.toml'
   $catalogPath = Join-Path $TargetHome 'usegoodai-models.json'
   $managedPath = Join-Path $TargetHome 'usegoodai-models.managed.json'
@@ -354,18 +378,11 @@ function Invoke-ModelImport([string]$TargetHome, [string]$Backend, $Domestic) {
       ,@(ConvertFrom-ModelJson $rawManaged '解析已管理模型记录' $managedPath)
     }
   }
-  $app=Invoke-ModelStep '导出并解析 Codex 内置模型目录' ($Backend+' debug models --bundled') {
-    ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models','--bundled') $TargetHome) '解析 Codex 内置模型目录' ($Backend+' debug models --bundled')
+  if ($null -eq $existing -and $null -ne $outputCatalog) {
+    $existing=ConvertFrom-ModelJson $outputCatalog '解析原输出模型目录' $catalogPath
+    Invoke-ModelStep '校验原输出模型目录' $catalogPath { Test-ModelCatalog $existing }
   }
-  if ($null -eq $existing) {
-    try { $candidate=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models') $TargetHome); Test-ModelCatalog $candidate; $existing=$candidate }
-    catch {
-      if ($_.Exception.Data['ConfigSyntax'] -eq $true) {
-        $_.Exception.Data['ModelImportStep']='解析已有 TOML 配置'; $_.Exception.Data['ModelImportTarget']=$configPath
-        throw
-      }
-    }
-  }
+  $app=Get-LocalModelCatalog $TargetHome $readSet $BundledGptCatalog
   $merged=Invoke-ModelStep '校验并合并模型元数据' $catalogPath { Merge-ModelCatalog $existing $app $Domestic $managed $info }
   $config=Invoke-ModelStep '合并模型目录指向和桌面档位' $configPath { Set-ModelConfig ([string]$original) $info $catalogPath $merged.Efforts }
   $files = @(
@@ -373,7 +390,7 @@ function Invoke-ModelImport([string]$TargetHome, [string]$Backend, $Domestic) {
     @{Path=$managedPath; Text=(ConvertTo-Json -InputObject @($merged.Managed) -Depth 100)+"`n"},
     @{Path=$configPath; Text=$config}
   )
-  Invoke-ModelStep '写入并校验导入结果' $catalogPath { Write-ModelTransaction $files $Backend $TargetHome $original $readSet.ToArray() }
+  Invoke-ModelStep '写入并校验导入结果' $catalogPath { Write-ModelTransaction $files $TargetHome $original $readSet.ToArray() }
   return $merged.Managed.Count
 }
 
@@ -428,6 +445,6 @@ function Remove-ImportedModels([string]$TargetHome) {
     @{Path=$managedPath; Text="[]`n"},
     @{Path=$configPath; Text=$original; Keep=$true}
   )
-  Invoke-ModelStep '写入并校验卸载结果' $catalogPath { Write-ModelTransaction $files '' $TargetHome $original $readSet.ToArray() }
+  Invoke-ModelStep '写入并校验卸载结果' $catalogPath { Write-ModelTransaction $files $TargetHome $original $readSet.ToArray() }
   return @{Changed=$true; Active=$active; Count=$count}
 }

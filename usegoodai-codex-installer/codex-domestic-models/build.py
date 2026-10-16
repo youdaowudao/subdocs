@@ -34,17 +34,15 @@ def catalog():
     return {'models': models}
 
 
-def parent_process_functions():
+def parent_shell_process_functions():
     # Reuse the actual existing installers, rather than maintaining a second implementation.
     shell = (ROOT.parent / 'install/codex.sh').read_text()
-    powershell = (ROOT.parent / 'install/codex.ps1').read_text(encoding='utf-8-sig')
-    return (shell[shell.index('list_running_clients() {'):shell.index('backup_if_exists() {')].rstrip(),
-            powershell[powershell.index('function Get-RunningCodexClients {'):powershell.index('function Show-WritePlan {')].rstrip())
+    return shell[shell.index('list_running_clients() {'):shell.index('backup_if_exists() {')].rstrip()
 
 
 def build():
     data = catalog()
-    shell_processes, ps_processes = parent_process_functions()
+    shell_processes = parent_shell_process_functions()
     shell = (ROOT / 'src/installer.sh.in').read_text()
     for marker, content in {
         '@MODEL_COUNT@': str(len(data['models'])),
@@ -62,7 +60,9 @@ $ErrorActionPreference = 'Stop'
 function Say([string]$Message) { Write-Host $Message }
 '''
     ps += '$DomesticCatalog = ConvertFrom-Json -InputObject @\'\n' + json.dumps(data, ensure_ascii=False) + "\n'@\n"
-    ps += ps_processes + '\n' + (ROOT / 'src/core.ps1').read_text() + '\n' + (ROOT / 'src/windows-host.ps1').read_text()
+    gpt = json.loads((ROOT / 'src/gpt-catalog.json').read_text())
+    ps += '$BundledGptCatalog = ConvertFrom-Json -InputObject @\'\n' + json.dumps(gpt, ensure_ascii=False) + "\n'@\n"
+    ps += (ROOT / 'src/core.ps1').read_text() + '\n' + (ROOT / 'src/windows-host.ps1').read_text()
     ps += '''
 try { Start-ModelInstaller $CodexHomePath $CodexPath -Uninstall:$Uninstall }
 catch {
