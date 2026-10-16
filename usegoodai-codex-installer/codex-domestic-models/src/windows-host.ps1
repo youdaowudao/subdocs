@@ -113,7 +113,7 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
       $info=Get-ConfigInfo ([string]$Files[2].Text)
       if ($info.Values.ContainsKey('desktop.enabled-reasoning-efforts')) { $levels=Get-TomlStringArray $info.Values['desktop.enabled-reasoning-efforts'] }
     }
-    $validationConfig='model_catalog_json = '+(ConvertTo-Json -InputObject $stagedCatalog -Compress)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-Json -InputObject @($levels) -Compress)+"`n"
+    $validationConfig='model_catalog_json = '+(ConvertTo-TomlString $stagedCatalog)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-TomlStringArray $levels)+"`n"
     Write-PrivateText (Join-Path $stage 'config.toml') $validationConfig
     $validated=if ($Backend) { ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析暂存模型目录校验结果' ($Backend+' debug models') }
       else { ConvertFrom-ModelJson (Read-PrivateText $stagedCatalog) '解析暂存模型目录校验结果' $stagedCatalog }
@@ -139,7 +139,7 @@ function Write-ModelTransaction($Files, [string]$Backend, [string]$TargetHome, $
       $written.Add($index)
     }
     # Validate the committed catalog without loading or changing the user's provider/auth.
-    $validationConfig='model_catalog_json = '+(ConvertTo-Json -InputObject $Files[0].Path -Compress)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-Json -InputObject @($levels) -Compress)+"`n"
+    $validationConfig='model_catalog_json = '+(ConvertTo-TomlString $Files[0].Path)+"`n[desktop]`nenabled-reasoning-efforts = "+(ConvertTo-TomlStringArray $levels)+"`n"
     Write-PrivateText (Join-Path $stage 'config.toml') $validationConfig
     $final=if ($Backend) { ConvertFrom-ModelJson (Invoke-CodexExport $Backend @('debug','models') $stage) '解析已写入模型目录校验结果' ($Backend+' debug models') }
       else { ConvertFrom-ModelJson (Read-PrivateText $Files[0].Path) '解析已写入模型目录校验结果' $Files[0].Path }

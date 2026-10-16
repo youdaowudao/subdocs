@@ -342,6 +342,18 @@ foreach ($entry in @(
 }
 
 # A syntax failure from the optional original-config export must retain its context.
+foreach ($suffix in @("`n",'')) {
+  $diagnostic=''
+  try { $null=Get-ConfigInfo ("# synthetic fixture`nvalue = `"synthetic-private-value"+$suffix) }
+  catch { $diagnostic=Format-ModelImportError $_ }
+  Assert ($diagnostic.Contains('TOML 字符串未闭合'))
+  Assert ($diagnostic.Contains('第 2 行，第 9 列'))
+  Assert (-not $diagnostic.Contains('synthetic-private-value'))
+}
+Assert ((ConvertTo-TomlStringArray @()) -ceq '[]')
+Assert ((ConvertTo-TomlStringArray $null) -ceq '[]')
+Assert ((ConvertTo-TomlString 'C:\Users\demo\.codex\models.json') -ceq "'C:\Users\demo\.codex\models.json'")
+
 $target=Setup 'existing-toml-syntax'
 $configPath=Join-Path $target 'config.toml'
 $badToml="web_search=`"disabled`"`nweb_search=`"disabled`"`n"

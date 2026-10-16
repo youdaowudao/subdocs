@@ -11,6 +11,8 @@ import subprocess
 import uuid
 import tomllib
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'tests/.work'
@@ -73,6 +75,9 @@ add('bom_first_desktop_header', case('\ufeff[desktop]\ntheme="dark"\n'))
 add('bom_first_other_header', case('\ufeff[features]\nx=true\n'))
 add('windows_path', case(path='C:\\Users\\测试\\.codex\\usegoodai-models.json'))
 add('path_quotes', case(path='/Users/a"b\\c/.codex/usegoodai-models.json'))
+add('windows_crlf_path_and_headers', case('model="gpt-original"\r\n[features]\r\nx=true\r\n', path='C:\\Users\\demo\\.codex\\usegoodai-models.json'))
+add('windows_existing_catalog_path', case('model="gpt-original"\r\nmodel_catalog_json="C:\\\\Users\\\\demo\\\\.codex\\\\old.json"\r\n[desktop]\r\nenabled-reasoning-efforts=["high"]\r\n', path='C:\\Users\\demo\\.codex\\usegoodai-models.json'))
+add('path_control_characters', case(path='/Users/测试/tab\tline\n/usegoodai-models.json'))
 add('multiline_string', case('model="gpt-original"\ninstructions = """\n[desktop]\nmodel_catalog_json = "fake"\n# inside string\n"""\n[features]\nx=true\n'))
 add('literal_multiline', case("model=\"gpt-original\"\ninstructions='''\n[desktop]\nmodel_catalog_json='fake'\n'''\n"))
 add('multiline_array', case('model="gpt-original"\nother = [\n "#inside",\n "[desktop]",\n]\n'))
@@ -670,6 +675,30 @@ console.log(core.formatError(error));'''
         result=execute([PWSH,'-NoProfile','-File','tests/processes.ps1','-GeneratedScript',ROOT/'install/codex-models.ps1'])
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         print(result.stdout.strip())
+
+    def test_powershell_http_pipeline_entry(self):
+        # Serve the actual HTTP publication bytes, with the production charset.
+        published=ROOT.parents[1]/'docs/public/install/codex-models.ps1'
+        payload=published.read_bytes()
+        self.assertFalse(payload.startswith(b'\xef\xbb\xbf'))
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header('Content-Type','text/plain; charset=utf-8')
+                self.send_header('Content-Length',str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+            def log_message(self,*args): pass
+        server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        worker=Thread(target=server.serve_forever,daemon=True); worker.start()
+        try:
+            result=execute([PWSH,'-NoProfile','-File','tests/web-entry.ps1',
+                '-SourceUrl',f'http://127.0.0.1:{server.server_port}/codex-models.ps1',
+                '-Backend',CODEX,'-WorkRoot',WORK/'ps-web-entry'])
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            print(result.stdout.strip())
+        finally:
+            server.shutdown(); server.server_close(); worker.join()
 
     def test_javascript_uninstall(self):
         result=execute([NODE,'tests/uninstall.js'])
