@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+# Codex version whose bundled catalog is saved in src/gpt-catalog.json; update both together.
+OFFICIAL_SNAPSHOT_VERSION = '0.162.1'
 
 
 def catalog():
@@ -60,8 +62,9 @@ $ErrorActionPreference = 'Stop'
 function Say([string]$Message) { Write-Host $Message }
 '''
     ps += '$DomesticCatalog = ConvertFrom-Json -InputObject @\'\n' + json.dumps(data, ensure_ascii=False) + "\n'@\n"
-    gpt = json.loads((ROOT / 'src/gpt-catalog.json').read_text())
-    ps += '$BundledGptCatalog = ConvertFrom-Json -InputObject @\'\n' + json.dumps(gpt, ensure_ascii=False) + "\n'@\n"
+    official = json.loads((ROOT / 'src/gpt-catalog.json').read_text())
+    ps += "$BundledOfficialVersion = '" + OFFICIAL_SNAPSHOT_VERSION + "'\n"
+    ps += '$BundledOfficialCatalog = ConvertFrom-Json -InputObject @\'\n' + json.dumps(official, ensure_ascii=False) + "\n'@\n"
     ps += (ROOT / 'src/core.ps1').read_text() + '\n' + (ROOT / 'src/windows-host.ps1').read_text()
     ps += '''
 try { Start-ModelInstaller $CodexHomePath $CodexPath -Uninstall:$Uninstall }
