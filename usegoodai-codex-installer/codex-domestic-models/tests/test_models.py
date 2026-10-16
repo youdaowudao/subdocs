@@ -183,9 +183,11 @@ class ModelTests(unittest.TestCase):
                 self.assertFalse(item['supports_parallel_tool_calls'])
 
     def test_embedded_process_functions(self):
-        shell, ps = build.parent_process_functions()
+        shell = build.parent_shell_process_functions()
         self.assertIn(shell, (ROOT/'install/codex-models.sh').read_text())
-        self.assertIn(ps, (ROOT/'install/codex-models.ps1').read_text(encoding='utf-8-sig'))
+        windows=(ROOT/'install/codex-models.ps1').read_text(encoding='utf-8-sig')
+        for forbidden in ['function Find-DesktopBackend', 'function Invoke-CodexExport', 'ProcessStartInfo', 'Stop-RunningClients', 'Get-AppxPackage', 'Start-Process']:
+            self.assertNotIn(forbidden, windows)
 
     def test_generated_scripts_reproducible(self):
         before = {p.name: p.read_bytes() for p in (ROOT/'install').iterdir()}
@@ -661,18 +663,32 @@ console.log(core.formatError(error));'''
                 self.assertTrue(loaded_by_id[slug][field], f'{slug} {field}')
             self.assertEqual(loaded_by_id[slug]['apply_patch_tool_type'], 'freeform')
 
+    def test_windows_embedded_gpt_catalog_deserializes(self):
+        # Maintainer-only schema check of the published data, not a user dependency.
+        snapshot=json.loads((ROOT/'src/gpt-catalog.json').read_text())
+        ids=[m['slug'] for m in snapshot['models']]
+        self.assertTrue(ids)
+        self.assertEqual(len(ids),len(set(ids)))
+        self.assertTrue(all(slug.startswith('gpt-') for slug in ids))
+        target=WORK/'windows-snapshot-schema'
+        target.mkdir(exist_ok=True)
+        data={'models':snapshot['models']+DOMESTIC['models']}
+        catalog=target/'models.json'
+        catalog.write_text(json.dumps(data,ensure_ascii=False))
+        (target/'config.toml').write_text('model_catalog_json = '+json.dumps(str(catalog))+'\n')
+        loaded=subprocess.run([str(CODEX),'debug','models'],cwd=target,
+            env=dict(os.environ,CODEX_HOME=str(target)),text=True,capture_output=True,timeout=30)
+        self.assertEqual(loaded.returncode,0,loaded.stderr)
+        parsed=json.loads(loaded.stdout)
+        self.assertEqual([m['slug'] for m in parsed['models']],ids+[m['slug'] for m in DOMESTIC['models']])
+
     def test_javascript_import_and_rollback(self):
         result=execute([NODE,'tests/integration.js'])
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         print(result.stdout.strip())
 
     def test_powershell_import_and_rollback(self):
-        result=execute([PWSH,'-NoProfile','-File','tests/integration.ps1','-Backend',CODEX,'-DomesticPath',WORK/'domestic.json','-WorkRoot',WORK/'ps-integration'])
-        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        print(result.stdout.strip())
-
-    def test_powershell_processes(self):
-        result=execute([PWSH,'-NoProfile','-File','tests/processes.ps1','-GeneratedScript',ROOT/'install/codex-models.ps1'])
+        result=execute([PWSH,'-NoProfile','-File','tests/integration.ps1','-DomesticPath',WORK/'domestic.json','-WorkRoot',WORK/'ps-integration'])
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         print(result.stdout.strip())
 
@@ -694,7 +710,7 @@ console.log(core.formatError(error));'''
         try:
             result=execute([PWSH,'-NoProfile','-File','tests/web-entry.ps1',
                 '-SourceUrl',f'http://127.0.0.1:{server.server_port}/codex-models.ps1',
-                '-Backend',CODEX,'-WorkRoot',WORK/'ps-web-entry'])
+                '-WorkRoot',WORK/'ps-web-entry'])
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
             print(result.stdout.strip())
         finally:
@@ -706,7 +722,7 @@ console.log(core.formatError(error));'''
         print(result.stdout.strip())
 
     def test_powershell_uninstall(self):
-        result=execute([PWSH,'-NoProfile','-File','tests/uninstall.ps1','-Backend',CODEX,'-WorkRoot',WORK/'ps-uninstall'])
+        result=execute([PWSH,'-NoProfile','-File','tests/uninstall.ps1','-WorkRoot',WORK/'ps-uninstall'])
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         print(result.stdout.strip())
 
@@ -775,7 +791,7 @@ console.log(core.formatError(error));'''
         self.assertEqual((tools/'mock-kills.log').read_text(),'')
 
     def test_shell_processes(self):
-        functions=build.parent_process_functions()[0]
+        functions=build.parent_shell_process_functions()
         fixture='''
 id() { printf '1001\\n'; }
 ps() {

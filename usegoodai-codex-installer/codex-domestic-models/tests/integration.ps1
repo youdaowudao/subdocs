@@ -1,14 +1,22 @@
-param([string]$Backend, [string]$DomesticPath, [string]$WorkRoot)
+param([string]$DomesticPath, [string]$WorkRoot)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../src/core.ps1')
 . (Join-Path $PSScriptRoot '../src/windows-host.ps1')
 $Domestic=ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($DomesticPath))
+$BundledGptCatalog=ConvertFrom-Json -InputObject ([IO.File]::ReadAllText((Join-Path $PSScriptRoot '../src/gpt-catalog.json')))
+# Fault-injection runs use small but structurally complete GPT fixtures.
+# The HTTP entry test exercises the full embedded production snapshot.
+$BundledGptCatalog.models=@($BundledGptCatalog.models | Select-Object -First 2)
+foreach ($model in $BundledGptCatalog.models) {
+  $model.base_instructions='Synthetic integration instructions'
+  $model.model_messages=[pscustomobject]@{instructions_template='Synthetic integration instructions'}
+}
 $script:assertions=0
-function Assert($Value) { if (-not $Value) { throw 'Assertion failed' }; $script:assertions++ }
+function Assert($Value) { if (-not $Value) { throw "Assertion $($script:assertions+1) failed at line $((Get-PSCallStack)[1].ScriptLineNumber)" }; $script:assertions++ }
 function Setup([string]$Name) {
   $homePath=Join-Path $WorkRoot ($Name+'-'+[Guid]::NewGuid().ToString('N'))
   $null=[IO.Directory]::CreateDirectory($homePath)
-  $exported=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models','--bundled') $homePath)
+  $exported=$BundledGptCatalog
   $selected=@($exported.models | Where-Object {$_.slug -like 'gpt-*'})[0].slug
   $config=@"
 # preserve comments
@@ -30,7 +38,7 @@ theme = "dark"
 }
 $null=[IO.Directory]::CreateDirectory($WorkRoot)
 $target=Setup 'success'
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
+Assert ((Invoke-ModelImport $target $Domestic) -eq @($Domestic.models).Count)
 $catalogPath=Join-Path $target 'usegoodai-models.json'
 $value=ConvertFrom-Json -InputObject (Read-PrivateText $catalogPath)
 Assert (@($value.models | Where-Object {$_.slug -like 'gpt-*'}).Count -gt 0)
@@ -45,17 +53,46 @@ $removed=ConvertFrom-Json -InputObject (ConvertTo-Json -InputObject $gpt -Depth 
 $value.models+=@($user,$removed)
 Write-PrivateText $catalogPath (ConvertTo-Json -InputObject $value -Depth 100)
 Write-PrivateText (Join-Path $target 'usegoodai-models.managed.json') (ConvertTo-Json -InputObject (@($Domestic.models | ForEach-Object {$_.slug})+@('removed-domestic')))
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
+Assert ((Invoke-ModelImport $target $Domestic) -eq @($Domestic.models).Count)
 $value=ConvertFrom-Json -InputObject (Read-PrivateText $catalogPath)
 Assert (@($value.models | Where-Object {$_.slug -ceq 'removed-domestic'}).Count -eq 0)
 Assert (@($value.models | Where-Object {$_.slug -ceq 'user-custom'})[0].custom_metadata.keep)
 Assert (@($value.models | Where-Object {$_.slug -ceq $gpt.slug})[0].custom_metadata.keep)
 Assert ($null -eq @($value.models | Where-Object {$_.slug -ceq $Domestic.models[0].slug})[0].obsolete)
 $beforeConfig=Read-PrivateText (Join-Path $target 'config.toml')
-$null=Invoke-ModelImport $target $Backend $Domestic
+$null=Invoke-ModelImport $target $Domestic
 Assert ((Read-PrivateText (Join-Path $target 'config.toml')) -ceq $beforeConfig)
 
-$script:realExport=${function:Invoke-CodexExport}
+# Local cache entries win over bundled fallback; active catalogs win over cache.
+$target=Setup 'local-cache'
+$cached=ConvertFrom-Json -InputObject (ConvertTo-Json -InputObject $BundledGptCatalog.models[0] -Depth 100)
+$cached.display_name='Local App metadata'
+$cached | Add-Member cache_marker 'preserved'
+$new=ConvertFrom-Json -InputObject (ConvertTo-Json -InputObject $cached -Depth 100)
+$new.slug='gpt-local-cache-only'
+$cache=[pscustomobject]@{models=@($cached,$new)}
+$cachePath=Join-Path $target 'models_cache.json'
+Write-PrivateText $cachePath (ConvertTo-Json -InputObject $cache -Depth 100)
+$cacheBefore=Read-PrivateText $cachePath
+$null=Invoke-ModelImport $target $Domestic
+$local=Read-ValidatedModelCatalog (Join-Path $target 'usegoodai-models.json')
+Assert (@($local.models | Where-Object {$_.slug -ceq $cached.slug})[0].display_name -ceq 'Local App metadata')
+Assert (@($local.models | Where-Object {$_.slug -ceq $new.slug}).Count -eq 1)
+Assert ((Read-PrivateText $cachePath) -ceq $cacheBefore)
+$active=@($local.models | Where-Object {$_.slug -ceq $cached.slug})[0]
+$active.display_name='Active catalog metadata'
+Write-PrivateText (Join-Path $target 'usegoodai-models.json') (ConvertTo-Json -InputObject $local -Depth 100)
+$null=Invoke-ModelImport $target $Domestic
+$local=Read-ValidatedModelCatalog (Join-Path $target 'usegoodai-models.json')
+Assert (@($local.models | Where-Object {$_.slug -ceq $cached.slug})[0].display_name -ceq 'Active catalog metadata')
+foreach ($invalidCache in @('', '{invalid json', '{"models":[]}', '{"models":[{"slug":"gpt-incomplete"}]}')) {
+  $target=Setup 'invalid-optional-cache'
+  Write-PrivateText (Join-Path $target 'models_cache.json') $invalidCache
+  Assert ((Invoke-ModelImport $target $Domestic) -eq @($Domestic.models).Count)
+}
+
+$script:realValidate=${function:Read-ValidatedModelCatalog}
+$script:realLocal=${function:Get-LocalModelCatalog}
 $script:realMove=${function:Move-StagedFile}
 $script:realRead=${function:Read-PrivateText}
 function Get-CurrentTransactionFiles([string]$Root) {
@@ -64,21 +101,19 @@ function Get-CurrentTransactionFiles([string]$Root) {
     if ([IO.File]::Exists($file)) { [Convert]::ToBase64String([IO.File]::ReadAllBytes($file)) } else { '' }
   })
 }
-foreach ($failure in @('write','validation','concurrent','wrong_catalog','postcommit','wrong_metadata','changed_config','changed_managed','changed_catalog','changed_catalog_backend_error','deleted_config','unreadable_catalog','write_and_external_edit')) {
+foreach ($failure in @('write','validation','concurrent','wrong_catalog','postcommit','wrong_metadata','changed_config','changed_managed','changed_catalog','changed_catalog_read_error','deleted_config','unreadable_catalog','write_and_external_edit')) {
   foreach ($existing in @($false,$true)) {
     $target=Setup $failure
-    if ($existing) { $null=Invoke-ModelImport $target $Backend $Domestic }
+    if ($existing) { $null=Invoke-ModelImport $target $Domestic }
     $paths=@('config.toml','usegoodai-models.json','usegoodai-models.managed.json')
     $before=@($paths | ForEach-Object { $p=Join-Path $target $_; if ([IO.File]::Exists($p)) { [Convert]::ToBase64String([IO.File]::ReadAllBytes($p)) } else { '' } })
     $script:faulted=$false; $script:failure=$failure; $script:target=$target; $script:preserved=$null; $script:blockedRead=$false
-    function Invoke-CodexExport([string]$Exe,[string[]]$Arguments,[string]$TargetHome) {
-      $final=$false
-      if ($TargetHome -cne $script:target) {
-        $validationInfo=Get-ConfigInfo (Read-PrivateText (Join-Path $TargetHome 'config.toml'))
-        $final=(Get-TomlString $validationInfo.Values['model_catalog_json']) -ceq (Join-Path $script:target 'usegoodai-models.json')
+    function Read-ValidatedModelCatalog([string]$Path) {
+      $final=$Path -ceq (Join-Path $script:target 'usegoodai-models.json')
+      if (-not $final) {
         if ($script:failure -ceq 'validation') { throw 'injected validation' }
         if ($script:failure -ceq 'concurrent') { [IO.File]::AppendAllText((Join-Path $script:target 'config.toml'),"# edited externally`n") }
-        if ($script:failure -ceq 'wrong_catalog') { return (ConvertTo-Json -InputObject $Domestic -Depth 100) }
+        if ($script:failure -ceq 'wrong_catalog') { return $Domestic }
       }
       if ($final -and $script:failure -ceq 'postcommit') { throw 'injected final validation' }
       if ($final -and $script:failure -in @('changed_config','changed_managed','changed_catalog')) {
@@ -86,10 +121,10 @@ foreach ($failure in @('write','validation','concurrent','wrong_catalog','postco
         [IO.File]::AppendAllText((Join-Path $script:target $names[$script:failure]),"`n")
         $script:preserved=Get-CurrentTransactionFiles $script:target
       }
-      if ($final -and $script:failure -ceq 'changed_catalog_backend_error') {
+      if ($final -and $script:failure -ceq 'changed_catalog_read_error') {
         [IO.File]::AppendAllText((Join-Path $script:target 'usegoodai-models.json'),"`n")
         $script:preserved=Get-CurrentTransactionFiles $script:target
-        throw 'injected final backend error after external edit'
+        throw 'injected final read error after external edit'
       }
       if ($final -and $script:failure -ceq 'deleted_config') {
         [IO.File]::Delete((Join-Path $script:target 'config.toml'))
@@ -99,13 +134,12 @@ foreach ($failure in @('write','validation','concurrent','wrong_catalog','postco
         $script:preserved=Get-CurrentTransactionFiles $script:target
         $script:blockedRead=$true
       }
-      $text=& $script:realExport $Exe $Arguments $TargetHome
+      $data=& $script:realValidate $Path
       if ($final -and $script:failure -ceq 'wrong_metadata') {
-        $data=ConvertFrom-Json -InputObject $text
         @($data.models | Where-Object {$_.slug -ceq $Domestic.models[0].slug})[0].context_window=42
-        return (ConvertTo-Json -InputObject $data -Depth 100)
+        return $data
       }
-      return $text
+      return $data
     }
     function Move-StagedFile([string]$From,[string]$To) {
       if ($script:failure -ceq 'write' -and -not $script:faulted -and $To.EndsWith('usegoodai-models.managed.json')) { $script:faulted=$true; throw 'injected write' }
@@ -122,7 +156,7 @@ foreach ($failure in @('write','validation','concurrent','wrong_catalog','postco
       return (& $script:realRead $Path)
     }
     $failed=$false; $diagnostic=''
-    try { $null=Invoke-ModelImport $target $Backend $Domestic } catch { $failed=$true; $diagnostic=Format-ModelImportError $_ }
+    try { $null=Invoke-ModelImport $target $Domestic } catch { $failed=$true; $diagnostic=Format-ModelImportError $_ }
     Set-Item Function:Read-PrivateText $script:realRead
     Assert $failed
     for ($index=0;$index -lt $paths.Count;$index++) {
@@ -146,7 +180,7 @@ foreach ($failure in @('write','validation','concurrent','wrong_catalog','postco
     }
     Assert ((Read-PrivateText (Join-Path $target 'auth.json')) -ceq 'sentinel-do-not-read')
     Assert (@(Get-ChildItem -LiteralPath $target -Directory -Force | Where-Object {$_.Name.StartsWith('.usegoodai-models-')}).Count -eq 0)
-    Set-Item Function:Invoke-CodexExport $script:realExport
+    Set-Item Function:Read-ValidatedModelCatalog $script:realValidate
     Set-Item Function:Move-StagedFile $script:realMove
   }
 }
@@ -161,7 +195,7 @@ foreach ($invalid in @('directory','symlink','dangling','managed_directory')) {
     $null=New-Item -ItemType SymbolicLink -Path $destination -Target $linkTarget
   }
   $before=Read-PrivateText (Join-Path $target 'config.toml')
-  $failed=$false; try { $null=Invoke-ModelImport $target $Backend $Domestic } catch { $failed=$true }
+  $failed=$false; try { $null=Invoke-ModelImport $target $Domestic } catch { $failed=$true }
   Assert $failed
   Assert ((Read-PrivateText (Join-Path $target 'config.toml')) -ceq $before)
   Assert (Test-PrivatePath $destination)
@@ -171,12 +205,12 @@ foreach ($invalid in @('directory','symlink','dangling','managed_directory')) {
 $target=Setup 'missing_source'
 $configPath=Join-Path $target 'config.toml'
 Write-PrivateText $configPath ('model_catalog_json="missing.json"'+"`n"+(Read-PrivateText $configPath))
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
+Assert ((Invoke-ModelImport $target $Domestic) -eq @($Domestic.models).Count)
 $target=Setup 'relative_instructions'
 $configPath=Join-Path $target 'config.toml'
 Write-PrivateText (Join-Path $target 'instructions.md') "Test repository instructions.`n"
 Write-PrivateText $configPath ('model_instructions_file="instructions.md"'+"`n"+(Read-PrivateText $configPath))
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
+Assert ((Invoke-ModelImport $target $Domestic) -eq @($Domestic.models).Count)
 Assert ((Read-PrivateText $configPath).Contains('model_instructions_file="instructions.md"'))
 
 # Official accounts and arbitrary service names/URLs do not depend on a relay installer.
@@ -184,7 +218,7 @@ foreach ($text in @('', 'model_provider="OpenAI"', "model_provider=`"customer`"`
   $target=Setup 'provider-independent'
   $configPath=Join-Path $target 'config.toml'
   Write-PrivateText $configPath $text
-  Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
+  Assert ((Invoke-ModelImport $target $Domestic) -eq @($Domestic.models).Count)
   $after=Read-PrivateText $configPath
   $restored=[regex]::Replace($after,'(?m)^model_catalog_json = [^\r\n]*\r?\n','')
   $restored=[regex]::Replace($restored,'\r?\n\[desktop\]\r?\nenabled-reasoning-efforts = [^\r\n]*\r?\n$','')
@@ -196,7 +230,7 @@ foreach ($mode in @('missing','empty','new_home')) {
   if ($mode -ceq 'missing') { [IO.File]::Delete((Join-Path $target 'config.toml')) }
   elseif ($mode -ceq 'empty') { Write-PrivateText (Join-Path $target 'config.toml') '' }
   else { $target=Join-Path $target 'new/codex-home' }
-  Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
+  Assert ((Invoke-ModelImport $target $Domestic) -eq @($Domestic.models).Count)
   $newConfig=Read-PrivateText (Join-Path $target 'config.toml')
   Assert ($newConfig -notmatch '(?m)^model_provider\s*=|^model\s*=|^base_url\s*=|^review_model\s*=')
   if ($mode -ceq 'new_home') { Assert (-not (Test-PrivatePath (Join-Path $target 'auth.json'))) }
@@ -208,27 +242,24 @@ foreach ($missing in @($false,$true)) {
   $configPath=Join-Path $target 'config.toml'
   if ($missing) { [IO.File]::Delete($configPath) } else { Write-PrivateText $configPath '' }
   $script:target=$target
-  function Invoke-CodexExport([string]$Exe,[string[]]$Arguments,[string]$TargetHome) {
-    if ($TargetHome -cne $script:target) {
-      $info=Get-ConfigInfo (Read-PrivateText (Join-Path $TargetHome 'config.toml'))
-      if ((Get-TomlString $info.Values['model_catalog_json']) -ceq (Join-Path $script:target 'usegoodai-models.json')) { throw 'injected final validation' }
-    }
-    return (& $script:realExport $Exe $Arguments $TargetHome)
+  function Read-ValidatedModelCatalog([string]$Path) {
+    if ($Path -ceq (Join-Path $script:target 'usegoodai-models.json')) { throw 'injected final validation' }
+    return (& $script:realValidate $Path)
   }
-  $failed=$false; try { $null=Invoke-ModelImport $target $Backend $Domestic } catch { $failed=$true }
+  $failed=$false; try { $null=Invoke-ModelImport $target $Domestic } catch { $failed=$true }
   Assert $failed
   Assert ((Test-PrivatePath $configPath) -ne $missing)
   if (-not $missing) { Assert (([IO.FileInfo]$configPath).Length -eq 0) }
   Assert (-not (Test-PrivatePath (Join-Path $target 'usegoodai-models.json')))
   Assert (-not (Test-PrivatePath (Join-Path $target 'usegoodai-models.managed.json')))
-  Set-Item Function:Invoke-CodexExport $script:realExport
+  Set-Item Function:Read-ValidatedModelCatalog $script:realValidate
 }
 # Existing default/review aliases remain valid even when absent from the catalog.
 $target=Setup 'custom-default-alias'
 $configPath=Join-Path $target 'config.toml'
 $aliasConfig="model=`"customer-gpt-alias`"`nreview_model=`"customer-review-alias`"`n"
 Write-PrivateText $configPath $aliasConfig
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
+Assert ((Invoke-ModelImport $target $Domestic) -eq @($Domestic.models).Count)
 $aliasInfo=Get-ConfigInfo (Read-PrivateText $configPath)
 Assert ((Get-TomlString $aliasInfo.Values['model']) -ceq 'customer-gpt-alias')
 Assert ((Get-TomlString $aliasInfo.Values['review_model']) -ceq 'customer-review-alias')
@@ -243,15 +274,15 @@ Assert ($bomPatched.StartsWith('model_catalog_json'))
 $target=Setup 'bom-header'
 $configPath=Join-Path $target 'config.toml'
 [IO.File]::WriteAllText($configPath,"[desktop]`ntheme=`"dark`"`n",(New-Object Text.UTF8Encoding($true)))
-Assert ((Invoke-ModelImport $target $Backend $Domestic) -eq @($Domestic.models).Count)
+Assert ((Invoke-ModelImport $target $Domestic) -eq @($Domestic.models).Count)
 Assert (-not (Read-PrivateText $configPath).Contains([string][char]0xFEFF))
-$null=Invoke-CodexExport $Backend @('debug','models') $target
+$null=Read-ValidatedModelCatalog (Join-Path $target 'usegoodai-models.json')
 
-# Changes during both the initial export and staging validation must survive untouched.
+# Changes during local catalog merging and staging validation must survive untouched.
 foreach ($timing in @('early','staged')) {
   foreach ($changed in @('config','catalog','managed','source')) {
     $target=Setup ('input-race-'+$timing+'-'+$changed)
-    $null=Invoke-ModelImport $target $Backend $Domestic
+    $null=Invoke-ModelImport $target $Domestic
     $configPath=Join-Path $target 'config.toml'
     $paths=@((Join-Path $target 'config.toml'),(Join-Path $target 'usegoodai-models.json'),(Join-Path $target 'usegoodai-models.managed.json'))
     if ($changed -ceq 'source') {
@@ -264,17 +295,26 @@ foreach ($timing in @('early','staged')) {
     $index=@{config=0;catalog=1;managed=2;source=3}[$changed]
     $before=@($paths | ForEach-Object { Read-PrivateText $_ })
     $script:target=$target; $script:racePath=$paths[$index]; $script:raceTiming=$timing; $script:raceInjected=$false
-    function Invoke-CodexExport([string]$Exe,[string[]]$Arguments,[string]$TargetHome) {
-      $shouldChange=if ($script:raceTiming -ceq 'early') { $TargetHome -ceq $script:target -and $Arguments -contains '--bundled' } else { $TargetHome -cne $script:target }
-      if ($shouldChange -and -not $script:raceInjected) {
+    function Inject-InputRace {
+      if (-not $script:raceInjected) {
         $script:raceInjected=$true
         [IO.File]::AppendAllText($script:racePath,"`n")
       }
-      return (& $script:realExport $Exe $Arguments $TargetHome)
+    }
+    function Get-LocalModelCatalog([string]$TargetHome, $ReadSet, $Fallback) {
+      if ($script:raceTiming -ceq 'early') { Inject-InputRace }
+      return (& $script:realLocal $TargetHome $ReadSet $Fallback)
+    }
+    function Read-ValidatedModelCatalog([string]$Path) {
+      if ($script:raceTiming -ceq 'staged') { Inject-InputRace }
+      return (& $script:realValidate $Path)
     }
     $failed=$false; $diagnostic=''
-    try { $null=Invoke-ModelImport $target $Backend $Domestic } catch { $failed=$true; $diagnostic=Format-ModelImportError $_ }
-    Set-Item Function:Invoke-CodexExport $script:realExport
+    try { $null=Invoke-ModelImport $target $Domestic } catch { $failed=$true; $diagnostic=Format-ModelImportError $_ }
+    Set-Item Function:Read-ValidatedModelCatalog $script:realValidate
+    Set-Item Function:Get-LocalModelCatalog $script:realLocal
+    if (-not $script:raceInjected) { throw "Race did not run: $timing/$changed; $diagnostic" }
+    if (-not $failed) { throw "Race was not rejected: $timing/$changed" }
     Assert $script:raceInjected; Assert $failed
     Assert ($diagnostic.Contains('导入过程中被修改'))
     Assert ($diagnostic.Contains($paths[$index]))
@@ -286,39 +326,24 @@ foreach ($timing in @('early','staged')) {
   }
 }
 
-# Missing input paths remain distinct from zero-byte files created during export.
-$target=Setup 'input-created-during-export'
+# Missing input paths remain distinct from zero-byte files created during local merging.
+$target=Setup 'input-created-during-merge'
 $script:target=$target; $script:racePath=Join-Path $target 'usegoodai-models.json'; $script:raceInjected=$false
-function Invoke-CodexExport([string]$Exe,[string[]]$Arguments,[string]$TargetHome) {
-  if (-not $script:raceInjected -and $TargetHome -ceq $script:target -and $Arguments -contains '--bundled') {
+function Get-LocalModelCatalog([string]$TargetHome, $ReadSet, $Fallback) {
+  if (-not $script:raceInjected) {
     $script:raceInjected=$true; Write-PrivateText $script:racePath ''
   }
-  return (& $script:realExport $Exe $Arguments $TargetHome)
+  return (& $script:realLocal $TargetHome $ReadSet $Fallback)
 }
 $before=Read-PrivateText (Join-Path $target 'config.toml')
-$failed=$false; try { $null=Invoke-ModelImport $target $Backend $Domestic } catch { $failed=$true }
-Set-Item Function:Invoke-CodexExport $script:realExport
+$failed=$false; try { $null=Invoke-ModelImport $target $Domestic } catch { $failed=$true }
+Set-Item Function:Get-LocalModelCatalog $script:realLocal
 Assert $failed; Assert (Test-PrivatePath $script:racePath)
 Assert ((Read-PrivateText $script:racePath) -ceq '')
 Assert ((Read-PrivateText (Join-Path $target 'config.toml')) -ceq $before)
 Assert (-not (Test-PrivatePath (Join-Path $target 'usegoodai-models.managed.json')))
 
 # Only controlled diagnostics may display messages; raw external text is never echoed.
-foreach ($entry in @(
-  @{Text='missing field `display_name`; private-credential-do-not-print'; Expected='display_name'},
-  @{Text='TOML parse error at line 11, column 3; private-credential-do-not-print'; Expected='第 11 行，第 3 列'},
-  @{Text='/synthetic/config.toml:11:3: duplicate key private-credential-do-not-print'; Expected='第 11 行，第 3 列'},
-  @{Text='missing field `supports_parallel_tool_calls`; private-credential-do-not-print'; Expected='supports_parallel_tool_calls'},
-  @{Text='unrecognized subcommand models; private-credential-do-not-print'; Expected='未识别模型目录导出命令'},
-  @{Text='unknown variant private-credential-do-not-print'; Expected='当前 Codex 无法识别的字段值'},
-  @{Text='中文外部异常 private-credential-do-not-print'; Expected='Codex 后端命令执行失败'}
-)) {
-  $diagnostic=''
-  try { Invoke-ModelStep '校验测试后端' '/synthetic/backend debug models' { throw (New-ModelBackendError $entry.Text 17) } } catch { $diagnostic=Format-ModelImportError $_ }
-  Assert ($diagnostic.Contains($entry.Expected)); Assert ($diagnostic.Contains('后端退出码：17'))
-  Assert ($diagnostic.Contains('校验测试后端')); Assert ($diagnostic.Contains('/synthetic/backend'))
-  Assert (-not $diagnostic.Contains('private-credential-do-not-print'))
-}
 foreach ($action in @(
   { throw '中文外部异常 private-credential-do-not-print' },
   { ConvertFrom-ModelJson '{private-credential-do-not-print' '解析合成目录' '/synthetic/catalog.json' }
@@ -341,7 +366,7 @@ foreach ($entry in @(
   Assert ($diagnostic.Contains('/synthetic/input.json')); Assert (-not $diagnostic.Contains('private-credential-do-not-print'))
 }
 
-# A syntax failure from the optional original-config export must retain its context.
+# Syntax diagnostics retain locations without echoing private configuration values.
 foreach ($suffix in @("`n",'')) {
   $diagnostic=''
   try { $null=Get-ConfigInfo ("# synthetic fixture`nvalue = `"synthetic-private-value"+$suffix) }
@@ -356,24 +381,13 @@ Assert ((ConvertTo-TomlString 'C:\Users\demo\.codex\models.json') -ceq "'C:\User
 
 $target=Setup 'existing-toml-syntax'
 $configPath=Join-Path $target 'config.toml'
-$badToml="web_search=`"disabled`"`nweb_search=`"disabled`"`n"
+$badToml="# synthetic fixture`nweb_search=`"disabled`n"
 Write-PrivateText $configPath $badToml
 $failed=$false; $diagnostic=''
-try { $null=Invoke-ModelImport $target $Backend $Domestic } catch { $failed=$true; $diagnostic=Format-ModelImportError $_ }
-Assert $failed; Assert ($diagnostic.Contains('解析已有 TOML 配置'))
+try { $null=Invoke-ModelImport $target $Domestic } catch { $failed=$true; $diagnostic=Format-ModelImportError $_ }
+Assert $failed; Assert ($diagnostic.Contains('解析 Codex 配置'))
 Assert ($diagnostic.Contains($configPath)); Assert ($diagnostic.Contains('第 2 行'))
 Assert ((Read-PrivateText $configPath) -ceq $badToml)
 Assert (-not (Test-PrivatePath (Join-Path $target 'usegoodai-models.json')))
 
-# Capture real stderr/exit status through Process, using an isolated Linux fixture.
-if ($env:OS -ne 'Windows_NT') {
-  $target=Setup 'backend-diagnostic'
-  $badBackend=Join-Path $target 'backend-error.sh'
-  Write-PrivateText $badBackend "#!/bin/sh`nprintf '%s\n' 'missing field ``display_name``; private-credential-do-not-print' >&2`nexit 17`n"
-  & /bin/chmod 700 $badBackend
-  $diagnostic=''
-  try { $null=Invoke-CodexExport $badBackend @('debug','models','--bundled') $target } catch { $diagnostic=Format-ModelImportError $_ }
-  Assert ($diagnostic.Contains('display_name')); Assert ($diagnostic.Contains('后端退出码：17'))
-  Assert ($diagnostic.Contains($badBackend)); Assert (-not $diagnostic.Contains('private-credential-do-not-print'))
-}
 Write-Output "PowerShell import/rollback: $script:assertions assertions passed"

@@ -1,24 +1,35 @@
-param([string]$SourceUrl, [string]$Backend, [string]$WorkRoot)
+param([string]$SourceUrl, [string]$WorkRoot)
 $ErrorActionPreference='Stop'
 $target=Join-Path $WorkRoot ([Guid]::NewGuid().ToString('N'))
-$appRoot=Join-Path $target 'app'
-$resources=Join-Path $appRoot 'resources'
-$null=[IO.Directory]::CreateDirectory($resources)
-$null=New-Item -ItemType SymbolicLink -Path (Join-Path $resources 'codex.exe') -Target $Backend
+$null=[IO.Directory]::CreateDirectory($target)
 $env:OS='Windows_NT'
 $env:CODEX_HOME=$target
-function Get-AppxPackage { param($Name,$ErrorAction); [pscustomobject]@{InstallLocation=$appRoot} }
-function Get-RunningCodexClients { return @() }
-# Intercept process discovery for the generated process helper; never stop a real client.
-function Get-Process { param($Id,$Name,$ErrorAction); return @() }
+# The documented invocation must succeed without any CLI, executable or App path.
+$env:PATH=$target
+function Get-AppxPackage { throw 'Must not locate an App backend' }
+function Get-Process { throw 'Must not inspect App processes' }
+function Start-Process { throw 'Must not start an executable' }
+function Stop-Process { throw 'Must not close an App' }
+function Find-DesktopBackend { throw 'Must not locate a backend' }
+function Invoke-CodexExport { throw 'Must not run a backend' }
 $config="model=`"gpt-existing`"`r`n[features]`r`ngoals=true`r`n"
 [IO.File]::WriteAllText((Join-Path $target 'config.toml'),$config,(New-Object Text.UTF8Encoding($false)))
 
-# This is the exact documented invocation, including the HTTP response decoding.
+# Exercise the exact public HTTP bytes and the documented PowerShell pipeline.
 $Error.Clear()
 irm $SourceUrl | iex
 if (@($Error | Where-Object {$_.Exception -is [System.Management.Automation.CommandNotFoundException] -or $_.CategoryInfo.Category -eq 'ParserError'}).Count) { throw 'HTTP pipeline produced PowerShell parsing errors' }
 $catalog=ConvertFrom-Json -InputObject ([IO.File]::ReadAllText((Join-Path $target 'usegoodai-models.json')))
 if (@($catalog.models | Where-Object {$_.slug -ceq 'minimax-m3'}).Count -ne 1) { throw 'Expected exactly one MiniMax M3' }
+if (@($catalog.models | Where-Object {$_.slug -cmatch '^gpt-'}).Count -eq 0) { throw 'GPT catalog missing' }
 if ((Get-ConfigInfo ([IO.File]::ReadAllText((Join-Path $target 'config.toml')))).Values['model'] -cne '"gpt-existing"') { throw 'Default model changed' }
-Write-Output 'PowerShell HTTP irm | iex import passed; no real process was stopped'
+if ((Get-ChildItem -LiteralPath $target -Recurse -File -Filter '*.exe').Count) { throw 'Unexpected executable created' }
+# A present CLI must have no influence either. Any invocation would fail this run.
+function codex { throw 'Must not run an installed CLI' }
+$before=[IO.File]::ReadAllText((Join-Path $target 'config.toml'))
+irm $SourceUrl | iex
+if ([IO.File]::ReadAllText((Join-Path $target 'config.toml')) -cne $before) { throw 'CLI presence changed the generated config' }
+Start-ModelInstaller '' '' -Uninstall
+$remaining=ConvertFrom-Json -InputObject ([IO.File]::ReadAllText((Join-Path $target 'usegoodai-models.json')))
+if (@($remaining.models | Where-Object {$_.slug -ceq 'minimax-m3'}).Count) { throw 'Uninstall did not remove managed model' }
+Write-Output 'PowerShell HTTP irm | iex import/update/uninstall passed with and without a CLI; no executable/backend or process control needed'

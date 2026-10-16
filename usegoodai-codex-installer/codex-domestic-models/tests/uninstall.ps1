@@ -1,11 +1,11 @@
-param([string]$Backend, [string]$WorkRoot)
+param([string]$WorkRoot)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../src/core.ps1')
 . (Join-Path $PSScriptRoot '../src/windows-host.ps1')
 $script:assertions=0
 function Assert($Value) { if (-not $Value) { throw "Assertion $($script:assertions+1) failed at line $((Get-PSCallStack)[1].ScriptLineNumber)" }; $script:assertions++ }
 $null=[IO.Directory]::CreateDirectory($WorkRoot)
-$fixture=ConvertFrom-Json -InputObject (Invoke-CodexExport $Backend @('debug','models','--bundled') $WorkRoot)
+$fixture=ConvertFrom-Json -InputObject ([IO.File]::ReadAllText((Join-Path $PSScriptRoot '../src/gpt-catalog.json')))
 $gpt=@($fixture.models | Where-Object {$_.slug -like 'gpt-*'})[0]
 $gpt | Add-Member custom_metadata ([pscustomobject]@{keep=@('one','two')})
 function Copy-Model($Model,[string]$Slug) {
@@ -167,7 +167,7 @@ foreach ($fault in @('write','final-validation','before-commit','after-commit','
   Assert (@(Get-ChildItem -LiteralPath $target -Directory -Force | Where-Object {$_.Name.StartsWith('.usegoodai-models-')}).Count -eq 0)
 }
 
-# The uninstall entry does not need a backend and closes clients only for active changes.
+# Windows entry only writes files; it never discovers or controls processes.
 $script:closed=0
 function Find-DesktopBackend([string]$ExplicitPath) { throw 'Uninstall must not locate the backend' }
 function Invoke-CodexExport([string]$Exe,[string[]]$Arguments,[string]$TargetHome) { throw 'Uninstall must not call a backend' }
@@ -178,12 +178,12 @@ try {
   $env:OS='Windows_NT'
   $target=Setup 'entry-active'
   Start-ModelInstaller $target '' -Uninstall
-  Assert ($script:closed -eq 1)
+  Assert ($script:closed -eq 0)
   Start-ModelInstaller $target '' -Uninstall
-  Assert ($script:closed -eq 1)
+  Assert ($script:closed -eq 0)
   $target=Setup 'entry-inactive'
   Write-PrivateText (Join-Path $target 'config.toml') "model_catalog_json = 'external.json'`n"
   Start-ModelInstaller $target '' -Uninstall
-  Assert ($script:closed -eq 1)
+  Assert ($script:closed -eq 0)
 } finally { $env:OS=$oldOs }
 Write-Output "PowerShell uninstall: $script:assertions assertions passed; no real process was stopped"
