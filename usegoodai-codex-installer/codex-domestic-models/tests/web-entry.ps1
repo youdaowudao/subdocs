@@ -22,7 +22,9 @@ if (@($Error | Where-Object {$_.Exception -is [System.Management.Automation.Comm
 $catalog=ConvertFrom-Json -InputObject ([IO.File]::ReadAllText((Join-Path $target 'usegoodai-models.json')))
 if (@($catalog.models | Where-Object {$_.slug -ceq 'minimax-m3'}).Count -ne 1) { throw 'Expected exactly one MiniMax M3' }
 if (@($catalog.models | Where-Object {$_.slug -cmatch '^gpt-'}).Count -eq 0) { throw 'GPT catalog missing' }
-if ((Get-ConfigInfo ([IO.File]::ReadAllText((Join-Path $target 'config.toml')))).Values['model'] -cne '"gpt-existing"') { throw 'Default model changed' }
+$written=[IO.File]::ReadAllText((Join-Path $target 'config.toml'))
+if (-not $written.StartsWith("model=`"gpt-existing`"`r`n") -or -not $written.Contains("[features]`r`ngoals=true`r`n")) { throw 'Default model or other settings changed' }
+if (@($catalog.models | Where-Object {$_.slug -ceq 'codex-auto-review'}).Count -ne 1) { throw 'Hidden official model missing' }
 if ((Get-ChildItem -LiteralPath $target -Recurse -File -Filter '*.exe').Count) { throw 'Unexpected executable created' }
 # A present CLI must have no influence either. Any invocation would fail this run.
 function codex { throw 'Must not run an installed CLI' }

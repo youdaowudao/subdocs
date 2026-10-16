@@ -8,8 +8,16 @@ function Test-PrivatePath([string]$Path) {
   return $null -ne (Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue)
 }
 
-function Write-PrivateText([string]$Path, [string]$Text) {
-  [IO.File]::WriteAllText($Path,$Text,(New-Object Text.UTF8Encoding($false,$true)))
+function Test-Utf8Bom([string]$Path) {
+  if (-not (Test-PrivatePath $Path)) { return $false }
+  $head = New-Object byte[] 3
+  $stream = [IO.File]::OpenRead($Path)
+  try { $count = $stream.Read($head,0,3) } finally { $stream.Dispose() }
+  return ($count -eq 3 -and $head[0] -eq 0xEF -and $head[1] -eq 0xBB -and $head[2] -eq 0xBF)
+}
+
+function Write-PrivateText([string]$Path, [string]$Text, [bool]$Bom=$false) {
+  [IO.File]::WriteAllText($Path,$Text,(New-Object Text.UTF8Encoding($Bom,$true)))
 }
 
 function Move-StagedFile([string]$From, [string]$To) {
@@ -17,127 +25,43 @@ function Move-StagedFile([string]$From, [string]$To) {
   else { [IO.File]::Move($From,$To) }
 }
 
-function Read-ModelInput($ReadSet, [string]$Path, [string]$Step) {
-  $full=[IO.Path]::GetFullPath($Path)
-  foreach ($entry in $ReadSet) { if ([StringComparer]::OrdinalIgnoreCase.Equals($entry.Path,$full)) { return $entry.Text } }
-  $text=Invoke-ModelStep $Step $full { if (Test-PrivatePath $full) { Read-PrivateText $full } else { $null } }
-  $ReadSet.Add(@{Path=$full; Text=$text})
-  return $text
+function Read-OptionalText([string]$Path, [string]$Step) {
+  return (Invoke-ModelStep $Step $Path { if (Test-PrivatePath $Path) { Read-PrivateText $Path } else { $null } })
 }
 
-function Test-ModelReadSet($ReadSet) {
-  foreach ($entry in $ReadSet) {
-    Invoke-ModelStep '核对导入期间的输入文件' $entry.Path {
-      $now=if (Test-PrivatePath $entry.Path) { Read-PrivateText $entry.Path } else { $null }
-      if (($null -eq $now) -ne ($null -eq $entry.Text) -or $now -cne $entry.Text) { throw (New-ModelImportError '配置或模型目录在导入过程中被修改，请重新运行。') }
-    }
-  }
-}
-
-function Read-ValidatedModelCatalog([string]$Path) {
-  $catalog=ConvertFrom-ModelJson (Read-PrivateText $Path) '解析模型目录' $Path
-  Test-ModelCatalog $catalog
-  return $catalog
-}
-
-function Write-ModelTransaction($Files, [string]$TargetHome, $Original, $ReadSet=@()) {
-  $id=(Get-Date -Format 'yyyyMMddHHmmss')+'.'+[Guid]::NewGuid().ToString('N')
-  $stage=Join-Path $TargetHome ('.usegoodai-models-'+$id)
-  $snapshots=New-Object 'System.Collections.Generic.List[object]'
-  $committed=New-Object 'System.Collections.Generic.List[int]'
-  $written=New-Object 'System.Collections.Generic.List[int]'
-  Test-ModelReadSet $ReadSet
-  foreach ($file in $Files) {
-    $snapshot=Invoke-ModelStep '检查并读取写入前的原文件' $file.Path {
-    if (Test-PrivatePath $file.Path) {
-      $content=Read-PrivateText $file.Path
-      # Snapshot bytes as well as text, so rollback retains the original BOM/encoding exactly.
-      @{Text=$content; Bytes=[IO.File]::ReadAllBytes($file.Path)}
-    } else { $null }
-    }
-    $snapshots.Add($snapshot)
-  }
-  $originalNow=if ($null -ne $snapshots[2]) { $snapshots[2].Text } else { $null }
-  if (($null -eq $originalNow) -ne ($null -eq $Original) -or $originalNow -cne $Original) { throw (New-ModelImportError '配置在导入过程中被修改，请重新运行。') }
-  Invoke-ModelStep '创建私有暂存目录' $stage { $null=[IO.Directory]::CreateDirectory($stage) }
+# Writes the catalog, ownership record and config. Each file is backed up, written
+# to a temporary file next to it, checked, then moved into place; config.toml goes
+# last so it never points at a catalog that was not written. There is no rollback:
+# if a later move fails, the earlier files are already replaced and every original
+# stays next to it as .bak.<id>.
+function Write-ModelFiles($Files, $OriginalConfig) {
+  $id = (Get-Date -Format 'yyyyMMddHHmmss') + '.' + [Guid]::NewGuid().ToString('N')
+  $staged = New-Object 'System.Collections.Generic.List[string]'
   try {
-    for ($index=0; $index -lt $Files.Count; $index++) {
-      if ($Files[$index].Keep) { continue }
-      Invoke-ModelStep '写入暂存文件' (Join-Path $stage ('file-'+$index)) { Write-PrivateText (Join-Path $stage ('file-'+$index)) $Files[$index].Text }
-    }
-    $stagedCatalog=Join-Path $stage 'file-0'
-    if (-not $Files[2].Keep) { $null=Get-ConfigInfo (Read-PrivateText (Join-Path $stage 'file-2')) }
-    $validated=Read-ValidatedModelCatalog $stagedCatalog
-    $expected=ConvertFrom-Json -InputObject $Files[0].Text
-    $actualIds=New-OrdinalMap; foreach ($model in $validated.models) { $actualIds[$model.slug]=$true }
-    if ($actualIds.Count -ne $expected.models.Count) { throw (New-ModelImportError '暂存模型目录与本次导入不一致，停止导入。') }
-    foreach ($model in $expected.models) { if (-not $actualIds.ContainsKey($model.slug)) { throw (New-ModelImportError '暂存模型目录与本次导入不一致，停止导入。') } }
-    Test-ModelReadSet $ReadSet
-    for ($index=0; $index -lt $Files.Count; $index++) {
-      $now=if (Test-PrivatePath $Files[$index].Path) { Read-PrivateText $Files[$index].Path } else { $null }
-      $before=if ($null -ne $snapshots[$index]) { $snapshots[$index].Text } else { $null }
-      if (($null -eq $now) -ne ($null -eq $before) -or $now -cne $before) { throw (New-ModelImportError '配置在导入过程中被修改，请重新运行。') }
-    }
-    for ($index=0; $index -lt $Files.Count; $index++) {
-      if ($Files[$index].Keep) { continue }
-      if ($null -ne $snapshots[$index]) { Invoke-ModelStep '备份原文件' $Files[$index].Path { [IO.File]::Copy($Files[$index].Path,($Files[$index].Path+'.bak.'+$id),$false) } }
-    }
-    for ($index=0; $index -lt $Files.Count; $index++) {
-      if ($Files[$index].Keep) { continue }
-      $committed.Add($index)
-      Invoke-ModelStep '提交导入文件' $Files[$index].Path { Move-StagedFile (Join-Path $stage ('file-'+$index)) $Files[$index].Path }
-      $written.Add($index)
-    }
-    # Check the committed files locally; never launch or control an App process.
-    $final=Read-ValidatedModelCatalog $Files[0].Path
-    $finalIds=New-OrdinalMap; foreach ($model in $final.models) { $finalIds[$model.slug]=$true }
-    if ($finalIds.Count -ne $expected.models.Count) { throw (New-ModelImportError '已写入模型目录与本次导入不一致，停止导入。') }
-    foreach ($model in $expected.models) { if (-not $finalIds.ContainsKey($model.slug)) { throw (New-ModelImportError '已写入模型目录与本次导入不一致，停止导入。') } }
-    $normalized=ConvertTo-Json -InputObject (ConvertTo-CanonicalValue $validated.models) -Depth 100 -Compress
-    $effective=ConvertTo-Json -InputObject (ConvertTo-CanonicalValue $final.models) -Depth 100 -Compress
-    if ($normalized -cne $effective) { throw (New-ModelImportError '已写入的模型元数据与本次导入不一致，停止导入。') }
     foreach ($file in $Files) {
-      $now=if (Test-PrivatePath $file.Path) { Read-PrivateText $file.Path } else { $null }
-      if (($null -eq $now) -ne ($null -eq $file.Text) -or $now -cne $file.Text) { throw (New-ModelImportError '写入后的文件与本次导入不一致，停止导入。') }
-    }
-  } catch {
-    if ($committed.Count) {
-      $conflictPath=$null
-      for ($index=0; $index -lt $Files.Count; $index++) {
-        $now=$null; $found=$false
-        try {
-          $null=Get-Item -LiteralPath $Files[$index].Path -Force -ErrorAction Stop
-          $found=$true
-          $now=Read-PrivateText $Files[$index].Path
-        } catch {
-          if ($found -or $_.CategoryInfo.Category -ne [System.Management.Automation.ErrorCategory]::ObjectNotFound) { $conflictPath=$Files[$index].Path; break }
-        }
-        $matchesOutput=$null -ne $now -and $now -ceq $Files[$index].Text
-        $matchesBefore=if ($null -eq $snapshots[$index]) { $null -eq $now } else { $null -ne $now -and $now -ceq $snapshots[$index].Text }
-        if (-not $matchesOutput -and ($written.Contains($index) -or -not $matchesBefore)) { $conflictPath=$Files[$index].Path; break }
-      }
-      if ($conflictPath) {
-        $problem=New-ModelImportError '导入过程中出现外部修改，已保留当前内容和备份，软件未关闭。'
-        $problem.Data['ModelImportStep']='核对失败后的文件状态'; $problem.Data['ModelImportTarget']=$conflictPath
-        throw $problem
+      $file.Temp = $file.Path + '.tmp.' + $id
+      $file.Bom = Test-Utf8Bom $file.Path
+      $staged.Add($file.Temp)
+      Invoke-ModelStep '写入暂存文件' $file.Temp { Write-PrivateText $file.Temp $file.Text $file.Bom }
+      $written = Read-PrivateText $file.Temp
+      Invoke-ModelStep '校验暂存文件' $file.Path {
+        if ($file.Kind -ceq 'catalog') { Test-ModelCatalogShape (ConvertFrom-ModelJson $written '解析暂存模型目录' $file.Path) }
+        elseif ($file.Kind -ceq 'config') { $null = Get-ConfigInfo $written }
+        else { $null = ConvertFrom-ModelJson $written '解析暂存管理记录' $file.Path }
       }
     }
-    $restoreFailed=$false
-    for ($step=$committed.Count-1; $step -ge 0; $step--) {
-      $index=$committed[$step]
-      try {
-        if ($null -eq $snapshots[$index]) { [IO.File]::Delete($Files[$index].Path) }
-        else {
-          $restorePath=Join-Path $stage ('restore-'+$index)
-          [IO.File]::WriteAllBytes($restorePath,$snapshots[$index].Bytes)
-          Move-StagedFile $restorePath $Files[$index].Path
-        }
-      } catch { $restoreFailed=$true }
+    foreach ($file in $Files) {
+      if ($file.Kind -ceq 'config') {
+        $now = if (Test-PrivatePath $file.Path) { Read-PrivateText $file.Path } else { $null }
+        if (($null -eq $now) -ne ($null -eq $OriginalConfig) -or $now -cne $OriginalConfig) { throw (New-ModelImportError '配置在导入过程中被修改，请重新运行。') }
+      }
+      if (Test-PrivatePath $file.Path) { Invoke-ModelStep '备份原文件' $file.Path { [IO.File]::Copy($file.Path,($file.Path+'.bak.'+$id),$false) } }
     }
-    if ($restoreFailed) { throw (New-ModelImportError '写入失败且恢复未完成，请使用同目录的 .bak 备份恢复；软件未关闭。') }
-    throw
+    foreach ($file in $Files) {
+      Invoke-ModelStep '提交导入文件' $file.Path { Move-StagedFile $file.Temp $file.Path }
+    }
   } finally {
-    if ([IO.Directory]::Exists($stage)) { try { [IO.Directory]::Delete($stage,$true) } catch { } }
+    foreach ($path in $staged) { if ([IO.File]::Exists($path)) { try { [IO.File]::Delete($path) } catch { } } }
   }
 }
 
@@ -148,13 +72,14 @@ function Start-ModelInstaller([string]$CodexHomePath, [string]$CodexPath, [switc
   # CodexPath remains accepted for compatibility with saved commands, but is
   # deliberately unused. Windows import and uninstall only read/write files.
   if ($Uninstall) {
-    $result=Remove-ImportedModels $targetHome
+    $result=Remove-ImportedModels $targetHome $DomesticCatalog
     if (-not $result.Changed) { Write-Host '没有需要移除的国产模型。'; return }
     Write-Host '已移除本工具导入的国产模型，原 GPT 和其他模型已保留。'
-    if ($result.Active) { Write-Host '请手动退出并重新打开 ChatGPT App，新建任务后选择模型。' }
+    Write-Host '请手动退出并重新打开 ChatGPT App，新建任务后选择模型。'
     return
   }
-  $count=Invoke-ModelImport $targetHome $DomesticCatalog
-  Write-Host "已写入 $count 个国产模型的配置，原 GPT 和其他模型已保留。"
+  $result=Invoke-ModelImport $targetHome $DomesticCatalog
+  Write-Host ("已写入 "+$result.Count+" 个国产模型的配置，原 GPT 和其他模型已保留。")
+  if (-not $result.UsedCache) { Write-Host '未读到本机模型缓存，GPT 列表来自脚本内置快照；Codex 更新后如缺少新模型，重新运行本命令即可。' }
   Write-Host '请手动退出并重新打开 ChatGPT App，新建任务后选择模型；API Key 分组由你在中转站切换。'
 }
