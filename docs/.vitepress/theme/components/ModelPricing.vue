@@ -77,10 +77,11 @@ const textRows = computed(() =>
       ]
     }
 
-    if (model.officialLongContextUsd) {
+    if (model.officialLongContextCny || model.officialLongContextUsd) {
+      const thresholdLabel = model.longContextThresholdLabel ?? '10 万'
       const priceTiers = [
-        createRow(model.officialUsd, '输入 ≤ 10 万 tokens'),
-        createRow(model.officialLongContextUsd, '输入 > 10 万 tokens'),
+        createRow(model.officialCny ?? model.officialUsd, `输入 ≤ ${thresholdLabel} tokens`),
+        createRow(model.officialLongContextCny ?? model.officialLongContextUsd, `输入 > ${thresholdLabel} tokens`),
       ]
       return [{ ...priceTiers[0], priceLabel: '', priceTiers }]
     }

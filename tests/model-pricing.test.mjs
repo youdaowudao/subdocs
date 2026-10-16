@@ -45,6 +45,7 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },
       { id: 'qwen', name: 'Qwen 千问分组', multiplier: 0.45 },
       { id: 'kimi', name: 'Kimi 分组', multiplier: 0.45 },
+      { id: 'minimax', name: 'MiniMax 分组', multiplier: 0.45 },
       { id: 'mimo', name: '小米 MiMo 分组', multiplier: 0.45 },
       { id: 'hunyuan', name: '腾讯混元分组', multiplier: 0.45 },
     ],
@@ -63,6 +64,7 @@ test('keeps the model category tabs in the requested order', () => {
       { id: 'domestic', name: 'GLM', kind: 'text', groupIds: ['domestic'], defaultGroupId: undefined },
       { id: 'qwen', name: 'Qwen 千问', kind: 'text', groupIds: ['qwen'], defaultGroupId: undefined },
       { id: 'kimi', name: 'Kimi', kind: 'text', groupIds: ['kimi'], defaultGroupId: undefined },
+      { id: 'minimax', name: 'MiniMax', kind: 'text', groupIds: ['minimax'], defaultGroupId: undefined },
       { id: 'mimo', name: '小米 MiMo', kind: 'text', groupIds: ['mimo'], defaultGroupId: undefined },
       { id: 'hunyuan', name: '腾讯混元', kind: 'text', groupIds: ['hunyuan'], defaultGroupId: undefined },
       { id: 'image', name: '生图', kind: 'image', groupIds: [], defaultGroupId: undefined },
@@ -84,19 +86,20 @@ test('uses colored Claude Code, Grok and Gemini icons instead of letter placehol
   assert.match(gemini.iconSvg, /M11\.04 19\.32/)
 })
 
-test('uses official local logos for DeepSeek, GLM, Qwen, Kimi and MiMo', () => {
+test('uses official local logos for DeepSeek, GLM, Qwen, Kimi, MiniMax and MiMo', () => {
   const deepseek = MODEL_CATEGORIES.find((category) => category.id === 'deepseek')
   const glm = MODEL_CATEGORIES.find((category) => category.id === 'domestic')
   const qwen = MODEL_CATEGORIES.find((category) => category.id === 'qwen')
   const kimi = MODEL_CATEGORIES.find((category) => category.id === 'kimi')
+  const minimax = MODEL_CATEGORIES.find((category) => category.id === 'minimax')
   const mimo = MODEL_CATEGORIES.find((category) => category.id === 'mimo')
 
   assert.deepEqual(
-    [deepseek.iconSrc, glm.iconSrc, qwen.iconSrc, kimi.iconSrc, mimo.iconSrc],
-    ['/brand-icons/deepseek.ico', '/brand-icons/glm.png', '/brand-icons/qwen.png', '/brand-icons/kimi.ico', '/brand-icons/mimo.png'],
+    [deepseek.iconSrc, glm.iconSrc, qwen.iconSrc, kimi.iconSrc, minimax.iconSrc, mimo.iconSrc],
+    ['/brand-icons/deepseek.ico', '/brand-icons/glm.png', '/brand-icons/qwen.png', '/brand-icons/kimi.ico', '/brand-icons/minimax.ico', '/brand-icons/mimo.png'],
   )
 
-  for (const category of [deepseek, glm, qwen, kimi, mimo]) {
+  for (const category of [deepseek, glm, qwen, kimi, minimax, mimo]) {
     assert.equal(category.mark, undefined)
     assert.equal(category.iconSvg, undefined)
   }
@@ -636,6 +639,35 @@ test('shows only Kimi K3 at the verified RMB price with a 0.45 multiplier', () =
   assert.ok(isClose(k3Price.group.total, 54))
   assert.equal(getEquivalentDiscount(group.multiplier, group.currency), '4.5折')
   assert.equal(getSavingsPercent(group.multiplier, group.currency), 55)
+})
+
+test('prices MiniMax M3 at both official RMB context tiers and keeps the installer request ID', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'minimax')
+  const models = getTextModelsForGroup('minimax')
+  const catalog = JSON.parse(readFileSync(
+    new URL('../usegoodai-codex-installer/codex-domestic-models/src/models.json', import.meta.url),
+    'utf8',
+  ))
+
+  assert.equal(group.multiplier, 0.45)
+  assert.equal(group.currency, 'cny')
+  assert.deepEqual(models.map((model) => model.id), ['minimax-m3'])
+  assert.equal(models[0].id, catalog.models.find((model) => model.display_name === 'MiniMax M3').slug)
+  assert.equal(models[0].longContextThresholdLabel, '512K')
+  assert.deepEqual(models[0].officialCny, { input: 2.1, output: 8.4, cachedInput: 0.42 })
+  assert.deepEqual(models[0].officialLongContextCny, { input: 4.2, output: 16.8, cachedInput: 0.84 })
+
+  const tiers = [
+    { baseline: models[0].officialCny, official: [2.1, 8.4, 0.42, 10.5], group: [0.945, 3.78, 0.189, 4.725] },
+    { baseline: models[0].officialLongContextCny, official: [4.2, 16.8, 0.84, 21], group: [1.89, 7.56, 0.378, 9.45] },
+  ]
+  for (const tier of tiers) {
+    const price = calculateTextPrice(tier.baseline, group.multiplier, group.currency)
+    for (const [index, field] of ['input', 'output', 'cachedInput', 'total'].entries()) {
+      assert.ok(isClose(price.official[field], tier.official[index]), `official ${field}`)
+      assert.ok(isClose(price.group[field], tier.group[index]), `group ${field}`)
+    }
+  }
 })
 
 test('calculates hy4-preview from the official RMB baseline at a 0.45 multiplier', () => {
