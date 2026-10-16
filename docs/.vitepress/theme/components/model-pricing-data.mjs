@@ -204,6 +204,14 @@ export const TEXT_GROUPS = [
     modelIds: ['kimi-k3'],
   },
   {
+    id: 'minimax',
+    name: 'MiniMax 分组',
+    multiplier: 0.45,
+    currency: 'cny',
+    description: 'M3 适合编程、长程任务和多模态理解；按国内标准服务现行官方价计算，输入超过 512K tokens 时使用长上下文价格',
+    modelIds: ['minimax-m3'],
+  },
+  {
     id: 'mimo',
     name: '小米 MiMo 分组',
     multiplier: 0.45,
@@ -279,6 +287,14 @@ export const MODEL_CATEGORIES = [
     iconSrc: '/brand-icons/kimi.ico',
     kind: 'text',
     groupIds: ['kimi'],
+  },
+  {
+    id: 'minimax',
+    name: 'MiniMax',
+    // 官网图标来源：https://www.minimax.io/favicon.ico
+    iconSrc: '/brand-icons/minimax.ico',
+    kind: 'text',
+    groupIds: ['minimax'],
   },
   {
     id: 'mimo',
@@ -605,6 +621,17 @@ export const TEXT_MODELS = [
     name: 'Kimi K3',
     description: '旗舰模型，适合长程编程、知识工作和深度推理',
     officialCny: { input: 20, output: 100, cachedInput: 2 },
+  },
+  {
+    id: 'minimax-m3',
+    name: 'MiniMax M3',
+    description: '原生多模态模型，适合编程和长程任务；输入、输出、缓存读取均按单次输入是否超过 512K tokens 分档',
+    // 2026-10-16 核实：https://platform.minimax.cn/docs/pricing/overview
+    // 国内标准服务现行官方价，已含官方永久五折；不采用划线价或优先服务价。
+    // 本站请求 ID 与导入脚本保持一致；MiniMax 官方直连接口的 ID 为 MiniMax-M3。
+    officialCny: { input: 2.1, output: 8.4, cachedInput: 0.42 },
+    officialLongContextCny: { input: 4.2, output: 16.8, cachedInput: 0.84 },
+    longContextThresholdLabel: '512K',
   },
   {
     id: 'mimo-v2.6-pro',

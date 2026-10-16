@@ -193,6 +193,57 @@ test('renders only supported models and their exact copy IDs in the 0.7 CC TEST 
   }
 })
 
+test('renders MiniMax M3 once with both RMB context tiers and the exact installer ID', async () => {
+  const server = await createServer({
+    configFile: false,
+    plugins: [vue()],
+    server: { middlewareMode: true },
+    appType: 'custom',
+  })
+
+  try {
+    const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
+    const expected = {
+      group: ['¥0.95', '¥1.89', '¥3.78', '¥7.56', '¥0.19', '¥0.38', '¥4.73', '¥9.45'],
+      official: ['¥2.10', '¥4.20', '¥8.40', '¥16.80', '¥0.42', '¥0.84', '¥10.50', '¥21.00'],
+    }
+    for (const priceMode of ['group', 'official']) {
+      const component = {
+        ...pricing,
+        setup(props, context) {
+          const state = pricing.setup(props, context)
+          state.activeCategory.value = 'minimax'
+          state.activeGroupId.value = 'minimax'
+          state.priceMode.value = priceMode
+          return state
+        },
+      }
+      const html = await renderToString(createSSRApp(component))
+      const rows = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)]
+        .map(([row]) => row)
+        .filter((row) => row.includes('class="model-id-cell"'))
+
+      assert.equal(rows.length, 1)
+      const [row] = rows
+      assert.ok(row.includes('<strong>minimax-m3</strong>'))
+      assert.equal([...row.matchAll(/aria-label="复制 minimax-m3"/g)].length, 1)
+      const labels = [...row.matchAll(/<span class="context-tier-label">([^<]+)<\/span>/g)].map((match) => match[1])
+      assert.deepEqual(labels, Array(4).fill(['输入 ≤ 512K tokens', '输入 &gt; 512K tokens']).flat())
+      const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'
+      const amounts = [...row.matchAll(new RegExp(`<strong class="${priceClass}">([^<]+)<`, 'g'))]
+        .map((match) => match[1])
+      assert.deepEqual(amounts, expected[priceMode])
+      assert.doesNotMatch(html, /NaN|价格待确认|official-usd/)
+      if (priceMode === 'group') {
+        assert.match(html, /0\.45 倍率/)
+        assert.match(html, /4\.5折/)
+      }
+    }
+  } finally {
+    await server.close()
+  }
+})
+
 test('renders Haiku 5.5 once with both context prices in the same row', async () => {
   const server = await createServer({
     configFile: false,
