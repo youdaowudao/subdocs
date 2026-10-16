@@ -176,7 +176,8 @@ class ModelTests(unittest.TestCase):
         shell = build.parent_shell_process_functions()
         self.assertIn(shell, (ROOT/'install/codex-models.sh').read_text())
         windows=(ROOT/'install/codex-models.ps1').read_text(encoding='utf-8-sig')
-        for forbidden in ['function Find-DesktopBackend', 'function Invoke-CodexExport', 'ProcessStartInfo', 'Stop-RunningClients', 'Get-AppxPackage', 'Start-Process']:
+        self.assertIn(build.parent_powershell_process_functions(), windows)
+        for forbidden in ['function Find-DesktopBackend', 'function Invoke-CodexExport', 'ProcessStartInfo', 'Get-AppxPackage', 'Start-Process']:
             self.assertNotIn(forbidden, windows)
 
     def test_generated_scripts_reproducible(self):
@@ -681,6 +682,11 @@ console.log(core.formatError(error));'''
 
     def test_powershell_import_and_rollback(self):
         result=execute([PWSH,'-NoProfile','-File','tests/integration.ps1','-DomesticPath',WORK/'domestic.json','-WorkRoot',WORK/'ps-integration'])
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        print(result.stdout.strip())
+
+    def test_powershell_processes(self):
+        result=execute([PWSH,'-NoProfile','-File','tests/processes.ps1','-GeneratedScript',ROOT/'install/codex-models.ps1'])
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         print(result.stdout.strip())
 

@@ -24,7 +24,7 @@ $config=[IO.File]::ReadAllBytes((Join-Path $target 'config.toml'))
 $ids=@($catalog.models | ForEach-Object {$_.slug})
 $ids2=@($ids + 'removed-in-new-release')
 $result=Remove-ImportedModels $target $DomesticCatalog
-Assert ($result.Changed -and $result.Count -eq $DomesticCatalog.models.Count)
+Assert ($result.Changed -and $result.Active -and $result.Count -eq $DomesticCatalog.models.Count)
 $after=ConvertFrom-Json -InputObject (Read-PrivateText $catalogPath)
 $left=@($after.models | ForEach-Object {$_.slug})
 Assert ($left -contains 'user-custom' -and $left -contains 'codex-auto-review' -and $left -contains 'gpt-6-astra')
@@ -37,4 +37,13 @@ Assert (-not $again.Changed)
 $empty=Join-Path $WorkRoot ('uninstall-empty-'+[Guid]::NewGuid().ToString('N'))
 $null=[IO.Directory]::CreateDirectory($empty)
 Assert (-not (Remove-ImportedModels $empty $DomesticCatalog).Changed)
+# A catalog that config.toml does not point at is cleaned without reporting it as in use.
+$other=Join-Path $WorkRoot ('uninstall-inactive-'+[Guid]::NewGuid().ToString('N'))
+$null=Invoke-ModelImport $target $DomesticCatalog
+$null=[IO.Directory]::CreateDirectory($other)
+Copy-Item (Join-Path $target 'usegoodai-models.json') $other
+[IO.File]::WriteAllText((Join-Path $other 'config.toml'),"model = `"x`"`
+")
+$inactive=Remove-ImportedModels $other $DomesticCatalog
+Assert ($inactive.Changed -and -not $inactive.Active)
 Write-Output "PowerShell uninstall checks passed ($($script:assertions) assertions)"

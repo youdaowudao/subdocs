@@ -452,7 +452,7 @@ function Remove-ImportedModels([string]$TargetHome, $Domestic) {
   $catalogPath = Join-Path $TargetHome 'usegoodai-models.json'
   $managedPath = Join-Path $TargetHome 'usegoodai-models.managed.json'
   $catalogText = Read-OptionalText $catalogPath '读取原导入模型目录'
-  if ($null -eq $catalogText) { return @{Changed=$false; Count=0} }
+  if ($null -eq $catalogText) { return @{Changed=$false; Active=$false; Count=0} }
   $catalog = ConvertFrom-ModelJson $catalogText '解析原导入模型目录' $catalogPath
   Invoke-ModelStep '校验原导入模型目录' $catalogPath { Test-ModelCatalogShape $catalog }
   $owned = New-OrdinalMap
@@ -460,13 +460,19 @@ function Remove-ImportedModels([string]$TargetHome, $Domestic) {
   foreach ($model in $Domestic.models) { $owned[$model.slug] = $true }
   $remaining = @($catalog.models | Where-Object { -not $owned.ContainsKey($_.slug) })
   $count = $catalog.models.Count - $remaining.Count
-  if ($count -eq 0) { return @{Changed=$false; Count=0} }
+  if ($count -eq 0) { return @{Changed=$false; Active=$false; Count=0} }
   $catalog | Add-Member -NotePropertyName models -NotePropertyValue $remaining -Force
   Invoke-ModelStep '校验卸载后的模型目录' $catalogPath { Test-ModelCatalogShape $catalog }
   $files = @(
     @{Path=$catalogPath; Text=(ConvertTo-Json -InputObject $catalog -Depth 100)+"`n"; Kind='catalog'},
     @{Path=$managedPath; Text="[]`n"; Kind='managed'}
   )
+  # Only a catalog that config.toml points at is in use; an unreadable config counts as in use.
+  $active=$true
+  try {
+    $info=Get-ConfigInfo ([string](Read-OptionalText (Join-Path $TargetHome 'config.toml') '读取 Codex 配置'))
+    $active=$info.Values.ContainsKey('model_catalog_json') -and [StringComparer]::OrdinalIgnoreCase.Equals((Get-ConfiguredCatalogPath $info $TargetHome),[IO.Path]::GetFullPath($catalogPath))
+  } catch { $active=$true }
   Invoke-ModelStep '写入并校验卸载结果' $catalogPath { Write-ModelFiles $files $null }
-  return @{Changed=$true; Count=$count}
+  return @{Changed=$true; Active=$active; Count=$count}
 }

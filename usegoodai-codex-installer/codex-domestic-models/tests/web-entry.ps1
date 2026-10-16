@@ -7,7 +7,8 @@ $env:CODEX_HOME=$target
 # The documented invocation must succeed without any CLI, executable or App path.
 $env:PATH=$target
 function Get-AppxPackage { throw 'Must not locate an App backend' }
-function Get-Process { throw 'Must not inspect App processes' }
+# No Codex/ChatGPT process is running in this test; closing must not touch anything real.
+function Get-Process { param($Id,$Name,$ErrorAction); if ($null -ne $Id) { return [pscustomobject]@{SessionId=1} }; return @() }
 function Start-Process { throw 'Must not start an executable' }
 function Stop-Process { throw 'Must not close an App' }
 function Find-DesktopBackend { throw 'Must not locate a backend' }
