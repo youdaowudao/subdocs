@@ -42,6 +42,11 @@ def parent_shell_process_functions():
     return shell[shell.index('list_running_clients() {'):shell.index('backup_if_exists() {')].rstrip()
 
 
+def parent_powershell_process_functions():
+    powershell = (ROOT.parent / 'install/codex.ps1').read_text(encoding='utf-8-sig')
+    return powershell[powershell.index('function Get-RunningCodexClients {'):powershell.index('function Show-WritePlan {')].rstrip()
+
+
 def build():
     data = catalog()
     shell_processes = parent_shell_process_functions()
@@ -65,7 +70,7 @@ function Say([string]$Message) { Write-Host $Message }
     official = json.loads((ROOT / 'src/gpt-catalog.json').read_text())
     ps += "$BundledOfficialVersion = '" + OFFICIAL_SNAPSHOT_VERSION + "'\n"
     ps += '$BundledOfficialCatalog = ConvertFrom-Json -InputObject @\'\n' + json.dumps(official, ensure_ascii=False) + "\n'@\n"
-    ps += (ROOT / 'src/core.ps1').read_text() + '\n' + (ROOT / 'src/windows-host.ps1').read_text()
+    ps += parent_powershell_process_functions() + '\n' + (ROOT / 'src/core.ps1').read_text() + '\n' + (ROOT / 'src/windows-host.ps1').read_text()
     ps += '''
 try { Start-ModelInstaller $CodexHomePath $CodexPath -Uninstall:$Uninstall }
 catch {

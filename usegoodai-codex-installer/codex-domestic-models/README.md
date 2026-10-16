@@ -2,13 +2,13 @@
 
 这个脚本给已安装 Codex 的用户导入 10 个国产模型，让 GPT 与国产模型并列可选。官方账号、任意中转站和自定义接口均可导入；它只修改用户配置目录的 `config.toml` 中两项设置，并生成完整的本地模型目录，保留默认模型、服务名称、接口、Key 和其他配置。
 
-Windows 只读写 `CODEX_HOME` 内的配置和模型文件，不查找、启动或复制任何可执行文件，也不检测或关闭客户端；本机是否安装 CLI 不影响导入。macOS 优先定位 App，再查找现有 Codex CLI。Linux 使用已有的 Codex 后端和 Node.js 16+；仅安装原生 Codex 二进制并不代表本机有 Node，脚本缺少运行环境时会在写入前退出。
+Windows 只读写 `CODEX_HOME` 内的配置和模型文件，不查找、启动或复制任何可执行文件；本机是否安装 CLI 不影响导入。导入成功后沿用一键安装脚本 `install/codex.ps1` 的进程关闭代码（构建时原样取出）关闭当前用户会话里的 ChatGPT 和 Codex，因为 Codex 启动时才读取 `config.toml` 和模型目录。macOS 优先定位 App，再查找现有 Codex CLI。Linux 使用已有的 Codex 后端和 Node.js 16+；仅安装原生 Codex 二进制并不代表本机有 Node，脚本缺少运行环境时会在写入前退出。
 
 当前交付物是 [Windows 脚本](install/codex-models.ps1) 和 [Linux/macOS 共用脚本](install/codex-models.sh)。源码、设定和测试都在本子项目；交付物按用户要求迁移到上级安装目录与站点发布目录，供用户实机测试。
 
 ## 运行脚本
 
-Windows 完成后手动退出并重新打开 ChatGPT App。Linux/macOS 成功导入后会自动关闭 ChatGPT/Codex，正在运行的任务会中断。重新运行同一入口就是更新模型。
+成功导入后，Windows 和 Linux/macOS 都会自动关闭 ChatGPT/Codex，正在运行的任务会中断，之后重新打开即可。重新运行同一入口就是更新模型。
 
 Windows 在 PowerShell 中执行：
 
@@ -50,7 +50,7 @@ python3 build.py
 
 生成的两个脚本内嵌同一份数据，不依赖相邻文件，支持下载执行或管道执行。Windows 使用内置 PowerShell，macOS 使用内置 JXA，Linux 使用已有 Node.js；Linux/macOS 共用同一份 JavaScript 模型处理核心。脚本不自动安装运行环境或另一份 Codex。
 
-Linux/macOS 的进程检测、祖先排除、结束和结果报告在构建时直接从上级 `install/codex.sh` 取出。Windows 交付物不包含进程处理和后端执行函数。
+Linux/macOS 的进程检测、祖先排除、结束和结果报告在构建时直接从上级 `install/codex.sh` 取出。Windows 交付物同样原样取出 `install/codex.ps1` 的进程函数，但不包含后端定位和执行函数。
 
 模型能力依据和保守设置见 [元数据来源](元数据来源.md)。`minimax-m3` 保留已确定的小写请求 ID，正式中转站别名仍需发布者核对；脚本不更改大小写。
 
@@ -82,7 +82,7 @@ sh install/codex-models.sh --uninstall
 & .\install\codex-models.ps1 -Uninstall
 ```
 
-卸载按管理记录和内置国产模型清单过滤本工具的模型目录（Windows 管理记录损坏或缺失时只按内置清单），并把管理记录清空为 `[]`。保留 GPT、用户自定义模型及目录顶层字段；`config.toml`、端点、Key 和桌面档位不变，过滤后的本地目录继续使用。不会整份恢复旧备份覆盖后续设置，也不清理用户后来切换到的其他目录。卸载无需 Codex 后端；重复卸载不写文件、不关闭软件。Windows 卸载始终只写文件，提示手动重开 App；Linux/macOS 只有移除了当前使用目录中的模型时才执行原进程关闭功能。
+卸载按管理记录和内置国产模型清单过滤本工具的模型目录（Windows 管理记录损坏或缺失时只按内置清单），并把管理记录清空为 `[]`。保留 GPT、用户自定义模型及目录顶层字段；`config.toml`、端点、Key 和桌面档位不变，过滤后的本地目录继续使用。不会整份恢复旧备份覆盖后续设置，也不清理用户后来切换到的其他目录。卸载无需 Codex 后端；重复卸载不写文件、不关闭软件。Windows 和 Linux/macOS 一样，只有移除了当前使用目录中的模型时才执行进程关闭。
 
 ## 开发者迁移发布
 
