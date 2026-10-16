@@ -23,12 +23,12 @@ def catalog():
             'default_reasoning_summary': 'none', 'prefer_websockets': False,
             'web_search_tool_type': 'text', 'supports_search_tool': False,
             'truncation_policy': {'mode': 'tokens', 'limit': 10000},
-            'supports_image_detail_original': model['slug'] == 'deepseek-flash',
+            'supports_image_detail_original': model.get('supports_image_detail_original', model['slug'] == 'deepseek-flash'),
             'max_context_window': model['context_window'], 'auto_compact_token_limit': None,
             'effective_context_window_percent': 95, 'experimental_supported_tools': [],
             'base_instructions': definition['instructions'],
             'model_messages': {'instructions_template': definition['instructions']},
-            'use_responses_lite': False,
+            'use_responses_lite': model.get('use_responses_lite', False),
         })
         models.append(model)
     return {'models': models}

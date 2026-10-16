@@ -57,6 +57,9 @@ add('empty_config', case(''))
 add('only_comment', case('# existing comment'))
 add('preserve_full_objects', case(existing={'models': [model('gpt-original', custom={'nested': ['keep', {'a': True}]}), model('user-custom'), model('Custom'), model('custom')], 'unknown': {'keep': True}}))
 add('update_replace_owned', case(existing={'models': [GPT, model('qwen3.8-max', cancelled_field=True), model('removed-domestic'), model('user-custom')]}, managed=['qwen3.8-max', 'removed-domestic']))
+legacy_models = [m for m in reversed(DOMESTIC['models']) if not m['slug'].startswith('mimo-')]
+add('upgrade_existing_catalog_order', case(existing={'models': [GPT] + legacy_models}, managed=[m['slug'] for m in legacy_models]))
+add('existing_mimo_ids_not_duplicated', case(existing={'models': [GPT] + DOMESTIC['models'][-2:]}))
 add('existing_desktop', case('model="gpt-original"\n[desktop]\nenabled-reasoning-efforts = ["ultra", # keep\n "high",]\ntheme="dark"\n[features]\nx=true\n'))
 add('quoted_keys', case('"model_catalog_json" = \'old.json\' # old path\n"model"="gpt-original"\n["desktop"]\n"enabled-reasoning-efforts" = [\'ultra\',\'high\']\n'))
 add('dotted_desktop', case('model="gpt-original"\ndesktop.theme="dark"\n[features]\nx=true\n'))
@@ -130,9 +133,10 @@ class ModelTests(unittest.TestCase):
                         continue
                     parsed = tomllib.loads(output['config'].lstrip('\ufeff'))
                     self.assertEqual(parsed['model_catalog_json'], value['path'])
-                    self.assertEqual(len(output['managed']), 8)
+                    self.assertEqual(len(output['managed']), len(DOMESTIC['models']))
                     ids = [x['slug'] for x in output['catalog']['models']]
                     self.assertEqual(len(ids), len(set(ids)))
+                    self.assertEqual([slug for slug in ids if slug in output['managed']], [m['slug'] for m in DOMESTIC['models']])
                     self.assertIn('gpt-original', ids)
                     original = tomllib.loads(value['config'].lstrip('\ufeff'))
                     self.assertEqual(original.get('model_catalog_json'), output['sourcePath'])
@@ -156,7 +160,22 @@ class ModelTests(unittest.TestCase):
                         self.assertEqual(result[item['slug']], item)
 
     def test_exact_ids(self):
-        self.assertEqual([m['slug'] for m in DOMESTIC['models']], ['qwen3.8-max','qwen3.8-flash','glm-5.3-flash','deepseek-flash','glm-5.3','kimi-k3','minimax-m3','hy4-preview'])
+        self.assertEqual([m['slug'] for m in DOMESTIC['models']], ['deepseek-flash','glm-5.3','glm-5.3-flash','qwen3.8-max','qwen3.8-flash','kimi-k3','minimax-m3','hy4-preview','mimo-v2.6-pro','mimo-v2.6-flash'])
+
+    def test_mimo_official_codex_capabilities(self):
+        mimo_ids = {'mimo-v2.6-pro', 'mimo-v2.6-flash'}
+        self.assertEqual({m['slug'] for m in DOMESTIC['models'] if m['use_responses_lite']}, mimo_ids)
+        for item in DOMESTIC['models']:
+            if item['slug'] not in mimo_ids:
+                continue
+            with self.subTest(model=item['slug']):
+                self.assertEqual(item['context_window'], 1048576)
+                self.assertEqual(item['input_modalities'], ['text', 'image'])
+                self.assertEqual(item['default_reasoning_level'], 'low')
+                self.assertEqual([level['effort'] for level in item['supported_reasoning_levels']], ['none', 'low', 'medium', 'high'])
+                self.assertEqual(item['apply_patch_tool_type'], 'freeform')
+                self.assertTrue(item['supports_image_detail_original'])
+                self.assertFalse(item['supports_parallel_tool_calls'])
 
     def test_embedded_process_functions(self):
         shell, ps = build.parent_process_functions()
@@ -234,10 +253,10 @@ theme = "dark"
         result=self.run_linux_script(target,tools,CODEX,piped=True,
             env_overrides={'NODE_OPTIONS':'--experimental-default-type=module'})
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertIn('已导入 8 个国产模型',result.stdout)
+        self.assertIn(f"已导入 {len(DOMESTIC['models'])} 个国产模型",result.stdout)
         for name in ('config.toml','usegoodai-models.json','usegoodai-models.managed.json'):
             self.assertTrue((target/name).is_file())
-        self.assertEqual(len(json.loads((target/'usegoodai-models.managed.json').read_text())),8)
+        self.assertEqual(len(json.loads((target/'usegoodai-models.managed.json').read_text())),len(DOMESTIC['models']))
 
     def test_linux_zero_exit_without_import_never_closes_clients(self):
         target,tools=self.linux_fixture('linux-no-receipt')
@@ -260,7 +279,7 @@ theme = "dark"
         (tools/'nodejs').symlink_to(NODE)
         result=self.run_linux_script(target,tools,CODEX,piped=True)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertEqual(len(json.loads((target/'usegoodai-models.managed.json').read_text())),8)
+        self.assertEqual(len(json.loads((target/'usegoodai-models.managed.json').read_text())),len(DOMESTIC['models']))
 
     def test_linux_relative_path_keeps_node_launchers_working(self):
         target,tools=self.linux_fixture('linux-relative-path')
@@ -273,7 +292,7 @@ theme = "dark"
         self.assertEqual(before.returncode,0,before.stderr)
         result=self.run_linux_script(target,tools,piped=True,env_overrides={'PATH':relative})
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertEqual(len(json.loads((target/'usegoodai-models.managed.json').read_text())),8)
+        self.assertEqual(len(json.loads((target/'usegoodai-models.managed.json').read_text())),len(DOMESTIC['models']))
 
     def test_macos_cli_fallback_reaches_system_runner(self):
         target,tools=self.linux_fixture('macos-cli-discovery')
@@ -330,7 +349,7 @@ theme = "dark"
         before=tomllib.loads((target/'config.toml').read_text())
         result=self.run_linux_script(target,tools,CODEX)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertIn('已导入 8 个国产模型',result.stdout)
+        self.assertIn(f"已导入 {len(DOMESTIC['models'])} 个国产模型",result.stdout)
         first=json.loads((target/'usegoodai-models.json').read_text())
         gpt=next(m for m in first['models'] if m['slug'].startswith('gpt-'))
         gpt['keep_metadata']={'nested':True}
@@ -376,7 +395,7 @@ theme = "dark"
                 result=subprocess.run([*shell,'-s','--'],input=(ROOT/'install/codex-models.sh').read_text(),
                     cwd=ROOT,env=env,text=True,capture_output=True,timeout=60)
                 self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-                self.assertIn('已导入 8 个国产模型',result.stdout)
+                self.assertIn(f"已导入 {len(DOMESTIC['models'])} 个国产模型",result.stdout)
                 after=tomllib.loads((target/'config.toml').read_text())
                 self.assertEqual(after.pop('model_catalog_json'),str(target/'usegoodai-models.json'))
                 after['desktop'].pop('enabled-reasoning-efforts')
@@ -498,7 +517,7 @@ requires_openai_auth=false
         running_backend.symlink_to(CODEX)
         result=self.run_linux_script(target,tools,running_backend=running_backend)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertIn('已导入 8 个国产模型',result.stdout)
+        self.assertIn(f"已导入 {len(DOMESTIC['models'])} 个国产模型",result.stdout)
         self.assertEqual((target/'mock-kills.log').read_text().strip(),'-TERM 7001')
 
     def assert_linux_diagnostic(self, result, target, step, code=None):
@@ -631,6 +650,11 @@ console.log(core.formatError(error));'''
         self.assertEqual(result.returncode,0,result.stderr)
         loaded=json.loads(result.stdout)
         self.assertEqual([m['slug'] for m in loaded['models']], [m['slug'] for m in data['models']])
+        loaded_by_id={m['slug']: m for m in loaded['models']}
+        for slug in ['mimo-v2.6-pro', 'mimo-v2.6-flash']:
+            for field in ['use_responses_lite', 'supports_image_detail_original']:
+                self.assertTrue(loaded_by_id[slug][field], f'{slug} {field}')
+            self.assertEqual(loaded_by_id[slug]['apply_patch_tool_type'], 'freeform')
 
     def test_javascript_import_and_rollback(self):
         result=execute([NODE,'tests/integration.js'])

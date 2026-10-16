@@ -32,7 +32,7 @@ function equal(actual, expected) { assert.deepEqual(actual, expected); checks++;
 {
     const f = fixture();
     const result = core.uninstallModels(f.io, f.home);
-    equal(result.count, 9); check(result.active);
+    equal(result.count, domestic.models.length + 1); check(result.active);
     const after = JSON.parse(fs.readFileSync(f.catalogPath));
     equal(after, {...f.catalog, models: [f.gpt, f.user]});
     equal(fs.readFileSync(path.join(f.home, 'config.toml'), 'utf8'), f.config);

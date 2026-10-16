@@ -66,7 +66,7 @@ function setup(name) {
 }
 {
     const {home,config}=setup('success');
-    check(core.importModels(host(home),home,backend,domestic)===8);
+    check(core.importModels(host(home),home,backend,domestic)===domestic.models.length);
     const catalog=path.join(home,'usegoodai-models.json');
     let value=JSON.parse(fs.readFileSync(catalog,'utf8'));
     check(value.models.filter(m=>m.slug.startsWith('gpt-')).length>0);
@@ -77,7 +77,7 @@ function setup(name) {
     const user={...gpt,slug:'user-custom'}; value.models.push(user,{...gpt,slug:'removed-domestic'});
     fs.writeFileSync(catalog,JSON.stringify(value));
     fs.writeFileSync(path.join(home,'usegoodai-models.managed.json'),JSON.stringify([...domestic.models.map(m=>m.slug),'removed-domestic']));
-    check(core.importModels(host(home),home,backend,domestic)===8);
+    check(core.importModels(host(home),home,backend,domestic)===domestic.models.length);
     value=JSON.parse(fs.readFileSync(catalog,'utf8'));
     check(!value.models.some(m=>m.slug==='removed-domestic'));
     check(value.models.find(m=>m.slug==='user-custom').custom_metadata.keep);
@@ -147,14 +147,14 @@ for (const invalid of ['directory','symlink','dangling','managed_directory']) {
     fs.appendFileSync(path.join(home,'config.toml'),'\n');
     const filename=path.join(home,'config.toml');
     fs.writeFileSync(filename,'model_catalog_json = "missing.json"\n'+fs.readFileSync(filename,'utf8'));
-    check(core.importModels(host(home),home,backend,domestic)===8);
+    check(core.importModels(host(home),home,backend,domestic)===domestic.models.length);
 }
 {
     const {home}=setup('relative_instructions');
     const filename=path.join(home,'config.toml');
     fs.writeFileSync(path.join(home,'instructions.md'),'Test repository instructions.\n');
     fs.writeFileSync(filename,'model_instructions_file="instructions.md"\n'+fs.readFileSync(filename,'utf8'));
-    check(core.importModels(host(home),home,backend,domestic)===8);
+    check(core.importModels(host(home),home,backend,domestic)===domestic.models.length);
     check(fs.readFileSync(filename,'utf8').includes('model_instructions_file="instructions.md"'));
 }
 for (const kind of ['catalog', 'managed', 'source']) {
