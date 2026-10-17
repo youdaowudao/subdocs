@@ -39,7 +39,7 @@ export default withSidebar(config, {
   collapsed: true,
   includeRootIndexFile: false,
   includeFolderIndexFile: false,
-  excludeByGlobPattern: ['buy.md', 'models.md'],
+  excludeByGlobPattern: ['buy.md', 'models.md', 'radar.md'],
   manualSortFileNameByPriority: [
     'quick-start.md',
     'codex-cc-switch.md',
