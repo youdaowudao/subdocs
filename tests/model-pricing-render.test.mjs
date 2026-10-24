@@ -144,7 +144,7 @@ test('renders verified Qwen and MiMo IDs with RMB prices in their 0.45 groups', 
   }
 })
 
-test('renders only supported models and their exact copy IDs in the 0.7 CC TEST group', async () => {
+test('renders only supported models and their exact copy IDs in the 0.5 CC TEST group', async () => {
   const server = await createServer({
     configFile: false,
     plugins: [vue()],
@@ -157,7 +157,7 @@ test('renders only supported models and their exact copy IDs in the 0.7 CC TEST 
     const expectedIds = [
       'claude-opus-5-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7',
       'claude-opus-4-6', 'claude-opus-4-5', 'claude-sonnet-5-5', 'claude-sonnet-5',
-      'claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-haiku-4-5',
+      'claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-haiku-5-5', 'claude-haiku-4-5',
     ]
 
     for (const priceMode of ['group', 'official']) {
@@ -177,15 +177,17 @@ test('renders only supported models and their exact copy IDs in the 0.7 CC TEST 
         .filter((row) => row.includes('class="model-id-cell"'))
       const ids = rows.map((row) => row.match(/<strong>(claude-[^<]+)<\/strong>/)[1])
 
-      assert.deepEqual(ids, expectedIds, `${priceMode} should show only the 11 screenshot models`)
+      assert.deepEqual(ids, expectedIds, `${priceMode} should show all 12 supported models`)
       for (const [index, row] of rows.entries()) {
         assert.ok(row.includes(`aria-label="复制 ${expectedIds[index]}"`))
         const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'
-        assert.equal([...row.matchAll(new RegExp(`class="${priceClass}"`, 'g'))].length, 4)
+        const priceCount = expectedIds[index] === 'claude-haiku-5-5' ? 8 : 4
+        assert.equal([...row.matchAll(new RegExp(`class="${priceClass}"`, 'g'))].length, priceCount)
       }
       if (priceMode === 'group') {
-        assert.match(html, /不保证长久，缓存 96–99%/)
-        assert.match(html, /0\.7 倍率/)
+        assert.match(html, /缓存 99%，主力分组推荐使用/)
+        assert.match(html, /0\.5 倍率/)
+        assert.doesNotMatch(html, /临时渠道|不保证长久|会下线|CC TEST 0\.4/)
       }
     }
   } finally {
@@ -255,8 +257,10 @@ test('renders Haiku 5.5 once with both context prices in the same row', async ()
   try {
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
     const expectedGroupPrices = new Map([
-      ['anthropic-max', ['¥0.14', '¥0.70', '¥0.70', '¥3.50', '¥0.014', '¥0.07', '¥0.84', '¥4.20']],
-      ['anthropic-max-external', ['¥0.14', '¥0.70', '¥0.70', '¥3.50', '¥0.014', '¥0.07', '¥0.84', '¥4.20']],
+      ['anthropic-cc-test', ['¥0.03', '¥0.15', '¥0.15', '¥0.75', '¥0.003', '¥0.015', '¥0.18', '¥0.90']],
+      ['anthropic-cc-test-0.7', ['¥0.05', '¥0.25', '¥0.25', '¥1.25', '¥0.005', '¥0.025', '¥0.30', '¥1.50']],
+      ['anthropic-max', ['¥0.15', '¥0.75', '¥0.75', '¥3.75', '¥0.015', '¥0.075', '¥0.90', '¥4.50']],
+      ['anthropic-max-external', ['¥0.15', '¥0.75', '¥0.75', '¥3.75', '¥0.015', '¥0.075', '¥0.90', '¥4.50']],
     ])
     const expectedOfficialPrices = ['¥0.70', '¥3.50', '¥3.50', '¥17.50', '¥0.07', '¥0.35', '¥4.20', '¥21.00']
 

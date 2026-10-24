@@ -50,11 +50,13 @@ const ANTHROPIC_MAIN_MODEL_IDS = [
 
 const CC_TEST_MODEL_IDS = [
   ...ANTHROPIC_OPUS_MODEL_IDS,
+  'claude-sonnet-5-5',
+  'claude-haiku-5-5',
   'claude-haiku-4-5-20251001',
   'claude-fable-5',
 ]
 
-const CC_TEST_07_MODEL_IDS = [
+const CC_TEST_HIGH_CACHE_MODEL_IDS = [
   'claude-opus-5-5',
   'claude-opus-5',
   'claude-opus-4-8',
@@ -65,6 +67,7 @@ const CC_TEST_07_MODEL_IDS = [
   'claude-sonnet-5',
   'claude-sonnet-4-6',
   'claude-sonnet-4-5',
+  'claude-haiku-5-5',
   'claude-haiku-4-5',
 ]
 
@@ -108,38 +111,38 @@ export const TEXT_GROUPS = [
   },
   {
     id: 'anthropic-main',
-    name: '低价分组',
-    multiplier: 0.2,
+    name: 'Anthropic 低价分组1M上下文 缓存高',
+    multiplier: 0.16,
     description: '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5',
     modelIds: ANTHROPIC_MAIN_MODEL_IDS,
     unavailableModels: { 'claude-fable-5': '此分组无 Fable 5' },
   },
   {
     id: 'anthropic-cc-test',
-    name: 'Anthropic CC TEST 满分渠道',
-    multiplier: 0.4,
-    description: '价格更低，适合 Claude Code 日常任务',
+    name: '0.3Anthropic CCTEST满分渠道（缓存70%）',
+    multiplier: 0.3,
+    description: '缓存 70%，适合 Claude Code 日常任务',
     modelIds: CC_TEST_MODEL_IDS,
     unavailableModels: { 'claude-fable-5': '此分组无 Fable 5' },
   },
   {
     id: 'anthropic-cc-test-0.7',
-    name: 'CC TEST 满分99缓（临时渠道，会下线）',
-    multiplier: 0.7,
-    description: '不保证长久，缓存 96–99%，其余与 CC TEST 0.4 倍分组一致',
-    modelIds: CC_TEST_07_MODEL_IDS,
+    name: '0.5xcctest满分99缓 【主力分组推荐使用】',
+    multiplier: 0.5,
+    description: '缓存 99%，主力分组推荐使用',
+    modelIds: CC_TEST_HIGH_CACHE_MODEL_IDS,
   },
   {
     id: 'anthropic-max',
     name: 'CC MAX 满血版本',
-    multiplier: 1.4,
+    multiplier: 1.5,
     description: '满血高性能档，价格较高，重大任务使用',
     modelIds: CC_MAX_MODEL_IDS,
   },
   {
     id: 'anthropic-max-external',
     name: 'CC MAX 外接分组',
-    multiplier: 1.4,
+    multiplier: 1.5,
     description: '允许外接调用，满血高性能档，价格较高，重大任务使用',
     modelIds: CC_MAX_MODEL_IDS,
   },
