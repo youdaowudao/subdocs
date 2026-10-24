@@ -22,24 +22,16 @@ UseGoodAI 中转站生图工具让 Codex 直接生成、修改并展示图片，
 
 ## 2. 安装生图工具
 
-::: tip 不想手动运行命令：到 QQ 群下载双击版
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，打开 **群文件**，下载 `UseGoodAI-installers-Windows-Mac.zip` 并解压。
+Windows 按 `Win + X`，点击 **终端** 或 **Windows PowerShell**。
 
-在解压后的文件夹中，按电脑系统选择文件：
+<details>
+<summary>找不到 PowerShell？</summary>
 
-| 电脑系统 | 双击这个文件 |
-| --- | --- |
-| Windows 10/11 x64 | `Windows-x64` 文件夹中的 `UseGoodAI生图工具.exe` |
-| Apple 芯片 Mac（macOS 12 及以上） | `Mac-Apple芯片` 文件夹中的 `UseGoodAI生图工具.app` |
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `UseGoodAI生图工具.exe`，按提示粘贴**专门画图分组 Key** 即可。Mac 使用同名 `.app`。
 
-PowerShell 或终端会自动打开。按提示粘贴第 1 步复制的 **专门画图分组 Key**，再按回车；安装完成后直接继续第 3 步，无需运行下面的命令。
+</details>
 
-群内双击版为未签名测试版。首次打开被系统拦截时，截取安全提示窗口，在群里反馈。
-:::
-
-**使用命令安装：**
-
-Windows 按 `Win + X`，点击 **终端** 或 **Windows PowerShell**，粘贴运行：
+粘贴运行：
 
 ```powershell
 irm https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.ps1 | iex

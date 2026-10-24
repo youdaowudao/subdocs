@@ -9,21 +9,6 @@ sidebarTitle: 导入国产模型
 
 ## 一键导入
 
-::: tip 不想手动运行命令：到 QQ 群下载双击版
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，打开 **群文件**，下载 `UseGoodAI-installers-Windows-Mac.zip` 并解压。
-
-在解压后的文件夹中，按电脑系统选择文件：
-
-| 电脑系统 | 双击这个文件 |
-| --- | --- |
-| Windows 10/11 x64 | `Windows-x64` 文件夹中的 `Codex国产模型导入.exe` |
-| Apple 芯片 Mac（macOS 12 及以上） | `Mac-Apple芯片` 文件夹中的 `Codex国产模型导入.app` |
-
-PowerShell 或终端会自动打开并执行导入，无需填写 API Key。完成后继续下面的“重新打开 App 选择模型”，无需运行下面的命令。
-
-群内双击版为未签名测试版。首次打开被系统拦截时，截取安全提示窗口，在群里反馈。
-:::
-
 **Linux / macOS：打开终端，复制运行。**
 
 ```sh
@@ -33,6 +18,13 @@ curl -fsSL https://docs.usegoodai.com/install/codex-models.sh | sh
 Linux 需要本机已有 Node.js 16 或以上版本。Linux / macOS 导入成功后会自动关闭 ChatGPT/Codex，正在运行的任务会中断。
 
 **Windows：按 `Win + X`，打开终端或 Windows PowerShell，复制运行。**
+
+<details>
+<summary>找不到 PowerShell？</summary>
+
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `Codex国产模型导入.exe` 即可。Mac 使用同名 `.app`。
+
+</details>
 
 ```powershell
 irm https://docs.usegoodai.com/install/codex-models.ps1 | iex

@@ -37,24 +37,14 @@ API Key 用来让 Codex 识别你的账户并记录用量，后面脚本会要�
 
 ## 2. 把 Codex 接入到 UseGoodAI
 
-::: tip 不想手动运行命令：到 QQ 群下载双击版
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，打开 **群文件**，下载 `UseGoodAI-installers-Windows-Mac.zip` 并解压。
-
-在解压后的文件夹中，按电脑系统选择文件：
-
-| 电脑系统 | 双击这个文件 |
-| --- | --- |
-| Windows 10/11 x64 | `Windows-x64` 文件夹中的 `Codex接入配置.exe` |
-| Apple 芯片 Mac（macOS 12 及以上） | `Mac-Apple芯片` 文件夹中的 `Codex接入配置.app` |
-
-PowerShell 或终端会自动打开。按提示粘贴第 1 步复制的 API Key，再按回车；配置完成后直接继续第 3 步，无需运行下面的命令。
-
-群内双击版为未签名测试版。首次打开被系统拦截时，截取安全提示窗口，在群里反馈。
-:::
-
-**使用命令配置：**
-
 Windows 按 `Win + X`，点击 **终端** 或 **Windows PowerShell**。
+
+<details>
+<summary>找不到 PowerShell？</summary>
+
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `Codex接入配置.exe`，按提示粘贴 API Key 即可。Mac 使用同名 `.app`。
+
+</details>
 
 在打开的窗口里粘贴运行：
 
