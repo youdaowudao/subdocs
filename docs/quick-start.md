@@ -42,7 +42,7 @@ Windows 按 `Win + X`，点击 **终端** 或 **Windows PowerShell**。
 <details>
 <summary>找不到 PowerShell？</summary>
 
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `Codex接入配置.exe`，按提示粘贴 API Key 即可。Mac 使用同名 `.app`。
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `Codex接入配置.exe`，按提示粘贴 API Key 即可。
 
 </details>
 

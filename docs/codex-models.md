@@ -22,7 +22,7 @@ Linux 需要本机已有 Node.js 16 或以上版本。Linux / macOS 导入成功
 <details>
 <summary>找不到 PowerShell？</summary>
 
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `Codex国产模型导入.exe` 即可。Mac 使用同名 `.app`。
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `Codex国产模型导入.exe` 即可。
 
 </details>
 
