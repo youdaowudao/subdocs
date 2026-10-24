@@ -9,6 +9,21 @@ sidebarTitle: 导入国产模型
 
 ## 一键导入
 
+::: tip 不想手动运行命令：到 QQ 群下载双击版
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，打开 **群文件**，下载 `UseGoodAI-installers-Windows-Mac.zip` 并解压。
+
+在解压后的文件夹中，按电脑系统选择文件：
+
+| 电脑系统 | 双击这个文件 |
+| --- | --- |
+| Windows 10/11 x64 | `Windows-x64` 文件夹中的 `Codex国产模型导入.exe` |
+| Apple 芯片 Mac（macOS 12 及以上） | `Mac-Apple芯片` 文件夹中的 `Codex国产模型导入.app` |
+
+PowerShell 或终端会自动打开并执行导入，无需填写 API Key。完成后继续下面的“重新打开 App 选择模型”，无需运行下面的命令。
+
+群内双击版为未签名测试版。首次打开被系统拦截时，截取安全提示窗口，在群里反馈。
+:::
+
 **Linux / macOS：打开终端，复制运行。**
 
 ```sh
@@ -48,7 +63,7 @@ Windows 脚本只读写 `CODEX_HOME` 中的配置与模型文件；未设置时�
 
 ## 更新或卸载
 
-**再次运行上面的导入命令，就是更新模型列表。**
+**需要更新模型列表时，重新运行上面的命令。使用双击版时，先从群文件下载最新安装包，再运行国产模型导入工具。**
 
 <details>
 <summary>卸载导入的国产模型</summary>

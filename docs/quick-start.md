@@ -4,7 +4,7 @@ title: 快速开始
 
 # 快速开始
 
-第一次使用 Windows 版 Codex App 时，按下面步骤配置。配置完成后，Codex 会通过 UseGoodAI 使用 AI 模型。
+第一次使用 Codex App 时，按下面步骤配置。配置完成后，Codex 会通过 UseGoodAI 使用 AI 模型。
 
 开始前确认：
 
@@ -35,7 +35,24 @@ API Key 用来让 Codex 识别你的账户并记录用量，后面脚本会要�
 
 </details>
 
-## 2. 打开 PowerShell 运行脚本
+## 2. 把 Codex 接入到 UseGoodAI
+
+::: tip 不想手动运行命令：到 QQ 群下载双击版
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，打开 **群文件**，下载 `UseGoodAI-installers-Windows-Mac.zip` 并解压。
+
+在解压后的文件夹中，按电脑系统选择文件：
+
+| 电脑系统 | 双击这个文件 |
+| --- | --- |
+| Windows 10/11 x64 | `Windows-x64` 文件夹中的 `Codex接入配置.exe` |
+| Apple 芯片 Mac（macOS 12 及以上） | `Mac-Apple芯片` 文件夹中的 `Codex接入配置.app` |
+
+PowerShell 或终端会自动打开。按提示粘贴第 1 步复制的 API Key，再按回车；配置完成后直接继续第 3 步，无需运行下面的命令。
+
+群内双击版为未签名测试版。首次打开被系统拦截时，截取安全提示窗口，在群里反馈。
+:::
+
+**使用命令配置：**
 
 Windows 按 `Win + X`，点击 **终端** 或 **Windows PowerShell**。
 
@@ -88,8 +105,6 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 <details>
 <summary>脚本安全吗？</summary>
 
-脚本开源，完全公开，绝对无任何问题。
-
 这个脚本只做两件事：写入 Codex 配置；写入后关闭正在运行的 ChatGPT 软件和 Codex，让新配置生效。不会修改系统设置，也不会安装或改动其他软件。不放心就用下面的 CC Switch 或手动配置。
 
 | 文件 | 作用 |
@@ -131,4 +146,4 @@ curl -fsSL https://docs.usegoodai.com/install/codex-restore.sh | bash
 
 ## 安装生图工具
 
-Codex 已经可以正常对话后，再为图片模型额外创建一个 **专门画图分组** 的 API Key。按照[安装生图工具](/image-video-group-image)运行一键安装命令，之后可以直接在 Codex 对话中生成、修改并显示图片。
+Codex 已经可以正常对话后，再为图片模型额外创建一个 **专门画图分组** 的 API Key。按照[安装生图工具](/image-video-group-image)完成安装，之后可以直接在 Codex 对话中生成、修改并显示图片。

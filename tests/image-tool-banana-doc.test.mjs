@@ -13,7 +13,7 @@ const ccSwitchSource = readFileSync(new URL('../docs/codex-cc-switch.md', import
 
 test('puts the image tool installation on one three-step customer path', () => {
   const stepOne = imageToolDocSource.indexOf('## 1. 创建专门画图分组的 API Key')
-  const stepTwo = imageToolDocSource.indexOf('## 2. 在终端安装生图工具')
+  const stepTwo = imageToolDocSource.indexOf('## 2. 安装生图工具')
   const stepThree = imageToolDocSource.indexOf('## 3. 打开 Codex 开始生图')
 
   assert.ok(stepOne > 0)
