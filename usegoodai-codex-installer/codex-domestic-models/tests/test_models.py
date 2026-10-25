@@ -41,6 +41,7 @@ def model(slug, **updates):
 
 GPT = model('gpt-original', supported_reasoning_levels=[{'effort': x, 'description': x} for x in ['low', 'medium', 'high', 'xhigh', 'ultra']])
 APP = {'models': [GPT, model('gpt-new')], 'version': 12}
+RETIRED = ['gpt-5.5']
 
 
 def case(config='model = "gpt-original"\nreview_model = "gpt-original"\n', **updates):
@@ -64,6 +65,7 @@ add('upgrade_existing_catalog_order', case(existing={'models': [GPT] + legacy_mo
 previous_ten_models = [m for m in DOMESTIC['models'] if m['slug'] != 'deepseek-v4.1-flash-1017']
 add('upgrade_previous_ten_models', case(existing={'models': [GPT] + previous_ten_models}, managed=[m['slug'] for m in previous_ten_models]))
 add('existing_deepseek_snapshot_not_duplicated', case(existing={'models': [GPT, next(m for m in DOMESTIC['models'] if m['slug'] == 'deepseek-v4.1-flash-1017')]}))
+add('retired_models_dropped', case(existing={'models': [GPT, model('gpt-5.5')]}, app={'models': [GPT, model('gpt-new'), model('gpt-5.5')]}))
 add('existing_mimo_ids_not_duplicated', case(existing={'models': [GPT] + DOMESTIC['models'][-2:]}))
 add('existing_desktop', case('model="gpt-original"\n[desktop]\nenabled-reasoning-efforts = ["ultra", # keep\n "high",]\ntheme="dark"\n[features]\nx=true\n'))
 add('quoted_keys', case('"model_catalog_json" = \'old.json\' # old path\n"model"="gpt-original"\n["desktop"]\n"enabled-reasoning-efforts" = [\'ultra\',\'high\']\n'))
@@ -134,6 +136,7 @@ class ModelTests(unittest.TestCase):
                     self.assertEqual(len(output['managed']), len(DOMESTIC['models']))
                     ids = [x['slug'] for x in output['catalog']['models']]
                     self.assertEqual(len(ids), len(set(ids)))
+                    self.assertFalse(set(ids) & set(RETIRED))
                     self.assertEqual([slug for slug in ids if slug in output['managed']], [m['slug'] for m in DOMESTIC['models']])
                     self.assertIn('gpt-original', ids)
                     original = tomllib.loads(value['config'].lstrip('\ufeff'))
@@ -152,7 +155,7 @@ class ModelTests(unittest.TestCase):
                     prior = {x['slug']: x for x in (value['existing'] or {'models': []})['models']}
                     result = {x['slug']: x for x in output['catalog']['models']}
                     for slug, item in prior.items():
-                        if slug not in value['managed'] and slug not in output['managed']:
+                        if slug not in value['managed'] and slug not in output['managed'] and slug not in RETIRED:
                             self.assertEqual(result[slug], item)
                     for item in DOMESTIC['models']:
                         self.assertEqual(result[item['slug']], item)
@@ -939,12 +942,13 @@ class WindowsImportTests(unittest.TestCase):
         cls.cases['cache_wrong_shape'] = {'config': b'model = "x"\n', 'cache': '{"models": "nope"}'}
         custom = copy.deepcopy(astra); custom.update(slug='user-custom', display_name='user-custom', custom_field={'keep': [1]})
         gone = copy.deepcopy(astra); gone.update(slug='gpt-removed-upstream', display_name='gone')
+        retired = copy.deepcopy(astra); retired.update(slug='gpt-5.5', display_name='retired')
         stale = copy.deepcopy(astra); stale['display_name'] = 'STALE'
         cls.cases['existing_catalog_refresh'] = {
             'config': b'model_catalog_json = "' + str(cls.root / 'existing_catalog_refresh' / 'usegoodai-models.json').encode() + b'"\n',
-            'catalog': json.dumps({'models': [stale, custom, gone], 'top': {'keep': True}}),
+            'catalog': json.dumps({'models': [stale, custom, gone, retired], 'top': {'keep': True}}),
             'managed': json.dumps(['renamed-domestic']),
-            'cache': windows_cache('0.170.0', [newer, future]),
+            'cache': windows_cache('0.170.0', [newer, future, retired]),
         }
         for name, case in cls.cases.items():
             directory = cls.root / name
@@ -1005,7 +1009,7 @@ class WindowsImportTests(unittest.TestCase):
         self.assertTrue(raw.startswith(b'\xef\xbb\xbf') and not raw.startswith(b'\xef\xbb\xbf\xef\xbb\xbf'))
 
     def test_catalog_has_official_hidden_and_domestic_models(self):
-        official = [m['slug'] for m in self.snapshot['models']]
+        official = [m['slug'] for m in self.snapshot['models'] if m['slug'] not in RETIRED]
         domestic = [m['slug'] for m in DOMESTIC['models']]
         for name in list(WIN_CONFIGS) + ['cache_corrupt', 'cache_wrong_shape']:
             with self.subTest(name=name):
@@ -1035,6 +1039,7 @@ class WindowsImportTests(unittest.TestCase):
         self.assertEqual(by_id['gpt-6-astra']['display_name'], 'FROM-CACHE')
         self.assertEqual(by_id['user-custom']['custom_field'], {'keep': [1]})
         self.assertIn('gpt-removed-upstream', by_id)
+        self.assertNotIn('gpt-5.5', by_id)
         self.assertIn('gpt-future', by_id)
         self.assertIn('codex-auto-review', by_id)
         ids = [m['slug'] for m in catalog['models']]

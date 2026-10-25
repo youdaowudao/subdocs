@@ -97,6 +97,9 @@ function Report-RunningClients($Result) {
   Say "已自动关闭 ${clients}，请重新打开并新建对话测试，如有问题请联系网站客服。"
 }
 # Windows PowerShell 5.1 compatible. Keep behavior in sync with core.js via parity tests.
+# Models the relay has retired: dropped from the snapshot, cache and existing catalog alike.
+$RetiredModels = @('gpt-5.5')
+
 function New-ModelImportError([string]$Message) {
   $problem=New-Object System.Exception -ArgumentList $Message
   $problem.Data['ModelImportSafe']=$true
@@ -460,6 +463,7 @@ function Merge-ModelCatalog($Existing, $Official, $Domestic, $Managed, $Info) {
   $owned = New-OrdinalMap
   foreach ($id in @($Managed)) { if ($id -is [string] -and $id -and -not $Official.Entries.ContainsKey($id) -and $id -notmatch '^gpt-') { $owned[$id] = $true } }
   foreach ($model in $Domestic.models) { $owned[$model.slug] = $true }
+  foreach ($id in $RetiredModels) { $owned[$id] = $true }
   $byId = New-OrdinalMap; $order = New-Object 'System.Collections.Generic.List[string]'
   if ($null -ne $Existing) {
     foreach ($model in $Existing.models) {
