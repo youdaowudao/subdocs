@@ -2,6 +2,7 @@ import { defineConfig } from 'vitepress'
 import { withSidebar } from 'vitepress-sidebar'
 
 const config = defineConfig({
+  lang: 'zh-CN',
   title: 'UseGoodAI.com中转站教程',
   description: '中转站各类教程',
   themeConfig: {
@@ -17,7 +18,19 @@ const config = defineConfig({
     ],
 
      search: {
-        provider: 'local'
+        provider: 'local',
+        options: {
+          miniSearch: {
+            options: {
+              // 默认分词只按空格和标点切开，中文整句会变成一个词；改按中文词语切分。
+              tokenize: (text) => {
+                if (typeof Intl === 'undefined' || !Intl.Segmenter) return text.split(/[\s\p{P}]+/u).filter(Boolean)
+                const segmenter = new Intl.Segmenter('zh-CN', { granularity: 'word' })
+                return Array.from(segmenter.segment(text)).filter((part) => part.isWordLike).map((part) => part.segment)
+              }
+            }
+          }
+        }
     }
 }
 
