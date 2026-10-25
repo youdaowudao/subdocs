@@ -42,3 +42,6 @@ local-scripts/
 
 # Generated images kept outside the documentation source.
 /images/
+
+# Local executable delivery; source stays in the owning subprojects.
+/下载成品/

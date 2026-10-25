@@ -2,6 +2,10 @@
 
 一条命令把 Codex App、ChatGPT 和 Codex CLI 的模型请求切换到 UseGoodAI中转站。脚本会写入当前用户的 `~/.codex/config.toml` 和 `~/.codex/auth.json`，写入后自动关闭正在运行的 ChatGPT 软件和 Codex。
 
+## 双击运行
+
+本地双击版本的构建入口是 [desktop/build.py](desktop/build.py)，生成 Windows `.exe` 和 Apple 芯片 Mac `.app`。双击后自动打开 PowerShell 或终端，继续完成原来的配置；成品位于 `dist/desktop/`。原有在线命令继续使用下面的入口。
+
 ## Windows
 
 打开 PowerShell，运行：

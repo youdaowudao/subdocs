@@ -6,3 +6,8 @@ reference/
 
 # Metadata of the former standalone repository, kept as a local backup only.
 .git-backup/
+
+# Native desktop artifacts and isolated build/test files.
+dist/
+desktop/.work/
+desktop/__pycache__/
