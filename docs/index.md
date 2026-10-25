@@ -34,13 +34,16 @@ UseGoodAI 中转站让 Codex 使用 AI 模型，并支持在对话中生成、�
 ## 接入完成后
 
 <div class="home-link-grid">
-  <a href="/clients/chatgpt-login-usegoodai">保持 ChatGPT 登录</a>
-  <a href="/images/codex-image-direct">Codex 生图</a>
-  <a href="/clients/">客户端接入</a>
-  <a href="/clients/codex-manual-config">Codex 手动配置</a>
+  <a href="/codex/chatgpt-login">保持 ChatGPT 登录</a>
+  <a href="/images/">生图</a>
+  <a href="/codex/">Codex</a>
+  <a href="/claude/">Claude</a>
+  <a href="/domestic/">国产工具</a>
+  <a href="/clients/">其他工具</a>
+  <a href="/codex/manual-config">Codex 手动配置</a>
   <a href="/images/infinite-canvas">无限画布</a>
   <a href="/models">模型价格</a>
   <a href="/errors/">遇到问题</a>
-  <a href="/external/codex-advanced">Codex 进阶</a>
+  <a href="/codex/advanced">Codex 进阶</a>
   <a href="/contact">联系客服</a>
 </div>
