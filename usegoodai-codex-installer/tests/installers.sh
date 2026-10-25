@@ -249,8 +249,8 @@ else
 fi
 
 if [ -f "$new_home/.codex/config.toml" ]; then
-  assert_contains "$new_home/.codex/config.toml" 'model = "gpt-5.6-sol"' "默认模型为 gpt-5.6-sol"
-  assert_contains "$new_home/.codex/config.toml" 'review_model = "gpt-5.6-sol"' "review_model 保持完整"
+  assert_contains "$new_home/.codex/config.toml" 'model = "gpt-6.1-sol"' "默认模型为 gpt-6.1-sol"
+  assert_contains "$new_home/.codex/config.toml" 'review_model = "gpt-6.1-sol"' "review_model 保持完整"
   assert_contains "$new_home/.codex/config.toml" 'model_reasoning_effort = "high"' "默认推理强度为 high"
   assert_contains "$new_home/.codex/config.toml" 'network_access = "enabled"' "保留用户指定的网络配置"
   assert_contains "$new_home/.codex/config.toml" '[model_providers.OpenAI]' "生成配置保留完整自定义 provider 段"

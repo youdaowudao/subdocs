@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $CodexBaseUrl = "https://api.usegoodai.com"
-$CodexModel = "gpt-5.6-sol"
+$CodexModel = "gpt-6.1-sol"
 
 $CodexHome = Join-Path $HOME ".codex"
 $ConfigFile = Join-Path $CodexHome "config.toml"

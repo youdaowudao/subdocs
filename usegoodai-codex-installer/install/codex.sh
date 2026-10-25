@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CODEX_BASE_URL="https://api.usegoodai.com"
-CODEX_MODEL="gpt-5.6-sol"
+CODEX_MODEL="gpt-6.1-sol"
 CODEX_HOME="$HOME/.codex"
 CONFIG_FILE="$CODEX_HOME/config.toml"
 AUTH_FILE="$CODEX_HOME/auth.json"

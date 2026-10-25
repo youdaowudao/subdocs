@@ -50,8 +50,8 @@ Linux 使用本机已有 Node.js 16+，脚本不会自动安装依赖。模型�
 ## 写入结果
 
 - API 地址：`https://api.usegoodai.com`
-- 默认模型：`gpt-5.6-sol`
-- 复核模型：`gpt-5.6-sol`
+- 默认模型：`gpt-6.1-sol`
+- 复核模型：`gpt-6.1-sol`
 - 推理强度：`high`
 - provider：`OpenAI`
 - 鉴权：`requires_openai_auth = true`，使用 `auth.json` 中的 API Key
