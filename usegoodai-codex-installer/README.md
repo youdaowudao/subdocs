@@ -40,6 +40,10 @@ curl -fsSL https://docs.usegoodai.com/install/codex-models.sh | sh
 
 Linux 使用本机已有 Node.js 16+，脚本不会自动安装依赖。模型设定、完整源码、自动测试、独立审查与桌面待验收项目在 [codex-domestic-models](codex-domestic-models/README.md) 内维护。
 
+## 恢复官方登录
+
+Windows 运行 `irm https://docs.usegoodai.com/install/codex-restore.ps1 | iex`，macOS / Linux / WSL 运行 `curl -fsSL https://docs.usegoodai.com/install/codex-restore.sh | bash`。脚本先备份 `config.toml` 和 `auth.json`，再删除 `config.toml` 根部的 `model_provider`、`model`、`review_model` 和全部 `[model_providers.*]` 段，并清空 `auth.json`；其它配置保留。完成后退出 Codex，重新打开用官方账号登录。
+
 ## 使用过程
 
 1. 在终端明文输入 UseGoodAI中转站API Key。Key 必须以 `sk-` 开头；输入为空或格式错误时会提示重新输入。
@@ -66,6 +70,8 @@ Linux 使用本机已有 Node.js 16+，脚本不会自动安装依赖。模型�
 install/
   codex.ps1
   codex.sh
+  codex-restore.ps1
+  codex-restore.sh
   codex-models.ps1
   codex-models.sh
 codex-domestic-models/
@@ -85,10 +91,10 @@ bash tests/installers.sh
 
 ## 部署
 
-原 GPT 脚本在 `install/` 里维护；国产模型导入脚本只在 `codex-domestic-models/` 内开发、构建和测试，再手动复制交付物到本目录的 `install/`。把要发布的脚本复制到文档站部署位置，再提交并推送：
+原 GPT 脚本和还原脚本 `codex-restore.*` 在 `install/` 里维护；国产模型导入脚本只在 `codex-domestic-models/` 内开发、构建和测试，再手动复制交付物到本目录的 `install/`。把要发布的脚本复制到文档站部署位置，再提交并推送：
 
 ```bash
-cp install/codex.sh install/codex.ps1 ../docs/public/install/
+cp install/codex.sh install/codex.ps1 install/codex-restore.sh install/codex-restore.ps1 ../docs/public/install/
 cp codex-domestic-models/install/codex-models.sh codex-domestic-models/install/codex-models.ps1 install/
 cp install/codex-models.sh install/codex-models.ps1 ../docs/public/install/
 ```

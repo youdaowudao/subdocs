@@ -30,3 +30,12 @@ for (const [name, path, sourcePath] of installers) {
     assert.equal(installer, source)
   })
 }
+
+for (const name of ['codex-restore.sh', 'codex-restore.ps1']) {
+  test(`published ${name} matches the installer source`, async () => {
+    const installer = await readFile(new URL(`../docs/public/install/${name}`, import.meta.url), 'utf8')
+    const source = await readFile(new URL(`../usegoodai-codex-installer/install/${name}`, import.meta.url), 'utf8')
+
+    assert.equal(installer, source)
+  })
+}
