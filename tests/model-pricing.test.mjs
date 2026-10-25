@@ -721,7 +721,7 @@ test('calculates hy4-preview from the official RMB baseline at a 0.45 multiplier
   assert.equal(getSavingsPercent(group.multiplier, group.currency), 55)
 })
 
-test('shows DeepSeek V4.1 Flash first, followed by V4 Flash and Pro, at a 0.45 multiplier', () => {
+test('shows DeepSeek V4.1 Flash first, followed by V4.1 Flash 1017, V4 Flash and Pro, at a 0.45 multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'deepseek')
   const models = getTextModelsForGroup(group.id)
 
@@ -735,6 +735,11 @@ test('shows DeepSeek V4.1 Flash first, followed by V4 Flash and Pro, at a 0.45 m
       {
         id: 'deepseek-flash',
         name: 'DeepSeek V4.1 Flash',
+        officialCny: { input: 1, output: 4, cachedInput: 0.02 },
+      },
+      {
+        id: 'deepseek-v4.1-flash-1017',
+        name: 'DeepSeek V4.1 Flash 1017',
         officialCny: { input: 1, output: 4, cachedInput: 0.02 },
       },
       {
