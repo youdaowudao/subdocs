@@ -9,6 +9,7 @@ const GPT_MODEL_IDS = [
   'gpt-6-astra',
   'gpt-6.1-sol',
   'gpt-6-sol',
+  'gpt-6-luna',
   'gpt-5.6-sol',
   'gpt-5.6-terra',
   'gpt-5.6-luna',
@@ -335,6 +336,12 @@ export const TEXT_MODELS = [
     name: 'GPT-6 Sol',
     description: '复杂代码、智能体工作流和专业任务',
     officialUsd: { input: 2, output: 10, cachedInput: 0.2 },
+  },
+  {
+    id: 'gpt-6-luna',
+    name: 'GPT-6 Luna',
+    description: '简单问答、小改动和批量处理',
+    officialUsd: { input: 0.1, output: 0.5, cachedInput: 0.01 },
   },
   {
     id: 'gpt-6-astra',
