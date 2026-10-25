@@ -89,6 +89,8 @@ tests/
 bash tests/installers.sh
 ```
 
+`reference/original/` 是不进 Git 的本机对照材料，没有时跳过两项参考文件检查。临时文件建在 `TMPDIR`（默认系统临时目录）。
+
 ## 部署
 
 原 GPT 脚本和还原脚本 `codex-restore.*` 在 `install/` 里维护；国产模型导入脚本只在 `codex-domestic-models/` 内开发、构建和测试，再手动复制交付物到本目录的 `install/`。把要发布的脚本复制到文档站部署位置，再提交并推送：

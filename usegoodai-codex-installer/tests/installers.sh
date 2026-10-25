@@ -218,15 +218,20 @@ assert_not_contains "$POWERSHELL_SCRIPT" '默认模型：' "PowerShell 不再显
 assert_contains "$README_FILE" 'irm https://docs.usegoodai.com/install/codex.ps1 | iex' "README 写明 Windows 完整命令"
 assert_contains "$README_FILE" 'curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash' "README 写明 macOS/Linux 完整命令"
 
-if [ "$(sha256sum "$REFERENCE_POWERSHELL_SCRIPT" | awk '{print $1}')" = "1dd391654588bba861cb908486af94d2e2f03bd6b9ace8b586c1f924781a5f4c" ]; then
-  pass "PowerShell 原始参考文件保持不变"
+# reference/ 是不进 Git 的本机对照材料；其它机器上没有时跳过这两项。
+if [ -f "$REFERENCE_POWERSHELL_SCRIPT" ] || [ -f "$REFERENCE_SHELL_SCRIPT" ]; then
+  if [ "$(sha256sum "$REFERENCE_POWERSHELL_SCRIPT" | awk '{print $1}')" = "1dd391654588bba861cb908486af94d2e2f03bd6b9ace8b586c1f924781a5f4c" ]; then
+    pass "PowerShell 原始参考文件保持不变"
+  else
+    fail "PowerShell 原始参考文件保持不变"
+  fi
+  if [ "$(sha256sum "$REFERENCE_SHELL_SCRIPT" | awk '{print $1}')" = "fa787f8dd096673a6698701342a1f006dc31aed751f6801423f9ca8418f8aedd" ]; then
+    pass "Shell 原始参考文件保持不变"
+  else
+    fail "Shell 原始参考文件保持不变"
+  fi
 else
-  fail "PowerShell 原始参考文件保持不变"
-fi
-if [ "$(sha256sum "$REFERENCE_SHELL_SCRIPT" | awk '{print $1}')" = "fa787f8dd096673a6698701342a1f006dc31aed751f6801423f9ca8418f8aedd" ]; then
-  pass "Shell 原始参考文件保持不变"
-else
-  fail "Shell 原始参考文件保持不变"
+  printf 'SKIP: 本机没有 reference/original，跳过原始参考文件检查\n'
 fi
 
 new_home="$TEST_ROOT/new-home"
