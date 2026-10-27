@@ -8,6 +8,7 @@ export const DEEPSEEK_PRICE_PERIODS = {
 const GPT_MODEL_IDS = [
   'gpt-6-astra',
   'gpt-6.1-sol',
+  'gpt-6.1-terra',
   'gpt-6-sol',
   'gpt-6-luna',
   'gpt-5.6-sol',
@@ -330,6 +331,13 @@ export const TEXT_MODELS = [
     name: 'GPT-6.1 Sol',
     description: '复杂代码、计算机操作和专业任务',
     officialUsd: { input: 2, output: 10, cachedInput: 0.1 },
+  },
+  {
+    id: 'gpt-6.1-terra',
+    name: 'GPT-6.1 Terra',
+    description: '视觉推理、精准计算机操作和日常写作',
+    // 官方标准价：https://developers.openai.com/api/docs/models/gpt-6.1-terra
+    officialUsd: { input: 1, output: 5, cachedInput: 0.05 },
   },
   {
     id: 'gpt-6-sol',
