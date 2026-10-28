@@ -40,7 +40,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 <details>
 <summary>不想用 PowerShell？</summary>
 
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `UseGoodAI生图工具.exe`，按提示粘贴**专门画图分组 Key**。
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `2.UseGoodAI生图工具.exe`，按提示粘贴**专门画图分组 Key**。
 
 </details>
 

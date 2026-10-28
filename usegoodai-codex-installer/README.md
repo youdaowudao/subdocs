@@ -24,7 +24,7 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 
 ## 给 Codex 增加国产模型
 
-在已安装 Codex 的机器上运行对应命令，导入 11 个国产模型；Windows 只读写 `CODEX_HOME` 中的配置和模型文件，Linux 还需要已有 Node.js 16+。官方账号和任意中转站均可导入，默认模型、服务名称、接口和 Key 保留；没有配置时只创建模型目录所需的设置。Windows 完成后手动退出并重新打开 ChatGPT App；Linux/macOS 成功后自动关闭客户端。重新打开 App 并新建任务选择模型。重复运行同一命令就是更新。
+在已安装 Codex 的机器上运行对应命令，导入 11 个国产模型；Windows 只读写 `CODEX_HOME` 中的配置和模型文件，Linux 还需要已有 Node.js 16+。官方账号和任意中转站均可导入，默认模型、服务名称、接口和 Key 保留；没有配置时只创建模型目录所需的设置。成功导入后自动关闭 ChatGPT/Codex。重新打开 App 并新建任务选择模型。重复运行同一命令就是更新。
 
 Windows：
 

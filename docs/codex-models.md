@@ -30,7 +30,7 @@ Linux 需要已安装 Node.js 16 以上。
 <details>
 <summary>不想用 PowerShell？</summary>
 
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `Codex国产模型导入.exe`。
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `3.Codex国产模型导入.exe`。
 
 </details>
 
@@ -55,6 +55,8 @@ Linux 需要已安装 Node.js 16 以上。
 ## 更新或卸载
 
 更新模型列表：重新运行第 1 步的命令。双击版从群文件下载最新安装包重新运行。
+
+本次已加入 `gpt-6.1-terra`。模型列表保存在本机；后续官方新增 GPT 时，使用更新后的脚本或最新双击版重新导入。
 
 卸载只移除本工具导入的国产模型，GPT 和其它配置保留。卸载后会自动关闭 ChatGPT 和 Codex，重新打开、新建任务即可。
 

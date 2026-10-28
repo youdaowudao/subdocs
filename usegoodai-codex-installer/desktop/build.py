@@ -8,8 +8,8 @@ from packaging import mac_application, powershell_runner, windows_executable, wr
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_ROOT = PROJECT_ROOT / "dist" / "desktop"
 TOOLS = (
-    ("Codex接入配置", "codex", "com.usegoodai.codex-config"),
-    ("Codex国产模型导入", "codex-models", "com.usegoodai.codex-models"),
+    ("1.Codex接入配置", "codex", "com.usegoodai.codex-config"),
+    ("3.Codex国产模型导入", "codex-models", "com.usegoodai.codex-models"),
 )
 
 

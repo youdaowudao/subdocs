@@ -98,7 +98,7 @@ curl -fsSL https://docs.usegoodai.com/install/codex-restore.sh | bash
 
 | 方式 | 什么时候用 |
 | --- | --- |
-| QQ 群运行版 | 不想用 PowerShell。加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载后解压，双击 `Codex接入配置.exe`，按提示粘贴 API Key |
+| QQ 群运行版 | 不想用 PowerShell。加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载后解压，双击 `1.Codex接入配置.exe`，按提示粘贴 API Key |
 | [CC Switch 接入](/codex-cc-switch) | 脚本下载失败，或需要在官方账号和中转站之间来回切换 |
 | [手动配置](/codex/manual-config) | 不想运行脚本，自己修改配置文件 |
 

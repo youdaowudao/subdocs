@@ -21,6 +21,7 @@ spec = importlib.util.spec_from_file_location('build', ROOT / 'build.py')
 build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build)
 DOMESTIC = build.build()
+OFFICIAL = json.loads((ROOT / 'src/gpt-catalog.json').read_text())
 (WORK / 'domestic.json').write_text(json.dumps(DOMESTIC, ensure_ascii=False))
 NODE = Path(os.environ.get('TEST_NODE', ROOT / '.dev-tools/node/bin/node'))
 PWSH = Path(os.environ.get('TEST_PWSH', ROOT / '.dev-tools/pwsh/pwsh'))
@@ -109,6 +110,8 @@ add('duplicate_catalog_key', case('model_catalog_json="a"\n"model_catalog_json"=
 add('unclosed_string', case('a="bad\n'), False)
 add('unclosed_multiline', case('a="""\n'), False)
 add('unclosed_array', case('a=["bad"\n'), False)
+add('official_snapshot_supplements_old_backend', case(official=OFFICIAL))
+add('official_snapshot_preserves_existing_metadata', case(existing={'models': [GPT]}, official=OFFICIAL))
 
 
 class ModelTests(unittest.TestCase):
@@ -162,6 +165,17 @@ class ModelTests(unittest.TestCase):
 
     def test_exact_ids(self):
         self.assertEqual([m['slug'] for m in DOMESTIC['models']], ['deepseek-flash','deepseek-v4.1-flash-1017','glm-5.3','glm-5.3-flash','qwen3.8-max','qwen3.8-flash','kimi-k3','minimax-m3','hy4-preview','mimo-v2.6-pro','mimo-v2.6-flash'])
+
+    def test_old_backend_gets_official_terra_without_duplicates(self):
+        terra = next(m for m in OFFICIAL['models'] if m['slug'] == 'gpt-6.1-terra')
+        for index, (name, _) in enumerate(CASES.items()):
+            if not name.startswith('official_snapshot_'):
+                continue
+            output = self.outputs['mac_core'][index]
+            self.assertTrue(output['ok'])
+            entries = [m for m in output['catalog']['models'] if m['slug'] == 'gpt-6.1-terra']
+            self.assertEqual(entries, [terra])
+            self.assertNotIn('gpt-5.5', [m['slug'] for m in output['catalog']['models']])
 
     def test_deepseek_official_codex_capabilities(self):
         snapshot_id = 'deepseek-v4.1-flash-1017'
@@ -373,6 +387,8 @@ theme = "dark"
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertIn(f"已导入 {len(DOMESTIC['models'])} 个国产模型",result.stdout)
         first=json.loads((target/'usegoodai-models.json').read_text())
+        terra=next(m for m in OFFICIAL['models'] if m['slug']=='gpt-6.1-terra')
+        self.assertEqual([m for m in first['models'] if m['slug']=='gpt-6.1-terra'],[terra])
         gpt=next(m for m in first['models'] if m['slug'].startswith('gpt-'))
         gpt['keep_metadata']={'nested':True}
         custom=copy.deepcopy(gpt);custom['slug']='user-custom'
@@ -385,6 +401,7 @@ theme = "dark"
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         actual=json.loads((target/'usegoodai-models.json').read_text())
         by_id={m['slug']:m for m in actual['models']}
+        self.assertEqual(by_id['gpt-6.1-terra'],terra)
         self.assertNotIn('removed-domestic',by_id)
         self.assertEqual(by_id[gpt['slug']]['keep_metadata'],{'nested':True})
         self.assertEqual(by_id['user-custom'],custom)
@@ -685,6 +702,7 @@ console.log(core.formatError(error));'''
         self.assertTrue(ids)
         self.assertEqual(len(ids),len(set(ids)))
         self.assertTrue(any(slug.startswith('gpt-') for slug in ids))
+        self.assertEqual(ids.count('gpt-6.1-terra'), 1)
         hidden=[m for m in snapshot['models'] if m['slug']=='codex-auto-review']
         self.assertEqual([m['visibility'] for m in hidden],['hide'])
         target=WORK/'windows-snapshot-schema'
@@ -940,6 +958,10 @@ class WindowsImportTests(unittest.TestCase):
         cls.cases['cache_older'] = {'config': b'model = "x"\n', 'cache': windows_cache('0.100.0', [older, only_old])}
         cls.cases['cache_corrupt'] = {'config': b'model = "x"\n', 'cache': '{not json'}
         cls.cases['cache_wrong_shape'] = {'config': b'model = "x"\n', 'cache': '{"models": "nope"}'}
+        cls.cases['cache_before_terra'] = {
+            'config': b'model = "x"\n',
+            'cache': windows_cache('0.162.1', [m for m in cls.snapshot['models'] if m['slug'] != 'gpt-6.1-terra']),
+        }
         custom = copy.deepcopy(astra); custom.update(slug='user-custom', display_name='user-custom', custom_field={'keep': [1]})
         gone = copy.deepcopy(astra); gone.update(slug='gpt-removed-upstream', display_name='gone')
         retired = copy.deepcopy(astra); retired.update(slug='gpt-5.5', display_name='retired')
@@ -969,7 +991,7 @@ class WindowsImportTests(unittest.TestCase):
 
     @classmethod
     def run_driver(cls, action):
-        result = execute([PWSH, '-NoProfile', '-File', 'tests/driver.ps1', cls.root, action])
+        result = execute([PWSH, '-NoProfile', '-File', 'tests/driver.ps1', cls.root, action, build.OFFICIAL_SNAPSHOT_VERSION])
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
         return json.loads(result.stdout)
@@ -1011,7 +1033,7 @@ class WindowsImportTests(unittest.TestCase):
     def test_catalog_has_official_hidden_and_domestic_models(self):
         official = [m['slug'] for m in self.snapshot['models'] if m['slug'] not in RETIRED]
         domestic = [m['slug'] for m in DOMESTIC['models']]
-        for name in list(WIN_CONFIGS) + ['cache_corrupt', 'cache_wrong_shape']:
+        for name in list(WIN_CONFIGS) + ['cache_corrupt', 'cache_wrong_shape', 'cache_before_terra']:
             with self.subTest(name=name):
                 catalog = self.read_catalog(name)
                 ids = [m['slug'] for m in catalog['models']]
@@ -1019,7 +1041,8 @@ class WindowsImportTests(unittest.TestCase):
                 by_id = {m['slug']: m for m in catalog['models']}
                 self.assertEqual(by_id['codex-auto-review']['visibility'], 'hide')
                 self.assertEqual(json.loads((self.root / name / 'usegoodai-models.managed.json').read_text()), domestic)
-                self.assertFalse(self.results[name]['usedCache'])
+                if name != 'cache_before_terra':
+                    self.assertFalse(self.results[name]['usedCache'])
 
     def test_cache_priority(self):
         newer = {m['slug']: m for m in self.read_catalog('cache_newer')['models']}
@@ -1029,7 +1052,7 @@ class WindowsImportTests(unittest.TestCase):
         self.assertNotIn('broken', newer)
         self.assertIn('codex-auto-review', newer)
         older = {m['slug']: m for m in self.read_catalog('cache_older')['models']}
-        self.assertEqual(older['gpt-6-astra']['display_name'], 'GPT-6-Astra')
+        self.assertEqual(older['gpt-6-astra']['display_name'], next(m['display_name'] for m in self.snapshot['models'] if m['slug'] == 'gpt-6-astra'))
         self.assertIn('gpt-old-only', older)
 
     def test_existing_catalog_refreshed_without_losing_entries(self):

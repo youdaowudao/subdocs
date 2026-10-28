@@ -10,7 +10,7 @@
 python3 build.py
 ```
 
-成品写入 `../dist/desktop/Windows-x64/` 和 `../dist/desktop/Mac-Apple芯片/`。两项工具分别生成 `.exe` 和 `.app`，不创建压缩包。Windows 使用系统 PowerShell 5.1；当前 Go 1.25 构建面向 Windows 10/11 x64 和 macOS 12 及以上的 Apple Silicon。
+成品写入 `../dist/desktop/Windows-x64/` 和 `../dist/desktop/Mac-Apple芯片/`。两项工具分别生成 `1.Codex接入配置` 和 `3.Codex国产模型导入` 的 `.exe`、`.app`，不创建压缩包；编号 2 留给生图子项目生成的 `2.UseGoodAI生图工具`。Windows 使用系统 PowerShell 5.1；当前 Go 1.25 构建面向 Windows 10/11 x64 和 macOS 12 及以上的 Apple Silicon。
 
 Windows 启动器内附原始 PowerShell 脚本，运行时在当前用户临时目录展开并启动，结束后清理临时文件。中文脚本带 UTF-8 BOM，支持 Windows PowerShell 5.1。Mac `.app` 内附原始 Shell 脚本，使用系统终端运行；整个 `.app` 目录是一个应用，移动或压缩时保留完整目录和可执行权限。
 
@@ -31,4 +31,4 @@ python3 -m unittest test_packaging.py -v
 
 ## 供生图工具复用启动器
 
-`../../usegoodai-imagines-tool/release/build_desktop.py` 只读取这里的通用启动器和打包函数，把已核对的 V0.8.1 原生程序装入独立成品。生图源码、版本和打包入口继续在生图子项目维护；其缓存及成品留在生图子项目 `dist/`，不改动线上安装脚本或父仓库发布目录。
+`../../usegoodai-imagines-tool/release/build_desktop.py` 只读取这里的通用启动器和打包函数，把已核对的 V0.8.2 原生程序装入独立成品。生图源码、版本和打包入口继续在生图子项目维护；其缓存及成品留在生图子项目 `dist/`，不改动线上安装脚本或父仓库发布目录。

@@ -58,7 +58,7 @@ class DesktopPackagingTests(unittest.TestCase):
 
     def test_actual_artifacts_have_correct_architecture_and_original_payloads(self) -> None:
         output = PROJECT_ROOT / "dist/desktop"
-        for title, script in (("Codex接入配置", "codex"), ("Codex国产模型导入", "codex-models")):
+        for title, script in (("1.Codex接入配置", "codex"), ("3.Codex国产模型导入", "codex-models")):
             executable = output / "Windows-x64" / f"{title}.exe"
             data = executable.read_bytes()
             self.assertEqual(data[:2], b"MZ")
@@ -72,6 +72,7 @@ class DesktopPackagingTests(unittest.TestCase):
                 self.assertEqual(archive.read("install.ps1").removeprefix(b"\xef\xbb\xbf"), original)
             app = output / "Mac-Apple芯片" / f"{title}.app/Contents"
             info = plistlib.loads((app / "Info.plist").read_bytes())
+            self.assertEqual(info["CFBundleDisplayName"], title)
             launcher = app / "MacOS" / info["CFBundleExecutable"]
             self.assertEqual(struct.unpack_from("<II", launcher.read_bytes()), (0xFEEDFACF, 0x0100000C))
             self.assertTrue(os.access(launcher, os.X_OK))
