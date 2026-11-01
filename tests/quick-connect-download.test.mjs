@@ -93,10 +93,17 @@ test('Mac download is the zipped app with the published codex.sh', async () => {
   const installer = await readFile(new URL('docs/public/install/codex.sh', root))
   assert.deepEqual(entries.get(`${contents}Resources/install.sh`).body, installer)
   assert.match(entries.get(`${contents}Resources/run.command`).body.toString('utf8'), /install\.sh" --from-app\n/)
-  assert.match(entries.get(`${contents}Info.plist`).body.toString('utf8'), /<string>UseGoodAI中转快速接入助手<\/string>/)
+  const runner = entries.get(`${contents}Resources/run.command`).body
+  assert.deepEqual(runner, await readFile(new URL('usegoodai-codex-installer/quick-connect/macapp/run.command', root)))
+  assert.match(runner.toString('utf8'), /USEGOODAI_KEY="\$key" \/bin\/bash "\$resource_dir\/install\.sh"\n/)
+  const plist = entries.get(`${contents}Info.plist`).body.toString('utf8')
+  assert.match(plist, /<string>UseGoodAI中转快速接入助手<\/string>/)
+  // The website's one import button opens usegoodai:// links on Mac too.
+  assert.match(plist, /<key>CFBundleURLSchemes<\/key>\s*<array>\s*<string>usegoodai<\/string>\s*<\/array>/)
   const launcher = entries.get(`${contents}MacOS/launcher`)
   assert.equal(launcher.body.readUInt32LE(0), 0xfeedfacf)
   assert.equal(launcher.body.readUInt32LE(4), 0x0100000c)
+  assert.ok(launcher.body.includes(Buffer.from('usegoodai-quick-connect/macapp')), 'link-aware launcher')
   for (const name of ['MacOS/launcher', 'Resources/install.sh', 'Resources/run.command']) {
     assert.equal(entries.get(contents + name).mode & 0o111, 0o111, `${name} is executable`)
   }
