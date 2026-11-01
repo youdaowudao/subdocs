@@ -40,19 +40,19 @@ open_link() {
     sleep 0.25
   done
   if alert_shown "$message"; then
-    pass "$name：提示「$message」"
+    pass "${name}：提示「${message}」"
   else
-    fail "$name：没有出现提示「$message」"
+    fail "${name}：没有出现提示「${message}」"
   fi
   for i in $(seq 1 60); do
     pgrep -f "$launcher" >/dev/null || break
     sleep 0.25
   done
   if pgrep -f "$launcher" >/dev/null; then
-    fail "$name：启动器没有自动退出"
+    fail "${name}：启动器没有自动退出"
     pkill -f "$launcher" || true
   else
-    pass "$name：启动器已自动退出"
+    pass "${name}：启动器已自动退出"
   fi
   pkill -f 'display alert' 2>/dev/null || true
 }
