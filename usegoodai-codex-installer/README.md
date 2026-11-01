@@ -7,7 +7,7 @@
 编号工具 1 是 `1.UseGoodAI中转快速接入助手`，构建入口是 [desktop/build.py](desktop/build.py)，成品位于 `dist/desktop/`：
 
 - Windows `.exe`：窗口程序，源码在 [quick-connect/](quick-connect/README.md)。粘贴密钥点「一键连接 Codex」，或在网站点「一键导入」打开 `usegoodai://` 链接直接导入。
-- Apple 芯片 Mac `.app`：打开终端运行 `install/codex.sh`；剪贴板里有 `sk-` 密钥时提示直接回车使用。
+- Apple 芯片 Mac `.app`：打开终端运行 `install/codex.sh`。双击打开时读剪贴板里的 `sk-` 密钥，提示直接回车使用；在网站点「一键导入」时接收同一个 `usegoodai://` 链接，密钥通过 `USEGOODAI_KEY` 交给脚本。Mac 版只能在 Mac 上编译，由 GitHub Actions 打包，见 [desktop/README.md](desktop/README.md)。
 
 网站下载用固定地址，更新时覆盖：
 
@@ -87,7 +87,7 @@ Windows 运行 `irm https://docs.usegoodai.com/install/codex-restore.ps1 | iex`�
 ## 仓库结构
 
 ```text
-quick-connect/       Windows 窗口版助手（Go + Wails）
+quick-connect/       快速接入助手：Windows 窗口版（Go + Wails）、Mac 启动器 macapp/
 desktop/             双击成品的启动器和打包程序
 install/
   codex.ps1
@@ -124,7 +124,8 @@ bash tests/installers.sh
 cp install/codex.sh install/codex.ps1 install/codex-restore.sh install/codex-restore.ps1 ../docs/public/install/
 cp codex-domestic-models/install/codex-models.sh codex-domestic-models/install/codex-models.ps1 install/
 cp install/codex-models.sh install/codex-models.ps1 ../docs/public/install/
-(cd desktop && python3 build.py)
+# 先手动触发 Actions 的 Mac 打包并下载产物，见 desktop/README.md
+(cd desktop && python3 build.py --mac-launcher <产物里的 Contents/MacOS/launcher>)
 cp dist/desktop/download/usegoodai-quick-connect-windows-x64.exe dist/desktop/download/usegoodai-quick-connect-mac-arm64.zip ../docs/public/download/
 ```
 
