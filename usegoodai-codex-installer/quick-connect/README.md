@@ -45,7 +45,7 @@ cd ../desktop && python3 build.py --mac-launcher <Actions 产物里的 Contents/
 
 只构建 exe：`python3 build.py [输出路径]`。Go 模块、缓存和临时文件都放在本目录 `.work/`（不进 Git）；`rsrc_windows_amd64.syso`（图标、清单、文件属性）每次构建重新生成。
 
-版本号在 `connect/product.go` 的 `Version`，同时写入 exe 文件属性和窗口底部；`../desktop/build.py` 的 Mac 版本号必须与它一致。
+版本号在 `connect/product.go` 的 `Version`，同时写入 exe 文件属性和窗口底部；`../desktop/build.py` 的 Mac 版本号必须与它一致。Mac 版增加导入链接是同一个软件的更新，不是新软件：版本号沿用 `1.0.0`，Bundle 标识沿用 `com.usegoodai.codex-config`。
 
 ## 测试
 
