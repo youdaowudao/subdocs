@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $CodexBaseUrl = "https://api.usegoodai.com"
 $CodexModel = "gpt-6.1-sol"
+$UsageUrl = "$CodexBaseUrl/v1/usage"
 
 $CodexHome = Join-Path $HOME ".codex"
 $ConfigFile = Join-Path $CodexHome "config.toml"
@@ -150,6 +151,142 @@ function Read-ValidatedApiKey {
   }
 }
 
+# 检查结果 State：usable、no_balance、rejected、disabled、unknown。
+# 按 JSON 规则转义字符串：引号、反斜杠和控制字符。
+function ConvertTo-JsonText([string]$Value) {
+  $builder = New-Object System.Text.StringBuilder
+  foreach ($character in $Value.ToCharArray()) {
+    $code = [int]$character
+    if ($code -eq 0x22) {
+      [void]$builder.Append('\"')
+    } elseif ($code -eq 0x5C) {
+      [void]$builder.Append('\\')
+    } elseif ($code -lt 0x20) {
+      [void]$builder.Append(('\u{0:x4}' -f $code))
+    } else {
+      [void]$builder.Append($character)
+    }
+  }
+  return $builder.ToString()
+}
+
+# /v1/usage 不做计费检查：过期或额度用完的密钥仍返回 isValid true，要看 status 和 expires_at。
+# 到期后 status 仍是 active，所以还要比较过期时间。
+function Test-KeyEnded($Data) {
+  if ($Data.status -eq "expired" -or $Data.status -eq "quota_exhausted") {
+    return $true
+  }
+  $expires = $Data.expires_at
+  if ($expires -is [DateTimeOffset]) {
+    return $expires.UtcDateTime -lt [DateTime]::UtcNow
+  }
+  if ($expires -is [DateTime]) {
+    return $expires.ToUniversalTime() -lt [DateTime]::UtcNow
+  }
+  if ($expires -is [string] -and $expires) {
+    $parsed = [DateTimeOffset]::MinValue
+    if ([DateTimeOffset]::TryParse($expires, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) {
+      return $parsed.UtcDateTime -lt [DateTime]::UtcNow
+    }
+  }
+  return $false
+}
+
+function Test-ApiKey([string]$ApiKey) {
+  $result = @{ State = "unknown"; Balance = $null }
+  try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+  } catch {
+  }
+  try {
+    $response = Invoke-WebRequest -Uri $UsageUrl -Headers @{ Authorization = "Bearer $ApiKey"; Accept = "application/json" } -TimeoutSec 10 -UseBasicParsing -ErrorAction Stop
+  } catch {
+    $status = 0
+    try {
+      $status = [int]$_.Exception.Response.StatusCode
+    } catch {
+    }
+    if ($status -eq 401 -or $status -eq 403) {
+      $result.State = "rejected"
+    }
+    return $result
+  }
+  if ([int]$response.StatusCode -ne 200) {
+    return $result
+  }
+  try {
+    $data = $response.Content | ConvertFrom-Json -ErrorAction Stop
+  } catch {
+    return $result
+  }
+  if (-not ($data.isValid -is [bool])) {
+    return $result
+  }
+  if (-not $data.isValid -or (Test-KeyEnded $data)) {
+    $result.State = "disabled"
+    return $result
+  }
+  $result.State = "usable"
+  if ($null -ne $data.remaining) {
+    try {
+      $remaining = [double]$data.remaining
+    } catch {
+      return $result
+    }
+    $result.Balance = $remaining.ToString("0.00", [System.Globalization.CultureInfo]::InvariantCulture)
+    if ($remaining -le 0) {
+      $result.State = "no_balance"
+    }
+  }
+  return $result
+}
+
+function Get-CheckedApiKey {
+  $apiKey = $null
+  $fromEnvironment = $env:USEGOODAI_KEY
+  Remove-Item -LiteralPath Env:\USEGOODAI_KEY -ErrorAction SilentlyContinue
+  if (-not [string]::IsNullOrEmpty($fromEnvironment)) {
+    if ($fromEnvironment.StartsWith("sk-", [System.StringComparison]::Ordinal)) {
+      $apiKey = $fromEnvironment
+    } else {
+      Say "USEGOODAI_KEY 格式错误，必须以 sk- 开头，请手动输入。"
+      Say ""
+    }
+  }
+
+  while ($true) {
+    if (-not $apiKey) {
+      $apiKey = Read-ValidatedApiKey
+    }
+    $check = Test-ApiKey $apiKey
+    if ($check.State -eq "rejected") {
+      Say ""
+      Say "密钥无效，请回网站重新复制完整的密钥。"
+      Say ""
+      $apiKey = $null
+      continue
+    }
+    if ($check.State -eq "disabled") {
+      Say ""
+      Say "这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。"
+      Say ""
+      $apiKey = $null
+      continue
+    }
+    Say ""
+    if ($check.State -eq "no_balance") {
+      Say "密钥可用，但余额为 `$0。充值后即可使用；新人进群领 2 元。"
+    } elseif ($check.State -eq "unknown") {
+      Say "暂时无法检查密钥，继续写入。"
+    } elseif ($null -ne $check.Balance) {
+      Say ("密钥检查通过，余额 `$" + $check.Balance + "。")
+    } else {
+      Say "密钥检查通过。"
+    }
+    return $apiKey
+  }
+}
+
 function Write-Utf8NoBom([string]$Path, [string]$Content) {
   $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
   [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
@@ -183,8 +320,9 @@ goals = true
 image_generation = true
 "@
 
-    $payload = [ordered]@{ OPENAI_API_KEY = $ApiKey }
-    $json = $payload | ConvertTo-Json -Depth 5
+    # 固定格式，Windows PowerShell 5.1 和 PowerShell 7 写出的内容一致。
+    $escapedKey = ConvertTo-JsonText $ApiKey
+    $json = "{`n  `"OPENAI_API_KEY`": `"$escapedKey`"`n}"
     Write-Utf8NoBom -Path $configTemp -Content $content
     Write-Utf8NoBom -Path $authTemp -Content ($json + "`n")
 
@@ -207,7 +345,7 @@ Say ""
 Say "配置完成后会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。"
 Say ""
 
-$ApiKey = Read-ValidatedApiKey
+$ApiKey = Get-CheckedApiKey
 
 Write-CodexFiles -ApiKey $ApiKey
 $StopResult = Stop-RunningClients

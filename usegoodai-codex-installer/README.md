@@ -46,7 +46,17 @@ Windows 运行 `irm https://docs.usegoodai.com/install/codex-restore.ps1 | iex`�
 
 ## 使用过程
 
-1. 在终端明文输入 UseGoodAI中转站API Key。Key 必须以 `sk-` 开头；输入为空或格式错误时会提示重新输入。
+1. 在终端明文输入 UseGoodAI中转站API Key。Key 必须以 `sk-` 开头；输入为空或格式错误时会提示重新输入。网站生成的命令通过环境变量 `USEGOODAI_KEY` 传入密钥，格式正确时不再询问，格式错误时提示后改为手动输入：
+
+   ```powershell
+   $env:USEGOODAI_KEY='sk-…'; irm https://docs.usegoodai.com/install/codex.ps1 | iex
+   ```
+
+   ```bash
+   curl -fsSL https://docs.usegoodai.com/install/codex.sh | USEGOODAI_KEY='sk-…' bash
+   ```
+
+   写入前请求 `GET https://api.usegoodai.com/v1/usage` 检查密钥：401/403、`isValid` 为 false、密钥过期或额度用完时提示并重新输入；余额为 0 时提示后继续写入；连不上服务器时提示“暂时无法检查密钥，继续写入”。
 2. 已有 `config.toml` 或 `auth.json` 时，脚本自动创建时间戳备份，再写入新配置；没有旧文件时直接创建。
 3. 写入完成后，脚本自动关闭当前用户下名称为 `codex` 和 `chatgpt` 的进程，包括 ChatGPT 软件、Codex CLI 和 VS Code 的 Codex 插件，正在运行的任务会中断。脚本只关闭，不重新打开；关闭失败时提示重启电脑，未检测到时提示启动软件测试。
 4. 重新打开 App 并新建任务，或启动新的 Codex CLI 会话，发送 `测试`。
@@ -81,6 +91,7 @@ codex-domestic-models/
   install/
 tests/
   installers.sh
+  fake_usage_server.py   检查密钥用的本地假服务器
 ```
 
 运行本地检查：
@@ -88,6 +99,8 @@ tests/
 ```bash
 bash tests/installers.sh
 ```
+
+检查密钥的请求全部转到 `tests/fake_usage_server.py`，不访问真实接口，也不用真实密钥。
 
 `reference/original/` 是不进 Git 的本机对照材料，没有时跳过两项参考文件检查。临时文件建在 `TMPDIR`（默认系统临时目录）。
 

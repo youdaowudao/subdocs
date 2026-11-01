@@ -6,6 +6,10 @@ CODEX_MODEL="gpt-6.1-sol"
 CODEX_HOME="$HOME/.codex"
 CONFIG_FILE="$CODEX_HOME/config.toml"
 AUTH_FILE="$CODEX_HOME/auth.json"
+USAGE_URL="$CODEX_BASE_URL/v1/usage"
+read_clipboard=false
+key_state=unknown
+key_balance=""
 
 if ! { exec 3</dev/tty; } 2>/dev/null; then
   exec 3<&0
@@ -162,8 +166,26 @@ backup_if_exists() {
   fi
 }
 
+# 按 JSON 规则转义字符串：引号、反斜杠和控制字符。
 json_escape() {
-  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+  local text="$1"
+  local out=""
+  local char code i
+  for ((i = 0; i < ${#text}; i++)); do
+    char="${text:i:1}"
+    case "$char" in
+      '"') out+='\"' ;;
+      '\') out+='\\' ;;
+      *)
+        printf -v code '%d' "'$char" 2>/dev/null || code=32
+        if [ "$code" -ge 0 ] && [ "$code" -lt 32 ]; then
+          printf -v char '\\u%04x' "$code"
+        fi
+        out+="$char"
+        ;;
+    esac
+  done
+  printf '%s' "$out"
 }
 
 show_write_plan() {
@@ -195,6 +217,283 @@ read_validated_api_key() {
         say ""
         ;;
     esac
+  done
+}
+
+mask_key() {
+  local key="$1"
+  local length=${#1}
+  if [ "$length" -ge 24 ]; then
+    printf '%s****%s' "${key:0:12}" "${key:length-8}"
+  elif [ "$length" -ge 8 ]; then
+    printf '%s****%s' "${key:0:3}" "${key:length-4}"
+  else
+    printf 'sk-****'
+  fi
+}
+
+# 只在 .app 启动时调用：剪贴板里是一整段 sk- 密钥才使用。
+clipboard_api_key() {
+  local text
+  if ! command -v pbpaste >/dev/null 2>&1; then
+    return 0
+  fi
+  text="$(pbpaste 2>/dev/null | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')" || return 0
+  if [[ "$text" =~ ^sk-[A-Za-z0-9_-]+$ ]]; then
+    printf '%s' "$text"
+  fi
+  return 0
+}
+
+# 从 JSON 顶层取一个标量字段的原始值，跳过嵌套对象里的同名字段。
+json_top_value() {
+  awk -v want="$1" '
+    BEGIN { RS = "\001" }
+    {
+      text = $0
+      n = length(text)
+      depth = 0
+      expect_key = 0
+      key = ""
+      i = 1
+      while (i <= n) {
+        c = substr(text, i, 1)
+        if (c == "\"") {
+          j = i + 1
+          value = ""
+          while (j <= n) {
+            d = substr(text, j, 1)
+            if (d == "\\") {
+              value = value substr(text, j, 2)
+              j += 2
+              continue
+            }
+            if (d == "\"") {
+              break
+            }
+            value = value d
+            j++
+          }
+          if (depth == 1 && expect_key) {
+            key = value
+            expect_key = 0
+          }
+          i = j + 1
+          continue
+        }
+        if (c == "{" || c == "[") {
+          depth++
+          if (depth == 1 && c == "{") {
+            expect_key = 1
+          }
+        } else if (c == "}" || c == "]") {
+          depth--
+        } else if (c == "," && depth == 1) {
+          expect_key = 1
+        } else if (c == ":" && depth == 1 && key == want) {
+          i++
+          while (substr(text, i, 1) ~ /[[:space:]]/) {
+            i++
+          }
+          result = ""
+          if (substr(text, i, 1) == "\"") {
+            # 字符串值去掉引号输出；本脚本只读取不含转义的状态和时间。
+            i++
+            while (i <= n && substr(text, i, 1) != "\"") {
+              result = result substr(text, i, 1)
+              i++
+            }
+            print result
+            exit
+          }
+          while (i <= n && substr(text, i, 1) !~ /[],}[:space:]]/) {
+            result = result substr(text, i, 1)
+            i++
+          }
+          print result
+          exit
+        }
+        i++
+      }
+    }
+  '
+}
+
+# 过期时间已过返回 0。只认 RFC 3339 时间（sub2api 的 expires_at）；认不出时按未过期处理。
+expiry_passed() {
+  local expires="$1"
+  local now
+  [ -n "$expires" ] || return 1
+  now="$(date -u +%s 2>/dev/null)" || return 1
+  case "$now" in
+    ''|*[!0-9]*)
+      return 1
+      ;;
+  esac
+  awk -v value="$expires" -v now="$now" '
+    function days(y, m, d) {
+      if (m <= 2) {
+        y--
+        m += 12
+      }
+      return 365 * y + int(y / 4) - int(y / 100) + int(y / 400) + int((153 * (m - 3) + 2) / 5) + d - 719469
+    }
+    BEGIN {
+      if (value !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][Tt ][0-9][0-9]:[0-9][0-9]:[0-9][0-9]/) {
+        exit 1
+      }
+      seconds = days(substr(value, 1, 4) + 0, substr(value, 6, 2) + 0, substr(value, 9, 2) + 0) * 86400 + substr(value, 12, 2) * 3600 + substr(value, 15, 2) * 60 + substr(value, 18, 2)
+      zone = substr(value, 20)
+      sub(/^\.[0-9]+/, "", zone)
+      if (zone ~ /^[+-][0-9][0-9]:[0-9][0-9]$/) {
+        offset = substr(zone, 2, 2) * 3600 + substr(zone, 5, 2) * 60
+        seconds += (substr(zone, 1, 1) == "+") ? -offset : offset
+      } else if (zone != "Z" && zone != "z") {
+        exit 1
+      }
+      exit !(now + 0 > seconds)
+    }'
+}
+
+# 检查结果写入 key_state：usable、no_balance、rejected、disabled、unknown。
+check_api_key() {
+  local key="$1"
+  local response status body valid remaining key_status
+  key_state=unknown
+  key_balance=""
+  if ! command -v curl >/dev/null 2>&1; then
+    return 0
+  fi
+  # 请求头从标准输入传给 curl，密钥不出现在进程参数里。
+  response="$(printf 'Authorization: Bearer %s\n' "$key" |
+    curl -sS --max-time 10 -H @- -H 'Accept: application/json' -w '\n%{http_code}' "$USAGE_URL" 2>/dev/null)" || return 0
+  status="${response##*$'\n'}"
+  body="${response%$'\n'*}"
+  case "$status" in
+    401|403)
+      key_state=rejected
+      return 0
+      ;;
+    200)
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+  valid="$(printf '%s' "$body" | json_top_value isValid)"
+  case "$valid" in
+    false)
+      key_state=disabled
+      return 0
+      ;;
+    true)
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+  # /v1/usage 不做计费检查：过期或额度用完的密钥仍返回 isValid true；到期后 status 仍是 active。
+  key_status="$(printf '%s' "$body" | json_top_value status)"
+  case "$key_status" in
+    expired|quota_exhausted)
+      key_state=disabled
+      return 0
+      ;;
+  esac
+  if expiry_passed "$(printf '%s' "$body" | json_top_value expires_at)"; then
+    key_state=disabled
+    return 0
+  fi
+  key_state=usable
+  remaining="$(printf '%s' "$body" | json_top_value remaining)"
+  if ! printf '%s' "$remaining" | grep -Eq '^-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$'; then
+    return 0
+  fi
+  key_balance="$(awk -v value="$remaining" 'BEGIN { printf "%.2f", value }')"
+  if awk -v value="$remaining" 'BEGIN { exit !(value + 0 <= 0) }'; then
+    key_state=no_balance
+  fi
+}
+
+obtain_api_key() {
+  local var_name="$1"
+  local candidate=""
+  local clipboard_key=""
+  local entered_key
+  if [ -n "${USEGOODAI_KEY:-}" ]; then
+    case "$USEGOODAI_KEY" in
+      sk-*)
+        candidate="$USEGOODAI_KEY"
+        ;;
+      *)
+        say "USEGOODAI_KEY 格式错误，必须以 sk- 开头，请手动输入。"
+        say ""
+        ;;
+    esac
+  fi
+  unset USEGOODAI_KEY
+  if [ -z "$candidate" ] && [ "$read_clipboard" = true ]; then
+    clipboard_key="$(clipboard_api_key)"
+  fi
+
+  while true; do
+    if [ -z "$candidate" ] && [ -n "$clipboard_key" ]; then
+      printf '检测到剪贴板里的密钥：%s，直接回车使用；要换别的就粘贴后回车：' "$(mask_key "$clipboard_key")"
+      read_input entered_key ""
+      case "$entered_key" in
+        "")
+          candidate="$clipboard_key"
+          ;;
+        sk-*)
+          candidate="$entered_key"
+          ;;
+        *)
+          say ""
+          say "API Key 格式错误，必须以 sk- 开头，请重新输入。"
+          say ""
+          ;;
+      esac
+      clipboard_key=""
+    fi
+    if [ -z "$candidate" ]; then
+      read_validated_api_key candidate
+    fi
+
+    check_api_key "$candidate"
+    case "$key_state" in
+      rejected)
+        say ""
+        say "密钥无效，请回网站重新复制完整的密钥。"
+        say ""
+        candidate=""
+        continue
+        ;;
+      disabled)
+        say ""
+        say "这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。"
+        say ""
+        candidate=""
+        continue
+        ;;
+    esac
+    say ""
+    case "$key_state" in
+      no_balance)
+        say "密钥可用，但余额为 \$0。充值后即可使用；新人进群领 2 元。"
+        ;;
+      unknown)
+        say "暂时无法检查密钥，继续写入。"
+        ;;
+      *)
+        if [ -n "$key_balance" ]; then
+          say "密钥检查通过，余额 \$$key_balance。"
+        else
+          say "密钥检查通过。"
+        fi
+        ;;
+    esac
+    printf -v "$var_name" '%s' "$candidate"
+    return
   done
 }
 
@@ -242,6 +541,13 @@ EOF
 }
 
 main() {
+  local argument
+  for argument in "$@"; do
+    if [ "$argument" = "--from-app" ]; then
+      read_clipboard=true
+    fi
+  done
+
   if [ "$(id -u)" -eq 0 ]; then
     say "请不要用 sudo 运行。脚本只应该写入当前用户的 $CODEX_HOME。"
     exit 1
@@ -257,7 +563,7 @@ main() {
   say ""
 
   local api_key
-  read_validated_api_key api_key
+  obtain_api_key api_key
 
   write_codex_files "$api_key"
   stop_running_clients

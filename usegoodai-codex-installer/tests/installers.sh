@@ -14,7 +14,24 @@ export USEGOODAI_TEST_REAL_PS
 PASS_COUNT=0
 FAIL_COUNT=0
 TEST_ROOT="$(mktemp -d)"
-trap 'rm -rf "$TEST_ROOT"' EXIT
+USAGE_SERVER_PID=""
+trap '[ -n "$USAGE_SERVER_PID" ] && kill "$USAGE_SERVER_PID" 2>/dev/null; rm -rf "$TEST_ROOT"' EXIT
+
+# 检查密钥的请求全部转到本地假服务器，测试不访问真实接口，也不用真实密钥。
+USAGE_LOG="$TEST_ROOT/usage.log"
+: > "$USAGE_LOG"
+python3 "$ROOT_DIR/tests/fake_usage_server.py" "$USAGE_LOG" > "$TEST_ROOT/usage.port" &
+USAGE_SERVER_PID=$!
+for _ in $(seq 1 50); do
+  [ -s "$TEST_ROOT/usage.port" ] && break
+  sleep 0.1
+done
+USEGOODAI_TEST_SERVER="http://127.0.0.1:$(head -n 1 "$TEST_ROOT/usage.port")"
+USEGOODAI_TEST_REAL_CURL="$(command -v curl)"
+USEGOODAI_TEST_CURL_LOG="$TEST_ROOT/curl.log"
+USEGOODAI_TEST_PBPASTE_LOG="$TEST_ROOT/pbpaste.log"
+export USEGOODAI_TEST_SERVER USEGOODAI_TEST_REAL_CURL USEGOODAI_TEST_CURL_LOG USEGOODAI_TEST_PBPASTE_LOG
+unset USEGOODAI_KEY USEGOODAI_TEST_CLIPBOARD
 
 pass() {
   PASS_COUNT=$((PASS_COUNT + 1))
@@ -110,7 +127,11 @@ EOF
   chmod +x "$bin_dir/ps"
   cat > "$bin_dir/date" <<'EOF'
 #!/usr/bin/env bash
-printf '20260722123456\n'
+# 固定时间 2026-07-22 12:34:56 UTC：备份名用年月日时分秒，检查过期时间用秒数。
+case "$*" in
+  *+%s*) printf '1784723696\n' ;;
+  *) printf '20260722123456\n' ;;
+esac
 EOF
   chmod +x "$bin_dir/date"
   cat > "$bin_dir/sleep" <<'EOF'
@@ -118,6 +139,31 @@ EOF
 exit 0
 EOF
   chmod +x "$bin_dir/sleep"
+  cat > "$bin_dir/curl" <<'EOF'
+#!/usr/bin/env bash
+# 记录参数，并把检查密钥的地址换成本地假服务器；没有假服务器时按网络不通处理。
+printf '%s\n' "$*" >> "$USEGOODAI_TEST_CURL_LOG"
+if [ -z "${USEGOODAI_TEST_SERVER:-}" ]; then
+  exit 7
+fi
+args=()
+for argument in "$@"; do
+  args+=("${argument//https:\/\/api.usegoodai.com/$USEGOODAI_TEST_SERVER}")
+done
+case " ${args[*]} " in
+  *api.usegoodai.com*)
+    exit 7
+    ;;
+esac
+exec "$USEGOODAI_TEST_REAL_CURL" "${args[@]}"
+EOF
+  chmod +x "$bin_dir/curl"
+  cat > "$bin_dir/pbpaste" <<'EOF'
+#!/usr/bin/env bash
+printf 'called\n' >> "$USEGOODAI_TEST_PBPASTE_LOG"
+printf '%b' "${USEGOODAI_TEST_CLIPBOARD:-}"
+EOF
+  chmod +x "$bin_dir/pbpaste"
 }
 
 run_shell_script() {
@@ -144,7 +190,7 @@ run_shell_script() {
       done
     }
     export -f kill
-    printf '%b' "$input" | env HOME="$home_dir" PATH="$bin_dir:$PATH" USEGOODAI_TEST_KILL_LOG="$home_dir/kill.log" bash "$SHELL_SCRIPT" > "$output_file" 2>&1
+    printf '%b' "$input" | env HOME="$home_dir" PATH="$bin_dir:$PATH" USEGOODAI_TEST_KILL_LOG="$home_dir/kill.log" bash "$SHELL_SCRIPT" "${@:4}" > "$output_file" 2>&1
   )
 }
 
@@ -427,6 +473,166 @@ if USEGOODAI_TEST_PS_OUTPUT="$real_pid 1 1000 S /usr/local/bin/codex\n" USEGOODA
 else
   kill "$real_pid" 2>/dev/null
   fail "结束真实进程后脚本仍正常结束"
+fi
+
+# ---- 检查密钥、USEGOODAI_KEY 和 Mac 剪贴板（本地假服务器，合成密钥） ----
+
+POWERSHELL_BIN=""
+for candidate in "${PWSH:-}" "$ROOT_DIR/codex-domestic-models/.dev-tools/pwsh/pwsh" "$(command -v pwsh || true)"; do
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+    POWERSHELL_BIN="$candidate"
+    break
+  fi
+done
+
+# PowerShell 版同样只把检查密钥的地址换成本地假服务器；Get-Process 返回空，不碰真实进程。
+POWERSHELL_PRELUDE='function Start-Sleep { }
+function Get-Process { }
+function Stop-Process { }
+function Invoke-WebRequest {
+  [CmdletBinding()] param([string]$Uri, [hashtable]$Headers, [int]$TimeoutSec, [switch]$UseBasicParsing)
+  $Uri = $Uri.Replace("https://api.usegoodai.com", $env:USEGOODAI_TEST_SERVER)
+  if (-not $env:USEGOODAI_TEST_SERVER -or $Uri.Contains("api.usegoodai.com")) { throw "network down" }
+  Microsoft.PowerShell.Utility\Invoke-WebRequest -Uri $Uri -Headers $Headers -TimeoutSec $TimeoutSec -UseBasicParsing
+}
+. $env:USEGOODAI_TEST_SCRIPT'
+
+run_powershell_script() {
+  local home_dir="$1"
+  local input="$2"
+  local output_file="$3"
+  printf '%b' "$input" | env HOME="$home_dir" USERPROFILE="$home_dir" XDG_CACHE_HOME="$home_dir/.cache" \
+    XDG_DATA_HOME="$home_dir/.local/share" XDG_CONFIG_HOME="$home_dir/.config" \
+    POWERSHELL_TELEMETRY_OPTOUT=1 POWERSHELL_UPDATECHECK=Off USEGOODAI_TEST_SCRIPT="$POWERSHELL_SCRIPT" \
+    "$POWERSHELL_BIN" -NoLogo -NoProfile -Command "$POWERSHELL_PRELUDE" > "$output_file" 2>&1
+}
+
+KEY_CASE=0
+check_key_case() {
+  local runner="$1"
+  local label="$2"
+  local env_key="$3"
+  local input="$4"
+  local expected="$5"
+  local written_key="$6"
+  local server="${7:-$USEGOODAI_TEST_SERVER}"
+  local home
+  KEY_CASE=$((KEY_CASE + 1))
+  home="$TEST_ROOT/key-case-$KEY_CASE"
+  mkdir -p "$home"
+  if USEGOODAI_KEY="$env_key" USEGOODAI_TEST_SERVER="$server" "$runner" "$home" "$input" "$home/output.txt" &&
+     grep -Fq -- "$expected" "$home/output.txt" &&
+     grep -Fq -- "\"OPENAI_API_KEY\": \"$written_key\"" "$home/.codex/auth.json" &&
+     [ "$(find "$home/.codex" -name '*.bak.*' | wc -l)" -eq 0 ]; then
+    pass "$label"
+  else
+    fail "$label"
+    sed -n '1,40p' "$home/output.txt"
+  fi
+}
+
+: > "$USEGOODAI_TEST_CURL_LOG"
+for runner in run_shell_script run_powershell_script; do
+  if [ "$runner" = run_shell_script ]; then
+    name="Shell"
+  elif [ -n "$POWERSHELL_BIN" ]; then
+    name="PowerShell"
+  else
+    printf 'SKIP: 本机没有 PowerShell，跳过 codex.ps1 的密钥检查流程\n'
+    continue
+  fi
+  check_key_case "$runner" "$name 读取 USEGOODAI_KEY，检查通过后直接写入" 'sk-env-usable-0123456789abcdef' '' '密钥检查通过，余额 $12.35。' 'sk-env-usable-0123456789abcdef'
+  check_key_case "$runner" "$name USEGOODAI_KEY 格式错误时提示并回到输入" 'not-a-key' 'sk-typed-usable-key\n' 'USEGOODAI_KEY 格式错误，必须以 sk- 开头，请手动输入。' 'sk-typed-usable-key'
+  check_key_case "$runner" "$name 401 时提示密钥无效并重新输入，期间不写入" 'sk-env-rejected-key' 'sk-typed-usable-key\n' '密钥无效，请回网站重新复制完整的密钥。' 'sk-typed-usable-key'
+  check_key_case "$runner" "$name 403 按密钥无效处理" '' 'sk-forbidden-key\nsk-typed-usable-key\n' '密钥无效，请回网站重新复制完整的密钥。' 'sk-typed-usable-key'
+  check_key_case "$runner" "$name isValid 为 false 时提示换密钥并重新输入" '' 'sk-disabled-key\nsk-typed-usable-key\n' '这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。' 'sk-typed-usable-key'
+  check_key_case "$runner" "$name status 为 expired 时按停用处理并重新输入" '' 'sk-statusexpired-key\nsk-typed-usable-key\n' '这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。' 'sk-typed-usable-key'
+  check_key_case "$runner" "$name status 为 quota_exhausted 时按停用处理，不当作余额为 0" '' 'sk-exhausted-key\nsk-typed-usable-key\n' '这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。' 'sk-typed-usable-key'
+  check_key_case "$runner" "$name 过期时间已过（status 仍为 active）时按停用处理" '' 'sk-pastdate-key\nsk-typed-usable-key\n' '这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。' 'sk-typed-usable-key'
+  check_key_case "$runner" "$name 过期时间未到时正常通过" '' 'sk-futuredate-key\n' '密钥检查通过，余额 $4.00。' 'sk-futuredate-key'
+  check_key_case "$runner" "$name 余额为 0 时提示并继续写入" '' 'sk-zero-key\n' '密钥可用，但余额为 $0。充值后即可使用；新人进群领 2 元。' 'sk-zero-key'
+  check_key_case "$runner" "$name 没有 remaining 字段时按成功处理" '' 'sk-noremaining-key\n' '密钥检查通过。' 'sk-noremaining-key'
+  check_key_case "$runner" "$name 服务器 5xx 时提示无法检查并继续写入" '' 'sk-broken-key\n' '暂时无法检查密钥，继续写入。' 'sk-broken-key'
+  check_key_case "$runner" "$name 网络不通时提示无法检查并继续写入" '' 'sk-network-key\n' '暂时无法检查密钥，继续写入。' 'sk-network-key' 'http://127.0.0.1:9'
+  check_key_case "$runner" "$name 原有输入流程：空值继续提示" '' '\nnot-a-key\nsk-typed-usable-key\n' 'API Key 不能为空，请重新输入。' 'sk-typed-usable-key'
+  check_key_case "$runner" "$name 原有输入流程：格式错误继续提示" '' '\nnot-a-key\nsk-typed-usable-key\n' 'API Key 格式错误，必须以 sk- 开头，请重新输入。' 'sk-typed-usable-key'
+done
+
+# 密钥里混入制表符、引号、反斜杠时，auth.json 仍是合法 JSON，读回的值不变。
+odd_key=$'sk-escape-usable\tkey"quote\\slash'
+for runner in run_shell_script run_powershell_script; do
+  if [ "$runner" = run_shell_script ]; then
+    name="Shell"
+  elif [ -n "$POWERSHELL_BIN" ]; then
+    name="PowerShell"
+  else
+    continue
+  fi
+  home="$TEST_ROOT/escape-$name"
+  mkdir -p "$home"
+  if USEGOODAI_KEY="$odd_key" "$runner" "$home" '' "$home/output.txt" &&
+     python3 -c 'import json, sys; sys.exit(json.load(open(sys.argv[1], encoding="utf-8"))["OPENAI_API_KEY"] != sys.argv[2])' "$home/.codex/auth.json" "$odd_key"; then
+    pass "$name 写入 auth.json 时按 JSON 规则转义控制字符、引号和反斜杠"
+  else
+    fail "$name 写入 auth.json 时按 JSON 规则转义控制字符、引号和反斜杠"
+    sed -n '1,40p' "$home/output.txt"
+  fi
+done
+
+if grep -Fq '/v1/usage Bearer sk-env-usable-0123456789abcdef' "$USAGE_LOG"; then
+  pass "检查密钥请求 GET /v1/usage，并带 Authorization: Bearer 请求头"
+else
+  fail "检查密钥请求 GET /v1/usage，并带 Authorization: Bearer 请求头"
+fi
+if [ -s "$USEGOODAI_TEST_CURL_LOG" ] && ! grep -Fq 'sk-' "$USEGOODAI_TEST_CURL_LOG" &&
+   grep -Fq -- '--max-time 10' "$USEGOODAI_TEST_CURL_LOG"; then
+  pass "Shell 密钥不出现在 curl 参数里，超时 10 秒"
+else
+  fail "Shell 密钥不出现在 curl 参数里，超时 10 秒"
+fi
+if ! grep -Fq 'api.usegoodai.com' "$USAGE_LOG"; then
+  pass "测试只请求本地假服务器"
+else
+  fail "测试只请求本地假服务器"
+fi
+
+clipboard_case() {
+  local label="$1"
+  local clipboard="$2"
+  local input="$3"
+  local written_key="$4"
+  local prompts="$5"
+  shift 5
+  local home
+  KEY_CASE=$((KEY_CASE + 1))
+  home="$TEST_ROOT/clipboard-case-$KEY_CASE"
+  mkdir -p "$home"
+  : > "$USEGOODAI_TEST_PBPASTE_LOG"
+  if USEGOODAI_TEST_CLIPBOARD="$clipboard" run_shell_script "$home" "$input" "$home/output.txt" "$@" &&
+     grep -Fq -- "\"OPENAI_API_KEY\": \"$written_key\"" "$home/.codex/auth.json" &&
+     [ "$(grep -o '检测到剪贴板里的密钥' "$home/output.txt" | wc -l)" -eq "$prompts" ]; then
+    pass "$label"
+  else
+    fail "$label"
+    sed -n '1,40p' "$home/output.txt"
+  fi
+}
+
+clipboard_case "Mac .app 读到剪贴板密钥，直接回车使用" '  sk-clipboard-key-0123456789-usable\n' '\n' 'sk-clipboard-key-0123456789-usable' 1 --from-app
+if grep -Fq '检测到剪贴板里的密钥：sk-clipboard****9-usable，直接回车使用；要换别的就粘贴后回车：' "$TEST_ROOT/clipboard-case-$KEY_CASE/output.txt" &&
+   ! grep -Fq 'sk-clipboard-key-0123456789-usable' "$TEST_ROOT/clipboard-case-$KEY_CASE/output.txt"; then
+  pass "剪贴板密钥按前 12 位、****、后 8 位显示"
+else
+  fail "剪贴板密钥按前 12 位、****、后 8 位显示"
+fi
+clipboard_case "Mac .app 粘贴别的密钥时使用新输入的密钥" 'sk-clipboard-key-0123456789-usable' 'sk-typed-usable-key\n' 'sk-typed-usable-key' 1 --from-app
+clipboard_case "剪贴板密钥无效时只提示一次，再走原来的输入" 'sk-clipboard-rejected-0123456789' '\nsk-typed-usable-key\n' 'sk-typed-usable-key' 1 --from-app
+clipboard_case "剪贴板不是整段 sk- 密钥时走原来的输入" 'hello sk-abc\nsk-second-line' 'sk-typed-usable-key\n' 'sk-typed-usable-key' 0 --from-app
+clipboard_case "在线命令不读剪贴板" 'sk-clipboard-key-0123456789-usable' 'sk-typed-usable-key\n' 'sk-typed-usable-key' 0
+if [ ! -s "$USEGOODAI_TEST_PBPASTE_LOG" ]; then
+  pass "没有 --from-app 时不调用 pbpaste"
+else
+  fail "没有 --from-app 时不调用 pbpaste"
 fi
 
 printf '\n%d passed, %d failed\n' "$PASS_COUNT" "$FAIL_COUNT"
