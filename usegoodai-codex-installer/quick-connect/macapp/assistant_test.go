@@ -359,7 +359,7 @@ func TestRunnerLockWithoutTheLauncher(t *testing.T) {
 
 func TestLockLeftByAClosedWindowIsIgnored(t *testing.T) {
 	r := newRig(t)
-	finished := exec.Command("/bin/true")
+	finished := exec.Command("/bin/sh", "-c", "exit 0")
 	if err := finished.Run(); err != nil {
 		t.Fatal(err)
 	}
