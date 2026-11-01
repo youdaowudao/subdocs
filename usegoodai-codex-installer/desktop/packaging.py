@@ -85,10 +85,10 @@ def windows_executable(output: Path, files: dict[str, bytes]) -> Path:
     return output
 
 
-TERMINAL_RUNNER_TEMPLATE = """#!/bin/bash
+TERMINAL_RUNNER = """#!/bin/bash
 set -u
 resource_dir="$(cd "$(dirname "$0")" && pwd)"
-/bin/bash "$resource_dir/install.sh"__ARGUMENTS__
+/bin/bash "$resource_dir/install.sh"
 result=$?
 printf '\\n'
 if [ "$result" -ne 0 ]; then
@@ -100,23 +100,18 @@ exit "$result"
 """
 
 
-def terminal_runner(arguments: str = "") -> str:
-    """run.command; arguments such as " --from-app" go to install.sh."""
-    return TERMINAL_RUNNER_TEMPLATE.replace("__ARGUMENTS__", arguments)
-
-
-TERMINAL_RUNNER = terminal_runner()
-
-
 def mac_application(output: Path, identifier: str, version: str, files: dict[str, bytes],
-                    runner: str = TERMINAL_RUNNER) -> Path:
+                    runner: str = TERMINAL_RUNNER, launcher: Path | None = None,
+                    extra_info: dict | None = None) -> Path:
+    """A terminal .app. launcher defaults to the generic one built here; the
+    quick-connect assistant passes its own, which handles import links."""
     contents = output / "Contents"
     resources = contents / "Resources"
     executables = contents / "MacOS"
     resources.mkdir(parents=True, exist_ok=True)
     executables.mkdir(parents=True, exist_ok=True)
-    launcher = executables / "launcher"
-    shutil.copyfile(build_launcher("darwin", "arm64"), launcher)
+    launcher_source, launcher = launcher, executables / "launcher"
+    shutil.copyfile(launcher_source or build_launcher("darwin", "arm64"), launcher)
     launcher.chmod(0o755)
     for name, data in {"run.command": runner.encode(), **files}.items():
         destination = resources / name
@@ -135,6 +130,7 @@ def mac_application(output: Path, identifier: str, version: str, files: dict[str
         "LSMinimumSystemVersion": "12.0",
         "LSUIElement": True,
         "NSAppleEventsUsageDescription": "打开终端，执行你双击的 UseGoodAI 配置或安装工具。",
+        **(extra_info or {}),
     }, sort_keys=False))
     (contents / "PkgInfo").write_bytes(b"APPL????")
     return output

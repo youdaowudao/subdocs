@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Build the Windows window of the quick-connect assistant.
+"""Build the quick-connect assistant's native programs.
 
-The Mac side stays the terminal .app from ../desktop; ../desktop/build.py
-calls build_windows() and places both into the numbered tool set.
+build_windows(): the Windows window (cross-compiled anywhere).
+build_mac(): the launcher of the Mac terminal .app (macapp/), which receives
+usegoodai:// links through Cocoa and so must be built on a Mac; the
+mac-quick-connect GitHub Actions workflow does that.
+../desktop/build.py places both into the numbered tool set.
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 WORK = ROOT / ".work"
 BUILD_TAGS = "desktop,production,wv2runtime.browser"
+MAC_RUNNER = ROOT / "macapp" / "run.command"
 MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024
 
 
@@ -57,6 +61,18 @@ def build_windows(output: Path) -> Path:
     size = output.stat().st_size
     if size > MAX_DOWNLOAD_BYTES:
         raise SystemExit(f"{output.name} 有 {size} 字节，超过文档站 25 MiB 的单文件上限。")
+    output.chmod(0o755)
+    return output
+
+
+def build_mac(output: Path) -> Path:
+    """Write the arm64 launcher; needs macOS with the Xcode command line tools."""
+    if sys.platform != "darwin":
+        raise SystemExit("Mac 版启动器用到 Apple 的系统接口，只能在 Mac 上编译；请手动触发 GitHub Actions 的 mac-quick-connect 打包。")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run([
+        go_command(), "build", "-trimpath", "-buildvcs=false", "-ldflags", "-s -w", "-o", str(output), "./macapp",
+    ], cwd=ROOT, env=environment(GOOS="darwin", GOARCH="arm64", CGO_ENABLED="1", MACOSX_DEPLOYMENT_TARGET="12.0"), check=True)
     output.chmod(0o755)
     return output
 

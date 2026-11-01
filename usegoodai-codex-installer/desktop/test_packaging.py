@@ -8,6 +8,7 @@ import shlex
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -17,6 +18,9 @@ import packaging
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 POWERSHELL = PROJECT_ROOT / "codex-domestic-models/.dev-tools/pwsh/pwsh"
+ASSISTANT_RUNNER = PROJECT_ROOT / "quick-connect/macapp/run.command"
+# The macOS runner of GitHub Actions builds only the Mac assistant.
+MAC_ONLY = os.environ.get("USEGOODAI_MAC_ONLY") == "1"
 
 
 class DesktopPackagingTests(unittest.TestCase):
@@ -56,22 +60,9 @@ class DesktopPackagingTests(unittest.TestCase):
             self.assertIn("退出码：7", result.stdout)
             self.assertIn("按回车结束", result.stdout)
 
-    def test_mac_runner_passes_the_app_flag_only_to_the_assistant(self) -> None:
+    def test_only_the_assistant_runner_reads_the_clipboard(self) -> None:
         self.assertIn('/bin/bash "$resource_dir/install.sh"\nresult=$?', packaging.TERMINAL_RUNNER)
-        self.assertEqual(packaging.TERMINAL_RUNNER, packaging.terminal_runner())
-        if shutil.which("script") is None:
-            self.skipTest("缺少伪终端工具")
-        with tempfile.TemporaryDirectory(dir=packaging.WORK_ROOT) as temporary:
-            root = Path(temporary) / "中文 launcher's $(literal)"
-            root.mkdir()
-            (root / "run.command").write_text(packaging.terminal_runner(" --from-app"))
-            (root / "install.sh").write_text('#!/bin/bash\nprintf "args:%s\\n" "$*"\n')
-            result = subprocess.run(
-                ["script", "-qefc", "/bin/bash " + shlex.quote(str(root / "run.command")), str(root / "terminal.log")],
-                input="\n", text=True, capture_output=True, timeout=15,
-            )
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("args:--from-app", result.stdout)
+        self.assertIn('/bin/bash "$resource_dir/install.sh" --from-app\n', ASSISTANT_RUNNER.read_text())
 
     def test_zip_application_keeps_folder_and_execute_bits(self) -> None:
         with tempfile.TemporaryDirectory(dir=packaging.WORK_ROOT) as temporary:
@@ -88,6 +79,7 @@ class DesktopPackagingTests(unittest.TestCase):
             self.assertEqual(modes["测试.app/Contents/MacOS/launcher"], 0o100755)
             self.assertEqual(modes["测试.app/Contents/Info.plist"], 0o100644)
 
+    @unittest.skipIf(MAC_ONLY, "Mac 打包只生成快速接入助手")
     def test_actual_artifacts_have_correct_architecture_and_original_payloads(self) -> None:
         output = PROJECT_ROOT / "dist/desktop"
         for title, script in (("3.Codex国产模型导入", "codex-models"),):
@@ -111,12 +103,12 @@ class DesktopPackagingTests(unittest.TestCase):
             self.assertEqual((app / "Resources/install.sh").read_bytes(), (PROJECT_ROOT / "install" / f"{script}.sh").read_bytes())
             self.assertEqual((app / "Resources/run.command").read_text(), packaging.TERMINAL_RUNNER)
 
-    def test_assistant_artifacts(self) -> None:
+    @unittest.skipIf(MAC_ONLY, "Mac 打包只生成快速接入助手")
+    def test_assistant_windows_artifacts(self) -> None:
         output = PROJECT_ROOT / "dist/desktop"
         title = "1.UseGoodAI中转快速接入助手"
         self.assertFalse((output / "Windows-x64/1.Codex接入配置.exe").exists())
         self.assertFalse((output / "Mac-Apple芯片/1.Codex接入配置.app").exists())
-
         executable = output / "Windows-x64" / f"{title}.exe"
         data = executable.read_bytes()
         self.assertLessEqual(len(data), 25 * 1024 * 1024)
@@ -126,17 +118,31 @@ class DesktopPackagingTests(unittest.TestCase):
         self.assertEqual(struct.unpack_from("<H", data, pe_offset + 24 + 68)[0], 2, "助手是窗口程序，不打开控制台")
         self.assertEqual((output / "download/usegoodai-quick-connect-windows-x64.exe").read_bytes(), data)
 
+    def test_assistant_mac_artifacts(self) -> None:
+        output = PROJECT_ROOT / "dist/desktop"
+        title = "1.UseGoodAI中转快速接入助手"
+        launchers = []
+
         def check_app(contents: Path, name: str) -> None:
             info = plistlib.loads((contents / "Info.plist").read_bytes())
             self.assertEqual(info["CFBundleDisplayName"], name)
             self.assertEqual(info["CFBundleIdentifier"], "com.usegoodai.codex-config")
             self.assertEqual(info["CFBundleShortVersionString"], "1.0.0")
+            self.assertEqual(info["CFBundleURLTypes"], [{"CFBundleURLName": "com.usegoodai.import", "CFBundleURLSchemes": ["usegoodai"]}])
+            self.assertIs(info["LSUIElement"], True)
             self.assertEqual((contents / "Resources/install.sh").read_bytes(), (PROJECT_ROOT / "install/codex.sh").read_bytes())
-            self.assertEqual((contents / "Resources/run.command").read_text(), packaging.terminal_runner(" --from-app"))
+            self.assertEqual((contents / "Resources/run.command").read_bytes(), ASSISTANT_RUNNER.read_bytes())
+            self.assertEqual(sorted(path.name for path in (contents / "Resources").iterdir()), ["install.sh", "run.command"])
             launcher = contents / "MacOS" / info["CFBundleExecutable"]
             self.assertEqual(struct.unpack_from("<II", launcher.read_bytes()), (0xFEEDFACF, 0x0100000C))
+            # The link-aware launcher, not the generic terminal one.
+            self.assertIn(b"usegoodai-quick-connect/macapp", launcher.read_bytes())
             for path in (launcher, contents / "Resources/run.command", contents / "Resources/install.sh"):
                 self.assertTrue(os.access(path, os.X_OK), path)
+            if sys.platform == "darwin":
+                subprocess.run(["/usr/bin/plutil", "-lint", str(contents / "Info.plist")], check=True)
+                subprocess.run(["/usr/bin/codesign", "--verify", str(launcher)], check=True)
+            launchers.append(launcher.read_bytes())
 
         check_app(output / "Mac-Apple芯片" / f"{title}.app/Contents", title)
         download = output / "download/usegoodai-quick-connect-mac-arm64.zip"
@@ -154,6 +160,7 @@ class DesktopPackagingTests(unittest.TestCase):
                     target.write_bytes(archive.read(info))
                     target.chmod((info.external_attr >> 16) & 0o777)
             check_app(Path(temporary) / "UseGoodAI中转快速接入助手.app/Contents", "UseGoodAI中转快速接入助手")
+        self.assertEqual(launchers[0], launchers[1])
 
 if __name__ == "__main__":
     packaging.WORK_ROOT.mkdir(parents=True, exist_ok=True)
