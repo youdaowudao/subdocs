@@ -42,7 +42,7 @@ jobs:
         env:
           USEGOODAI_MAC_ONLY: "1"
         working-directory: usegoodai-codex-installer/desktop
-        run: python3 -m unittest -v -k test_assistant_mac_artifacts -k test_only_the_assistant_runner -k test_zip_application test_packaging
+        run: python3 test_packaging.py -v -k test_assistant_mac_artifacts -k test_only_the_assistant_runner -k test_zip_application
 
       - name: 在本机打开导入链接
         run: |

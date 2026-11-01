@@ -141,7 +141,16 @@ class DesktopPackagingTests(unittest.TestCase):
                 self.assertTrue(os.access(path, os.X_OK), path)
             if sys.platform == "darwin":
                 subprocess.run(["/usr/bin/plutil", "-lint", str(contents / "Info.plist")], check=True)
-                subprocess.run(["/usr/bin/codesign", "--verify", str(launcher)], check=True)
+                # Apple silicon only runs signed code: the linker's ad-hoc
+                # signature must be valid. Checked on a copy, because inside
+                # the (unsigned) bundle codesign would check the bundle.
+                with tempfile.TemporaryDirectory(dir=packaging.WORK_ROOT) as loose:
+                    copy = Path(loose) / "launcher"
+                    shutil.copyfile(launcher, copy)
+                    result = subprocess.run(["/usr/bin/codesign", "--verify", "--verbose=2", str(copy)], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    shown = subprocess.run(["/usr/bin/codesign", "--display", "--verbose=2", str(copy)], capture_output=True, text=True)
+                    self.assertIn("Signature=adhoc", shown.stderr)
             launchers.append(launcher.read_bytes())
 
         check_app(output / "Mac-Apple芯片" / f"{title}.app/Contents", title)
