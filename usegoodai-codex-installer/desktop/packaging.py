@@ -85,10 +85,10 @@ def windows_executable(output: Path, files: dict[str, bytes]) -> Path:
     return output
 
 
-TERMINAL_RUNNER = """#!/bin/bash
+TERMINAL_RUNNER_TEMPLATE = """#!/bin/bash
 set -u
 resource_dir="$(cd "$(dirname "$0")" && pwd)"
-/bin/bash "$resource_dir/install.sh"
+/bin/bash "$resource_dir/install.sh"__ARGUMENTS__
 result=$?
 printf '\\n'
 if [ "$result" -ne 0 ]; then
@@ -100,7 +100,16 @@ exit "$result"
 """
 
 
-def mac_application(output: Path, identifier: str, version: str, files: dict[str, bytes]) -> Path:
+def terminal_runner(arguments: str = "") -> str:
+    """run.command; arguments such as " --from-app" go to install.sh."""
+    return TERMINAL_RUNNER_TEMPLATE.replace("__ARGUMENTS__", arguments)
+
+
+TERMINAL_RUNNER = terminal_runner()
+
+
+def mac_application(output: Path, identifier: str, version: str, files: dict[str, bytes],
+                    runner: str = TERMINAL_RUNNER) -> Path:
     contents = output / "Contents"
     resources = contents / "Resources"
     executables = contents / "MacOS"
@@ -109,7 +118,7 @@ def mac_application(output: Path, identifier: str, version: str, files: dict[str
     launcher = executables / "launcher"
     shutil.copyfile(build_launcher("darwin", "arm64"), launcher)
     launcher.chmod(0o755)
-    for name, data in {"run.command": TERMINAL_RUNNER.encode(), **files}.items():
+    for name, data in {"run.command": runner.encode(), **files}.items():
         destination = resources / name
         destination.write_bytes(data)
         destination.chmod(0o755)
@@ -128,6 +137,25 @@ def mac_application(output: Path, identifier: str, version: str, files: dict[str
         "NSAppleEventsUsageDescription": "打开终端，执行你双击的 UseGoodAI 配置或安装工具。",
     }, sort_keys=False))
     (contents / "PkgInfo").write_bytes(b"APPL????")
+    return output
+
+
+def zip_application(application: Path, output: Path) -> Path:
+    """Zip a .app for download: the folder name is kept and so are the
+    execute bits, which Archive Utility restores from the Unix mode."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted([application, *application.rglob("*")]):
+            name = path.relative_to(application.parent).as_posix()
+            if path.is_dir():
+                info = zipfile.ZipInfo(name + "/")
+                info.external_attr = (0o40755 << 16) | 0x10
+                archive.writestr(info, b"")
+            else:
+                info = zipfile.ZipInfo.from_file(path, name)
+                info.external_attr = ((0o100755 if os.access(path, os.X_OK) else 0o100644) << 16)
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(info, path.read_bytes())
     return output
 
 

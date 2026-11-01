@@ -56,9 +56,41 @@ class DesktopPackagingTests(unittest.TestCase):
             self.assertIn("退出码：7", result.stdout)
             self.assertIn("按回车结束", result.stdout)
 
+    def test_mac_runner_passes_the_app_flag_only_to_the_assistant(self) -> None:
+        self.assertIn('/bin/bash "$resource_dir/install.sh"\nresult=$?', packaging.TERMINAL_RUNNER)
+        self.assertEqual(packaging.TERMINAL_RUNNER, packaging.terminal_runner())
+        if shutil.which("script") is None:
+            self.skipTest("缺少伪终端工具")
+        with tempfile.TemporaryDirectory(dir=packaging.WORK_ROOT) as temporary:
+            root = Path(temporary) / "中文 launcher's $(literal)"
+            root.mkdir()
+            (root / "run.command").write_text(packaging.terminal_runner(" --from-app"))
+            (root / "install.sh").write_text('#!/bin/bash\nprintf "args:%s\\n" "$*"\n')
+            result = subprocess.run(
+                ["script", "-qefc", "/bin/bash " + shlex.quote(str(root / "run.command")), str(root / "terminal.log")],
+                input="\n", text=True, capture_output=True, timeout=15,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("args:--from-app", result.stdout)
+
+    def test_zip_application_keeps_folder_and_execute_bits(self) -> None:
+        with tempfile.TemporaryDirectory(dir=packaging.WORK_ROOT) as temporary:
+            app = Path(temporary) / "测试.app"
+            (app / "Contents/MacOS").mkdir(parents=True)
+            (app / "Contents/MacOS/launcher").write_bytes(b"binary")
+            (app / "Contents/MacOS/launcher").chmod(0o755)
+            (app / "Contents/Info.plist").write_bytes(b"plist")
+            (app / "Contents/Info.plist").chmod(0o644)
+            archive_path = packaging.zip_application(app, Path(temporary) / "out.zip")
+            with zipfile.ZipFile(archive_path) as archive:
+                modes = {info.filename: info.external_attr >> 16 for info in archive.infolist()}
+            self.assertEqual(modes["测试.app/"] & 0o170000, 0o040000)
+            self.assertEqual(modes["测试.app/Contents/MacOS/launcher"], 0o100755)
+            self.assertEqual(modes["测试.app/Contents/Info.plist"], 0o100644)
+
     def test_actual_artifacts_have_correct_architecture_and_original_payloads(self) -> None:
         output = PROJECT_ROOT / "dist/desktop"
-        for title, script in (("1.Codex接入配置", "codex"), ("3.Codex国产模型导入", "codex-models")):
+        for title, script in (("3.Codex国产模型导入", "codex-models"),):
             executable = output / "Windows-x64" / f"{title}.exe"
             data = executable.read_bytes()
             self.assertEqual(data[:2], b"MZ")
@@ -77,7 +109,51 @@ class DesktopPackagingTests(unittest.TestCase):
             self.assertEqual(struct.unpack_from("<II", launcher.read_bytes()), (0xFEEDFACF, 0x0100000C))
             self.assertTrue(os.access(launcher, os.X_OK))
             self.assertEqual((app / "Resources/install.sh").read_bytes(), (PROJECT_ROOT / "install" / f"{script}.sh").read_bytes())
+            self.assertEqual((app / "Resources/run.command").read_text(), packaging.TERMINAL_RUNNER)
 
+    def test_assistant_artifacts(self) -> None:
+        output = PROJECT_ROOT / "dist/desktop"
+        title = "1.UseGoodAI中转快速接入助手"
+        self.assertFalse((output / "Windows-x64/1.Codex接入配置.exe").exists())
+        self.assertFalse((output / "Mac-Apple芯片/1.Codex接入配置.app").exists())
+
+        executable = output / "Windows-x64" / f"{title}.exe"
+        data = executable.read_bytes()
+        self.assertLessEqual(len(data), 25 * 1024 * 1024)
+        pe_offset = struct.unpack_from("<I", data, 0x3C)[0]
+        self.assertEqual(data[pe_offset:pe_offset + 4], b"PE\0\0")
+        self.assertEqual(struct.unpack_from("<H", data, pe_offset + 4)[0], 0x8664)
+        self.assertEqual(struct.unpack_from("<H", data, pe_offset + 24 + 68)[0], 2, "助手是窗口程序，不打开控制台")
+        self.assertEqual((output / "download/usegoodai-quick-connect-windows-x64.exe").read_bytes(), data)
+
+        def check_app(contents: Path, name: str) -> None:
+            info = plistlib.loads((contents / "Info.plist").read_bytes())
+            self.assertEqual(info["CFBundleDisplayName"], name)
+            self.assertEqual(info["CFBundleIdentifier"], "com.usegoodai.codex-config")
+            self.assertEqual(info["CFBundleShortVersionString"], "1.0.0")
+            self.assertEqual((contents / "Resources/install.sh").read_bytes(), (PROJECT_ROOT / "install/codex.sh").read_bytes())
+            self.assertEqual((contents / "Resources/run.command").read_text(), packaging.terminal_runner(" --from-app"))
+            launcher = contents / "MacOS" / info["CFBundleExecutable"]
+            self.assertEqual(struct.unpack_from("<II", launcher.read_bytes()), (0xFEEDFACF, 0x0100000C))
+            for path in (launcher, contents / "Resources/run.command", contents / "Resources/install.sh"):
+                self.assertTrue(os.access(path, os.X_OK), path)
+
+        check_app(output / "Mac-Apple芯片" / f"{title}.app/Contents", title)
+        download = output / "download/usegoodai-quick-connect-mac-arm64.zip"
+        self.assertLessEqual(download.stat().st_size, 25 * 1024 * 1024)
+        with tempfile.TemporaryDirectory(dir=packaging.WORK_ROOT) as temporary:
+            with zipfile.ZipFile(download) as archive:
+                names = archive.namelist()
+                self.assertTrue(all(name.startswith("UseGoodAI中转快速接入助手.app/") for name in names), names)
+                for info in archive.infolist():
+                    target = Path(temporary) / info.filename
+                    if info.is_dir():
+                        target.mkdir(parents=True, exist_ok=True)
+                        continue
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(archive.read(info))
+                    target.chmod((info.external_attr >> 16) & 0o777)
+            check_app(Path(temporary) / "UseGoodAI中转快速接入助手.app/Contents", "UseGoodAI中转快速接入助手")
 
 if __name__ == "__main__":
     packaging.WORK_ROOT.mkdir(parents=True, exist_ok=True)

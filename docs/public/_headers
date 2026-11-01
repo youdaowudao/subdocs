@@ -33,3 +33,13 @@
 /install/usegoodai-imagines-tool/releases/v0.8.2/SHA256SUMS
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=31536000, immutable
+
+/download/*
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/download/usegoodai-quick-connect-windows-x64.exe
+  Content-Disposition: attachment; filename="UseGoodAI-Quick-Connect.exe"; filename*=UTF-8''UseGoodAI%E4%B8%AD%E8%BD%AC%E5%BF%AB%E9%80%9F%E6%8E%A5%E5%85%A5%E5%8A%A9%E6%89%8B.exe
+
+/download/usegoodai-quick-connect-mac-arm64.zip
+  Content-Disposition: attachment; filename="UseGoodAI-Quick-Connect.zip"; filename*=UTF-8''UseGoodAI%E4%B8%AD%E8%BD%AC%E5%BF%AB%E9%80%9F%E6%8E%A5%E5%85%A5%E5%8A%A9%E6%89%8B.zip

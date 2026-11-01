@@ -2,9 +2,19 @@
 
 一条命令把 Codex App、ChatGPT 和 Codex CLI 的模型请求切换到 UseGoodAI中转站。脚本会写入当前用户的 `~/.codex/config.toml` 和 `~/.codex/auth.json`，写入后自动关闭正在运行的 ChatGPT 软件和 Codex。
 
-## 双击运行
+## 双击运行：UseGoodAI中转快速接入助手
 
-本地双击版本的构建入口是 [desktop/build.py](desktop/build.py)，生成 Windows `.exe` 和 Apple 芯片 Mac `.app`。双击后自动打开 PowerShell 或终端，继续完成原来的配置；成品位于 `dist/desktop/`。原有在线命令继续使用下面的入口。
+编号工具 1 是 `1.UseGoodAI中转快速接入助手`，构建入口是 [desktop/build.py](desktop/build.py)，成品位于 `dist/desktop/`：
+
+- Windows `.exe`：窗口程序，源码在 [quick-connect/](quick-connect/README.md)。粘贴密钥点「一键连接 Codex」，或在网站点「一键导入」打开 `usegoodai://` 链接直接导入。
+- Apple 芯片 Mac `.app`：打开终端运行 `install/codex.sh`；剪贴板里有 `sk-` 密钥时提示直接回车使用。
+
+网站下载用固定地址，更新时覆盖：
+
+- `https://docs.usegoodai.com/download/usegoodai-quick-connect-windows-x64.exe`
+- `https://docs.usegoodai.com/download/usegoodai-quick-connect-mac-arm64.zip`
+
+原有在线命令继续使用下面的入口。
 
 ## Windows
 
@@ -77,6 +87,8 @@ Windows 运行 `irm https://docs.usegoodai.com/install/codex-restore.ps1 | iex`�
 ## 仓库结构
 
 ```text
+quick-connect/       Windows 窗口版助手（Go + Wails）
+desktop/             双击成品的启动器和打包程序
 install/
   codex.ps1
   codex.sh
@@ -112,6 +124,8 @@ bash tests/installers.sh
 cp install/codex.sh install/codex.ps1 install/codex-restore.sh install/codex-restore.ps1 ../docs/public/install/
 cp codex-domestic-models/install/codex-models.sh codex-domestic-models/install/codex-models.ps1 install/
 cp install/codex-models.sh install/codex-models.ps1 ../docs/public/install/
+(cd desktop && python3 build.py)
+cp dist/desktop/download/usegoodai-quick-connect-windows-x64.exe dist/desktop/download/usegoodai-quick-connect-mac-arm64.zip ../docs/public/download/
 ```
 
-线上下发的是 `docs/public/install/` 里的那一份。文档站的测试会检查两处内容一致，忘记复制时测试不通过。
+线上下发的是 `docs/public/install/` 和 `docs/public/download/` 里的那一份。文档站的测试会检查脚本两处一致、Mac 下载包内的 `install.sh` 与线上 `codex.sh` 一致，忘记复制时测试不通过。下载文件的中文文件名由 `docs/public/_headers` 的 `Content-Disposition` 给出。

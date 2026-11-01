@@ -1,6 +1,6 @@
 # 构建双击运行的安装工具
 
-这里维护通用原生启动器，以及 Codex 接入配置、国产模型导入的本地打包程序。用户双击 Windows `.exe` 后自动运行 PowerShell；双击 Apple 芯片 Mac `.app` 后自动打开终端。窗口中继续执行原有脚本，结束后保留结果并等待回车。
+这里维护通用原生启动器，以及 UseGoodAI中转快速接入助手、国产模型导入的本地打包程序。快速接入助手的 Windows 版是 [../quick-connect](../quick-connect/README.md) 的窗口程序；其余成品双击 Windows `.exe` 后自动运行 PowerShell，双击 Apple 芯片 Mac `.app` 后自动打开终端，窗口中继续执行原有脚本，结束后保留结果并等待回车。
 
 ## 生成本地成品
 
@@ -10,7 +10,9 @@
 python3 build.py
 ```
 
-成品写入 `../dist/desktop/Windows-x64/` 和 `../dist/desktop/Mac-Apple芯片/`。两项工具分别生成 `1.Codex接入配置` 和 `3.Codex国产模型导入` 的 `.exe`、`.app`，不创建压缩包；编号 2 留给生图子项目生成的 `2.UseGoodAI生图工具`。Windows 使用系统 PowerShell 5.1；当前 Go 1.25 构建面向 Windows 10/11 x64 和 macOS 12 及以上的 Apple Silicon。
+成品写入 `../dist/desktop/Windows-x64/` 和 `../dist/desktop/Mac-Apple芯片/`。两项工具分别生成 `1.UseGoodAI中转快速接入助手` 和 `3.Codex国产模型导入` 的 `.exe`、`.app`；编号 2 留给生图子项目生成的 `2.UseGoodAI生图工具`。构建前清空 `../dist/desktop/`，被替换的旧成品不会残留。终端类成品在 Windows 使用系统 PowerShell 5.1；当前 Go 1.25 构建面向 Windows 10/11 x64 和 macOS 12 及以上的 Apple Silicon。
+
+快速接入助手的 Mac `.app` 运行 `../install/codex.sh --from-app`，启动时读取剪贴板里的 `sk-` 密钥；沿用旧版 `com.usegoodai.codex-config` 标识，已授予的终端权限继续有效。同时生成网站下载文件 `../dist/desktop/download/usegoodai-quick-connect-windows-x64.exe` 和 `usegoodai-quick-connect-mac-arm64.zip`（压缩包内是不带编号的 `UseGoodAI中转快速接入助手.app`，保留可执行权限）。
 
 Windows 启动器内附原始 PowerShell 脚本，运行时在当前用户临时目录展开并启动，结束后清理临时文件。中文脚本带 UTF-8 BOM，支持 Windows PowerShell 5.1。Mac `.app` 内附原始 Shell 脚本，使用系统终端运行；整个 `.app` 目录是一个应用，移动或压缩时保留完整目录和可执行权限。
 
@@ -23,11 +25,13 @@ go test ./... -v
 python3 -m unittest test_packaging.py -v
 ```
 
-测试覆盖自解压成品读取、非法文件拒绝、临时文件清理、输入与输出转发、失败退出码、中文及带引号路径、终端交互、PE/Mach-O 架构与原始脚本一致性。打包程序和 Python 包装测试的缓存、临时目录保存在本目录 `.work/`。
+测试覆盖自解压成品读取、非法文件拒绝、临时文件清理、输入与输出转发、失败退出码、中文及带引号路径、终端交互、`--from-app` 参数传递、下载压缩包权限、PE/Mach-O 架构与原始脚本一致性。打包程序和 Python 包装测试的缓存、临时目录保存在本目录 `.work/`。
 
 本地构建不包含发布者代码签名或 Apple 公证。Windows 和 Mac 的真实桌面双击验证需分别在目标系统完成；Linux 自动化验证不能代替实机验收。
 
 2026-10-24 在 Linux 完成启动器 2 项 Go 测试和 3 项 Python 包装测试，全部通过；六份成品的 Windows x64、Mac arm64 架构及内置脚本/程序均已核对。
+
+2026-11-01 在 Linux 完成启动器 Go 测试和 6 项 Python 包装测试，全部通过；快速接入助手 exe（x64 窗口程序）、两份 Mac `.app` 与网站下载文件均已核对。
 
 ## 供生图工具复用启动器
 
