@@ -11,3 +11,5 @@ reference/
 dist/
 desktop/.work/
 desktop/__pycache__/
+quick-connect/.work/
+quick-connect/rsrc_windows_amd64.syso
