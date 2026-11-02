@@ -144,7 +144,7 @@ test('renders verified Qwen and MiMo IDs with RMB prices in their 0.45 groups', 
   }
 })
 
-test('renders only supported models and their exact copy IDs in the 0.5 CC TEST group', async () => {
+test('renders only supported models and their exact copy IDs in the 0.7 CC TEST group', async () => {
   const server = await createServer({
     configFile: false,
     plugins: [vue()],
@@ -186,7 +186,7 @@ test('renders only supported models and their exact copy IDs in the 0.5 CC TEST 
       }
       if (priceMode === 'group') {
         assert.match(html, /缓存 99%，主力分组推荐使用/)
-        assert.match(html, /0\.5 倍率/)
+        assert.match(html, /0\.7 倍率/)
         assert.doesNotMatch(html, /临时渠道|不保证长久|会下线|CC TEST 0\.4/)
       }
     }
@@ -257,8 +257,8 @@ test('renders Haiku 5.5 once with both context prices in the same row', async ()
   try {
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
     const expectedGroupPrices = new Map([
-      ['anthropic-cc-test', ['¥0.03', '¥0.15', '¥0.15', '¥0.75', '¥0.003', '¥0.015', '¥0.18', '¥0.90']],
-      ['anthropic-cc-test-0.7', ['¥0.05', '¥0.25', '¥0.25', '¥1.25', '¥0.005', '¥0.025', '¥0.30', '¥1.50']],
+      ['anthropic-cc-test', ['¥0.045', '¥0.23', '¥0.23', '¥1.13', '¥0.0045', '¥0.0225', '¥0.27', '¥1.35']],
+      ['anthropic-cc-test-0.7', ['¥0.07', '¥0.35', '¥0.35', '¥1.75', '¥0.007', '¥0.035', '¥0.42', '¥2.10']],
       ['anthropic-max', ['¥0.15', '¥0.75', '¥0.75', '¥3.75', '¥0.015', '¥0.075', '¥0.90', '¥4.50']],
       ['anthropic-max-external', ['¥0.15', '¥0.75', '¥0.75', '¥3.75', '¥0.015', '¥0.075', '¥0.90', '¥4.50']],
     ])

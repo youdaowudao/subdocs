@@ -33,8 +33,8 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
       { id: 'anthropic-main', name: 'Anthropic 低价分组1M上下文 缓存高', multiplier: 0.16 },
-      { id: 'anthropic-cc-test', name: '0.3Anthropic CCTEST满分渠道（缓存70%）', multiplier: 0.3 },
-      { id: 'anthropic-cc-test-0.7', name: '0.5xcctest满分99缓 【主力分组推荐使用】', multiplier: 0.5 },
+      { id: 'anthropic-cc-test', name: '0.45Anthropic CCTEST满分渠道（缓存70%）', multiplier: 0.45 },
+      { id: 'anthropic-cc-test-0.7', name: '0.7xcctest满分99缓 【主力分组推荐使用】', multiplier: 0.7 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.5 },
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.5 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
@@ -300,12 +300,12 @@ test('orders all Anthropic groups from Fable 5.1 through Opus 5.5 to Opus 5', ()
 test('includes Claude Haiku 5.5 in both CC TEST and both CC MAX groups with both context prices', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-cc-test', [
-      { input: 0.03, output: 0.15, cachedInput: 0.003, total: 0.18 },
-      { input: 0.15, output: 0.75, cachedInput: 0.015, total: 0.9 },
+      { input: 0.045, output: 0.225, cachedInput: 0.0045, total: 0.27 },
+      { input: 0.225, output: 1.125, cachedInput: 0.0225, total: 1.35 },
     ]],
     ['anthropic-cc-test-0.7', [
-      { input: 0.05, output: 0.25, cachedInput: 0.005, total: 0.3 },
-      { input: 0.25, output: 1.25, cachedInput: 0.025, total: 1.5 },
+      { input: 0.07, output: 0.35, cachedInput: 0.007, total: 0.42 },
+      { input: 0.35, output: 1.75, cachedInput: 0.035, total: 2.1 },
     ]],
     ['anthropic-max', [
       { input: 0.15, output: 0.75, cachedInput: 0.015, total: 0.9 },
@@ -349,10 +349,10 @@ test('includes Claude Haiku 5.5 in both CC TEST and both CC MAX groups with both
   }
 })
 
-test('includes Sonnet 5.5 and Haiku 5.5 in the 0.3 CC TEST group', () => {
+test('includes Sonnet 5.5 and Haiku 5.5 in the 0.45 CC TEST group', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test')
 
-  assert.equal(group.multiplier, 0.3)
+  assert.equal(group.multiplier, 0.45)
   for (const modelId of ['claude-sonnet-5-5', 'claude-haiku-5-5']) {
     const models = getTextModelsForGroup(group.id).filter((model) => model.id === modelId)
     assert.equal(models.length, 1)
@@ -360,25 +360,25 @@ test('includes Sonnet 5.5 and Haiku 5.5 in the 0.3 CC TEST group', () => {
   }
 })
 
-test('prices all 12 supported models in the recommended 0.5 CC TEST group', () => {
+test('prices all 12 supported models in the recommended 0.7 CC TEST group', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test-0.7')
   const models = getTextModelsForGroup(group.id)
   const expectedPrices = new Map([
-    ['claude-opus-5-5', [2, 10, 0.1, 12]],
-    ['claude-opus-5', [2.5, 12.5, 0.25, 15]],
-    ['claude-opus-4-8', [2.5, 12.5, 0.25, 15]],
-    ['claude-opus-4-7', [2.5, 12.5, 0.25, 15]],
-    ['claude-opus-4-6', [2.5, 12.5, 0.25, 15]],
-    ['claude-opus-4-5', [2.5, 12.5, 0.25, 15]],
-    ['claude-sonnet-5-5', [1, 5, 0.05, 6]],
-    ['claude-sonnet-5', [1, 5, 0.1, 6]],
-    ['claude-sonnet-4-6', [1.5, 7.5, 0.15, 9]],
-    ['claude-sonnet-4-5', [1.5, 7.5, 0.15, 9]],
-    ['claude-haiku-5-5', [0.05, 0.25, 0.005, 0.3]],
-    ['claude-haiku-4-5', [0.5, 2.5, 0.05, 3]],
+    ['claude-opus-5-5', [2.8, 14, 0.14, 16.8]],
+    ['claude-opus-5', [3.5, 17.5, 0.35, 21]],
+    ['claude-opus-4-8', [3.5, 17.5, 0.35, 21]],
+    ['claude-opus-4-7', [3.5, 17.5, 0.35, 21]],
+    ['claude-opus-4-6', [3.5, 17.5, 0.35, 21]],
+    ['claude-opus-4-5', [3.5, 17.5, 0.35, 21]],
+    ['claude-sonnet-5-5', [1.4, 7, 0.07, 8.4]],
+    ['claude-sonnet-5', [1.4, 7, 0.14, 8.4]],
+    ['claude-sonnet-4-6', [2.1, 10.5, 0.21, 12.6]],
+    ['claude-sonnet-4-5', [2.1, 10.5, 0.21, 12.6]],
+    ['claude-haiku-5-5', [0.07, 0.35, 0.007, 0.42]],
+    ['claude-haiku-4-5', [0.7, 3.5, 0.07, 4.2]],
   ])
 
-  assert.equal(group.multiplier, 0.5)
+  assert.equal(group.multiplier, 0.7)
   assert.match(group.name, /主力分组推荐使用/)
   assert.equal(group.description, '缓存 99%，主力分组推荐使用')
   assert.deepEqual(models.map((model) => model.id), [...expectedPrices.keys()])
@@ -396,8 +396,8 @@ test('prices all 12 supported models in the recommended 0.5 CC TEST group', () =
 test('prices Claude Sonnet 5.5 in every Anthropic group', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-main', { input: 0.32, output: 1.6, cachedInput: 0.016 }],
-    ['anthropic-cc-test', { input: 0.6, output: 3, cachedInput: 0.03 }],
-    ['anthropic-cc-test-0.7', { input: 1, output: 5, cachedInput: 0.05 }],
+    ['anthropic-cc-test', { input: 0.9, output: 4.5, cachedInput: 0.045 }],
+    ['anthropic-cc-test-0.7', { input: 1.4, output: 7, cachedInput: 0.07 }],
     ['anthropic-max', { input: 3, output: 15, cachedInput: 0.15 }],
     ['anthropic-max-external', { input: 3, output: 15, cachedInput: 0.15 }],
   ])
@@ -423,7 +423,7 @@ test('prices Claude Sonnet 5.5 in every Anthropic group', () => {
 test('prices Claude Sonnet 5 at the reduced official baseline in all supported groups', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-main', { input: 0.32, output: 1.6, cachedInput: 0.032, total: 1.92 }],
-    ['anthropic-cc-test-0.7', { input: 1, output: 5, cachedInput: 0.1, total: 6 }],
+    ['anthropic-cc-test-0.7', { input: 1.4, output: 7, cachedInput: 0.14, total: 8.4 }],
     ['anthropic-max', { input: 3, output: 15, cachedInput: 0.3, total: 18 }],
     ['anthropic-max-external', { input: 3, output: 15, cachedInput: 0.3, total: 18 }],
   ])
@@ -449,8 +449,8 @@ test('prices Claude Sonnet 5 at the reduced official baseline in all supported g
 test('includes Claude Opus 5.5 once at official pricing in every Anthropic group', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-main', { input: 0.64, output: 3.2, cachedInput: 0.032, total: 3.84 }],
-    ['anthropic-cc-test', { input: 1.2, output: 6, cachedInput: 0.06, total: 7.2 }],
-    ['anthropic-cc-test-0.7', { input: 2, output: 10, cachedInput: 0.1, total: 12 }],
+    ['anthropic-cc-test', { input: 1.8, output: 9, cachedInput: 0.09, total: 10.8 }],
+    ['anthropic-cc-test-0.7', { input: 2.8, output: 14, cachedInput: 0.14, total: 16.8 }],
     ['anthropic-max', { input: 6, output: 30, cachedInput: 0.3, total: 36 }],
     ['anthropic-max-external', { input: 6, output: 30, cachedInput: 0.3, total: 36 }],
   ])
@@ -961,8 +961,8 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['gpt-0.18', 5.25],
     ['full', 9.45],
     ['anthropic-main', 5.6],
-    ['anthropic-cc-test', 10.5],
-    ['anthropic-cc-test-0.7', 17.5],
+    ['anthropic-cc-test', 15.75],
+    ['anthropic-cc-test-0.7', 24.5],
     ['anthropic-max', 52.5],
     ['anthropic-max-external', 52.5],
     ['grok-free', 3.5],
