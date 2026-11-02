@@ -5,7 +5,7 @@ sidebarTitle: 导入国产模型
 
 # 给 Codex 导入国产模型
 
-这个脚本把 11 个国产模型加入 Codex 的模型选择器，适合已经接入 UseGoodAI、想在 GPT 和国产模型之间切换的用户。脚本往本机 `.codex/config.toml` 和模型列表里添加国产模型，原有 GPT 模型、接口和 Key 保留。
+这个脚本把 10 个国产模型加入 Codex 的模型选择器，适合已经接入 UseGoodAI、想在 GPT 和国产模型之间切换的用户。脚本往本机 `.codex/config.toml` 和模型列表里添加国产模型，原有 GPT 模型、接口和 Key 保留。
 
 ## 1. 一键导入
 
@@ -40,7 +40,7 @@ Linux 需要已安装 Node.js 16 以上。
 
 | 分组 | 模型 ID |
 | --- | --- |
-| DeepSeek 分组 | `deepseek-flash`、`deepseek-v4.1-flash-1017`（与 V4.1 Flash 同价） |
+| DeepSeek 分组 | `deepseek-flash`（DeepSeek V4.1 Flash） |
 | 国产之光 | `glm-5.3`、`glm-5.3-flash` |
 | Qwen 千问分组 | `qwen3.8-max`、`qwen3.8-flash` |
 | Kimi 分组 | `kimi-k3` |
