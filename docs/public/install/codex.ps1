@@ -192,8 +192,26 @@ function Test-KeyEnded($Data) {
   return $false
 }
 
+# 超时的样子：Windows PowerShell 5.1 是 Status 为 Timeout 的 WebException，
+# PowerShell 7 是 TaskCanceledException 或内层的 TimeoutException。
+function Test-Timeout($Exception) {
+  $current = $Exception
+  while ($null -ne $current) {
+    if ($current -is [System.TimeoutException] -or $current -is [System.OperationCanceledException]) {
+      return $true
+    }
+    if ($current -is [System.Net.WebException] -and $current.Status -eq [System.Net.WebExceptionStatus]::Timeout) {
+      return $true
+    }
+    $current = $current.InnerException
+  }
+  return $false
+}
+
+# State：usable、no_balance、rejected、disabled，检查不了时为 timeout（10 秒内没有回应）、
+# offline（连不上）或 server_error（服务器出错或返回异常，Http 为状态码）。
 function Test-ApiKey([string]$ApiKey) {
-  $result = @{ State = "unknown"; Balance = $null }
+  $result = @{ State = "unknown"; Balance = $null; Http = $null }
   try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
   } catch {
@@ -208,18 +226,29 @@ function Test-ApiKey([string]$ApiKey) {
     }
     if ($status -eq 401 -or $status -eq 403) {
       $result.State = "rejected"
+    } elseif ($status -gt 0) {
+      $result.State = "server_error"
+      $result.Http = $status
+    } elseif (Test-Timeout $_.Exception) {
+      $result.State = "timeout"
+    } else {
+      $result.State = "offline"
     }
     return $result
   }
   if ([int]$response.StatusCode -ne 200) {
+    $result.State = "server_error"
+    $result.Http = [int]$response.StatusCode
     return $result
   }
   try {
     $data = $response.Content | ConvertFrom-Json -ErrorAction Stop
   } catch {
+    $result.State = "server_error"
     return $result
   }
   if (-not ($data.isValid -is [bool])) {
+    $result.State = "server_error"
     return $result
   }
   if (-not $data.isValid -or (Test-KeyEnded $data)) {
@@ -276,6 +305,16 @@ function Get-CheckedApiKey {
     Say ""
     if ($check.State -eq "no_balance") {
       Say "密钥可用，但余额为 `$0。充值后即可使用；新人进群领 2 元。"
+    } elseif ($check.State -eq "timeout") {
+      Say "网络超时：UseGoodAI 服务器 10 秒内没有回应，暂时无法检查密钥，继续写入。"
+    } elseif ($check.State -eq "offline") {
+      Say "连不上 UseGoodAI 服务器（网络不通，或被代理、防火墙拦截），暂时无法检查密钥，继续写入。"
+    } elseif ($check.State -eq "server_error") {
+      if ($null -ne $check.Http) {
+        Say ("UseGoodAI 服务器暂时出错（HTTP " + $check.Http + "），暂时无法检查密钥，继续写入。")
+      } else {
+        Say "UseGoodAI 服务器暂时出错（返回内容异常），暂时无法检查密钥，继续写入。"
+      }
     } elseif ($check.State -eq "unknown") {
       Say "暂时无法检查密钥，继续写入。"
     } elseif ($null -ne $check.Balance) {

@@ -9,6 +9,7 @@ Authorization header is appended to the log file given as the argument.
 import http.server
 import json
 import sys
+import time
 
 ANSWERS = (
     ("rejected", 401, {"error": {"type": "authentication_error", "message": "Invalid API key"}}),
@@ -31,11 +32,29 @@ USABLE = {"daily_usage": [{"remaining": 0}], "isValid": True, "mode": "unrestric
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    def handle(self) -> None:
+        # The timeout cases hang up before the slow answer is written.
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
     def do_GET(self) -> None:
         authorization = self.headers.get("Authorization", "")
         with open(sys.argv[1], "a", encoding="utf-8") as log:
             log.write(f"{self.path} {authorization}\n")
         status, body = 404, {"error": "not found"}
+        if self.path == "/v1/usage" and "slow" in authorization:
+            # Longer than the shortened timeout the tests give the scripts.
+            time.sleep(3)
+        if self.path == "/v1/usage" and "notjson" in authorization:
+            data = b"<html>login</html>"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if self.path == "/v1/usage":
             status, body = 200, USABLE
             for word, answer_status, answer in ANSWERS:

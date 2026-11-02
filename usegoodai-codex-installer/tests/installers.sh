@@ -147,8 +147,14 @@ if [ -z "${USEGOODAI_TEST_SERVER:-}" ]; then
   exit 7
 fi
 args=()
+previous=""
 for argument in "$@"; do
+  # USEGOODAI_TEST_SHORT_TIMEOUT 把 10 秒超时缩成 1 秒，测试超时不用真等 10 秒。
+  if [ "$previous" = "--max-time" ] && [ -n "${USEGOODAI_TEST_SHORT_TIMEOUT:-}" ]; then
+    argument=1
+  fi
   args+=("${argument//https:\/\/api.usegoodai.com/$USEGOODAI_TEST_SERVER}")
+  previous="$argument"
 done
 case " ${args[*]} " in
   *api.usegoodai.com*)
@@ -493,6 +499,7 @@ function Invoke-WebRequest {
   [CmdletBinding()] param([string]$Uri, [hashtable]$Headers, [int]$TimeoutSec, [switch]$UseBasicParsing)
   $Uri = $Uri.Replace("https://api.usegoodai.com", $env:USEGOODAI_TEST_SERVER)
   if (-not $env:USEGOODAI_TEST_SERVER -or $Uri.Contains("api.usegoodai.com")) { throw "network down" }
+  if ($env:USEGOODAI_TEST_SHORT_TIMEOUT) { $TimeoutSec = 1 }
   Microsoft.PowerShell.Utility\Invoke-WebRequest -Uri $Uri -Headers $Headers -TimeoutSec $TimeoutSec -UseBasicParsing
 }
 . $env:USEGOODAI_TEST_SCRIPT'
@@ -552,8 +559,10 @@ for runner in run_shell_script run_powershell_script; do
   check_key_case "$runner" "$name 过期时间未到时正常通过" '' 'sk-futuredate-key\n' '密钥检查通过，余额 $4.00。' 'sk-futuredate-key'
   check_key_case "$runner" "$name 余额为 0 时提示并继续写入" '' 'sk-zero-key\n' '密钥可用，但余额为 $0。充值后即可使用；新人进群领 2 元。' 'sk-zero-key'
   check_key_case "$runner" "$name 没有 remaining 字段时按成功处理" '' 'sk-noremaining-key\n' '密钥检查通过。' 'sk-noremaining-key'
-  check_key_case "$runner" "$name 服务器 5xx 时提示无法检查并继续写入" '' 'sk-broken-key\n' '暂时无法检查密钥，继续写入。' 'sk-broken-key'
-  check_key_case "$runner" "$name 网络不通时提示无法检查并继续写入" '' 'sk-network-key\n' '暂时无法检查密钥，继续写入。' 'sk-network-key' 'http://127.0.0.1:9'
+  check_key_case "$runner" "$name 服务器 5xx 时提示服务器出错和状态码并继续写入" '' 'sk-broken-key\n' 'UseGoodAI 服务器暂时出错（HTTP 500），暂时无法检查密钥，继续写入。' 'sk-broken-key'
+  check_key_case "$runner" "$name 服务器返回的不是 JSON 时提示返回内容异常并继续写入" '' 'sk-notjson-key\n' 'UseGoodAI 服务器暂时出错（返回内容异常），暂时无法检查密钥，继续写入。' 'sk-notjson-key'
+  check_key_case "$runner" "$name 连接被拒时提示连不上并继续写入" '' 'sk-network-key\n' '连不上 UseGoodAI 服务器（网络不通，或被代理、防火墙拦截），暂时无法检查密钥，继续写入。' 'sk-network-key' 'http://127.0.0.1:9'
+  USEGOODAI_TEST_SHORT_TIMEOUT=1 check_key_case "$runner" "$name 服务器超时没有回应时提示网络超时并继续写入" '' 'sk-slow-key\n' '网络超时：UseGoodAI 服务器 10 秒内没有回应，暂时无法检查密钥，继续写入。' 'sk-slow-key'
   check_key_case "$runner" "$name 原有输入流程：空值继续提示" '' '\nnot-a-key\nsk-typed-usable-key\n' 'API Key 不能为空，请重新输入。' 'sk-typed-usable-key'
   check_key_case "$runner" "$name 原有输入流程：格式错误继续提示" '' '\nnot-a-key\nsk-typed-usable-key\n' 'API Key 格式错误，必须以 sk- 开头，请重新输入。' 'sk-typed-usable-key'
 done

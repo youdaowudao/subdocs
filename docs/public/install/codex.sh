@@ -10,6 +10,7 @@ USAGE_URL="$CODEX_BASE_URL/v1/usage"
 read_clipboard=false
 key_state=unknown
 key_balance=""
+key_http=""
 
 if ! { exec 3</dev/tty; } 2>/dev/null; then
   exec 3<&0
@@ -355,18 +356,30 @@ expiry_passed() {
     }'
 }
 
-# 检查结果写入 key_state：usable、no_balance、rejected、disabled、unknown。
+# 检查结果写入 key_state：usable、no_balance、rejected、disabled，
+# 检查不了时为 timeout（10 秒内没有回应）、offline（连不上）、
+# server_error（服务器出错或返回异常，key_http 为状态码）或 unknown（没有 curl）。
 check_api_key() {
   local key="$1"
-  local response status body valid remaining key_status
+  local response status body valid remaining key_status curl_exit
   key_state=unknown
   key_balance=""
+  key_http=""
   if ! command -v curl >/dev/null 2>&1; then
     return 0
   fi
   # 请求头从标准输入传给 curl，密钥不出现在进程参数里。
   response="$(printf 'Authorization: Bearer %s\n' "$key" |
-    curl -sS --max-time 10 -H @- -H 'Accept: application/json' -w '\n%{http_code}' "$USAGE_URL" 2>/dev/null)" || return 0
+    curl -sS --max-time 10 -H @- -H 'Accept: application/json' -w '\n%{http_code}' "$USAGE_URL" 2>/dev/null)" && curl_exit=0 || curl_exit=$?
+  if [ "$curl_exit" -ne 0 ]; then
+    # curl 退出码 28 是超时；其余（解析不了域名、连接被拒、TLS 失败等）是连不上。
+    if [ "$curl_exit" -eq 28 ]; then
+      key_state=timeout
+    else
+      key_state=offline
+    fi
+    return 0
+  fi
   status="${response##*$'\n'}"
   body="${response%$'\n'*}"
   case "$status" in
@@ -377,6 +390,8 @@ check_api_key() {
     200)
       ;;
     *)
+      key_state=server_error
+      key_http="$status"
       return 0
       ;;
   esac
@@ -389,6 +404,7 @@ check_api_key() {
     true)
       ;;
     *)
+      key_state=server_error
       return 0
       ;;
   esac
@@ -480,6 +496,19 @@ obtain_api_key() {
     case "$key_state" in
       no_balance)
         say "密钥可用，但余额为 \$0。充值后即可使用；新人进群领 2 元。"
+        ;;
+      timeout)
+        say "网络超时：UseGoodAI 服务器 10 秒内没有回应，暂时无法检查密钥，继续写入。"
+        ;;
+      offline)
+        say "连不上 UseGoodAI 服务器（网络不通，或被代理、防火墙拦截），暂时无法检查密钥，继续写入。"
+        ;;
+      server_error)
+        if [ -n "$key_http" ]; then
+          say "UseGoodAI 服务器暂时出错（HTTP $key_http），暂时无法检查密钥，继续写入。"
+        else
+          say "UseGoodAI 服务器暂时出错（返回内容异常），暂时无法检查密钥，继续写入。"
+        fi
         ;;
       unknown)
         say "暂时无法检查密钥，继续写入。"
