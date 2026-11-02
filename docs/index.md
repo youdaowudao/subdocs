@@ -6,13 +6,13 @@ outline: false
 
 # UseGoodAI.com 中转站教程
 
-UseGoodAI 中转站让 Codex 使用 AI 模型，并支持在对话中生成、修改图片。首次接入先看“快速开始”；不想运行脚本时选“CC Switch 接入”，接入后再安装生图工具、导入国产模型。
+UseGoodAI 中转站让 Codex 使用 AI 模型，并支持在对话中生成、修改图片。首次接入先看“快速开始”，用接入助手一键导入；助手和命令都不行时选“CC Switch 接入”，接入后再安装生图工具、导入国产模型。
 
 <div class="home-entry-grid">
   <a class="home-entry home-entry--main" href="/quick-start">
     <span>1. 新手入口</span>
     <strong>快速开始</strong>
-    <p>Windows Codex App 用户，复制一条命令完成配置。</p>
+    <p>下载接入助手，在后台一键导入 Codex。</p>
   </a>
   <a class="home-entry home-entry--switch" href="/codex-cc-switch">
     <span>2. 图形化接入</span>

@@ -4,7 +4,7 @@ sidebarTitle: 手动配置
 
 # Codex 手动接入
 
-不运行一键脚本时，把后台生成的两段配置手动写进本机 `.codex` 文件夹里的 `config.toml` 和 `auth.json`。需要先按 [快速开始](/quick-start) 创建 API Key。
+不用接入助手或命令时，把后台生成的两段配置手动写进本机 `.codex` 文件夹里的 `config.toml` 和 `auth.json`。需要先按 [快速开始](/quick-start) 创建 API Key。
 
 ## 1. 打开 `.codex` 文件夹
 
@@ -86,7 +86,7 @@ Codex CLI：关闭原来的 PowerShell 或终端，重新打开后运行 `codex`
 | 修改后不生效 | 确认文件名不是 `.txt` 结尾，彻底退出 Codex 后重新打开 |
 | 后台没有使用记录 | 确认两个文件在 Codex 实际读取的 `.codex` 目录；WSL 用 WSL 里的 `~/.codex` |
 
-仍然无法使用时，改用 [快速开始](/quick-start) 的一键脚本。
+仍然无法使用时，改用 [快速开始](/quick-start) 的接入助手或命令行。
 
 <a id="codex-auth-modes"></a>
 
