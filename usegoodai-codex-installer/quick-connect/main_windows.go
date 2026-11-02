@@ -32,6 +32,7 @@ func main() {
 		Client:      connect.NewHTTPClient(),
 		Now:         time.Now,
 		StopClients: connect.StopClients,
+		NamesFile:   connect.NamesFile(),
 	}, connect.FindImportLink(os.Args[1:]))
 
 	err := wails.Run(&options.App{

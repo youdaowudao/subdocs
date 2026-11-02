@@ -47,17 +47,20 @@ func TestCheckKeyAnswers(t *testing.T) {
 		{"unknown expiry format", 200, `{"expires_at":12345,"isValid":true,"status":"active"}`, KeyUsable, 0, false},
 		{"unauthorized", 401, `{"error":{"type":"authentication_error","message":"Invalid API key"}}`, KeyRejected, 0, false},
 		{"forbidden", 403, `{"error":{"message":"blocked"}}`, KeyRejected, 0, false},
-		{"server error", 500, `{"error":"x"}`, KeyUnreachable, 0, false},
-		{"bad gateway", 502, `<html>bad gateway</html>`, KeyUnreachable, 0, false},
-		{"rate limited", 429, `{}`, KeyUnreachable, 0, false},
-		{"not found", 404, `{}`, KeyUnreachable, 0, false},
-		{"not json", 200, `<html>login</html>`, KeyUnreachable, 0, false},
-		{"no isValid", 200, `{"remaining":5}`, KeyUnreachable, 0, false},
+		{"server error", 500, `{"error":"x"}`, KeyServerError, 0, false},
+		{"bad gateway", 502, `<html>bad gateway</html>`, KeyServerError, 0, false},
+		{"rate limited", 429, `{}`, KeyServerError, 0, false},
+		{"not found", 404, `{}`, KeyServerError, 0, false},
+		{"not json", 200, `<html>login</html>`, KeyServerError, 0, false},
+		{"no isValid", 200, `{"remaining":5}`, KeyServerError, 0, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			server, seen := fakeUsage(t, c.status, c.body)
 			got := CheckKey(context.Background(), NewHTTPClient(), server.URL, fixtureKey)
+			if c.want == KeyServerError && got.StatusCode != c.status {
+				t.Fatalf("status code = %d, want %d", got.StatusCode, c.status)
+			}
 			if got.State != c.want || got.HasRemaining != c.has || got.Remaining != c.remaining {
 				t.Fatalf("CheckKey = %+v, want state %v remaining %v (%v)", got, c.want, c.remaining, c.has)
 			}
@@ -72,7 +75,7 @@ func TestCheckKeyNetworkFailures(t *testing.T) {
 	closed := httptest.NewServer(http.NotFoundHandler())
 	address := closed.URL
 	closed.Close()
-	if got := CheckKey(context.Background(), NewHTTPClient(), address, fixtureKey); got.State != KeyUnreachable {
+	if got := CheckKey(context.Background(), NewHTTPClient(), address, fixtureKey); got.State != KeyOffline {
 		t.Fatalf("connection refused: %+v", got)
 	}
 
@@ -86,11 +89,32 @@ func TestCheckKeyNetworkFailures(t *testing.T) {
 	client := NewHTTPClient()
 	client.Timeout = 200 * time.Millisecond
 	started := time.Now()
-	if got := CheckKey(context.Background(), client, slow.URL, fixtureKey); got.State != KeyUnreachable {
+	if got := CheckKey(context.Background(), client, slow.URL, fixtureKey); got.State != KeyTimeout {
 		t.Fatalf("timeout: %+v", got)
 	}
 	if time.Since(started) > 3*time.Second {
 		t.Fatal("timeout was not applied")
+	}
+
+	// Headers arrive in time but the body stalls: still a timeout, not a
+	// server error.
+	stalled := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"isValid":`))
+		w.(http.Flusher).Flush()
+		select {
+		case <-r.Context().Done():
+		case <-time.After(5 * time.Second):
+		}
+	}))
+	defer stalled.Close()
+	if got := CheckKey(context.Background(), client, stalled.URL, fixtureKey); got.State != KeyTimeout {
+		t.Fatalf("stalled body: %+v", got)
+	}
+
+	// No such host: no connection, not a timeout.
+	if got := CheckKey(context.Background(), NewHTTPClient(), "http://usegoodai-test.invalid", fixtureKey); got.State != KeyOffline {
+		t.Fatalf("unknown host: %+v", got)
 	}
 	if NewHTTPClient().Timeout != 10*time.Second {
 		t.Fatal("the key check must time out after 10 seconds")
@@ -103,7 +127,7 @@ func TestCheckKeyDoesNotFollowRedirects(t *testing.T) {
 		http.Redirect(w, r, elsewhere.URL+"/v1/usage", http.StatusFound)
 	}))
 	defer redirect.Close()
-	if got := CheckKey(context.Background(), NewHTTPClient(), redirect.URL, fixtureKey); got.State != KeyUnreachable {
+	if got := CheckKey(context.Background(), NewHTTPClient(), redirect.URL, fixtureKey); got.State != KeyServerError || got.StatusCode != http.StatusFound {
 		t.Fatalf("redirect: %+v", got)
 	}
 	if seen.Method != "" {

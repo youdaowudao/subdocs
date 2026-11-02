@@ -3,7 +3,9 @@ package connect
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"time"
 )
@@ -19,16 +21,24 @@ const (
 	// KeyDisabled is a 200 answer for a key the gateway refuses: isValid
 	// false, or an expired or used-up key (see keyEnded).
 	KeyDisabled
-	// KeyUnreachable covers network errors, timeouts, 5xx and any answer
-	// that is not the documented one.
-	KeyUnreachable
+	// KeyTimeout: the server did not answer within usageTimeout (the
+	// connection or the answer was too slow).
+	KeyTimeout
+	// KeyOffline: no connection at all (no network, DNS failure, refused,
+	// reset, TLS failure, a proxy or firewall in the way).
+	KeyOffline
+	// KeyServerError: the server answered, but not with the documented
+	// answer (5xx, 404, 429, a redirect or a page that is not JSON).
+	KeyServerError
 )
 
-// KeyCheck carries the remaining balance in USD when the server sent one.
+// KeyCheck carries the remaining balance in USD when the server sent one,
+// and the HTTP status for KeyServerError.
 type KeyCheck struct {
 	State        KeyState
 	Remaining    float64
 	HasRemaining bool
+	StatusCode   int
 }
 
 const (
@@ -54,14 +64,14 @@ func CheckKey(ctx context.Context, client *http.Client, baseURL, key string) Key
 	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+usagePath, nil)
 	if err != nil {
-		return KeyCheck{State: KeyUnreachable}
+		return KeyCheck{State: KeyOffline}
 	}
 	request.Header.Set("Authorization", "Bearer "+key)
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("User-Agent", "UseGoodAI-Quick-Connect/"+Version)
 	response, err := client.Do(request)
 	if err != nil {
-		return KeyCheck{State: KeyUnreachable}
+		return networkFailure(err)
 	}
 	defer response.Body.Close()
 
@@ -70,7 +80,7 @@ func CheckKey(ctx context.Context, client *http.Client, baseURL, key string) Key
 		return KeyCheck{State: KeyRejected}
 	case http.StatusOK:
 	default:
-		return KeyCheck{State: KeyUnreachable}
+		return KeyCheck{State: KeyServerError, StatusCode: response.StatusCode}
 	}
 	var answer struct {
 		IsValid   *bool           `json:"isValid"`
@@ -78,8 +88,14 @@ func CheckKey(ctx context.Context, client *http.Client, baseURL, key string) Key
 		ExpiresAt json.RawMessage `json:"expires_at"`
 		Remaining *float64        `json:"remaining"`
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, maxUsageAnswer)).Decode(&answer); err != nil || answer.IsValid == nil {
-		return KeyCheck{State: KeyUnreachable}
+	if err := json.NewDecoder(io.LimitReader(response.Body, maxUsageAnswer)).Decode(&answer); err != nil {
+		if isTimeout(err) {
+			return KeyCheck{State: KeyTimeout}
+		}
+		return KeyCheck{State: KeyServerError, StatusCode: response.StatusCode}
+	}
+	if answer.IsValid == nil {
+		return KeyCheck{State: KeyServerError, StatusCode: response.StatusCode}
 	}
 	if !*answer.IsValid || keyEnded(answer.Status, answer.ExpiresAt, time.Now()) {
 		return KeyCheck{State: KeyDisabled}
@@ -110,4 +126,20 @@ func keyEnded(status string, expiresAt json.RawMessage, now time.Time) bool {
 	}
 	expires, err := time.Parse(time.RFC3339Nano, text)
 	return err == nil && now.After(expires)
+}
+
+// networkFailure tells a slow server (timeout) from no connection at all.
+func networkFailure(err error) KeyCheck {
+	if isTimeout(err) {
+		return KeyCheck{State: KeyTimeout}
+	}
+	return KeyCheck{State: KeyOffline}
+}
+
+func isTimeout(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netError net.Error
+	return errors.As(err, &netError) && netError.Timeout()
 }

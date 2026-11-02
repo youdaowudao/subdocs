@@ -85,7 +85,11 @@ func (a *App) Status() connect.Status { return a.service.Status() }
 
 func (a *App) ParseLink(raw string) connect.LinkResult { return a.service.ParseLink(raw) }
 
-func (a *App) Connect(key string) connect.Result { return a.service.Connect(a.ctx, key) }
+// Connect is the button: a pasted key has no name.
+func (a *App) Connect(key string) connect.Result { return a.service.Connect(a.ctx, key, "") }
+
+// Import connects a key from an import link and remembers its name.
+func (a *App) Import(key, name string) connect.Result { return a.service.Connect(a.ctx, key, name) }
 
 func (a *App) Restore() connect.Result { return a.service.Restore() }
 

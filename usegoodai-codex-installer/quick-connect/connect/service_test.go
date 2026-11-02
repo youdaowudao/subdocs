@@ -2,9 +2,11 @@ package connect
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -55,16 +57,23 @@ func TestConnectMessages(t *testing.T) {
 		{"rejected 401", 401, `{}`, running, fixtureKey, ToneError, MessageRejected, false},
 		{"rejected 403", 403, `{}`, running, fixtureKey, ToneError, MessageRejected, false},
 		{"disabled", 200, `{"isValid":false}`, running, fixtureKey, ToneError, MessageDisabled, false},
-		{"server error", 503, `{}`, running, fixtureKey, ToneError, MessageUnreachable, false},
+		{"server error", 503, `{}`, running, fixtureKey, ToneError,
+			"UseGoodAI 服务器暂时出错（HTTP 503），无法确认密钥。Codex 配置没有改动。稍后再点一次，仍不行请进 QQ 群联系客服。", false},
+		{"answer not understood", 200, `<html>`, running, fixtureKey, ToneError,
+			"UseGoodAI 服务器暂时出错（返回内容异常），无法确认密钥。Codex 配置没有改动。稍后再点一次，仍不行请进 QQ 群联系客服。", false},
 		{"bad format", 200, `{"isValid":true}`, running, "pk-abc", ToneError, MessageBadFormat, false},
+		{"masked demo key", 200, `{"isValid":true}`, running, "sk-9f0a66668****c4cfb432", ToneError, MessageBadFormat, false},
 		{"empty", 200, `{"isValid":true}`, running, "  ", ToneError, MessageEmptyKey, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			service, stops := newTestService(t, c.status, c.body, c.stop)
-			result := service.Connect(context.Background(), c.key)
+			result := service.Connect(context.Background(), c.key, "")
 			if result.Tone != c.tone || result.Message != c.message {
 				t.Fatalf("got %s %q\nwant %s %q", result.Tone, result.Message, c.tone, c.message)
+			}
+			if wantAction := c.message == MessageEmptyKey; (result.Action == ActionOpenSite) != wantAction {
+				t.Fatalf("action = %q", result.Action)
 			}
 			if c.written {
 				if *stops != 1 || result.Status.State != StateUseGoodAI || result.Status.Key != MaskKey(fixtureKey) {
@@ -80,12 +89,84 @@ func TestConnectMessages(t *testing.T) {
 	}
 }
 
+func TestNetworkFailureMessages(t *testing.T) {
+	closed := httptest.NewServer(http.NotFoundHandler())
+	offline := &Service{CodexHome: filepath.Join(t.TempDir(), ".codex"), BaseURL: closed.URL, Client: NewHTTPClient(),
+		Now: func() time.Time { return fixedTime }, StopClients: func() StopResult { t.Fatal("must not stop Codex"); return StopResult{} }}
+	closed.Close()
+	if result := offline.Connect(context.Background(), fixtureKey, ""); result.Message != MessageOffline {
+		t.Fatalf("offline: %q", result.Message)
+	}
+
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
+	defer slow.Close()
+	client := NewHTTPClient()
+	client.Timeout = 200 * time.Millisecond
+	timeout := &Service{CodexHome: offline.CodexHome, BaseURL: slow.URL, Client: client, Now: offline.Now, StopClients: offline.StopClients}
+	if result := timeout.Connect(context.Background(), fixtureKey, ""); result.Message != MessageTimeout {
+		t.Fatalf("timeout: %q", result.Message)
+	}
+	assertOnlyFiles(t, offline.CodexHome)
+}
+
+func TestEmptyKeyWhenConnected(t *testing.T) {
+	service, _ := newTestService(t, 200, `{"isValid":true,"remaining":1}`, StopResult{})
+	service.Connect(context.Background(), fixtureKey, "")
+	result := service.Connect(context.Background(), "", "")
+	if result.Message != MessageEmptyKeyConnected || result.Action != ActionOpenSite || result.Status.State != StateUseGoodAI {
+		t.Fatalf("%+v", result)
+	}
+}
+
+func TestImportRemembersName(t *testing.T) {
+	service, _ := newTestService(t, 200, `{"isValid":true,"remaining":1}`, StopResult{})
+	service.NamesFile = filepath.Join(t.TempDir(), "names", "key-names.json")
+	if result := service.Connect(context.Background(), fixtureKey, "工作电脑"); result.Status.Name != "工作电脑" {
+		t.Fatalf("after import: %+v", result.Status)
+	}
+	// Pasting the same key later keeps the name.
+	if result := service.Connect(context.Background(), fixtureKey, ""); result.Status.Name != "工作电脑" {
+		t.Fatalf("after paste: %+v", result.Status)
+	}
+	data := readFile(t, service.NamesFile)
+	if strings.Contains(data, fixtureKey) || strings.Contains(data, MaskKey(fixtureKey)) {
+		t.Fatal("the names file must not hold the key")
+	}
+	// Another key has no name; the old one keeps its own.
+	other := fixtureKey + "x"
+	if result := service.Connect(context.Background(), other, ""); result.Status.Name != "" {
+		t.Fatalf("other key: %+v", result.Status)
+	}
+	if result := service.Connect(context.Background(), other, "家里"); result.Status.Name != "家里" {
+		t.Fatalf("renamed: %+v", result.Status)
+	}
+	if lookupName(service.NamesFile, fixtureKey) != "工作电脑" {
+		t.Fatal("older name lost")
+	}
+	for i := 0; i < maxNames+5; i++ {
+		if err := rememberName(service.NamesFile, fmt.Sprintf("sk-%d", i), "n"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := len(readNames(service.NamesFile)); got != maxNames {
+		t.Fatalf("%d names kept", got)
+	}
+	if restored := service.Restore(); restored.Status.Name != "" {
+		t.Fatalf("after restore: %+v", restored.Status)
+	}
+	// No names file configured: nothing is kept and nothing fails.
+	plain, _ := newTestService(t, 200, `{"isValid":true,"remaining":1}`, StopResult{})
+	if result := plain.Connect(context.Background(), fixtureKey, "x"); result.Tone != ToneSuccess || result.Status.Name != "" {
+		t.Fatalf("%+v", result)
+	}
+}
+
 func TestConnectKeepsOldConfigWhenWriteFails(t *testing.T) {
 	service, stops := newTestService(t, 200, `{"isValid":true,"remaining":1}`, StopResult{Codex: true})
 	writeFile(t, filepath.Join(service.CodexHome, "config.toml"), "official config")
 	renameFile = func(string, string) error { return &osPathError }
 	defer func() { renameFile = defaultRename }()
-	result := service.Connect(context.Background(), fixtureKey)
+	result := service.Connect(context.Background(), fixtureKey, "")
 	if result.Tone != ToneError || result.Message != "写入 Codex 配置失败：拒绝访问。原配置没有改动，可以重试。" {
 		t.Fatalf("got %q", result.Message)
 	}
@@ -115,7 +196,7 @@ func TestParseLinkMessages(t *testing.T) {
 
 func TestRestoreMessages(t *testing.T) {
 	service, stops := newTestService(t, 200, `{"isValid":true,"remaining":1}`, StopResult{ChatGPT: true})
-	if result := service.Connect(context.Background(), fixtureKey); result.Tone != ToneSuccess {
+	if result := service.Connect(context.Background(), fixtureKey, ""); result.Tone != ToneSuccess {
 		t.Fatal(result.Message)
 	}
 	result := service.Restore()

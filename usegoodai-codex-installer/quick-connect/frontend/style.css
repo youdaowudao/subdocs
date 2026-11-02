@@ -99,3 +99,14 @@ footer{margin-top:12px}
 .text:hover:not(:disabled){color:var(--fg)}
 .text:disabled{opacity:.5}
 .version{margin-top:6px;text-align:center;font-size:11px;color:var(--soft);letter-spacing:.03em}
+.status-key{display:flex;flex-direction:column;min-width:0;max-width:100%}
+.status-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;line-height:1.45;color:var(--primary-ink)}
+.status-name[hidden]{display:none}
+.notice-body{min-width:0}
+.notice-action{margin-top:6px;height:28px;padding:0 11px;border-radius:8px;border:1px solid currentColor;background:#fff;color:inherit;font-size:12px;font-weight:600}
+.notice-action:hover{background:rgba(255,255,255,.6)}
+.notice-action[hidden]{display:none}
+.tip-anchor{position:relative;display:inline-flex}
+.tip{position:absolute;right:0;bottom:calc(100% + 8px);width:220px;padding:8px 10px;border-radius:9px;background:#1f2937;color:#fff;font-size:12px;line-height:1.5;box-shadow:0 6px 18px rgba(15,23,42,.18);opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .15s,transform .15s,visibility 0s .15s;pointer-events:none;z-index:5}
+.tip::after{content:"";position:absolute;right:22px;top:100%;border:6px solid transparent;border-top-color:#1f2937}
+.tip-anchor:hover .tip,.tip-anchor:focus-within .tip{opacity:1;visibility:visible;transform:none;transition:opacity .15s,transform .15s}

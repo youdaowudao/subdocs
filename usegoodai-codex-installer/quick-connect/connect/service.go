@@ -21,26 +21,33 @@ const (
 
 // Messages shown in the result bar.
 const (
-	MessageEmptyKey        = "请先粘贴 UseGoodAI 的密钥（sk- 开头）。"
-	MessageBadFormat       = "这不是 UseGoodAI 的密钥（应以 sk- 开头），请重新复制。"
-	MessageRejected        = "密钥无效，请回网站重新复制完整的密钥。Codex 配置没有改动。"
-	MessageDisabled        = "这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。Codex 配置没有改动。"
-	MessageUnreachable     = "连不上 UseGoodAI 服务器，Codex 配置没有改动。检查网络后再点一次。"
-	MessageLinkIncomplete  = "导入链接不完整，请回网站重新点「一键导入」。"
-	MessageLinkUnsupported = "当前助手不支持这个导入，请下载新版助手。"
-	MessageNoBalance       = "已连接，但余额为 $0。充值后即可使用；新人进群领 2 元。"
-	MessageCloseFailed     = "配置已写好，但没能自动关闭 Codex，请手动退出后重新打开。"
-	MessageNotClosed       = "没能自动关闭 Codex，请手动退出后重新打开。"
-	MessageClosed          = "Codex 已关闭，重新打开即可。"
-	MessageRestored        = "已恢复官方登录，重新打开 Codex 后用官方账号登录。"
-	MessageRestoredOpen    = "已恢复官方登录，但没能自动关闭 Codex，请手动退出后重新打开，用官方账号登录。"
+	MessageEmptyKey          = "还没有输入密钥。到 UseGoodAI 网站的「API 密钥」页选一个密钥，点「一键导入」；或复制密钥粘贴到上面，再点「一键连接 Codex」。"
+	MessageEmptyKeyConnected = "当前已连接。要换密钥：到 UseGoodAI 网站的「API 密钥」页选一个密钥，点「一键导入」；或复制密钥粘贴到上面，再点「一键连接 Codex」。"
+	MessageBadFormat         = "这不是 UseGoodAI 的密钥：应以 sk- 开头，只含字母、数字、- 和 _。请回网站重新复制完整的密钥。"
+	MessageRejected          = "密钥无效，请回网站重新复制完整的密钥。Codex 配置没有改动。"
+	MessageDisabled          = "这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。Codex 配置没有改动。"
+	MessageTimeout           = "网络超时：UseGoodAI 服务器 10 秒内没有回应。Codex 配置没有改动。网络慢或开了代理时，稍后再点一次。"
+	MessageOffline           = "连不上 UseGoodAI 服务器：网络不通，或被代理、防火墙拦截。Codex 配置没有改动。检查网络后再点一次。"
+	MessageServerError       = "UseGoodAI 服务器暂时出错（%s），无法确认密钥。Codex 配置没有改动。稍后再点一次，仍不行请进 QQ 群联系客服。"
+	MessageLinkIncomplete    = "导入链接不完整，请回网站重新点「一键导入」。"
+	MessageLinkUnsupported   = "当前助手不支持这个导入，请下载新版助手。"
+	MessageNoBalance         = "已连接，但余额为 $0。充值后即可使用；新人进群领 2 元。"
+	MessageCloseFailed       = "配置已写好，但没能自动关闭 Codex，请手动退出后重新打开。"
+	MessageNotClosed         = "没能自动关闭 Codex，请手动退出后重新打开。"
+	MessageClosed            = "Codex 已关闭，重新打开即可。"
+	MessageRestored          = "已恢复官方登录，重新打开 Codex 后用官方账号登录。"
+	MessageRestoredOpen      = "已恢复官方登录，但没能自动关闭 Codex，请手动退出后重新打开，用官方账号登录。"
 )
+
+// ActionOpenSite asks the window to offer an "打开网站" button with the result.
+const ActionOpenSite = "open-site"
 
 // Result is what one action shows: the bar and the refreshed Codex card.
 type Result struct {
 	Tone    string `json:"tone"`
 	Message string `json:"message"`
 	Status  Status `json:"status"`
+	Action  string `json:"action,omitempty"`
 }
 
 // Service runs one action at a time; a link that arrives during a
@@ -51,23 +58,38 @@ type Service struct {
 	Client      *http.Client
 	Now         func() time.Time
 	StopClients func() StopResult
+	// NamesFile remembers the names of imported keys (see names.go). Empty
+	// means names are not kept.
+	NamesFile string
 
 	mu sync.Mutex
 }
 
 // Status reads the current Codex configuration.
-func (s *Service) Status() Status { return ReadStatus(s.CodexHome) }
+func (s *Service) Status() Status {
+	status, key := readStatus(s.CodexHome)
+	if key != "" {
+		status.Name = lookupName(s.NamesFile, key)
+	}
+	return status
+}
 
 // Connect checks the key, writes the Codex files and closes Codex. Nothing is
-// written unless the server confirms the key.
-func (s *Service) Connect(ctx context.Context, raw string) Result {
+// written unless the server confirms the key. name comes from an import link
+// and is remembered for the Codex card; a pasted key passes "".
+func (s *Service) Connect(ctx context.Context, raw, name string) Result {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	key, ok := NormalizeKey(raw)
 	if !ok {
 		if key == "" {
-			return s.result(ToneError, MessageEmptyKey)
+			result := s.result(ToneError, MessageEmptyKey)
+			if result.Status.State == StateUseGoodAI {
+				result.Message = MessageEmptyKeyConnected
+			}
+			result.Action = ActionOpenSite
+			return result
 		}
 		return s.result(ToneError, MessageBadFormat)
 	}
@@ -77,14 +99,22 @@ func (s *Service) Connect(ctx context.Context, raw string) Result {
 		return s.result(ToneError, MessageRejected)
 	case KeyDisabled:
 		return s.result(ToneError, MessageDisabled)
-	case KeyUnreachable:
-		return s.result(ToneError, MessageUnreachable)
+	case KeyTimeout:
+		return s.result(ToneError, MessageTimeout)
+	case KeyOffline:
+		return s.result(ToneError, MessageOffline)
+	case KeyServerError:
+		return s.result(ToneError, fmt.Sprintf(MessageServerError, serverProblem(check.StatusCode)))
 	}
 	if s.CodexHome == "" {
 		return s.result(ToneError, writeFailed(errors.New("找不到当前用户的文件夹")))
 	}
 	if err := WriteCodexFiles(s.CodexHome, key, s.Now()); err != nil {
 		return s.result(ToneError, writeFailed(err))
+	}
+	if name != "" {
+		// Only shown on the card, so a failure here does not fail the import.
+		_ = rememberName(s.NamesFile, key, name)
 	}
 	stopped := s.StopClients()
 
@@ -150,6 +180,14 @@ func (s *Service) Restore() Result {
 
 func (s *Service) result(tone, message string) Result {
 	return Result{Tone: tone, Message: message, Status: s.Status()}
+}
+
+// serverProblem names what went wrong for MessageServerError.
+func serverProblem(code int) string {
+	if code == 0 || code == http.StatusOK {
+		return "返回内容异常"
+	}
+	return fmt.Sprintf("HTTP %d", code)
 }
 
 // FormatUSD shows dollars with two decimals, as the website does.

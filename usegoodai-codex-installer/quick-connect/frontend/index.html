@@ -44,14 +44,14 @@
     <div class="status-text">
       <span class="status-label">Codex 状态</span>
       <strong id="status-title">正在读取…</strong>
-      <code id="status-key"></code>
+      <span class="status-key"><span class="status-name" id="status-name" hidden></span><code id="status-key"></code></span>
     </div>
   </section>
 
   <form class="connect" id="connect-form" autocomplete="off">
     <label class="field">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.7-8.7M16 7l3 3M18.5 4.5l2 2"/></svg>
-      <input id="key" type="text" placeholder="粘贴 API Key" spellcheck="false" aria-label="粘贴 API Key">
+      <input id="key" type="text" placeholder="粘贴 API Key，或在网站点「一键导入」" spellcheck="false" aria-label="粘贴 API Key">
     </label>
     <button class="primary" id="connect" type="submit">
       <span class="spinner" aria-hidden="true"></span>
@@ -61,7 +61,10 @@
 
   <div class="notice" id="notice" role="status" aria-live="polite" hidden>
     <span class="notice-icon" aria-hidden="true"></span>
-    <p id="notice-text"></p>
+    <div class="notice-body">
+      <p id="notice-text"></p>
+      <button class="notice-action" id="notice-action" type="button" hidden>打开 UseGoodAI 网站</button>
+    </div>
   </div>
 
   <section class="qq">
@@ -86,7 +89,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
         打开官网
       </button>
-      <button class="text" id="restore" type="button">恢复官方登录</button>
+      <span class="tip-anchor">
+        <button class="text" id="restore" type="button" aria-describedby="restore-tip">恢复官方登录</button>
+        <span class="tip" id="restore-tip" role="tooltip">取消中转站连接：Codex 改回用 OpenAI 官方账号登录，并关闭正在运行的 Codex。</span>
+      </span>
     </div>
     <p class="version">版本 <span id="version"></span></p>
   </footer>

@@ -33,19 +33,25 @@ function renderStatus(status) {
   const card = $('status');
   card.dataset.state = status.state;
   $('status-title').textContent = STATUS_TITLES[status.state] || STATUS_TITLES.other;
-  $('status-key').textContent = status.state === 'usegoodai' ? status.key || '' : '';
+  const connected = status.state === 'usegoodai';
+  $('status-key').textContent = connected ? status.key || '' : '';
+  const name = $('status-name');
+  name.textContent = connected ? status.name || '' : '';
+  name.title = name.textContent;
+  name.hidden = name.textContent === '';
 }
 
-function showNotice(tone, text) {
+function showNotice(tone, text, action) {
   const notice = $('notice');
   notice.dataset.tone = tone;
   $('notice-text').textContent = text;
+  $('notice-action').hidden = action !== 'open-site';
   notice.hidden = false;
 }
 
 function showResult(result) {
   renderStatus(result.status);
-  showNotice(result.tone, result.message);
+  showNotice(result.tone, result.message, result.action);
 }
 
 function setBusy(on, label) {
@@ -69,8 +75,8 @@ async function run(label, notice, action) {
   }
 }
 
-function connect(key, notice) {
-  return run('正在连接…', notice || '正在检查密钥…', () => bridge().Connect(key));
+function connect(key) {
+  return run('正在连接…', '正在检查密钥…', () => bridge().Connect(key));
 }
 
 // Links import straight away, without asking: check, write, close Codex.
@@ -90,7 +96,8 @@ async function importLink(raw) {
     return;
   }
   keyInput.value = parsed.key;
-  await connect(parsed.key, parsed.name ? `正在导入「${parsed.name}」…` : '正在导入密钥…');
+  const notice = parsed.name ? `正在导入「${parsed.name}」…` : '正在导入密钥…';
+  await run('正在连接…', notice, () => bridge().Import(parsed.key, parsed.name || ''));
 }
 
 function enqueueLink(raw) {
@@ -135,6 +142,7 @@ $('copy-qq').addEventListener('click', async (event) => {
   }
 });
 
+$('notice-action').addEventListener('click', () => bridge().OpenSite());
 $('join-qq').addEventListener('click', () => bridge().JoinGroup());
 $('open-site').addEventListener('click', () => bridge().OpenSite());
 
