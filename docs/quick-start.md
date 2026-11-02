@@ -59,6 +59,8 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 | --- | --- |
 | 提示无法下载脚本 | 检查网络后重新运行第 2 步命令；仍然失败，改用下面的 CC Switch 接入 |
 | 提示 `API Key 格式错误，必须以 sk- 开头` | 回到后台 **API 密钥** 页面重新复制完整 Key，再粘贴 |
+| 提示 `密钥无效` 或 `已停用、过期或额度用完` | 脚本会请你重新输入：回后台 **API 密钥** 页面复制一个可用的 Key 粘贴 |
+| 提示 `网络超时`、`连不上 UseGoodAI 服务器` 或 `服务器暂时出错` | 脚本没能检查 Key，仍会继续写入。照第 3 步测试；不能回复就检查网络或代理，稍后重新运行第 2 步 |
 | Codex 提示 `INSUFFICIENT_BALANCE` 或 `Insufficient account balance` | 充值后重新测试；仍然提示，重新运行第 2 步，粘贴已充值账号的 Key |
 | 提示未能自动关闭 | 重启电脑，打开 Codex 新建任务测试 |
 | Codex 返回其他报错 | 看 [报错与踩坑](/errors/) |
@@ -98,9 +100,24 @@ curl -fsSL https://docs.usegoodai.com/install/codex-restore.sh | bash
 
 | 方式 | 什么时候用 |
 | --- | --- |
-| QQ 群运行版 | 不想用 PowerShell。加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载后解压，双击 `1.UseGoodAI中转快速接入助手.exe`，粘贴 API Key 后点 **一键连接 Codex** |
+| [快速接入助手](#quick-connect-helper) | 不想用命令，用图形程序接入，之后在后台点 **一键导入** 就能换 Key |
 | [CC Switch 接入](/codex-cc-switch) | 脚本下载失败，或需要在官方账号和中转站之间来回切换 |
 | [手动配置](/codex/manual-config) | 不想运行脚本，自己修改配置文件 |
+
+<a id="quick-connect-helper"></a>
+
+## 用快速接入助手（不用命令）
+
+UseGoodAI中转快速接入助手写入的配置和第 2 步的命令完全一样。
+
+1. 下载：[Windows 版](/download/usegoodai-quick-connect-windows-x64.exe)、[Mac 版（Apple 芯片）](/download/usegoodai-quick-connect-mac-arm64.zip)。也可以在 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span> 的群文件下载 `中转站快速导入工具.zip`，解压后用 `1.UseGoodAI中转快速接入助手`。
+2. 双击打开一次助手。Mac 第一次打开如果被拦下，到 **系统设置 → 隐私与安全性** 点 **仍要打开**；提示要控制“终端”时点 **允许**。
+3. 导入 Key，任选一种：
+   - 在后台 **API 密钥** 页面选一个 Key，点 **一键导入**，浏览器询问时点 **打开**。助手打开着或已关闭都可以。
+   - 复制 Key 再打开助手。Windows 会自动填入，点 **一键连接 Codex**；Mac 会打开终端，读取剪贴板里的 Key。
+4. 按第 3 步重新打开 Codex 测试。
+
+Windows 助手右下角的 **恢复官方登录** 会取消中转站连接，效果和上面的移除命令相同。Windows 助手只在服务器确认 Key 可用后才写入，检查不了时（网络超时、连不上或服务器出错）不写入，并说明是哪一种情况；Mac 助手在终端里运行第 2 步的脚本，检查不了时和命令一样提示原因后继续写入。
 
 ## 接下来
 

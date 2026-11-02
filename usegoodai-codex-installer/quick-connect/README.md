@@ -10,7 +10,10 @@
 ## 行为
 
 - **导入链接**：每次启动在 `HKCU\Software\Classes\usegoodai` 注册协议，命令为 `"<exe 路径>" "%1"`。单实例：助手已打开时，新链接转给原窗口并置前；未打开时随链接启动并处理。
-- **连接流程**（粘贴和链接共用）：去空格、校验 `sk-` → `GET https://api.usegoodai.com/v1/usage`（Bearer，10 秒）→ 写入 `%USERPROFILE%\.codex\config.toml` 和 `auth.json` → 关闭当前用户的 codex、chatgpt 进程 → 窗口内提示结果。密钥无效、停用、过期或额度用完、连不上服务器时不写入。
+- **连接流程**（粘贴和链接共用）：去空格、校验格式（`sk-` 开头，只含字母、数字、`-`、`_`）→ `GET https://api.usegoodai.com/v1/usage`（Bearer，10 秒）→ 写入 `%USERPROFILE%\.codex\config.toml` 和 `auth.json` → 关闭当前用户的 codex、chatgpt 进程 → 窗口内提示结果。密钥无效、停用、过期或额度用完，以及检查不了时都不写入。检查不了分三种提示：10 秒内没有回应（含连上后答复卡住）是“网络超时”，解析不了域名、连接被拒或 TLS 失败是“连不上”，其它 HTTP 状态、重定向或返回不是约定的 JSON 是“服务器暂时出错”并带状态码。
+- **输入框为空**时点「一键连接 Codex」：提示去网站「API 密钥」页点「一键导入」或复制密钥粘贴，并给出「打开 UseGoodAI 网站」按钮；已连接时提示开头是“当前已连接”。
+- **密钥名称**：导入链接带 `name` 时，连接成功后记在 `%APPDATA%\UseGoodAI\QuickConnect\key-names.json`（只存密钥的 SHA-256 和名称，最多 20 条，不存密钥），状态卡在遮挡后的密钥上方显示名称；之后粘贴同一个密钥也显示。`/v1/usage` 不返回密钥名称和分组，手动粘贴的新密钥没有名称；分组要显示时由网站写进 `name`。
+- **恢复官方登录**按钮悬停或获得焦点时显示气泡：取消中转站连接，Codex 改回官方账号登录，并关闭正在运行的 Codex。
 - **写入内容**与 `install/codex.ps1` 逐字节一致：`.bak.yyyyMMddHHmmss` 备份，UTF-8 无 BOM，先写临时文件再替换，失败时按备份回滚。
 - **恢复官方登录**按 `install/codex-restore.ps1` 的规则清理配置并清空 `auth.json`。
 - 密钥只在输入框完整显示，其它位置显示前 12 位 + `****` + 后 8 位，不写日志。

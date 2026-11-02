@@ -66,7 +66,7 @@ Windows 运行 `irm https://docs.usegoodai.com/install/codex-restore.ps1 | iex`�
    curl -fsSL https://docs.usegoodai.com/install/codex.sh | USEGOODAI_KEY='sk-…' bash
    ```
 
-   写入前请求 `GET https://api.usegoodai.com/v1/usage` 检查密钥：401/403、`isValid` 为 false、密钥过期或额度用完时提示并重新输入；余额为 0 时提示后继续写入；连不上服务器时提示“暂时无法检查密钥，继续写入”。
+   写入前请求 `GET https://api.usegoodai.com/v1/usage` 检查密钥：401/403、`isValid` 为 false、密钥过期或额度用完时提示并重新输入；余额为 0 时提示后继续写入。检查不了时说明原因后继续写入：10 秒内没有回应提示“网络超时”（curl 退出码 28；PowerShell 5.1 的 `WebException` 状态为 Timeout，PowerShell 7 为 `TaskCanceledException`/`TimeoutException`），连接失败提示“连不上 UseGoodAI 服务器”，其它 HTTP 状态或返回不是约定的 JSON 时提示“服务器暂时出错”并带状态码。
 2. 已有 `config.toml` 或 `auth.json` 时，脚本自动创建时间戳备份，再写入新配置；没有旧文件时直接创建。
 3. 写入完成后，脚本自动关闭当前用户下名称为 `codex` 和 `chatgpt` 的进程，包括 ChatGPT 软件、Codex CLI 和 VS Code 的 Codex 插件，正在运行的任务会中断。脚本只关闭，不重新打开；关闭失败时提示重启电脑，未检测到时提示启动软件测试。
 4. 重新打开 App 并新建任务，或启动新的 Codex CLI 会话，发送 `测试`。

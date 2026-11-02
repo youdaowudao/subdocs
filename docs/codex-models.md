@@ -30,7 +30,7 @@ Linux 需要已安装 Node.js 16 以上。
 <details>
 <summary>不想用 PowerShell？</summary>
 
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载运行版，解压后双击 `3.Codex国产模型导入.exe`。
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载 `中转站快速导入工具.zip`，解压后双击 `3.Codex国产模型导入`（Windows 在 `Windows-x64` 文件夹，Mac 在 `Mac-Apple芯片` 文件夹）。
 
 </details>
 
