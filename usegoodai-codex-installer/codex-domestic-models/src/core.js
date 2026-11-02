@@ -2,8 +2,8 @@
 var DomesticModels = (function () {
     'use strict';
     var effortOrder = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'ultra', 'max'];
-    // Models the relay has retired: dropped from the snapshot, backend catalog and existing catalog alike.
-    var retiredModels = ['gpt-5.5'];
+    // Models the relay has retired or the user dropped: removed from the snapshot, backend catalog and existing catalog alike.
+    var retiredModels = ['gpt-5.5', 'deepseek-v4.1-flash-1017'];
     function fail(message) { var error = new Error(message); error.safeMessage = message; throw error; }
     function atStep(name, target, action) {
         try { return action(); }

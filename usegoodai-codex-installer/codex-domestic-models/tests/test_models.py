@@ -42,7 +42,7 @@ def model(slug, **updates):
 
 GPT = model('gpt-original', supported_reasoning_levels=[{'effort': x, 'description': x} for x in ['low', 'medium', 'high', 'xhigh', 'ultra']])
 APP = {'models': [GPT, model('gpt-new')], 'version': 12}
-RETIRED = ['gpt-5.5']
+RETIRED = ['gpt-5.5', 'deepseek-v4.1-flash-1017']
 
 
 def case(config='model = "gpt-original"\nreview_model = "gpt-original"\n', **updates):
@@ -61,11 +61,11 @@ add('empty_config', case(''))
 add('only_comment', case('# existing comment'))
 add('preserve_full_objects', case(existing={'models': [model('gpt-original', custom={'nested': ['keep', {'a': True}]}), model('user-custom'), model('Custom'), model('custom')], 'unknown': {'keep': True}}))
 add('update_replace_owned', case(existing={'models': [GPT, model('qwen3.8-max', cancelled_field=True), model('removed-domestic'), model('user-custom')]}, managed=['qwen3.8-max', 'removed-domestic']))
-legacy_models = [m for m in reversed(DOMESTIC['models']) if not m['slug'].startswith('mimo-') and m['slug'] != 'deepseek-v4.1-flash-1017']
+legacy_models = [m for m in reversed(DOMESTIC['models']) if not m['slug'].startswith('mimo-')]
 add('upgrade_existing_catalog_order', case(existing={'models': [GPT] + legacy_models}, managed=[m['slug'] for m in legacy_models]))
-previous_ten_models = [m for m in DOMESTIC['models'] if m['slug'] != 'deepseek-v4.1-flash-1017']
-add('upgrade_previous_ten_models', case(existing={'models': [GPT] + previous_ten_models}, managed=[m['slug'] for m in previous_ten_models]))
-add('existing_deepseek_snapshot_not_duplicated', case(existing={'models': [GPT, next(m for m in DOMESTIC['models'] if m['slug'] == 'deepseek-v4.1-flash-1017')]}))
+previous_eleven_models = DOMESTIC['models'][:1] + [model('deepseek-v4.1-flash-1017')] + DOMESTIC['models'][1:]
+add('upgrade_previous_eleven_drops_deepseek_1017', case(existing={'models': [GPT] + previous_eleven_models}, managed=[m['slug'] for m in previous_eleven_models]))
+add('unmanaged_deepseek_1017_dropped', case(existing={'models': [GPT, model('deepseek-v4.1-flash-1017')]}))
 add('retired_models_dropped', case(existing={'models': [GPT, model('gpt-5.5')]}, app={'models': [GPT, model('gpt-new'), model('gpt-5.5')]}))
 add('existing_mimo_ids_not_duplicated', case(existing={'models': [GPT] + DOMESTIC['models'][-2:]}))
 add('existing_desktop', case('model="gpt-original"\n[desktop]\nenabled-reasoning-efforts = ["ultra", # keep\n "high",]\ntheme="dark"\n[features]\nx=true\n'))
@@ -163,8 +163,19 @@ class ModelTests(unittest.TestCase):
                     for item in DOMESTIC['models']:
                         self.assertEqual(result[item['slug']], item)
 
+    def test_deepseek_1017_retired(self):
+        self.assertNotIn('deepseek-v4.1-flash-1017', [m['slug'] for m in DOMESTIC['models']])
+        for index, (name, _) in enumerate(CASES.items()):
+            if 'deepseek_1017' not in name:
+                continue
+            for target in ('mac_core',):
+                output = self.outputs[target][index]
+                self.assertTrue(output['ok'], name)
+                self.assertNotIn('deepseek-v4.1-flash-1017', [m['slug'] for m in output['catalog']['models']])
+                self.assertEqual(output['managed'], [m['slug'] for m in DOMESTIC['models']])
+
     def test_exact_ids(self):
-        self.assertEqual([m['slug'] for m in DOMESTIC['models']], ['deepseek-flash','deepseek-v4.1-flash-1017','glm-5.3','glm-5.3-flash','qwen3.8-max','qwen3.8-flash','kimi-k3','minimax-m3','hy4-preview','mimo-v2.6-pro','mimo-v2.6-flash'])
+        self.assertEqual([m['slug'] for m in DOMESTIC['models']], ['deepseek-flash','glm-5.3','glm-5.3-flash','qwen3.8-max','qwen3.8-flash','kimi-k3','minimax-m3','hy4-preview','mimo-v2.6-pro','mimo-v2.6-flash'])
 
     def test_old_backend_gets_official_terra_without_duplicates(self):
         terra = next(m for m in OFFICIAL['models'] if m['slug'] == 'gpt-6.1-terra')
@@ -178,8 +189,7 @@ class ModelTests(unittest.TestCase):
             self.assertNotIn('gpt-5.5', [m['slug'] for m in output['catalog']['models']])
 
     def test_deepseek_official_codex_capabilities(self):
-        snapshot_id = 'deepseek-v4.1-flash-1017'
-        for item in DOMESTIC['models'][:2]:
+        for item in DOMESTIC['models'][:1]:
             with self.subTest(model=item['slug']):
                 self.assertEqual(item['context_window'], 1048576)
                 self.assertEqual(item['max_context_window'], 1048576)
@@ -192,8 +202,6 @@ class ModelTests(unittest.TestCase):
                 self.assertTrue(item['support_verbosity'])
                 self.assertEqual(item['default_verbosity'], 'low')
                 self.assertFalse(item['use_responses_lite'])
-                if item['slug'] == snapshot_id:
-                    self.assertEqual(item['display_name'], snapshot_id)
 
     def test_mimo_official_codex_capabilities(self):
         mimo_ids = {'mimo-v2.6-pro', 'mimo-v2.6-flash'}

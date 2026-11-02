@@ -1,6 +1,6 @@
 # Windows PowerShell 5.1 compatible. Keep behavior in sync with core.js via parity tests.
-# Models the relay has retired: dropped from the snapshot, cache and existing catalog alike.
-$RetiredModels = @('gpt-5.5')
+# Models the relay has retired or the user dropped: removed from the snapshot, cache and existing catalog alike.
+$RetiredModels = @('gpt-5.5', 'deepseek-v4.1-flash-1017')
 
 function New-ModelImportError([string]$Message) {
   $problem=New-Object System.Exception -ArgumentList $Message
