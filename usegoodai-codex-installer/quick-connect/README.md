@@ -18,6 +18,28 @@
 - **恢复官方登录**按 `install/codex-restore.ps1` 的规则清理配置并清空 `auth.json`。
 - 密钥只在输入框完整显示，其它位置显示前 12 位 + `****` + 后 8 位，不写日志。
 
+## 三个工具共用一个面板（Windows）
+
+窗口默认是 Codex 接入。生图工具和国产模型导入不单独做页签：面板上方的状态卡、输入框和主按钮位置不变，只换内容和主题色（Codex 青蓝、生图紫、国产模型琥珀），切换时一道光扫过。两个工具的入口是中下部、QQ 卡片上方的两颗浅色小按钮，按钮上直接写状态（「生图工具（已安装）」「国产模型（已导入）」「国产模型（已失效）」），避免重复安装；进入其中一个工具后，对应入口换成「返回 Codex 接入」。安装或导入成功后自动回到 Codex，结果留在提示条。
+
+网站导入链接：停在生图工具时交给生图工具，其余情况切回 Codex 照常接入。生图状态只在窗口里，窗口关掉后再点链接仍按 Codex 处理，所以提示条要求导入完成前不关窗口。
+
+### 生图工具
+
+- **检测**：先用 `/v1/usage` 确认密钥可用，再查 `GET /v1/models`。列表里没有任何 `gpt-image` 开头的模型，判定为选错分组、不安装；有就安装。编程分组也带画图模型、画图分组也有其他画图模型，所以不按分组区分，能画就算对；接入 Codex 也不按模型拦截。
+- **安装**：助手内附生图工具已发布的程序（见 [imagetool/README.md](imagetool/README.md)），运行前核对 SHA-256，解到 `%LOCALAPPDATA%\UseGoodAI\QuickConnect\image-tool\`，以 `CODEX_HOME=<目录> install` 运行、密钥从标准输入传入，与客户在终端里输入完全相同；不弹控制台窗口，不碰 Codex 配置、不关闭 Codex。失败时显示生图程序的「安装失败：」原因（密钥会被遮挡）。
+- **状态**：读 `<CODEX_HOME 或 ~/.codex>\tools\usegoodai-imagines-tool\` 的 `install-manifest.json`、`api-key`、`key-source`。
+- **升级**：生图工具发布新版后，改 `build.py` 的 `IMAGE_TOOL_RELEASE` 重新打包。
+
+### 国产模型导入
+
+- **运行**：助手内附 `../install/codex-models.ps1`（见 [modelstool/README.md](modelstool/README.md)），在后台用 Windows PowerShell 以 `-NoProfile -NonInteractive -ExecutionPolicy Bypass` 运行，不弹控制台窗口；脚本路径和 `CODEX_HOME` 经环境变量传入，中文用户名和带引号的路径不用转义。输出要求 UTF-8，控制台不肯切换时按 GB18030 解码。脚本原样负责导入、移除和关闭 ChatGPT/Codex。
+- **确认**：主按钮第一次点击变成「确认导入（会关闭 Codex）」，6 秒内再点才开始；「移除国产模型」同样两次确认。不需要密钥，所以这一页没有输入框。
+- **状态**：数 `usegoodai-models.managed.json` 里非 `gpt-` 的条目，再看 `config.toml` 的 `model_catalog_json` 是否指向 `usegoodai-models.json`。重新连接 Codex 会整份替换 `config.toml`，导入的模型随之失效，状态显示「已失效」。
+- **升级**：国产模型脚本只在 `codex-domestic-models/` 维护，按那边流程同步到 `install/` 和发布目录后重新运行 `build.py`；打包时核对内附脚本与发布副本除 BOM 外逐字节一致。
+
+Mac 版仍是终端 `.app`、没有窗口（不做 Apple 签名，未签名的窗口版首次打开同样要去系统设置放行），生图和国产模型仍用各自的 `.app`。
+
 ## 导入链接格式（与网站约定，不要改）
 
 ```text

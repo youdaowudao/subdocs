@@ -26,19 +26,30 @@ func main() {
 	allowAnyForegroundWindow()
 
 	codexHome, _ := connect.CodexHome()
-	app := newApp(&connect.Service{
+	imageHome, _ := connect.ImageCodexHome()
+	service := &connect.Service{
 		CodexHome:   codexHome,
 		BaseURL:     connect.BaseURL,
 		Client:      connect.NewHTTPClient(),
 		Now:         time.Now,
 		StopClients: connect.StopClients,
 		NamesFile:   connect.NamesFile(),
-	}, connect.FindImportLink(os.Args[1:]))
+		ImageHome:   imageHome,
+	}
+	// A nil *BundledImageTool must not become a non-nil interface.
+	if tool := bundledImageTool(filepath.Join(webviewDataPath(), "image-tool")); tool != nil {
+		service.Image = tool
+	}
+	service.ModelsHome = imageHome // the script also follows CODEX_HOME
+	if script := bundledModelsScript(filepath.Join(webviewDataPath(), "models-tool")); script != nil {
+		service.Models = script
+	}
+	app := newApp(service, connect.FindImportLink(os.Args[1:]))
 
 	err := wails.Run(&options.App{
 		Title:              connect.ProductName,
 		Width:              420,
-		Height:             600,
+		Height:             690,
 		DisableResize:      true,
 		BackgroundColour:   &options.RGBA{R: 244, G: 247, B: 250, A: 255},
 		AssetServer:        &assetserver.Options{Assets: frontendFiles()},

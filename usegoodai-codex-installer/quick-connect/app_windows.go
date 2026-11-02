@@ -93,6 +93,27 @@ func (a *App) Import(key, name string) connect.Result { return a.service.Connect
 
 func (a *App) Restore() connect.Result { return a.service.Restore() }
 
+func (a *App) ImageStatus() connect.ImageStatus { return a.service.ImageStatus() }
+
+func (a *App) ModelsStatus() connect.ModelsStatus { return a.service.ModelsStatus() }
+
+// ImportModels runs the domestic model import after the window asked for
+// confirmation; RemoveModels takes the imported models out again.
+func (a *App) ImportModels() connect.Result { return a.service.ImportModels(a.ctx, false) }
+
+func (a *App) RemoveModels() connect.Result { return a.service.ImportModels(a.ctx, true) }
+
+// InstallImage is the button in image mode: a pasted key has no name.
+func (a *App) InstallImage(key string) connect.Result {
+	return a.service.InstallImage(a.ctx, key, "")
+}
+
+// ImportImage installs the image tool with a key from an import link that
+// arrived while the window was in image mode.
+func (a *App) ImportImage(key, name string) connect.Result {
+	return a.service.InstallImage(a.ctx, key, name)
+}
+
 // ClipboardKey returns the clipboard text when it is a UseGoodAI key.
 func (a *App) ClipboardKey() string {
 	text, err := runtime.ClipboardGetText(a.ctx)

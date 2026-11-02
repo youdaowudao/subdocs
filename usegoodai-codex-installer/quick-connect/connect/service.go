@@ -44,10 +44,12 @@ const ActionOpenSite = "open-site"
 
 // Result is what one action shows: the bar and the refreshed Codex card.
 type Result struct {
-	Tone    string `json:"tone"`
-	Message string `json:"message"`
-	Status  Status `json:"status"`
-	Action  string `json:"action,omitempty"`
+	Tone    string       `json:"tone"`
+	Message string       `json:"message"`
+	Status  Status       `json:"status"`
+	Image   ImageStatus  `json:"image"`
+	Models  ModelsStatus `json:"models"`
+	Action  string       `json:"action,omitempty"`
 }
 
 // Service runs one action at a time; a link that arrives during a
@@ -61,6 +63,14 @@ type Service struct {
 	// NamesFile remembers the names of imported keys (see names.go). Empty
 	// means names are not kept.
 	NamesFile string
+	// ImageHome is where the image tool lives (see ImageCodexHome); Image
+	// installs it. A nil Image means the assistant carries no image tool.
+	ImageHome string
+	Image     ImageInstaller
+	// ModelsHome is where the domestic model script works (CODEX_HOME or
+	// ~/.codex, as the script decides); Models runs it.
+	ModelsHome string
+	Models     ModelsImporter
 
 	mu sync.Mutex
 }
@@ -179,7 +189,7 @@ func (s *Service) Restore() Result {
 }
 
 func (s *Service) result(tone, message string) Result {
-	return Result{Tone: tone, Message: message, Status: s.Status()}
+	return Result{Tone: tone, Message: message, Status: s.Status(), Image: s.ImageStatus(), Models: s.ModelsStatus()}
 }
 
 // serverProblem names what went wrong for MessageServerError.

@@ -21,6 +21,14 @@ WORK = ROOT / ".work"
 BUILD_TAGS = "desktop,production,wv2runtime.browser"
 MAC_RUNNER = ROOT / "macapp" / "run.command"
 MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024
+# The image tool release the window carries. Its source lives in
+# usegoodai-imagines-tool/; only the published program is copied in here.
+IMAGE_TOOL_RELEASE = "0.8.2"
+IMAGE_TOOL_RELEASES = ROOT.parent.parent / "docs" / "public" / "install" / "usegoodai-imagines-tool" / "releases"
+IMAGE_TOOL_BUNDLE = ROOT / "imagetool"
+MODELS_SCRIPT = ROOT.parent / "install" / "codex-models.ps1"
+MODELS_PUBLISHED = ROOT.parent.parent / "docs" / "public" / "install" / "codex-models.ps1"
+MODELS_BUNDLE = ROOT / "modelstool"
 
 
 def go_command() -> str:
@@ -48,9 +56,53 @@ def environment(**extra: str) -> dict[str, str]:
     return env
 
 
+def bundle_image_tool(platform: str) -> None:
+    """Copy the published image tool program for platform into imagetool/.
+
+    The checksum comes from the release's SHA256SUMS and is checked twice:
+    here, and by the window before it runs the program.
+    """
+    import hashlib
+
+    release = IMAGE_TOOL_RELEASES / f"v{IMAGE_TOOL_RELEASE}"
+    name = f"usegoodai-imagines-tool-v{IMAGE_TOOL_RELEASE}-{platform}"
+    sums = {}
+    for line in (release / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) == 2:
+            sums[parts[1].lstrip("*")] = parts[0].lower()
+    if name not in sums:
+        raise SystemExit(f"{release / 'SHA256SUMS'} 里没有 {name}。")
+    program = (release / name).read_bytes()
+    if hashlib.sha256(program).hexdigest() != sums[name]:
+        raise SystemExit(f"{name} 与 SHA256SUMS 不一致，停止打包。")
+    IMAGE_TOOL_BUNDLE.mkdir(exist_ok=True)
+    (IMAGE_TOOL_BUNDLE / "program").write_bytes(program)
+    (IMAGE_TOOL_BUNDLE / "VERSION").write_text(IMAGE_TOOL_RELEASE + "\n", encoding="utf-8")
+    (IMAGE_TOOL_BUNDLE / "SHA256").write_text(sums[name] + "\n", encoding="utf-8")
+
+
+def bundle_models_script() -> None:
+    """Copy install/codex-models.ps1 into modelstool/ after checking it is the
+    published script, so the window runs what the site serves. The published
+    copy has no UTF-8 BOM (for irm | iex); the bundled one keeps it, which
+    Windows PowerShell 5.1 needs to read a Chinese script from a file."""
+    bom = b"\xef\xbb\xbf"
+    script = MODELS_SCRIPT.read_bytes()
+    if not script.startswith(bom):
+        raise SystemExit(f"{MODELS_SCRIPT} 缺少 UTF-8 BOM，Windows PowerShell 5.1 读中文会乱码。")
+    if script.removeprefix(bom) != MODELS_PUBLISHED.read_bytes().removeprefix(bom):
+        raise SystemExit(f"{MODELS_SCRIPT} 与发布目录的 {MODELS_PUBLISHED.name} 不一致，先按国产模型子项目的流程同步。")
+    MODELS_BUNDLE.mkdir(exist_ok=True)
+    (MODELS_BUNDLE / "codex-models.ps1").write_bytes(script)
+
+
 def build_windows(output: Path) -> Path:
-    """Write the x64 exe with icon, manifest and version information."""
+    """Write the x64 exe with icon, manifest, version information and the
+    bundled image tool."""
     go = go_command()
+    bundle_image_tool("windows-amd64.exe")
+    bundle_models_script()
     subprocess.run([go, "run", "./tools/resources", "-icon", "frontend/logo.png", "-out", "rsrc_windows_amd64.syso"],
                    cwd=ROOT, env=environment(), check=True)
     output.parent.mkdir(parents=True, exist_ok=True)

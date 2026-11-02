@@ -43,8 +43,8 @@ svg{flex:none}
 .status-text strong{font-size:15px;font-weight:700;line-height:1.35}
 .status-text code{font:12px/1.4 Consolas,"Cascadia Mono",monospace;color:var(--muted);user-select:text}
 .status-text code:empty{display:none}
-.status[data-state="usegoodai"] .status-icon{background:rgba(16,185,129,.13);color:#059669}
-.status[data-state="usegoodai"] .i-ok{display:block}
+.status[data-state="ok"] .status-icon{background:rgba(16,185,129,.13);color:#059669}
+.status[data-state="ok"] .i-ok{display:block}
 .status[data-state="none"] .i-none,.status[data-state="loading"] .i-none{display:block}
 .status[data-state="other"] .status-icon{background:rgba(245,158,11,.15);color:#d97706}
 .status[data-state="other"] .i-other{display:block}
@@ -110,3 +110,57 @@ footer{margin-top:12px}
 .tip{position:absolute;right:0;bottom:calc(100% + 8px);width:220px;padding:8px 10px;border-radius:9px;background:#1f2937;color:#fff;font-size:12px;line-height:1.5;box-shadow:0 6px 18px rgba(15,23,42,.18);opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .15s,transform .15s,visibility 0s .15s;pointer-events:none;z-index:5}
 .tip::after{content:"";position:absolute;right:22px;top:100%;border:6px solid transparent;border-top-color:#1f2937}
 .tip-anchor:hover .tip,.tip-anchor:focus-within .tip{opacity:1;visibility:visible;transform:none;transition:opacity .15s,transform .15s}
+
+.shell{padding-top:16px}
+.brand{margin-bottom:12px}
+.status{padding:10px 14px}
+.text[hidden],.tip-anchor[hidden]{display:none}
+
+/* 其他工具入口：安静的小按钮，放在中下部，不抢主按钮 */
+.tools{margin-top:auto;display:flex;gap:8px;padding-top:12px}
+.tool-entry{flex:1;min-width:0;height:34px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.55);display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap;transition:border-color .2s,background .2s,color .2s}
+.tool-entry span:not(.tool-dot){overflow:hidden;text-overflow:ellipsis}
+.tool-entry[hidden]{display:none}
+.tool-entry:hover:not(:disabled){background:rgba(255,255,255,.9);color:var(--fg)}
+.tool-entry:disabled{opacity:.5}
+.tool-entry svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tool-dot{width:7px;height:7px;border-radius:50%;background:#cbd2dc;flex:none}
+.tool-entry[data-state="done"] .tool-dot{background:#10b981}
+.tool-entry[data-state="attention"] .tool-dot{background:#f59e0b}
+#go-image:hover:not(:disabled){border-color:#a78bfa}
+#go-models:hover:not(:disabled){border-color:#fbbf24}
+#go-codex:hover:not(:disabled){border-color:#14b8a6}
+.qq{margin-top:10px}
+
+/* 每个工具一种主题色，面板位置不变 */
+.shell[data-tool="image"]{--primary:#7c3aed;--primary-ink:#6d28d9;--accent-soft:rgba(168,85,247,.24);--accent-line:#d8c8fb}
+.shell[data-tool="models"]{--primary:#d97706;--primary-ink:#b45309;--accent-soft:rgba(245,158,11,.26);--accent-line:#fcd9a0}
+.shell[data-tool="image"] .primary{background:linear-gradient(135deg,#7c3aed 0%,#a855f7 50%,#ec4899 115%);box-shadow:0 12px 26px -12px rgba(124,58,237,.85)}
+.shell[data-tool="models"] .primary{background:linear-gradient(135deg,#d97706 0%,#f59e0b 55%,#ef4444 125%);box-shadow:0 12px 26px -12px rgba(217,119,6,.85)}
+.shell:not([data-tool="codex"]) .field input{border-color:var(--accent-line)}
+.shell:not([data-tool="codex"]) .field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--accent-soft)}
+.shell:not([data-tool="codex"]) .status{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft),var(--shadow)}
+.shell[data-tool="image"] .status[data-state="ok"] .status-icon{background:rgba(124,58,237,.12);color:#7c3aed}
+.shell[data-tool="models"] .status[data-state="ok"] .status-icon{background:rgba(217,119,6,.13);color:#d97706}
+.shell[data-tool="image"] .status-name{color:#7c3aed}
+.shell[data-tool="models"] .field{display:none}
+.primary.confirm{background:linear-gradient(135deg,#dc2626,#f97316)!important;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(239,68,68,.18)}}
+
+.notice[data-tone="image"]{background:linear-gradient(135deg,rgba(124,58,237,.09),rgba(236,72,153,.07));border-color:rgba(124,58,237,.3);color:#5b21b6;--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22Zm-1 5h2v2h-2Zm0 4h2v8h-2Z'/%3E%3C/svg%3E")}
+.notice[data-tone="models"]{background:linear-gradient(135deg,rgba(245,158,11,.10),rgba(239,68,68,.05));border-color:rgba(217,119,6,.32);color:#92400e;--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22Zm-1 5h2v2h-2Zm0 4h2v8h-2Z'/%3E%3C/svg%3E")}
+.notice strong.mode-tag{display:block;margin-bottom:2px;font-size:13.5px}
+#notice-text{white-space:pre-line}
+
+/* 切换工具：一道光扫过面板，卡片和主按钮轻轻亮一下 */
+.shell::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;background:linear-gradient(115deg,transparent 30%,var(--accent-soft,rgba(20,184,166,.22)) 45%,rgba(255,255,255,.5) 50%,transparent 64%);background-size:250% 100%;background-position:120% 0}
+.shell.activating::after{animation:sweep .9s ease-out}
+.shell.activating .status{animation:glow .9s ease-out}
+.shell.activating .primary{animation:pop .5s ease-out}
+@keyframes sweep{0%{opacity:1;background-position:120% 0}100%{opacity:0;background-position:-30% 0}}
+@keyframes glow{0%{box-shadow:0 0 0 0 var(--accent-soft,rgba(20,184,166,.4))}100%{box-shadow:0 0 0 14px transparent,var(--shadow)}}
+@keyframes pop{0%{transform:scale(.97)}60%{transform:scale(1.02)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.shell.activating::after,.shell.activating .status,.shell.activating .primary,.primary.confirm{animation:none}}
+.shell:not([data-tool="codex"]) .status-icon svg{display:none}
+.shell[data-tool="image"] .status-icon .i-image,.shell[data-tool="models"] .status-icon .i-models{display:block}
+.shell[data-tool="image"] .status[data-state="other"] .status-icon,.shell[data-tool="models"] .status[data-state="other"] .status-icon{background:rgba(245,158,11,.15);color:#d97706}

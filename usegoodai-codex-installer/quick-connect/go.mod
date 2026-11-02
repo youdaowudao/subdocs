@@ -7,6 +7,7 @@ require (
 	github.com/tc-hib/winres v0.3.1
 	github.com/wailsapp/wails/v2 v2.16.0
 	golang.org/x/sys v0.46.0
+	golang.org/x/text v0.39.0
 )
 
 require (
@@ -38,5 +39,4 @@ require (
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/text v0.39.0 // indirect
 )

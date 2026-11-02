@@ -22,6 +22,7 @@ func TestFrontendContent(t *testing.T) {
 		"粘贴 API Key", "一键连接 Codex",
 		"QQ 交流群", "1020015031", "复制群号", "加入群聊", "新人进群领 2 元",
 		"打开官网", "恢复官方登录", `id="version"`,
+		"安装生图工具", "导入国产模型", "返回 Codex 接入", "移除国产模型",
 	} {
 		if !strings.Contains(page, text) {
 			t.Errorf("index.html lacks %q", text)
