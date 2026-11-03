@@ -164,3 +164,30 @@ footer{margin-top:12px}
 .shell:not([data-tool="codex"]) .status-icon svg{display:none}
 .shell[data-tool="image"] .status-icon .i-image,.shell[data-tool="models"] .status-icon .i-models{display:block}
 .shell[data-tool="image"] .status[data-state="other"] .status-icon,.shell[data-tool="models"] .status[data-state="other"] .status-icon{background:rgba(245,158,11,.15);color:#d97706}
+
+/* Codex / Claude 两个主入口：品牌行右侧的分段按钮 */
+.brand{justify-content:flex-start}
+.apps{margin-left:auto;display:flex;padding:3px;border-radius:11px;background:rgba(15,23,42,.06);border:1px solid var(--border)}
+.app-tab{height:28px;padding:0 12px;border:0;border-radius:8px;background:none;font-size:13px;font-weight:700;color:var(--muted);transition:background .2s,color .2s,box-shadow .2s}
+.app-tab:hover:not(:disabled){color:var(--fg)}
+.app-tab:disabled{opacity:.6}
+.app-tab[aria-pressed="true"]{background:#fff;color:var(--primary-ink);box-shadow:0 2px 6px -2px rgba(15,23,42,.25)}
+
+/* 没检测到软件时：卡片里给出下载入口 */
+.get-app{margin-top:7px;display:flex;gap:8px}
+.get-app[hidden]{display:none}
+.get-app .pill{height:28px;min-width:0}
+.qq-files{margin-top:2px;font-size:11.5px;color:var(--muted)}
+.qq.flash{animation:flash 1.6s ease-out}
+@keyframes flash{0%,40%{box-shadow:0 0 0 4px var(--accent-soft,rgba(20,184,166,.35)),var(--shadow);border-color:var(--primary)}100%{box-shadow:var(--shadow)}}
+
+/* Claude：陶土橙 */
+.shell[data-tool="claude"]{--primary:#c2643f;--primary-ink:#a34e2d;--accent-soft:rgba(217,119,87,.24);--accent-line:#efc7b4}
+.shell[data-tool="claude"] .primary{background:linear-gradient(135deg,#b4532a 0%,#d97757 55%,#e8a17a 120%);box-shadow:0 12px 26px -12px rgba(194,100,63,.85)}
+.shell[data-tool="claude"] .status-icon .i-claude{display:block}
+.shell[data-tool="claude"] .status[data-state="ok"] .status-icon{background:rgba(217,119,87,.14);color:#c2643f}
+.shell[data-tool="claude"] .status[data-state="other"] .status-icon{background:rgba(245,158,11,.15);color:#d97706}
+.shell[data-tool="claude"] .status-name{color:#a34e2d}
+.notice[data-tone="claude"]{background:linear-gradient(135deg,rgba(217,119,87,.10),rgba(232,161,122,.06));border-color:rgba(194,100,63,.32);color:#8a3f22;--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22Zm-1 5h2v2h-2Zm0 4h2v8h-2Z'/%3E%3C/svg%3E")}
+#go-claude:hover:not(:disabled){border-color:#d97757}
+.status-text code.hint{font:12px/1.4 "Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif}

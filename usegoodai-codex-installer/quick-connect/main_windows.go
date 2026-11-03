@@ -44,6 +44,12 @@ func main() {
 	if script := bundledModelsScript(filepath.Join(webviewDataPath(), "models-tool")); script != nil {
 		service.Models = script
 	}
+	localAppData, _ := os.UserCacheDir()    // %LOCALAPPDATA%
+	roamingAppData, _ := os.UserConfigDir() // %APPDATA%
+	userHome, _ := os.UserHomeDir()
+	service.Claude = connect.ClaudeDesktop{LocalAppData: localAppData}
+	service.ClaudeCLI = connect.ClaudeCode{Home: userHome, AppData: roamingAppData}
+	service.StopClaude = connect.StopClaudeDesktop
 	app := newApp(service, connect.FindImportLink(os.Args[1:]))
 
 	err := wails.Run(&options.App{

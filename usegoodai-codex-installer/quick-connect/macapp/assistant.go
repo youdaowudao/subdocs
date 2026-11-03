@@ -33,6 +33,10 @@ const MessageBusy = "另一个快速接入助手窗口正在配置 Codex。请�
 // MessageOpenFailed prefixes the reason Terminal could not be opened.
 const MessageOpenFailed = "无法打开终端："
 
+// MessageNoClaude answers an app=claude link: Claude Desktop import is in the
+// Windows assistant only.
+const MessageNoClaude = "Mac 版助手只能接入 Codex，一键导入 Claude 只有 Windows 版支持。Mac 上请按教程「Claude Desktop 接入」手动配置。"
+
 // The state directory is shared with run.command, which takes the lock
 // "run.lock" (a directory holding the owner's pid) for the whole time
 // install.sh runs.
@@ -93,6 +97,10 @@ func (a *Assistant) OpenLink(raw string) {
 	a.begin()
 	defer a.end()
 	link, problem := connect.ParseImportLink(raw)
+	if problem == connect.LinkOK && link.App == connect.LinkAppClaude {
+		a.Alert(MessageNoClaude) // the Mac assistant connects Codex only
+		return
+	}
 	switch problem {
 	case connect.LinkOK:
 	case connect.LinkUnsupported:

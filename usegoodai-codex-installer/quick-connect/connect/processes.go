@@ -73,3 +73,12 @@ func clientName(name string) string {
 	}
 	return ""
 }
+
+// IsClaudeDesktopProcess tells Claude Desktop from the Claude Code CLI: both
+// run as claude.exe, but the desktop app runs from its Store package under
+// WindowsApps (C:\Program Files\WindowsApps\Claude_<version>_x64__<id>\...).
+// Only the desktop app is ever closed.
+func IsClaudeDesktopProcess(imagePath string) bool {
+	lower := strings.ToLower(strings.ReplaceAll(imagePath, "/", `\`))
+	return strings.HasSuffix(lower, `\claude.exe`) && strings.Contains(lower, `\windowsapps\claude_`)
+}

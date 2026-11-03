@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -124,81 +122,6 @@ func versionLess(a, b string) bool {
 		}
 	}
 	return false
-}
-
-// ModelsState is the outcome of GET /v1/models for an image key.
-type ModelsState int
-
-const (
-	ModelsImage ModelsState = iota // lists at least one gpt-image model
-	ModelsNoImage
-	ModelsRejected
-	ModelsTimeout
-	ModelsOffline
-	ModelsServerError
-)
-
-const (
-	modelsPath      = "/v1/models"
-	maxModelsAnswer = 8 << 20
-)
-
-// CheckImageModels asks which models key may use. A key whose group lists no
-// gpt-image model certainly cannot draw; any listed one is good enough.
-func CheckImageModels(ctx context.Context, client *http.Client, baseURL, key string) (ModelsState, int) {
-	ctx, cancel := context.WithTimeout(ctx, usageTimeout)
-	defer cancel()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+modelsPath, nil)
-	if err != nil {
-		return ModelsOffline, 0
-	}
-	request.Header.Set("Authorization", "Bearer "+key)
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("User-Agent", "UseGoodAI-Quick-Connect/"+Version)
-	response, err := client.Do(request)
-	if err != nil {
-		if isTimeout(err) {
-			return ModelsTimeout, 0
-		}
-		return ModelsOffline, 0
-	}
-	defer response.Body.Close()
-	switch response.StatusCode {
-	case http.StatusOK:
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return ModelsRejected, response.StatusCode
-	default:
-		return ModelsServerError, response.StatusCode
-	}
-	var answer struct {
-		Data []struct {
-			ID string `json:"id"`
-		} `json:"data"`
-		Models []struct {
-			Slug string `json:"slug"`
-		} `json:"models"`
-	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, maxModelsAnswer)).Decode(&answer); err != nil {
-		if isTimeout(err) {
-			return ModelsTimeout, 0
-		}
-		return ModelsServerError, response.StatusCode
-	}
-	for _, model := range answer.Data {
-		if isImageModel(model.ID) {
-			return ModelsImage, response.StatusCode
-		}
-	}
-	for _, model := range answer.Models {
-		if isImageModel(model.Slug) {
-			return ModelsImage, response.StatusCode
-		}
-	}
-	return ModelsNoImage, response.StatusCode
-}
-
-func isImageModel(id string) bool {
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(id)), ImageModelPrefix)
 }
 
 // ImageInstaller runs the bundled image tool's "install" with key.

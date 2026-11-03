@@ -2,6 +2,7 @@ package connect
 
 import (
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -43,13 +44,22 @@ func TestParseImportLink(t *testing.T) {
 
 		{"version too new", "usegoodai://import?v=2&app=codex&key=" + fixtureKey, LinkUnsupported, "", ""},
 		{"version too new with new fields", "usegoodai://import?v=3&app=claude&token=x", LinkUnsupported, "", ""},
-		{"other app", "usegoodai://import?v=1&app=claude&key=" + fixtureKey, LinkUnsupported, "", ""},
+		{"claude", "usegoodai://import?v=1&app=claude&key=" + fixtureKey + "&name=work", LinkOK, fixtureKey, "work"},
+		{"other app", "usegoodai://import?v=1&app=gemini&key=" + fixtureKey, LinkUnsupported, "", ""},
+		{"claude case", "usegoodai://import?v=1&app=Claude&key=" + fixtureKey, LinkUnsupported, "", ""},
 		{"app case", "usegoodai://import?v=1&app=Codex&key=" + fixtureKey, LinkUnsupported, "", ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			link, problem := ParseImportLink(c.link)
-			if problem != c.problem || link.Key != c.key || link.Name != c.display {
+			wantApp := ""
+			if c.problem == LinkOK {
+				wantApp = "codex"
+				if strings.Contains(c.link, "app=claude") {
+					wantApp = "claude"
+				}
+			}
+			if problem != c.problem || link.Key != c.key || link.Name != c.display || link.App != wantApp {
 				t.Fatalf("ParseImportLink(%q) = %+v, %v; want key %q name %q problem %v", c.link, link, problem, c.key, c.display, c.problem)
 			}
 		})

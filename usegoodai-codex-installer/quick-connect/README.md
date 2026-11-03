@@ -1,6 +1,6 @@
 # UseGoodAI中转快速接入助手
 
-编号工具 1，把 Codex 切到 UseGoodAI。两个系统都接收网站「一键导入」生成的同一种 `usegoodai://` 链接：
+编号工具 1，把 Codex 切到 UseGoodAI；Windows 版还能把 Claude 桌面版（Claude App）切到 UseGoodAI。两个系统都接收网站「一键导入」生成的同一种 `usegoodai://` 链接：
 
 - **Windows**：单个 `.exe`，双击打开窗口，粘贴 API Key 或点网站的导入链接。源码在本目录根部。
 - **Mac**：终端 `.app`，没有窗口。双击时从剪贴板读密钥；点导入链接时把链接里的密钥交给终端里的 `install/codex.sh`。启动器源码在 [macapp/](macapp/)，见下文「Mac 版」。
@@ -17,6 +17,22 @@
 - **写入内容**与 `install/codex.ps1` 逐字节一致：`.bak.yyyyMMddHHmmss` 备份，UTF-8 无 BOM，先写临时文件再替换，失败时按备份回滚。
 - **恢复官方登录**按 `install/codex-restore.ps1` 的规则清理配置并清空 `auth.json`。
 - 密钥只在输入框完整显示，其它位置显示前 12 位 + `****` + 后 8 位，不写日志。
+
+## Claude 桌面版（Windows）
+
+品牌行右侧的「Codex / Claude」两个标签切换主入口，Claude 页用陶土橙主题，复用同一张状态卡、输入框和主按钮。只支持官网下载的新版（Microsoft Store 包 `Claude_pzs8sxrjxfjjc`），旧的 `%LOCALAPPDATA%\AnthropicClaude` 安装不处理。
+
+- **检测**：`%LOCALAPPDATA%\Packages\Claude_*` 存在算已安装。没装时状态卡显示「没检测到 Claude 桌面版」和「官网下载 / 群文件下载」两个按钮，不写任何文件。
+- **连接流程**：`/v1/usage` 检查密钥（同 Codex）→ `GET /v1/models` → 只留官方格式的 Fable、Opus、Sonnet、Haiku 模型（`^claude-(fable|opus|sonnet|haiku)-主版本(-次版本)?(-8位日期)?$`，同一版本有不带日期的就去掉带日期的；`claude-opus-5.5`、大小写不对、`[1m]`、`-thinking`、带前缀的一律丢弃，不改写），顺序 Fable、Opus、Sonnet、Haiku，同系列新版本在前，第一条是 Claude 的默认模型。一个都没有就提示换分组，不写入。
+- **写入**（全部成功或全部不改，配置文件和 `_meta.json` 先做 `.bak.时间` 备份，其它字段和顺序保留）：
+  - `deploymentMode: "3p"` 写进三份 `claude_desktop_config.json`：`%LOCALAPPDATA%\Claude-3p\`、`%LOCALAPPDATA%\Claude\`、`Packages\Claude_*\LocalCache\Roaming\Claude\`。
+  - `%LOCALAPPDATA%\Claude-3p\configLibrary\00000000-0000-4000-8000-00000000600d.json`：网关地址、Bearer、密钥、`modelDiscoveryEnabled: false`、`inferenceModels`。
+  - `_meta.json`：登记 `UseGoodAI` 条目，`appliedId` 指向它；CC Switch 等其它条目保留不动。
+- **关闭 Claude**：只结束从 `WindowsApps\Claude_*` 运行的 `claude.exe`，Claude Code CLI（同名 `claude.exe`）不受影响。
+- **Claude Code CLI**：只查 `%USERPROFILE%\.local\bin\claude.exe` 和 `%APPDATA%\npm\claude.cmd`。找到且还没用这个密钥时，连接成功后弹窗「检测到 Claude Code CLI，是否同时接入？」，点「是」写 `~/.claude/settings.json` 的 `env`（`ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN`，并去掉 `ANTHROPIC_API_KEY` 和模型覆盖变量），其它设置保留；没找到不提示。
+- **恢复官方登录**：UseGoodAI 是当前生效的配置时，三份配置改回 `1p`；生效的是别家（如 CC Switch）时不动模式。然后从 `_meta.json` 去掉 UseGoodAI 条目（`appliedId` 交给下一条，没有就删除），删除含密钥的 UseGoodAI 配置文件，关闭 Claude。Claude Code CLI 指向 UseGoodAI 时，同时去掉 `env` 里的 `ANTHROPIC_BASE_URL` 和 `ANTHROPIC_AUTH_TOKEN`（先备份），指向别家的不动。
+
+Codex 页没检测到 ChatGPT/Codex（没有 `Packages\OpenAI.*`，也没有 `.codex` 文件夹）时，同样显示下载按钮，官网下载打开 `https://chatgpt.com/download/`。QQ 卡片写明群文件有两个软件的安装包，点「群文件下载」会高亮 QQ 卡片并提示进群下载。
 
 ## 三个工具共用一个面板（Windows）
 
@@ -44,9 +60,10 @@ Mac 版仍是终端 `.app`、没有窗口（不做 Apple 签名，未签名的�
 
 ```text
 usegoodai://import?v=1&app=codex&key=<URL 编码>&name=<URL 编码，可选>
+usegoodai://import?v=1&app=claude&key=<URL 编码>&name=<URL 编码，可选>
 ```
 
-也接受 `usegoodai://import/?…`。只认 `app=codex`；`v` 大于 1 或其它 `app` 提示下载新版助手。API 地址写死在代码里，链接带地址或其它未知参数一律拒绝；`name` 只用于显示。Windows 和 Mac 共用 `connect/link.go` 的 `ParseImportLink`，规则和提示文字完全一致。以后支持别的工具时，在 `connect/link.go` 放开对应 `app`，再增加该工具的写入函数。
+也接受 `usegoodai://import/?…`。认 `app=codex` 和 `app=claude`（Windows 版切到 Claude 页连接 Claude 桌面版；Mac 版提示一键导入 Claude 只有 Windows 版支持）；`v` 大于 1 或其它 `app` 提示下载新版助手。API 地址写死在代码里，链接带地址或其它未知参数一律拒绝；`name` 只用于显示。Windows 和 Mac 共用 `connect/link.go` 的 `ParseImportLink`，规则和提示文字完全一致。以后支持别的工具时，在 `connect/link.go` 放开对应 `app`，再增加该工具的写入函数。
 
 ## Mac 版
 

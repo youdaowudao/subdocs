@@ -23,6 +23,9 @@ type Status struct {
 	State string `json:"state"`
 	Key   string `json:"key"`
 	Name  string `json:"name,omitempty"`
+	// AppInstalled: the ChatGPT/Codex app seems to be on this computer (see
+	// CodexAppDetected); the window offers the download when it is not.
+	AppInstalled bool `json:"appInstalled"`
 }
 
 // ReadStatus reports UseGoodAI when the selected provider points at

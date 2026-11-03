@@ -49,7 +49,10 @@ type Result struct {
 	Status  Status       `json:"status"`
 	Image   ImageStatus  `json:"image"`
 	Models  ModelsStatus `json:"models"`
+	Claude  ClaudeStatus `json:"claude"`
 	Action  string       `json:"action,omitempty"`
+	// OfferCLI asks the window whether to connect the Claude Code CLI too.
+	OfferCLI bool `json:"offerCli,omitempty"`
 }
 
 // Service runs one action at a time; a link that arrives during a
@@ -71,6 +74,11 @@ type Service struct {
 	// ~/.codex, as the script decides); Models runs it.
 	ModelsHome string
 	Models     ModelsImporter
+	// Claude is Claude Desktop, ClaudeCLI the Claude Code CLI; StopClaude
+	// closes Claude Desktop (nil: never closed).
+	Claude     ClaudeDesktop
+	ClaudeCLI  ClaudeCode
+	StopClaude func() ClaudeStopResult
 
 	mu sync.Mutex
 }
@@ -81,6 +89,7 @@ func (s *Service) Status() Status {
 	if key != "" {
 		status.Name = lookupName(s.NamesFile, key)
 	}
+	status.AppInstalled = CodexAppDetected(s.Claude.LocalAppData, s.CodexHome)
 	return status
 }
 
@@ -160,6 +169,7 @@ func (s *Service) Connect(ctx context.Context, raw, name string) Result {
 // LinkResult is a parsed link, or the message to show when it is rejected.
 type LinkResult struct {
 	OK     bool   `json:"ok"`
+	App    string `json:"app"`
 	Key    string `json:"key"`
 	Name   string `json:"name"`
 	Result Result `json:"result"`
@@ -170,7 +180,7 @@ func (s *Service) ParseLink(raw string) LinkResult {
 	link, problem := ParseImportLink(raw)
 	switch problem {
 	case LinkOK:
-		return LinkResult{OK: true, Key: link.Key, Name: link.Name}
+		return LinkResult{OK: true, App: link.App, Key: link.Key, Name: link.Name}
 	case LinkUnsupported:
 		return LinkResult{Result: s.result(ToneError, MessageLinkUnsupported)}
 	default:
@@ -194,7 +204,7 @@ func (s *Service) Restore() Result {
 }
 
 func (s *Service) result(tone, message string) Result {
-	return Result{Tone: tone, Message: message, Status: s.Status(), Image: s.ImageStatus(), Models: s.ModelsStatus()}
+	return Result{Tone: tone, Message: message, Status: s.Status(), Image: s.ImageStatus(), Models: s.ModelsStatus(), Claude: s.ClaudeStatus()}
 }
 
 // serverProblem names what went wrong for MessageServerError.

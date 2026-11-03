@@ -18,11 +18,21 @@ const (
 	LinkUnsupported
 )
 
-// ImportLink is a parsed usegoodai://import link. Name is only for display.
+// ImportLink is a parsed usegoodai://import link. App is the tool it is for
+// (see linkApps); Name is only for display.
 type ImportLink struct {
+	App  string
 	Key  string
 	Name string
 }
+
+// Link apps: "codex" connects Codex, "claude" connects Claude Desktop.
+const (
+	LinkAppCodex  = "codex"
+	LinkAppClaude = "claude"
+)
+
+var linkApps = map[string]bool{LinkAppCodex: true, LinkAppClaude: true}
 
 const maxLinkLength = 4096
 
@@ -31,7 +41,8 @@ const maxLinkLength = 4096
 var linkParameters = map[string]bool{"v": true, "app": true, "key": true, "name": true}
 
 // ParseImportLink accepts usegoodai://import?v=1&app=codex&key=...&name=...
-// and the same link with an extra slash before the query.
+// (app=claude too) and the same link with an extra slash before the query.
+// A tool that handles only some apps checks ImportLink.App itself.
 func ParseImportLink(raw string) (ImportLink, LinkProblem) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || len(raw) > maxLinkLength {
@@ -59,10 +70,11 @@ func ParseImportLink(raw string) (ImportLink, LinkProblem) {
 	if version > 1 {
 		return ImportLink{}, LinkUnsupported
 	}
-	switch app := values.Get("app"); {
+	app := values.Get("app")
+	switch {
 	case app == "":
 		return ImportLink{}, LinkIncomplete
-	case app != "codex":
+	case !linkApps[app]:
 		return ImportLink{}, LinkUnsupported
 	}
 	for name := range values {
@@ -74,7 +86,7 @@ func ParseImportLink(raw string) (ImportLink, LinkProblem) {
 	if !ok {
 		return ImportLink{}, LinkIncomplete
 	}
-	return ImportLink{Key: key, Name: displayName(values.Get("name"))}, LinkOK
+	return ImportLink{App: app, Key: key, Name: displayName(values.Get("name"))}, LinkOK
 }
 
 // FindImportLink returns the first command-line argument that is an import

@@ -162,8 +162,8 @@ func TestEveryLinkOnTheTestPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	cases := regexp.MustCompile(`\['(?:main)?', '([^']+)', \(k, n\) => `+"`([^`]+)`"+`\]`).FindAllStringSubmatch(string(page), -1)
-	if len(cases) != 6 {
-		t.Fatalf("test-link.html has %d links, this test knows 6; update both together", len(cases))
+	if len(cases) != 7 {
+		t.Fatalf("test-link.html has %d links, this test knows 7; update both together", len(cases))
 	}
 	literal := regexp.MustCompile(`\$\{encodeURIComponent\('([^']*)'\)\}`)
 	for _, c := range cases {
@@ -182,6 +182,8 @@ func TestEveryLinkOnTheTestPage(t *testing.T) {
 				r.assistant.OpenLink(href)
 				output := r.output()
 				switch {
+				case strings.Contains(title, "只有 Windows 支持"):
+					r.expectRejected(MessageNoClaude)
 				case strings.Contains(title, "导入链接不完整"):
 					r.expectRejected(connect.MessageLinkIncomplete)
 				case strings.Contains(title, "请下载新版助手"):

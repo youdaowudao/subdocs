@@ -7,14 +7,16 @@ const restoreButton = $('restore');
 const removeButton = $('remove-models');
 const shell = $('shell');
 
-// One panel, three tools. Codex is the default and the main one; the image
-// tool and the domestic model import are reached from small entries lower
-// down and reuse the same card, field and button.
+// One panel, four tools. Codex and Claude are the two main ones, picked by
+// the tabs at the top; Codex is the default. The image tool and the domestic
+// model import are reached from small entries lower down. All of them reuse
+// the same card, field and button.
 const TOOLS = {
   codex: {
     label: 'Codex 状态',
     button: '一键连接 Codex',
     placeholder: '粘贴 API Key，或在网站点「一键导入」',
+    restoreTip: '取消中转站连接：Codex 改回用 OpenAI 官方账号登录，并关闭正在运行的 Codex。',
   },
   image: {
     label: '生图工具',
@@ -22,6 +24,14 @@ const TOOLS = {
     placeholder: '粘贴画图分组的 API Key，或在网站点「一键导入」',
     tag: '现在导入的是：生图工具的 Key',
     guide: '到网站「API 密钥」页或首页，选画图分组的密钥点「一键导入」，或复制粘贴到上面。导入完成前不要关闭本窗口。',
+  },
+  claude: {
+    label: 'Claude 桌面版',
+    button: '一键连接 Claude',
+    placeholder: '粘贴 API Key，或在网站点「一键导入 Claude」',
+    tag: '现在连接的是：Claude 桌面版',
+    guide: '写入这把密钥能用的全部 Claude 模型（Fable、Opus、Sonnet、Haiku），连接时会先关闭 Claude。',
+    restoreTip: '取消中转站连接：Claude 改回用 Anthropic 官方账号登录，并关闭正在运行的 Claude。',
   },
   models: {
     label: '国产模型',
@@ -35,11 +45,17 @@ const CODEX_TITLES = {
   none: '还没连接',
   other: '当前用的是官方登录或其他服务',
 };
+const CLAUDE_TITLES = {
+  notinstalled: '没检测到 Claude 桌面版',
+  usegoodai: '已连接 UseGoodAI',
+  none: '还没连接',
+  other: '当前用的是其他第三方服务',
+};
 const CONFIRM_MS = 6000;
 
 let busy = false;
 let tool = 'codex';
-let state = { status: null, image: null, models: null };
+let state = { status: null, image: null, models: null, claude: null };
 let confirming = null; // 'import' or 'remove' while waiting for a second click
 let confirmTimer = 0;
 const queuedLinks = [];
@@ -86,8 +102,24 @@ function cardFor() {
     }
     return { state: 'none', title: '还没导入', name: '', key: '' };
   }
+  if (tool === 'claude') {
+    const claude = state.claude || { state: 'none' };
+    const connected = claude.state === 'usegoodai';
+    if (claude.state === 'notinstalled') {
+      return { state: 'none', title: CLAUDE_TITLES.notinstalled, name: '', key: '先装好软件，再回来点一键连接', download: true };
+    }
+    return {
+      state: connected ? 'ok' : claude.state === 'none' ? 'none' : 'other',
+      title: CLAUDE_TITLES[claude.state] || CLAUDE_TITLES.other,
+      name: connected ? claude.name || '' : '',
+      key: connected ? (claude.key || '') + (claude.models ? ` · ${claude.models} 个模型` : '') : '',
+    };
+  }
   const status = state.status || { state: 'none' };
   const connected = status.state === 'usegoodai';
+  if (status.state === 'none' && state.status && !status.appInstalled) {
+    return { state: 'none', title: '没检测到 Codex 软件', name: '', key: '先装好 ChatGPT（含 Codex），再回来点一键连接', download: true };
+  }
   return {
     state: connected ? 'ok' : status.state === 'none' ? 'none' : 'other',
     title: CODEX_TITLES[status.state] || CODEX_TITLES.other,
@@ -106,6 +138,8 @@ function renderCard() {
   name.textContent = card.name;
   name.title = card.name;
   name.hidden = card.name === '';
+  $('get-app').hidden = !card.download;
+  $('status-key').classList.toggle('hint', Boolean(card.download));
 }
 
 // The entries say what is already done, so nobody installs twice by mistake.
@@ -126,8 +160,14 @@ function renderEntries() {
   $('go-models-label').textContent = modelsLabel;
   $('go-models').dataset.state = models.state === 'active' ? 'done' : models.state === 'inactive' ? 'attention' : '';
 
-  for (const name of ['codex', 'image', 'models']) {
+  // Claude has its own tab, so "back to Codex" is only for the Codex tools.
+  $('go-codex').hidden = tool === 'codex' || tool === 'claude';
+  for (const name of ['image', 'models']) {
     $(`go-${name}`).hidden = name === tool;
+  }
+  for (const name of ['codex', 'claude']) {
+    const pressed = name === 'claude' ? tool === 'claude' : tool !== 'claude';
+    $(`tab-${name}`).setAttribute('aria-pressed', String(pressed));
   }
 }
 
@@ -146,13 +186,15 @@ function render() {
   connectButton.classList.toggle('confirm', confirming === 'import');
   removeButton.hidden = tool !== 'models' || !state.models || state.models.state === 'none';
   removeButton.textContent = confirming === 'remove' ? '确认移除（会关闭 Codex）' : '移除国产模型';
-  $('restore-anchor').hidden = tool !== 'codex';
+  $('restore-anchor').hidden = tool !== 'codex' && tool !== 'claude';
+  if (TOOLS[tool].restoreTip) $('restore-tip').textContent = TOOLS[tool].restoreTip;
 }
 
 function absorb(result) {
   if (result.status) state.status = result.status;
   if (result.image) state.image = result.image;
   if (result.models) state.models = result.models;
+  if (result.claude) state.claude = result.claude;
 }
 
 function showNotice(tone, text, action, tag) {
@@ -178,7 +220,8 @@ function showResult(result) {
 
 function setBusy(on, label) {
   busy = on;
-  for (const button of [connectButton, restoreButton, removeButton, $('go-codex'), $('go-image'), $('go-models')]) {
+  for (const button of [connectButton, restoreButton, removeButton, $('go-codex'), $('go-image'), $('go-models'),
+    $('tab-codex'), $('tab-claude'), $('get-official'), $('get-group')]) {
     button.disabled = on;
   }
   connectButton.classList.toggle('busy', on);
@@ -217,7 +260,8 @@ function setTool(next) {
   } else {
     showNotice(tool, TOOLS[tool].guide, tool === 'image' ? 'open-site' : '', TOOLS[tool].tag);
   }
-  if (tool === 'image') keyInput.focus();
+  if (tool === 'image' || tool === 'claude') keyInput.focus();
+  if (tool === 'claude' || tool === 'codex') fillFromClipboard();
 }
 
 async function run(label, notice, action) {
@@ -226,8 +270,8 @@ async function run(label, notice, action) {
   try {
     const result = await action();
     // A finished image install or model import goes back to Codex; the
-    // result stays on screen.
-    if (tool !== 'codex' && result.tone !== 'error') setTool('codex');
+    // result stays on screen. Claude stays on its own tab.
+    if ((tool === 'image' || tool === 'models') && result.tone !== 'error') setTool('codex');
     showResult(result);
   } catch (error) {
     showNotice('error', '操作没有完成，请再试一次。');
@@ -252,11 +296,16 @@ function submit() {
     run('正在安装…', '正在检查密钥能否画图…', () => bridge().InstallImage(key));
     return;
   }
+  if (tool === 'claude') {
+    run('正在连接…', '正在检查密钥和可用的 Claude 模型…', () => bridge().ConnectClaude(key));
+    return;
+  }
   run('正在连接…', '正在检查密钥…', () => bridge().Connect(key));
 }
 
-// Links import straight away. On the image tool they go to the image tool;
-// anywhere else they connect Codex, as they always have.
+// Links import straight away. An app=claude link connects Claude Desktop.
+// An app=codex link goes to the image tool while it is open; anywhere else it
+// connects Codex, as it always has.
 async function importLink(raw) {
   setBusy(true, '正在连接…');
   let parsed = null;
@@ -273,6 +322,13 @@ async function importLink(raw) {
     return;
   }
   const name = parsed.name || '';
+  if (parsed.app === 'claude') {
+    if (tool !== 'claude') setTool('claude');
+    keyInput.value = parsed.key;
+    const notice = name ? `正在把「${name}」接入 Claude…` : '正在把密钥接入 Claude…';
+    await run('正在连接…', notice, () => bridge().ImportClaude(parsed.key, name));
+    return;
+  }
   if (tool === 'image') {
     keyInput.value = parsed.key;
     const notice = name ? `正在把「${name}」导入生图工具…` : '正在把密钥导入生图工具…';
@@ -317,6 +373,25 @@ for (const name of ['codex', 'image', 'models']) {
   });
 }
 
+for (const name of ['codex', 'claude']) {
+  $(`tab-${name}`).addEventListener('click', () => {
+    if (!busy) setTool(name);
+  });
+}
+
+$('get-official').addEventListener('click', () => bridge().OpenDownload(tool === 'claude' ? 'claude' : 'codex'));
+
+// The QQ group's files carry both installers, for anyone who cannot reach
+// the official sites.
+$('get-group').addEventListener('click', () => {
+  const qq = $('qq');
+  qq.classList.remove('flash');
+  void qq.offsetWidth;
+  qq.classList.add('flash');
+  const app = tool === 'claude' ? 'Claude' : 'ChatGPT';
+  showNotice('info', `打不开官网时，进 QQ 群在「群文件」里下载 ${app} 安装包：点下方「加入群聊」，或复制群号 ${$('version').dataset.qq || '1020015031'} 搜索加群。`);
+});
+
 removeButton.addEventListener('click', () => {
   if (busy) return;
   if (confirming !== 'remove') {
@@ -328,7 +403,9 @@ removeButton.addEventListener('click', () => {
 });
 
 restoreButton.addEventListener('click', () => {
-  if (!busy) run('正在恢复…', '正在恢复官方登录…', () => bridge().Restore());
+  if (busy) return;
+  if (tool === 'claude') run('正在恢复…', '正在恢复 Claude 官方登录…', () => bridge().RestoreClaude());
+  else run('正在恢复…', '正在恢复官方登录…', () => bridge().Restore());
 });
 
 $('copy-qq').addEventListener('click', async (event) => {
@@ -357,9 +434,11 @@ document.addEventListener('visibilitychange', () => {
   if (!app) return;
   const info = await app.Info();
   $('version').textContent = info.version;
+  $('version').dataset.qq = info.qq;
   state.status = await app.Status();
   state.image = await app.ImageStatus();
   state.models = await app.ModelsStatus();
+  state.claude = await app.ClaudeStatus();
   render();
   window.runtime.EventsOn('import-link', enqueueLink);
   const link = await app.TakeLaunchLink();

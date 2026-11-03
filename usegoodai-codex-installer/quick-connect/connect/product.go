@@ -18,4 +18,8 @@ const (
 	QQGroupURL    = "https://qm.qq.com/q/o80PFAbey4"
 
 	ProtocolScheme = "usegoodai"
+
+	// Official download pages offered when the app is not installed.
+	ChatGPTDownloadURL = "https://chatgpt.com/download/"
+	ClaudeDownloadURL  = "https://claude.com/download"
 )
