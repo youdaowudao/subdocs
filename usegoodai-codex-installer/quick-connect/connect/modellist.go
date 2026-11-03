@@ -21,6 +21,7 @@ const (
 	ModelsTimeout
 	ModelsOffline
 	ModelsServerError
+	ModelsNoBalance // the key is fine but the account balance is $0
 )
 
 const (
@@ -53,6 +54,12 @@ func ListModels(ctx context.Context, client *http.Client, baseURL, key string) (
 	switch response.StatusCode {
 	case http.StatusOK:
 	case http.StatusUnauthorized, http.StatusForbidden:
+		// sub2api refuses every endpoint but /v1/usage while the balance
+		// is $0, so a good key looks rejected here; its error code tells.
+		body, _ := io.ReadAll(io.LimitReader(response.Body, 64<<10))
+		if strings.Contains(string(body), "INSUFFICIENT_BALANCE") {
+			return nil, ModelsNoBalance, response.StatusCode
+		}
 		return nil, ModelsRejected, response.StatusCode
 	default:
 		return nil, ModelsServerError, response.StatusCode

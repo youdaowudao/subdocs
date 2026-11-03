@@ -98,7 +98,7 @@ function cardFor() {
     const models = state.models || { state: 'none' };
     if (models.state === 'active') return { state: 'ok', title: `已导入 ${models.count} 个国产模型`, name: '', key: '' };
     if (models.state === 'inactive') {
-      return { state: 'other', title: '已失效，需要重新导入', name: '', key: '重新连接 Codex 后要再导入一次' };
+      return { state: 'other', title: '需要重新导入', name: '', key: '重新连接 Codex 后，国产模型要再导入一次' };
     }
     return { state: 'none', title: '还没导入', name: '', key: '' };
   }
@@ -156,11 +156,13 @@ function renderEntries() {
   const models = state.models || { state: 'none' };
   let modelsLabel = '导入国产模型';
   if (models.state === 'active') modelsLabel = '国产模型（已导入）';
-  else if (models.state === 'inactive') modelsLabel = '国产模型（已失效）';
+  else if (models.state === 'inactive') modelsLabel = '国产模型（需重新导入）';
   $('go-models-label').textContent = modelsLabel;
   $('go-models').dataset.state = models.state === 'active' ? 'done' : models.state === 'inactive' ? 'attention' : '';
 
-  // Claude has its own tab, so "back to Codex" is only for the Codex tools.
+  // The image tool and the domestic models belong to Codex, so the Claude
+  // page shows none of the entries.
+  $('tools').hidden = tool === 'claude';
   $('go-codex').hidden = tool === 'codex' || tool === 'claude';
   for (const name of ['image', 'models']) {
     $(`go-${name}`).hidden = name === tool;
@@ -171,7 +173,35 @@ function renderEntries() {
   }
 }
 
+// The image tool keeps its key, so an installed one updates or reinstalls
+// with it unless a new key is typed in. A link or a pasted key still
+// replaces it.
+function savedImageKey() {
+  const image = state.image;
+  return Boolean(image && image.key && (image.state === 'ready' || image.state === 'outdated'));
+}
+
+function usesSavedImageKey() {
+  return tool === 'image' && savedImageKey() && keyInput.value.trim() === '';
+}
+
+function imageGuide() {
+  if (!savedImageKey()) return TOOLS.image.guide;
+  const image = state.image;
+  const first = image.state === 'outdated'
+    ? `已有密钥，直接点「一键更新」升级到 V${image.bundled}，不用再粘贴。`
+    : '已装好，密钥也在。';
+  return first + '要换密钥才需要粘贴新的，或在网站点「一键导入」。';
+}
+
+function guideFor(name) {
+  return name === 'image' ? imageGuide() : TOOLS[name].guide;
+}
+
 function idleLabel() {
+  if (usesSavedImageKey()) {
+    return state.image.state === 'outdated' ? `一键更新到 V${state.image.bundled}` : '用已有密钥重新安装';
+  }
   if (tool === 'models') {
     if (confirming === 'import') return '确认导入（会关闭 Codex）';
     return state.models && state.models.state === 'active' ? '重新导入国产模型' : TOOLS.models.button;
@@ -249,7 +279,7 @@ function setTool(next) {
   tool = next;
   shell.dataset.tool = tool;
   keyInput.value = '';
-  if (TOOLS[tool].placeholder) keyInput.placeholder = TOOLS[tool].placeholder;
+  keyInput.placeholder = tool === 'image' && savedImageKey() ? '已有密钥；要换密钥才粘贴新的' : TOOLS[tool].placeholder || '';
   shell.classList.remove('activating');
   void shell.offsetWidth; // restart the sweep
   shell.classList.add('activating');
@@ -258,9 +288,10 @@ function setTool(next) {
   if (tool === 'codex') {
     $('notice').hidden = true;
   } else {
-    showNotice(tool, TOOLS[tool].guide, tool === 'image' ? 'open-site' : '', TOOLS[tool].tag);
+    const openSite = tool === 'image' && !savedImageKey() ? 'open-site' : '';
+    showNotice(tool, guideFor(tool), openSite, TOOLS[tool].tag);
   }
-  if (tool === 'image' || tool === 'claude') keyInput.focus();
+  if ((tool === 'image' && !savedImageKey()) || tool === 'claude') keyInput.focus();
   if (tool === 'claude' || tool === 'codex') fillFromClipboard();
 }
 
@@ -292,6 +323,10 @@ function submit() {
     return;
   }
   const key = keyInput.value;
+  if (usesSavedImageKey()) {
+    run('正在更新…', '正在用已有密钥更新生图工具…', () => bridge().UpdateImage());
+    return;
+  }
   if (tool === 'image') {
     run('正在安装…', '正在检查密钥能否画图…', () => bridge().InstallImage(key));
     return;
@@ -353,7 +388,9 @@ function nextLink() {
 }
 
 async function fillFromClipboard() {
-  if (busy || tool === 'models' || keyInput.value.trim() !== '' || !bridge()) return;
+  // An installed image tool already has its key; the clipboard might hold
+  // the Codex key, which must not replace it unasked.
+  if (busy || tool === 'models' || (tool === 'image' && savedImageKey()) || keyInput.value.trim() !== '' || !bridge()) return;
   try {
     const key = await bridge().ClipboardKey();
     if (key && keyInput.value.trim() === '') keyInput.value = key;
@@ -361,6 +398,11 @@ async function fillFromClipboard() {
     // The clipboard may be busy; the user can still paste by hand.
   }
 }
+
+// The button says whether the saved image key or the typed one is used.
+keyInput.addEventListener('input', () => {
+  if (!busy) $('connect-label').textContent = idleLabel();
+});
 
 $('connect-form').addEventListener('submit', (event) => {
   event.preventDefault();
@@ -375,8 +417,24 @@ for (const name of ['codex', 'image', 'models']) {
 
 for (const name of ['codex', 'claude']) {
   $(`tab-${name}`).addEventListener('click', () => {
+    tabsUsed = true;
     if (!busy) setTool(name);
   });
+}
+
+// New users may not notice the two tabs, so each one pulses once: Codex 5
+// seconds after opening, Claude after 20. Nothing pulses once a tab was
+// clicked, while working, or for the page already open (Claude).
+const TAB_HINTS = [['codex', 5000], ['claude', 20000]];
+let tabsUsed = false;
+
+function hintTab(name) {
+  if (tabsUsed || busy || (name === 'claude' && tool === 'claude') || (name === 'codex' && tool !== 'codex')) return;
+  const tab = $(`tab-${name}`);
+  tab.classList.remove('hint');
+  void tab.offsetWidth;
+  tab.classList.add('hint');
+  tab.addEventListener('animationend', () => tab.classList.remove('hint'), { once: true });
 }
 
 $('get-official').addEventListener('click', () => bridge().OpenDownload(tool === 'claude' ? 'claude' : 'codex'));
@@ -440,6 +498,7 @@ document.addEventListener('visibilitychange', () => {
   state.models = await app.ModelsStatus();
   state.claude = await app.ClaudeStatus();
   render();
+  for (const [name, delay] of TAB_HINTS) setTimeout(() => hintTab(name), delay);
   window.runtime.EventsOn('import-link', enqueueLink);
   const link = await app.TakeLaunchLink();
   if (link) {

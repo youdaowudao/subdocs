@@ -108,6 +108,9 @@ func (a *App) InstallImage(key string) connect.Result {
 	return a.service.InstallImage(a.ctx, key, "")
 }
 
+// UpdateImage reinstalls the image tool with the key it already holds.
+func (a *App) UpdateImage() connect.Result { return a.service.UpdateImage(a.ctx) }
+
 // ImportImage installs the image tool with a key from an import link that
 // arrived while the window was in image mode.
 func (a *App) ImportImage(key, name string) connect.Result {

@@ -36,7 +36,7 @@ Codex 页没检测到 ChatGPT/Codex（没有 `Packages\OpenAI.*`，也没有 `.c
 
 ## 三个工具共用一个面板（Windows）
 
-窗口默认是 Codex 接入。生图工具和国产模型导入不单独做页签：面板上方的状态卡、输入框和主按钮位置不变，只换内容和主题色（Codex 青蓝、生图紫、国产模型琥珀），切换时一道光扫过。两个工具的入口是中下部、QQ 卡片上方的两颗浅色小按钮，按钮上直接写状态（「生图工具（已安装）」「国产模型（已导入）」「国产模型（已失效）」），避免重复安装；进入其中一个工具后，对应入口换成「返回 Codex 接入」。安装或导入成功后自动回到 Codex，结果留在提示条。
+窗口默认是 Codex 接入。生图工具和国产模型导入不单独做页签：面板上方的状态卡、输入框和主按钮位置不变，只换内容和主题色（Codex 青蓝、生图紫、国产模型琥珀），切换时一道光扫过。两个工具的入口是中下部、QQ 卡片上方的两颗浅色小按钮，按钮上直接写状态（「生图工具（已安装）」「国产模型（已导入）」「国产模型（需重新导入）」），避免重复安装；进入其中一个工具后，对应入口换成「返回 Codex 接入」。安装或导入成功后自动回到 Codex，结果留在提示条。
 
 网站导入链接：停在生图工具时交给生图工具，其余情况切回 Codex 照常接入。生图状态只在窗口里，窗口关掉后再点链接仍按 Codex 处理，所以提示条要求导入完成前不关窗口。
 
@@ -51,7 +51,7 @@ Codex 页没检测到 ChatGPT/Codex（没有 `Packages\OpenAI.*`，也没有 `.c
 
 - **运行**：助手内附 `../install/codex-models.ps1`（见 [modelstool/README.md](modelstool/README.md)），在后台用 Windows PowerShell 以 `-NoProfile -NonInteractive -ExecutionPolicy Bypass` 运行，不弹控制台窗口；脚本路径和 `CODEX_HOME` 经环境变量传入，中文用户名和带引号的路径不用转义。输出要求 UTF-8，控制台不肯切换时按 GB18030 解码。脚本原样负责导入、移除和关闭 ChatGPT/Codex。
 - **确认**：主按钮第一次点击变成「确认导入（会关闭 Codex）」，6 秒内再点才开始；「移除国产模型」同样两次确认。不需要密钥，所以这一页没有输入框。
-- **状态**：数 `usegoodai-models.managed.json` 里非 `gpt-` 的条目，再看 `config.toml` 的 `model_catalog_json` 是否指向 `usegoodai-models.json`。重新连接 Codex 会整份替换 `config.toml`，导入的模型随之失效，状态显示「已失效」。
+- **状态**：数 `usegoodai-models.managed.json` 里非 `gpt-` 的条目，再看 `config.toml` 的 `model_catalog_json` 是否指向 `usegoodai-models.json`。重新连接 Codex 会重写 `config.toml`（只保留 `[windows]` 沙箱设置），导入的模型随之失效，状态显示「需重新导入」。
 - **升级**：国产模型脚本只在 `codex-domestic-models/` 维护，按那边流程同步到 `install/` 和发布目录后重新运行 `build.py`；打包时核对内附脚本与发布副本除 BOM 外逐字节一致。
 
 Mac 版仍是终端 `.app`、没有窗口（不做 Apple 签名，未签名的窗口版首次打开同样要去系统设置放行），生图和国产模型仍用各自的 `.app`。
@@ -87,7 +87,7 @@ cd ../desktop && python3 build.py --mac-launcher <Actions 产物里的 Contents/
 
 只构建 exe：`python3 build.py [输出路径]`。Go 模块、缓存和临时文件都放在本目录 `.work/`（不进 Git）；`rsrc_windows_amd64.syso`（图标、清单、文件属性）每次构建重新生成。
 
-版本号在 `connect/product.go` 的 `Version`，同时写入 exe 文件属性和窗口底部；`../desktop/build.py` 的 Mac 版本号必须与它一致。Mac 版增加导入链接是同一个软件的更新，不是新软件：版本号沿用 `1.0.0`，Bundle 标识沿用 `com.usegoodai.codex-config`。
+版本号在 `connect/product.go` 的 `Version`，同时写入 exe 文件属性和窗口底部；`../desktop/build.py` 的 Mac 版本号必须与它一致。每次给用户的新版本都要加版本号（1.0.0 首发；1.1.0 加入 Codex 完全访问和 Claude 桌面版接入；之后每个测试版只加最后一位：1.1.1、1.1.2……），Bundle 标识沿用 `com.usegoodai.codex-config`，让 Mac 的终端控制权限延续。
 
 ## 测试
 

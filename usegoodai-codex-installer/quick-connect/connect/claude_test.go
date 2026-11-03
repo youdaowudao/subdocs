@@ -551,6 +551,14 @@ func TestConnectClaudeRefusals(t *testing.T) {
 		})
 	}
 
+	// sub2api refuses /v1/models while the balance is $0.
+	server := fakeGateway(t, 200, `{"isValid":true,"remaining":0}`, 403, `{"code":"INSUFFICIENT_BALANCE"}`)
+	broke, stops := newClaudeService(t, `{}`, `{}`)
+	broke.BaseURL = server.URL
+	if result := broke.ConnectClaude(context.Background(), fixtureKey, ""); result.Tone != ToneWarning || result.Message != MessageClaudeNeedBalance || *stops != 0 || fileExists(broke.Claude.profilePath()) {
+		t.Fatalf("zero balance: %+v stops %d", result, *stops)
+	}
+
 	service, _ := newClaudeService(t, `{"isValid":true}`, claudeModelsAnswer)
 	service.Claude = ClaudeDesktop{LocalAppData: t.TempDir()}
 	if result := service.ConnectClaude(context.Background(), fixtureKey, ""); result.Message != MessageClaudeNotInstalled || result.Claude.State != ClaudeNotInstalled {

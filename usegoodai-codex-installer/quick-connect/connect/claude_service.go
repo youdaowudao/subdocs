@@ -22,6 +22,7 @@ const (
 	MessageClaudeOffline       = "连不上 UseGoodAI 服务器：网络不通，或被代理、防火墙拦截。Claude 配置没有改动。检查网络后再点一次。"
 	MessageClaudeServerError   = "UseGoodAI 服务器暂时出错（%s），无法确认密钥。Claude 配置没有改动。稍后再点一次，仍不行请进 QQ 群联系客服。"
 	MessageClaudeNoModel       = "这个密钥的分组没有可用的 Claude 模型。请到网站换一个能用 Claude 的分组的密钥。Claude 配置没有改动。"
+	MessageClaudeNeedBalance   = "密钥没问题，但账户余额为 $0：余额为 0 时服务器不让查询这个密钥能用哪些 Claude 模型。充值后再点「一键连接 Claude」，新人进群领 2 元。Claude 配置没有改动。"
 	MessageClaudeNoBalance     = "已连接 UseGoodAI，写入了 %d 个 Claude 模型，但余额为 $0，充值后才能用；新人进群领 2 元。"
 	MessageClaudeClosed        = "Claude 已关闭，重新打开即可，新建对话，发送“测试”。"
 	MessageClaudeNotClosed     = "没能自动关闭 Claude，请从右下角托盘彻底退出后重新打开，新建对话，发送“测试”。"
@@ -78,7 +79,12 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 	}
 	ids, state, code := ListModels(ctx, s.Client, s.BaseURL, key)
 	switch state {
+	case ModelsNoBalance:
+		return s.result(ToneWarning, MessageClaudeNeedBalance)
 	case ModelsRejected:
+		if check.State == KeyNoBalance {
+			return s.result(ToneWarning, MessageClaudeNeedBalance)
+		}
 		return s.result(ToneError, MessageClaudeRejected)
 	case ModelsTimeout:
 		return s.result(ToneError, MessageClaudeTimeout)

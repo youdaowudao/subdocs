@@ -87,6 +87,9 @@ func TestInstallImageMessages(t *testing.T) {
 		{"no gpt-image model", 200, `{"isValid":true}`, 200, textModels, fixtureKey, ToneError, MessageImageNoModel, false},
 		{"empty model list", 200, `{"isValid":true}`, 200, `{"data":[]}`, fixtureKey, ToneError, MessageImageNoModel, false},
 		{"zero balance still installs", 200, `{"isValid":true,"remaining":0}`, 200, imageModels, fixtureKey, ToneWarning, MessageImageNoBalance, true},
+		{"zero balance: models refused", 200, `{"isValid":true,"remaining":0}`, 403,
+			`{"code":"INSUFFICIENT_BALANCE","message":"Insufficient account balance"}`, fixtureKey, ToneWarning, MessageImageNeedBalance, false},
+		{"zero balance: models 403 without code", 200, `{"isValid":true,"remaining":0}`, 403, `{}`, fixtureKey, ToneWarning, MessageImageNeedBalance, false},
 		{"rejected", 200, `{}`, 200, imageModels, "sk-someone_else_key_0123456789", ToneError, MessageImageRejected, false},
 		{"disabled", 200, `{"isValid":false}`, 200, imageModels, fixtureKey, ToneError, MessageImageDisabled, false},
 		{"models server error", 200, `{"isValid":true}`, 502, `{}`, fixtureKey, ToneError,
@@ -263,5 +266,37 @@ func TestBundledImageToolInstallsRelease(t *testing.T) {
 	tool.SHA256 = strings.Repeat("0", 64)
 	if err := tool.Install(context.Background(), home, fixtureKey); err == nil || !strings.Contains(err.Error(), "校验不通过") {
 		t.Fatalf("tampered program accepted: %v", err)
+	}
+}
+
+func TestUpdateImage(t *testing.T) {
+	server := fakeGateway(t, 200, `{"isValid":true,"remaining":5}`, 200, imageModels)
+	home := t.TempDir()
+	codexHome := filepath.Join(home, ".codex")
+	old := &fakeImageTool{version: "0.8.1"}
+	if err := old.Install(context.Background(), codexHome, fixtureKey); err != nil {
+		t.Fatal(err)
+	}
+	tool := &fakeImageTool{version: "0.8.2"}
+	service := &Service{
+		CodexHome: codexHome,
+		ImageHome: codexHome,
+		BaseURL:   server.URL,
+		Client:    NewHTTPClient(),
+		Now:       func() time.Time { return fixedTime },
+		NamesFile: filepath.Join(home, "names.json"),
+		Image:     tool,
+	}
+	if status := service.ImageStatus(); status.State != ImageOutdated {
+		t.Fatalf("before: %+v", status)
+	}
+	result := service.UpdateImage(context.Background())
+	if result.Tone != ToneSuccess || len(tool.calls) != 1 || tool.calls[0] != fixtureKey || result.Image.State != ImageReady {
+		t.Fatalf("update: %+v calls %v", result, tool.calls)
+	}
+
+	empty := &Service{ImageHome: t.TempDir(), Image: tool, Now: service.Now}
+	if result := empty.UpdateImage(context.Background()); result.Message != MessageImageNoSavedKey || result.Action != ActionOpenSite {
+		t.Fatalf("no key: %+v", result)
 	}
 }

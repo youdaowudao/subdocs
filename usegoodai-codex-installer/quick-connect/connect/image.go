@@ -141,9 +141,23 @@ const (
 	MessageImageTimeout     = "网络超时：UseGoodAI 服务器 10 秒内没有回应。生图工具没有改动。网络慢或开了代理时，稍后再试一次。"
 	MessageImageOffline     = "连不上 UseGoodAI 服务器：网络不通，或被代理、防火墙拦截。生图工具没有改动。检查网络后再试一次。"
 	MessageImageServerError = "UseGoodAI 服务器暂时出错（%s），无法确认密钥。生图工具没有改动。稍后再试一次，仍不行请进 QQ 群联系客服。"
+	MessageImageNeedBalance = "密钥没问题，但账户余额为 $0：余额为 0 时服务器不让查询这个密钥能不能画图。充值后再点「一键导入」，新人进群领 2 元。生图工具没有改动。"
 	MessageImageNoBalance   = "生图工具已装好，但余额为 $0，充值后才能画图；新人进群领 2 元。"
 	MessageImageInstalled   = "生图工具 V%s 已装好 ✓ 重新打开 Codex 或新建任务，说“画一张白底红苹果”试试。"
+	MessageImageNoSavedKey  = "生图工具里没有可用的密钥，请到网站选画图分组的密钥点「一键导入」，或复制密钥粘贴到上面。"
 )
+
+// UpdateImage reinstalls the bundled image tool with the key it already
+// holds, so updating needs no pasting. The key is checked again first.
+func (s *Service) UpdateImage(ctx context.Context) Result {
+	_, key := ReadImageStatus(s.ImageHome, "")
+	if key == "" {
+		result := s.result(ToneError, MessageImageNoSavedKey)
+		result.Action = ActionOpenSite
+		return result
+	}
+	return s.InstallImage(ctx, key, "")
+}
 
 // ImageStatus reads the image card.
 func (s *Service) ImageStatus() ImageStatus {
@@ -193,7 +207,12 @@ func (s *Service) InstallImage(ctx context.Context, raw, name string) Result {
 	switch models {
 	case ModelsNoImage:
 		return s.result(ToneError, MessageImageNoModel)
+	case ModelsNoBalance:
+		return s.result(ToneWarning, MessageImageNeedBalance)
 	case ModelsRejected:
+		if check.State == KeyNoBalance {
+			return s.result(ToneWarning, MessageImageNeedBalance)
+		}
 		return s.result(ToneError, MessageImageRejected)
 	case ModelsTimeout:
 		return s.result(ToneError, MessageImageTimeout)
