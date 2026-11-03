@@ -170,8 +170,9 @@ func TestConnectKeepsOldConfigWhenWriteFails(t *testing.T) {
 	if result.Tone != ToneError || result.Message != "写入 Codex 配置失败：拒绝访问。原配置没有改动，可以重试。" {
 		t.Fatalf("got %q", result.Message)
 	}
-	if *stops != 0 || readFile(t, filepath.Join(service.CodexHome, "config.toml")) != "official config" {
-		t.Fatal("a failed write must keep the config and leave Codex running")
+	// Codex is closed before writing, so it is closed even when the write fails.
+	if *stops != 1 || readFile(t, filepath.Join(service.CodexHome, "config.toml")) != "official config" {
+		t.Fatal("a failed write must keep the config")
 	}
 }
 

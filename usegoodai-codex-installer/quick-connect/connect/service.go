@@ -84,7 +84,7 @@ func (s *Service) Status() Status {
 	return status
 }
 
-// Connect checks the key, writes the Codex files and closes Codex. Nothing is
+// Connect checks the key, closes Codex and writes the Codex files. Nothing is
 // written unless the server confirms the key. name comes from an import link
 // and is remembered for the Codex card; a pasted key passes "".
 func (s *Service) Connect(ctx context.Context, raw, name string) Result {
@@ -119,14 +119,19 @@ func (s *Service) Connect(ctx context.Context, raw, name string) Result {
 	if s.CodexHome == "" {
 		return s.result(ToneError, writeFailed(errors.New("找不到当前用户的文件夹")))
 	}
+	// Codex is closed first: the App writes its permission file back when it
+	// exits, which would undo the Full Access set below.
+	stopped := s.StopClients()
 	if err := WriteCodexFiles(s.CodexHome, key, s.Now()); err != nil {
 		return s.result(ToneError, writeFailed(err))
 	}
+	// config.toml already allows full access, so a file the App cannot be
+	// switched through does not fail the import.
+	_ = GrantAppFullAccess(s.CodexHome, s.Now())
 	if name != "" {
 		// Only shown on the card, so a failure here does not fail the import.
 		_ = rememberName(s.NamesFile, key, name)
 	}
-	stopped := s.StopClients()
 
 	if check.State == KeyNoBalance {
 		message := MessageNoBalance

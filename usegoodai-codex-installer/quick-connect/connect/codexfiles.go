@@ -19,6 +19,8 @@ model = "` + CodexModel + `"
 review_model = "` + CodexModel + `"
 model_reasoning_effort = "high"
 disable_response_storage = true
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
 network_access = "enabled"
 windows_wsl_setup_acknowledged = true
 

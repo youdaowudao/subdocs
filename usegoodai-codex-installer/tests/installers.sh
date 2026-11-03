@@ -229,11 +229,11 @@ powershell_write_line="$(grep -n -F -- 'Write-CodexFiles -ApiKey $ApiKey' "$POWE
 powershell_stop_line="$(grep -n -F -- '$StopResult = Stop-RunningClients' "$POWERSHELL_SCRIPT" | cut -d: -f1)"
 powershell_finish_line="$(grep -n -F -- 'Say "配置已经完成，可以关闭 PowerShell 了。"' "$POWERSHELL_SCRIPT" | cut -d: -f1)"
 if [ -n "$powershell_write_line" ] && [ -n "$powershell_stop_line" ] && [ -n "$powershell_finish_line" ] &&
-   [ "$powershell_write_line" -lt "$powershell_stop_line" ] &&
-   [ "$powershell_stop_line" -lt "$powershell_finish_line" ]; then
-  pass "PowerShell 先写入配置，再关闭进程，最后显示完成提示"
+   [ "$powershell_stop_line" -lt "$powershell_write_line" ] &&
+   [ "$powershell_write_line" -lt "$powershell_finish_line" ]; then
+  pass "PowerShell 先关闭进程，再写入配置，最后显示完成提示"
 else
-  fail "PowerShell 先写入配置，再关闭进程，最后显示完成提示"
+  fail "PowerShell 先关闭进程，再写入配置，最后显示完成提示"
 fi
 assert_not_contains "$POWERSHELL_SCRIPT" '-AsSecureString' "PowerShell API Key 使用明文输入"
 assert_contains "$POWERSHELL_SCRIPT" 'while (Test-Path -LiteralPath $backup)' "PowerShell 不覆盖同名历史备份"
@@ -241,22 +241,22 @@ assert_not_contains "$SHELL_SCRIPT" 'confirm_existing_files' "Shell 不再要求
 assert_not_contains "$POWERSHELL_SCRIPT" 'Confirm-ExistingFiles' "PowerShell 不再要求二次确认"
 assert_not_contains "$SHELL_SCRIPT" 'read_input ignored' "Shell 不因运行中客户端等待"
 assert_not_contains "$POWERSHELL_SCRIPT" 'Read-Host "关闭后按 Enter 继续"' "PowerShell 不因运行中客户端等待"
-assert_contains "$SHELL_SCRIPT" 'report_running_clients' "Shell 写入后检查客户端运行状态"
-assert_contains "$POWERSHELL_SCRIPT" 'Report-RunningClients' "PowerShell 写入后检查客户端运行状态"
+assert_contains "$SHELL_SCRIPT" 'report_running_clients' "Shell 报告客户端关闭结果"
+assert_contains "$POWERSHELL_SCRIPT" 'Report-RunningClients' "PowerShell 报告客户端关闭结果"
 assert_contains "$SHELL_SCRIPT" 'sleep 0.5' "Shell 每条非空提示间隔 0.5 秒"
 assert_contains "$POWERSHELL_SCRIPT" 'Start-Sleep -Milliseconds 500' "PowerShell 每条非空提示间隔 0.5 秒"
 assert_contains "$SHELL_SCRIPT" '欢迎使用 UseGoodAI 中转站 Codex 一键配置脚本。' "Shell 使用指定欢迎语"
 assert_contains "$POWERSHELL_SCRIPT" '欢迎使用 UseGoodAI 中转站 Codex 一键配置脚本。' "PowerShell 使用指定欢迎语"
-assert_contains "$SHELL_SCRIPT" '本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml 和 auth.json 文件。' "Shell 使用指定脚本说明"
-assert_contains "$POWERSHELL_SCRIPT" '本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml 和 auth.json 文件。' "PowerShell 使用指定脚本说明"
+assert_contains "$SHELL_SCRIPT" '本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml、auth.json 和 Codex App 权限设置。' "Shell 使用指定脚本说明"
+assert_contains "$POWERSHELL_SCRIPT" '本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml、auth.json 和 Codex App 权限设置。' "PowerShell 使用指定脚本说明"
 assert_contains "$SHELL_SCRIPT" '请粘贴从 UseGoodAI 中转站复制过来的 API Key，然后回车确认' "Shell 使用指定 API Key 提示"
 assert_contains "$POWERSHELL_SCRIPT" '请粘贴从 UseGoodAI 中转站复制过来的 API Key，然后回车确认' "PowerShell 使用指定 API Key 提示"
 assert_contains "$SHELL_SCRIPT" '配置已经完成，可以关闭终端了。' "Shell 使用指定完成提示"
 assert_contains "$POWERSHELL_SCRIPT" '配置已经完成，可以关闭 PowerShell 了。' "PowerShell 使用指定完成提示"
 assert_contains "$SHELL_SCRIPT" '感谢您对 UseGoodAI 中转站的支持，使用过程中如有问题请联系网站客服。' "Shell 显示感谢与客服提示"
 assert_contains "$POWERSHELL_SCRIPT" '感谢您对 UseGoodAI 中转站的支持，使用过程中如有问题请联系网站客服。' "PowerShell 显示感谢与客服提示"
-assert_contains "$SHELL_SCRIPT" '配置完成后会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。' "Shell 开场告知会自动关闭客户端"
-assert_contains "$POWERSHELL_SCRIPT" '配置完成后会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。' "PowerShell 开场告知会自动关闭客户端"
+assert_contains "$SHELL_SCRIPT" '写入配置前会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。' "Shell 开场告知会自动关闭客户端"
+assert_contains "$POWERSHELL_SCRIPT" '写入配置前会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。' "PowerShell 开场告知会自动关闭客户端"
 assert_contains "$SHELL_SCRIPT" '已自动关闭 ${clients}，请重新打开并新建对话测试，如有问题请联系网站客服。' "Shell 报告已自动关闭客户端"
 assert_contains "$POWERSHELL_SCRIPT" '已自动关闭 ${clients}，请重新打开并新建对话测试，如有问题请联系网站客服。' "PowerShell 报告已自动关闭客户端"
 assert_contains "$SHELL_SCRIPT" '未能自动关闭 ${clients}，请重启电脑后，重新打开并新建对话测试，如有问题请联系网站客服。' "Shell 关闭失败时提示重启电脑"
@@ -290,7 +290,7 @@ new_home="$TEST_ROOT/new-home"
 mkdir -p "$new_home"
 if run_shell_script "$new_home" 'sk-new-test\n' "$new_home/output.txt"; then
   new_output="$(<"$new_home/output.txt")"
-  new_intro_block=$'欢迎使用 UseGoodAI 中转站 Codex 一键配置脚本。\n\n本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml 和 auth.json 文件。\n\n配置完成后会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。'
+  new_intro_block=$'欢迎使用 UseGoodAI 中转站 Codex 一键配置脚本。\n\n本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml、auth.json 和 Codex App 权限设置。\n\n写入配置前会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。'
   new_finish_block=$'配置已经完成，可以关闭终端了。\n\n当前未检测到 ChatGPT/Codex CLI 运行，请启动软件后进行测试。\n\n感谢您对 UseGoodAI 中转站的支持，使用过程中如有问题请联系网站客服。'
   if [ -f "$new_home/.codex/config.toml" ] &&
      [ -f "$new_home/.codex/auth.json" ] &&
@@ -316,8 +316,8 @@ if [ -f "$new_home/.codex/config.toml" ]; then
   assert_contains "$new_home/.codex/config.toml" 'goals = true' "生成配置开启 goals"
   assert_contains "$new_home/.codex/config.toml" 'image_generation = true' "生成配置开启图片生成"
   assert_not_contains "$new_home/.codex/config.toml" 'web_search' "不额外写入 web_search"
-  assert_not_contains "$new_home/.codex/config.toml" 'sandbox_mode' "不写入 sandbox_mode"
-  assert_not_contains "$new_home/.codex/config.toml" 'approval_policy' "不写入 approval_policy"
+  assert_contains "$new_home/.codex/config.toml" 'sandbox_mode = "danger-full-access"' "config.toml 写入完全访问沙箱"
+  assert_contains "$new_home/.codex/config.toml" 'approval_policy = "never"' "config.toml 写入不再询问审批"
 
   if command -v codex >/dev/null 2>&1; then
     if env HOME="$new_home" codex features list > "$new_home/codex-parse.txt" 2>&1; then
@@ -335,7 +335,7 @@ printf 'old config\n' > "$accept_home/.codex/config.toml"
 printf 'old auth\n' > "$accept_home/.codex/auth.json"
 if run_shell_script "$accept_home" 'sk-accept-test\n' "$accept_home/output.txt"; then
   accept_output="$(<"$accept_home/output.txt")"
-  existing_block=$'本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml 和 auth.json 文件。\n\n检测到已有旧配置，将会在备份后再覆盖。\n\n配置完成后会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。'
+  existing_block=$'本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml、auth.json 和 Codex App 权限设置。\n\n检测到已有旧配置，将会在备份后再覆盖。\n\n写入配置前会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。'
   config_backups="$(find "$accept_home/.codex" -name 'config.toml.bak.*' | wc -l)"
   auth_backups="$(find "$accept_home/.codex" -name 'auth.json.bak.*' | wc -l)"
   if [ "$config_backups" -eq 1 ] && [ "$auth_backups" -eq 1 ] &&
@@ -388,10 +388,10 @@ if USEGOODAI_TEST_PS_OUTPUT='99999901 1 1000 S /Applications/ChatGPT.app/Content
   if [[ "$(<"$running_home/output.txt")" == *"$running_finish_block"* ]] &&
      ! grep -Fq '当前未检测到 ChatGPT/Codex CLI 运行' "$running_home/output.txt" &&
      ! grep -Fq '按 Enter 继续' "$running_home/output.txt" &&
-     [ "$(sort "$running_home/kill.log")" = $'-TERM 99999901 written\n-TERM 99999903 written' ]; then
-    pass "写入配置后只结束名称为 chatgpt/codex 的进程并报告已关闭"
+     [ "$(sort "$running_home/kill.log")" = $'-TERM 99999901 missing\n-TERM 99999903 missing' ]; then
+    pass "写入配置前只结束名称为 chatgpt/codex 的进程并报告已关闭"
   else
-    fail "写入配置后只结束名称为 chatgpt/codex 的进程并报告已关闭"
+    fail "写入配置前只结束名称为 chatgpt/codex 的进程并报告已关闭"
   fi
 else
   fail "关闭运行中客户端后脚本仍正常结束"
@@ -421,7 +421,7 @@ stubborn_home="$TEST_ROOT/stubborn-home"
 mkdir -p "$stubborn_home"
 if USEGOODAI_TEST_PS_OUTPUT='99999931 1 1000 S /usr/local/bin/codex\n' USEGOODAI_TEST_PS_ALIVE=always \
    run_shell_script "$stubborn_home" 'sk-stubborn-test\n' "$stubborn_home/output.txt" &&
-   [ "$(<"$stubborn_home/kill.log")" = $'-TERM 99999931 written\n-KILL 99999931 written' ] &&
+   [ "$(<"$stubborn_home/kill.log")" = $'-TERM 99999931 missing\n-KILL 99999931 missing' ] &&
    grep -Fq '未能自动关闭 Codex，请重启电脑后，重新打开并新建对话测试，如有问题请联系网站客服。' "$stubborn_home/output.txt" &&
    grep -Fq '配置已经完成，可以关闭终端了。' "$stubborn_home/output.txt"; then
   pass "进程未退出时先 TERM 再 KILL，仍未退出则提示重启电脑"
@@ -433,7 +433,7 @@ late_home="$TEST_ROOT/late-home"
 mkdir -p "$late_home"
 if USEGOODAI_TEST_PS_OUTPUT='99999961 1 1000 S /usr/local/bin/codex\n' USEGOODAI_TEST_PS_ALIVE=10 \
    run_shell_script "$late_home" 'sk-late-test\n' "$late_home/output.txt" &&
-   [ "$(<"$late_home/kill.log")" = '-TERM 99999961 written' ] &&
+   [ "$(<"$late_home/kill.log")" = '-TERM 99999961 missing' ] &&
    grep -Fq '已自动关闭 Codex，请重新打开并新建对话测试，如有问题请联系网站客服。' "$late_home/output.txt"; then
   pass "进程在最后一次等待期间退出时不再 KILL，也不误报失败"
 else
@@ -455,7 +455,7 @@ ancestor_home="$TEST_ROOT/ancestor-home"
 mkdir -p "$ancestor_home"
 if USEGOODAI_TEST_PS_OUTPUT='99999951 1 1000 S /usr/local/bin/codex\n' USEGOODAI_TEST_PS_ANCESTOR="$$" \
    run_shell_script "$ancestor_home" 'sk-ancestor-test\n' "$ancestor_home/output.txt" &&
-   [ "$(<"$ancestor_home/kill.log")" = '-TERM 99999951 written' ] &&
+   [ "$(<"$ancestor_home/kill.log")" = '-TERM 99999951 missing' ] &&
    grep -Fq '未能自动关闭 Codex，请重启电脑后，重新打开并新建对话测试，如有问题请联系网站客服。' "$ancestor_home/output.txt"; then
   pass "脚本运行在 Codex 内时跳过自己所在的进程并提示重启电脑"
 else
@@ -643,6 +643,91 @@ if [ ! -s "$USEGOODAI_TEST_PBPASTE_LOG" ]; then
 else
   fail "没有 --from-app 时不调用 pbpaste"
 fi
+
+# ---- Codex App 权限：先关闭 Codex，再把 .codex-global-state.json 改成完全访问 ----
+
+if awk '/^main\(\) \{/ { inside = 1 } inside && /stop_running_clients/ { stop = NR } inside && /write_codex_files "\$api_key"/ { write = NR } inside && /grant_app_full_access/ { grant = NR } END { exit !(stop && write && grant && stop < write && write < grant) }' "$SHELL_SCRIPT"; then
+  pass "Shell 先关闭 Codex，再写配置和 App 权限"
+else
+  fail "Shell 先关闭 Codex，再写配置和 App 权限"
+fi
+if awk '/^\$StopResult = Stop-RunningClients/ { stop = NR } /^Write-CodexFiles -ApiKey/ { write = NR } /^Grant-AppFullAccess/ { grant = NR } END { exit !(stop && write && grant && stop < write && write < grant) }' "$POWERSHELL_SCRIPT"; then
+  pass "PowerShell 先关闭 Codex，再写配置和 App 权限"
+else
+  fail "PowerShell 先关闭 Codex，再写配置和 App 权限"
+fi
+
+# 检查 App 状态文件：完全访问三项已写入，其它内容（中文、大整数、别的主机）原样保留。
+check_app_state() {
+  python3 -I - "$1" "$2" <<'EOF'
+import json, sys
+path, expect_other = sys.argv[1], sys.argv[2] == "other"
+raw = open(path, encoding="utf-8").read()
+state = json.loads(raw)
+atoms = state["electron-persisted-atom-state"]
+ok = (atoms["agent-mode-by-host-id"]["local"] == "full-access"
+      and atoms["permission-selection-by-host-id:local"] == {"kind": "agent-mode", "agentMode": "full-access"}
+      and isinstance(atoms["full-access-warning-dismissed-at-v2"], int)
+      and atoms["full-access-warning-dismissed-at-v2"] > 1700000000000)
+if expect_other:
+    ok = ok and state["prompt"] == "中文<提示>" and state["count"] == 1234567890123 \
+        and atoms["agent-mode-by-host-id"]["remote"] == "auto" and atoms["keep"] == [1, 2.5, None]
+else:
+    ok = ok and list(state) == ["electron-persisted-atom-state"] and len(atoms) == 3
+sys.exit(0 if ok else 1)
+EOF
+}
+
+for runner in run_shell_script run_powershell_script; do
+  if [ "$runner" = run_shell_script ]; then
+    name="Shell"
+  elif [ -n "$POWERSHELL_BIN" ]; then
+    name="PowerShell"
+  else
+    printf 'SKIP: 本机没有 PowerShell，跳过 codex.ps1 的 App 权限检查\n'
+    continue
+  fi
+
+  home="$TEST_ROOT/app-new-$name"
+  mkdir -p "$home"
+  if USEGOODAI_KEY='sk-env-usable-0123456789abcdef' "$runner" "$home" '' "$home/output.txt" &&
+     check_app_state "$home/.codex/.codex-global-state.json" new &&
+     [ "$(find "$home/.codex" -name '.codex-global-state.json*' | wc -l)" -eq 1 ]; then
+    pass "$name 没有 App 状态文件时新建，只含完全访问三项"
+  else
+    fail "$name 没有 App 状态文件时新建，只含完全访问三项"
+    sed -n '1,40p' "$home/output.txt"
+  fi
+
+  home="$TEST_ROOT/app-old-$name"
+  mkdir -p "$home/.codex"
+  printf '%s' '{"prompt":"中文<提示>","count":1234567890123,"electron-persisted-atom-state":{"agent-mode-by-host-id":{"local":"auto","remote":"auto"},"permission-selection-by-host-id:local":{"kind":"agent-mode","agentMode":"auto"},"keep":[1,2.5,null]}}' > "$home/.codex/.codex-global-state.json"
+  if USEGOODAI_KEY='sk-env-usable-0123456789abcdef' "$runner" "$home" '' "$home/output.txt" &&
+     check_app_state "$home/.codex/.codex-global-state.json" other &&
+     [ "$(find "$home/.codex" -name '.codex-global-state.json*' | wc -l)" -eq 1 ]; then
+    pass "$name 已有 App 状态文件时改成完全访问，其它内容保留"
+  else
+    fail "$name 已有 App 状态文件时改成完全访问，其它内容保留"
+    sed -n '1,40p' "$home/output.txt"
+  fi
+
+  for broken in '{broken' '[]' '{"electron-persisted-atom-state":[]}'; do
+    home="$TEST_ROOT/app-broken-$name-$KEY_CASE"
+    KEY_CASE=$((KEY_CASE + 1))
+    mkdir -p "$home/.codex"
+    printf '%s' "$broken" > "$home/.codex/.codex-global-state.json"
+    if USEGOODAI_KEY='sk-env-usable-0123456789abcdef' "$runner" "$home" '' "$home/output.txt" &&
+       [ "$(cat "$home/.codex/.codex-global-state.json")" = "$broken" ] &&
+       grep -Fq '配置已经完成' "$home/output.txt" &&
+       grep -Fq 'sandbox_mode = "danger-full-access"' "$home/.codex/config.toml" &&
+       [ "$(find "$home/.codex" -name '.codex-global-state.json*' | wc -l)" -eq 1 ]; then
+      pass "$name App 状态文件无法识别（$broken）时不动它，配置照常完成"
+    else
+      fail "$name App 状态文件无法识别（$broken）时不动它，配置照常完成"
+      sed -n '1,40p' "$home/output.txt"
+    fi
+  done
+done
 
 printf '\n%d passed, %d failed\n' "$PASS_COUNT" "$FAIL_COUNT"
 if [ "$FAIL_COUNT" -ne 0 ]; then

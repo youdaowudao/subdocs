@@ -345,6 +345,8 @@ model = "$CodexModel"
 review_model = "$CodexModel"
 model_reasoning_effort = "high"
 disable_response_storage = true
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
 network_access = "enabled"
 windows_wsl_setup_acknowledged = true
 
@@ -375,19 +377,96 @@ image_generation = true
   }
 }
 
+# Codex App 底部的权限按钮读的是 .codex-global-state.json，不是 config.toml。
+# 只改 App 选择“完全访问”时写入的三项，其它内容原样保留；文件不存在就新建，
+# 文件无法识别就不动。必须在关闭 Codex 之后调用，否则 App 退出时会写回旧值。
+# 不用 ConvertFrom-Json/ConvertTo-Json：5.1 版遇到只差大小写的键会报错，
+# 写回时还会截断深层内容。7 版用 System.Text.Json，5.1 版用 JavaScriptSerializer。
+function Grant-AppFullAccess {
+  $stateFile = Join-Path $CodexHome ".codex-global-state.json"
+  $temporary = Join-Path $CodexHome (".codex-global-state.json.tmp." + [Guid]::NewGuid().ToString("N"))
+  $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+  try {
+    $text = $null
+    if (Test-Path -LiteralPath $stateFile -PathType Leaf) {
+      $text = [System.IO.File]::ReadAllText($stateFile, [System.Text.Encoding]::UTF8)
+    }
+    $nodes = "System.Text.Json.Nodes.JsonNode" -as [type]
+    if ($nodes) {
+      if ($null -eq $text) { $text = "{}" }
+      $state = [System.Text.Json.Nodes.JsonNode]::Parse($text)
+      if ($state -isnot [System.Text.Json.Nodes.JsonObject]) { return }
+      $atoms = $state["electron-persisted-atom-state"]
+      if ($null -eq $atoms) {
+        $atoms = [System.Text.Json.Nodes.JsonObject]::new()
+        $state["electron-persisted-atom-state"] = $atoms
+      } elseif ($atoms -isnot [System.Text.Json.Nodes.JsonObject]) {
+        return
+      }
+      $hosts = $atoms["agent-mode-by-host-id"]
+      if ($hosts -isnot [System.Text.Json.Nodes.JsonObject]) {
+        $hosts = [System.Text.Json.Nodes.JsonObject]::new()
+        $atoms["agent-mode-by-host-id"] = $hosts
+      }
+      $hosts["local"] = [System.Text.Json.Nodes.JsonValue]::Create([string]"full-access")
+      $atoms["permission-selection-by-host-id:local"] = [System.Text.Json.Nodes.JsonNode]::Parse('{"kind":"agent-mode","agentMode":"full-access"}')
+      $atoms["full-access-warning-dismissed-at-v2"] = [System.Text.Json.Nodes.JsonValue]::Create([long]$now)
+      $options = [System.Text.Json.JsonSerializerOptions]::new()
+      $options.Encoder = [System.Text.Encodings.Web.JavaScriptEncoder]::UnsafeRelaxedJsonEscaping
+      $output = $state.ToJsonString($options)
+    } else {
+      Add-Type -AssemblyName System.Web.Extensions
+      $serializer = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+      $serializer.MaxJsonLength = [int]::MaxValue
+      $serializer.RecursionLimit = 1000
+      if ($null -eq $text) {
+        $state = New-Object 'System.Collections.Generic.Dictionary[string,object]'
+      } else {
+        $state = $serializer.DeserializeObject($text)
+      }
+      if ($state -isnot [System.Collections.Generic.Dictionary[string, object]]) { return }
+      if (-not $state.ContainsKey("electron-persisted-atom-state")) {
+        $state["electron-persisted-atom-state"] = New-Object 'System.Collections.Generic.Dictionary[string,object]'
+      }
+      $atoms = $state["electron-persisted-atom-state"]
+      if ($atoms -isnot [System.Collections.Generic.Dictionary[string, object]]) { return }
+      $hosts = $null
+      if ($atoms.ContainsKey("agent-mode-by-host-id")) { $hosts = $atoms["agent-mode-by-host-id"] }
+      if ($hosts -isnot [System.Collections.Generic.Dictionary[string, object]]) {
+        $hosts = New-Object 'System.Collections.Generic.Dictionary[string,object]'
+        $atoms["agent-mode-by-host-id"] = $hosts
+      }
+      $hosts["local"] = "full-access"
+      $selection = New-Object 'System.Collections.Generic.Dictionary[string,object]'
+      $selection["kind"] = "agent-mode"
+      $selection["agentMode"] = "full-access"
+      $atoms["permission-selection-by-host-id:local"] = $selection
+      $atoms["full-access-warning-dismissed-at-v2"] = [long]$now
+      $output = $serializer.Serialize($state)
+    }
+    Write-Utf8NoBom -Path $temporary -Content $output
+    Move-Item -LiteralPath $temporary -Destination $stateFile -Force
+  } catch {
+    # config.toml 已经是完全访问，这一步失败不影响使用。
+  } finally {
+    Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+  }
+}
+
 Say "欢迎使用 UseGoodAI 中转站 Codex 一键配置脚本。"
 Say ""
-Say "本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml 和 auth.json 文件。"
+Say "本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml、auth.json 和 Codex App 权限设置。"
 
 Show-WritePlan
 Say ""
-Say "配置完成后会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。"
+Say "写入配置前会自动关闭 ChatGPT 软件和 Codex，正在运行的任务会中断。"
 Say ""
 
 $ApiKey = Get-CheckedApiKey
 
-Write-CodexFiles -ApiKey $ApiKey
 $StopResult = Stop-RunningClients
+Write-CodexFiles -ApiKey $ApiKey
+Grant-AppFullAccess
 
 Say ""
 Say "配置已经完成，可以关闭 PowerShell 了。"
