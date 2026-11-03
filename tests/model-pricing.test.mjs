@@ -33,8 +33,8 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
       { id: 'anthropic-main', name: 'Anthropic 低价分组1M上下文 缓存高', multiplier: 0.16 },
-      { id: 'anthropic-cc-test', name: '0.45Anthropic CCTEST满分渠道（缓存70%）', multiplier: 0.45 },
-      { id: 'anthropic-cc-test-0.7', name: '0.7xcctest满分99缓 【主力分组推荐使用】', multiplier: 0.7 },
+      { id: 'anthropic-cc-test', name: '0.45Anthropic CCTEST满分渠道', multiplier: 0.45 },
+      { id: 'anthropic-cc-test-0.7', name: '0.7xcctest满分 【主力分组推荐使用】', multiplier: 0.7 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.5 },
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.5 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
@@ -119,8 +119,8 @@ test('uses the requested Anthropic group recommendations', () => {
 
   assert.equal(group.name, 'Anthropic 低价分组1M上下文 缓存高')
   assert.equal(group.description, '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5')
-  assert.equal(ccTestGroup.description, '缓存 70%，适合 Claude Code 日常任务')
-  assert.equal(highCacheGroup.description, '缓存 99%，主力分组推荐使用')
+  assert.equal(ccTestGroup.description, '适合 Claude Code 日常任务')
+  assert.equal(highCacheGroup.description, '主力分组推荐使用')
 })
 
 test('keeps the GPT Plus discount group at 0.1 with instability copy', () => {
@@ -380,7 +380,7 @@ test('prices all 12 supported models in the recommended 0.7 CC TEST group', () =
 
   assert.equal(group.multiplier, 0.7)
   assert.match(group.name, /主力分组推荐使用/)
-  assert.equal(group.description, '缓存 99%，主力分组推荐使用')
+  assert.equal(group.description, '主力分组推荐使用')
   assert.deepEqual(models.map((model) => model.id), [...expectedPrices.keys()])
 
   for (const model of models) {

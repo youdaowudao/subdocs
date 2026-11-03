@@ -121,17 +121,17 @@ export const TEXT_GROUPS = [
   },
   {
     id: 'anthropic-cc-test',
-    name: '0.45Anthropic CCTEST满分渠道（缓存70%）',
+    name: '0.45Anthropic CCTEST满分渠道',
     multiplier: 0.45,
-    description: '缓存 70%，适合 Claude Code 日常任务',
+    description: '适合 Claude Code 日常任务',
     modelIds: CC_TEST_MODEL_IDS,
     unavailableModels: { 'claude-fable-5': '此分组无 Fable 5' },
   },
   {
     id: 'anthropic-cc-test-0.7',
-    name: '0.7xcctest满分99缓 【主力分组推荐使用】',
+    name: '0.7xcctest满分 【主力分组推荐使用】',
     multiplier: 0.7,
-    description: '缓存 99%，主力分组推荐使用',
+    description: '主力分组推荐使用',
     modelIds: CC_TEST_HIGH_CACHE_MODEL_IDS,
   },
   {

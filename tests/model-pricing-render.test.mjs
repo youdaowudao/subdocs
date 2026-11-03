@@ -185,7 +185,7 @@ test('renders only supported models and their exact copy IDs in the 0.7 CC TEST 
         assert.equal([...row.matchAll(new RegExp(`class="${priceClass}"`, 'g'))].length, priceCount)
       }
       if (priceMode === 'group') {
-        assert.match(html, /缓存 99%，主力分组推荐使用/)
+        assert.match(html, /主力分组推荐使用/)
         assert.match(html, /0\.7 倍率/)
         assert.doesNotMatch(html, /临时渠道|不保证长久|会下线|CC TEST 0\.4/)
       }
