@@ -180,3 +180,69 @@ func assertOnlyFiles(t *testing.T, dir string, names ...string) {
 		t.Fatalf("files in %s: %v, want %v", dir, got, names)
 	}
 }
+
+// The Codex App on Windows only offers Full Access once its sandbox is set
+// up; that choice lives in [windows] and must survive a reconnect.
+func TestWriterKeepsWindowsSandbox(t *testing.T) {
+	base := string(readFixture(t, "expected-config.toml"))
+	base = strings.TrimSuffix(base, "\n\n[windows]\nsandbox = \"unelevated\"")
+	cases := []struct {
+		name, old string
+		sandbox   bool
+		want      string
+	}{
+		{"kept as it was", "model = \"x\"\r\n\r\n[windows]\r\nsandbox = \"elevated\"\r\n\r\n[mcp_servers.a]\r\ncommand = \"a\"\r\n",
+			false, "[windows]\nsandbox = \"elevated\""},
+		{"sub-table kept", "[windows]\nsandbox = \"unelevated\"\n[windows.extra]\nx = 1\n\n", false, "[windows]\nsandbox = \"unelevated\"\n[windows.extra]\nx = 1"},
+		{"set up before", "model = \"x\"\n", true, "[windows]\nsandbox = \"elevated\""},
+		{"new user", "", false, "[windows]\nsandbox = \"unelevated\""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			codexHome := filepath.Join(t.TempDir(), ".codex")
+			if c.old != "" {
+				writeFile(t, filepath.Join(codexHome, "config.toml"), c.old)
+			}
+			if c.sandbox {
+				if err := os.MkdirAll(filepath.Join(codexHome, ".sandbox"), 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := WriteCodexFiles(codexHome, fixtureKey, fixedTime); err != nil {
+				t.Fatal(err)
+			}
+			if got := readFile(t, filepath.Join(codexHome, "config.toml")); got != base+"\n\n"+c.want {
+				t.Fatalf("config.toml:\n%s", got)
+			}
+		})
+	}
+}
+
+func TestPowerShellInstallerKeepsWindowsSandbox(t *testing.T) {
+	usage := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"isValid":true,"remaining":3.5,"unit":"USD"}`))
+	}))
+	defer usage.Close()
+	home := t.TempDir()
+	codexHome := filepath.Join(home, ".codex")
+	old := "model = \"x\"\r\n\r\n[windows]\r\nsandbox = \"elevated\"\r\n\r\n[mcp_servers.a]\r\ncommand = \"a\"\r\n"
+	writeFile(t, filepath.Join(codexHome, "config.toml"), old)
+	prelude := `function Invoke-WebRequest {
+  [CmdletBinding()] param([string]$Uri, [hashtable]$Headers, [int]$TimeoutSec, [switch]$UseBasicParsing)
+  $Uri = $Uri.Replace('https://api.usegoodai.com', $env:USEGOODAI_TEST_SERVER)
+  Microsoft.PowerShell.Utility\Invoke-WebRequest -Uri $Uri -Headers $Headers -TimeoutSec $TimeoutSec -UseBasicParsing
+}`
+	output, err := runPowerShell(t, home, prelude, installScript(t, "codex.ps1"),
+		"USEGOODAI_KEY="+fixtureKey, "USEGOODAI_TEST_SERVER="+usage.URL)
+	if err != nil {
+		t.Fatalf("codex.ps1 failed: %v\n%s", err, output)
+	}
+	goHome := filepath.Join(t.TempDir(), ".codex")
+	writeFile(t, filepath.Join(goHome, "config.toml"), old)
+	if err := WriteCodexFiles(goHome, fixtureKey, fixedTime); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := readFile(t, filepath.Join(codexHome, "config.toml")), readFile(t, filepath.Join(goHome, "config.toml")); got != want {
+		t.Fatalf("codex.ps1:\n%q\nGo:\n%q", got, want)
+	}
+}

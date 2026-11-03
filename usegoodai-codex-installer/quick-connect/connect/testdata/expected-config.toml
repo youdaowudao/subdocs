@@ -17,3 +17,6 @@ requires_openai_auth = true
 [features]
 goals = true
 image_generation = true
+
+[windows]
+sandbox = "unelevated"

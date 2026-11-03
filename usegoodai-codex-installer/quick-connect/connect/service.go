@@ -33,6 +33,7 @@ const (
 	MessageLinkUnsupported   = "当前助手不支持这个导入，请下载新版助手。"
 	MessageNoBalance         = "已连接，但余额为 $0。充值后即可使用；新人进群领 2 元。"
 	MessageCloseFailed       = "配置已写好，但没能自动关闭 Codex，请手动退出后重新打开。"
+	MessageFullAccessManual  = "\n没能把 Codex 的权限自动改成「完全访问」：打开 Codex 后，在输入框下方的权限按钮手动选一次「完全访问」。"
 	MessageNotClosed         = "没能自动关闭 Codex，请手动退出后重新打开。"
 	MessageClosed            = "Codex 已关闭，重新打开即可。"
 	MessageRestored          = "已恢复官方登录，重新打开 Codex 后用官方账号登录。"
@@ -135,8 +136,11 @@ func (s *Service) Connect(ctx context.Context, raw, name string) Result {
 		return s.result(ToneError, writeFailed(err))
 	}
 	// config.toml already allows full access, so a file the App cannot be
-	// switched through does not fail the import.
-	_ = GrantAppFullAccess(s.CodexHome, s.Now())
+	// switched through does not fail the import; the message says so.
+	fullAccessNote := ""
+	if err := GrantAppFullAccess(s.CodexHome, s.Now()); err != nil {
+		fullAccessNote = MessageFullAccessManual
+	}
 	if name != "" {
 		// Only shown on the card, so a failure here does not fail the import.
 		_ = rememberName(s.NamesFile, key, name)
@@ -149,10 +153,10 @@ func (s *Service) Connect(ctx context.Context, raw, name string) Result {
 		} else if stopped.Closed() {
 			message += MessageClosed
 		}
-		return s.result(ToneWarning, message)
+		return s.result(ToneWarning, message+fullAccessNote)
 	}
 	if stopped.Left {
-		return s.result(ToneWarning, MessageCloseFailed)
+		return s.result(ToneWarning, MessageCloseFailed+fullAccessNote)
 	}
 	message := "已连接 UseGoodAI ✓"
 	if check.HasRemaining {
@@ -163,7 +167,7 @@ func (s *Service) Connect(ctx context.Context, raw, name string) Result {
 	} else {
 		message += "。打开 Codex，新建任务，发送“测试”。"
 	}
-	return s.result(ToneSuccess, message)
+	return s.result(ToneSuccess, message+fullAccessNote)
 }
 
 // LinkResult is a parsed link, or the message to show when it is rejected.

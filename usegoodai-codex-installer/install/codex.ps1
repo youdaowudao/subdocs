@@ -331,6 +331,26 @@ function Write-Utf8NoBom([string]$Path, [string]$Content) {
   [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
 }
 
+function Get-WindowsTable {
+  if (Test-Path -LiteralPath $ConfigFile -PathType Leaf) {
+    $kept = New-Object System.Collections.Generic.List[string]
+    $inside = $false
+    foreach ($line in ([System.IO.File]::ReadAllText($ConfigFile) -replace "`r`n", "`n").Split("`n")) {
+      $trimmed = $line.Trim()
+      if ($trimmed.StartsWith("[")) {
+        $name = $trimmed.Split("]")[0].Trim("[", "]").Trim()
+        $inside = ($name -ceq "windows") -or $name.StartsWith("windows.", [StringComparison]::Ordinal)
+      }
+      if ($inside) { $kept.Add($line) }
+    }
+    while ($kept.Count -gt 0 -and $kept[$kept.Count - 1].Trim() -eq "") { $kept.RemoveAt($kept.Count - 1) }
+    if ($kept.Count -gt 0) { return ($kept -join "`n") }
+  }
+  $mode = "unelevated"
+  if (Test-Path -LiteralPath (Join-Path $CodexHome ".sandbox") -PathType Container) { $mode = "elevated" }
+  return "[windows]`nsandbox = `"$mode`""
+}
+
 function Write-CodexFiles([string]$ApiKey) {
   if (-not (Test-Path -LiteralPath $CodexHome)) {
     New-Item -ItemType Directory -Path $CodexHome -Force | Out-Null
@@ -360,6 +380,11 @@ requires_openai_auth = true
 goals = true
 image_generation = true
 "@
+
+    # Windows 上 Codex App 要先设置好沙箱才能选完全访问，设置结果记在 [windows] 段，
+    # 所以原样保留；没有这一段时，App 设置过沙箱（有 .sandbox 文件夹）写 elevated，
+    # 否则写不需要管理员权限的 unelevated。与快速接入助手写法一致。
+    $content = $content + "`n`n" + (Get-WindowsTable)
 
     # 固定格式，Windows PowerShell 5.1 和 PowerShell 7 写出的内容一致。
     $escapedKey = ConvertTo-JsonText $ApiKey

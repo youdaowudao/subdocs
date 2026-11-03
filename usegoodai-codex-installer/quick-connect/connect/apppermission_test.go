@@ -102,3 +102,12 @@ func TestConnectClosesCodexBeforeWriting(t *testing.T) {
 	}
 	assertFullAccess(t, readAppState(t, service.CodexHome)[appStateRoot].(map[string]any))
 }
+
+func TestConnectTellsWhenFullAccessFails(t *testing.T) {
+	service, _ := newTestService(t, 200, `{"isValid":true,"remaining":5}`, StopResult{Codex: true})
+	writeFile(t, filepath.Join(service.CodexHome, appStateFile), "not json")
+	result := service.Connect(context.Background(), fixtureKey, "")
+	if !strings.HasSuffix(result.Message, MessageFullAccessManual) {
+		t.Fatalf("message %q", result.Message)
+	}
+}

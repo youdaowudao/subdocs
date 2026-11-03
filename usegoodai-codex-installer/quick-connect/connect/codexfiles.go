@@ -37,6 +37,44 @@ image_generation = true`
 // ConfigContent returns the config.toml the installer writes.
 func ConfigContent() string { return configContent }
 
+// ConfigFor is the config.toml written over old, the file it replaces.
+// The Codex App on Windows only offers Full Access once its sandbox is set
+// up, which it records as a [windows] table; so that table is carried over
+// as it was. Without one, sandbox = "elevated" is written when the App has
+// already set up its sandbox (codexHome holds .sandbox), else "unelevated",
+// which needs no administrator rights. install/codex.ps1 does the same.
+func ConfigFor(old string, sandboxReady bool) string {
+	if table := windowsTable(old); table != "" {
+		return configContent + "\n\n" + table
+	}
+	mode := "unelevated"
+	if sandboxReady {
+		mode = "elevated"
+	}
+	return configContent + "\n\n[windows]\nsandbox = \"" + mode + "\""
+}
+
+// windowsTable returns the [windows] table of a config.toml, and any
+// [windows.*] table, line for line, without trailing blank lines.
+func windowsTable(config string) string {
+	var kept []string
+	inside := false
+	for _, line := range strings.Split(strings.ReplaceAll(config, "\r\n", "\n"), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[") {
+			name := strings.TrimSpace(strings.Trim(strings.SplitN(trimmed, "]", 2)[0], "[]"))
+			inside = name == "windows" || strings.HasPrefix(name, "windows.")
+		}
+		if inside {
+			kept = append(kept, line)
+		}
+	}
+	for len(kept) > 0 && strings.TrimSpace(kept[len(kept)-1]) == "" {
+		kept = kept[:len(kept)-1]
+	}
+	return strings.Join(kept, "\n")
+}
+
 // AuthContent returns the auth.json the installer writes for key.
 func AuthContent(key string) string {
 	escaped := strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(key)
@@ -67,7 +105,12 @@ func WriteCodexFiles(codexHome, key string, now time.Time) error {
 	configPath := filepath.Join(codexHome, "config.toml")
 	authPath := filepath.Join(codexHome, "auth.json")
 
-	configTemp, err := writeTemporary(codexHome, ".config.toml.tmp.", []byte(ConfigContent()))
+	old, err := os.ReadFile(configPath)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	content := ConfigFor(string(old), isDir(filepath.Join(codexHome, ".sandbox")))
+	configTemp, err := writeTemporary(codexHome, ".config.toml.tmp.", []byte(content))
 	if err != nil {
 		return err
 	}
