@@ -41,7 +41,7 @@ title: 快速开始
 2. 回后台点 **一键导入 Codex**：首页第 3 步选好密钥点，或在 **API 密钥** 页那把密钥的「操作」列点。
 3. 浏览器问是否打开时，点 **打开**。
 
-导入完成后 Codex 会被自动关闭，先保存正在进行的任务。
+导入时会先自动关闭 Codex，先保存正在进行的任务。权限默认设为 **完全访问**。
 
 打不开助手时：Windows 点 **更多信息** → **仍要运行**；Mac 到 **系统设置 → 隐私与安全性** 点 **仍要打开**，问到控制“终端”时点 **允许**。
 
@@ -94,10 +94,11 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 <details>
 <summary>改了哪些文件</summary>
 
-只改 `C:\Users\你的用户名\.codex\`（Mac 为 `~/.codex/`）里的两个文件：
+只改 `C:\Users\你的用户名\.codex\`（Mac 为 `~/.codex/`）里的三个文件：
 
-- `config.toml`：接口地址和模型
+- `config.toml`：接口地址、模型和完全访问权限；Windows 原有的沙箱设置（`[windows]` 段）保留
 - `auth.json`：密钥
+- `.codex-global-state.json`：Codex App 输入框下方的权限选择，改成完全访问
 
 旧文件备份在同目录，文件名带 `.bak.时间戳`。原来配过 MCP 的，从备份里复制回 `config.toml`。
 
@@ -128,6 +129,7 @@ curl -fsSL https://docs.usegoodai.com/install/codex-restore.sh | bash
 
 - 网站下载慢：QQ 群文件下载 `中转站快速导入工具.zip`，解压后打开 `1.UseGoodAI中转快速接入助手`。
 - 要在官方账号和中转站之间来回切：[CC Switch 接入](/codex-cc-switch)。
+- 接入 Claude 桌面版（Windows 助手也能一键连接）：[Claude Desktop 接入](/claude/desktop)。
 - 自己改配置文件：[手动配置](/codex/manual-config)。
 
 ## 接下来
