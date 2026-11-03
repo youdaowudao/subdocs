@@ -60,7 +60,8 @@ open_link() {
 open_link "缺少密钥" "usegoodai://import?v=1&app=codex&name=ci" "导入链接不完整，请回网站重新点「一键导入」。"
 open_link "带地址参数" "usegoodai://import?v=1&app=codex&key=$key&base_url=https%3A%2F%2Fexample.com" "导入链接不完整，请回网站重新点「一键导入」。"
 open_link "版本过高" "usegoodai://import?v=2&app=codex&key=$key" "当前助手不支持这个导入，请下载新版助手。"
-open_link "其他应用" "usegoodai://import?v=1&app=claude&key=$key" "当前助手不支持这个导入，请下载新版助手。"
+open_link "其他应用" "usegoodai://import?v=1&app=gemini&key=$key" "当前助手不支持这个导入，请下载新版助手。"
+open_link "Claude 链接" "usegoodai://import?v=1&app=claude&key=$key" "Mac 版助手只能接入 Codex，一键导入 Claude 只有 Windows 版支持。Mac 上请按教程「Claude Desktop 接入」手动配置。"
 
 # A window that is still configuring Codex: a valid link must not start a
 # second one, and the key must not be handed over.
