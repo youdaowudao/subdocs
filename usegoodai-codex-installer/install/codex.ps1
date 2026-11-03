@@ -332,22 +332,24 @@ function Write-Utf8NoBom([string]$Path, [string]$Content) {
 }
 
 function Get-WindowsTable {
+  # 只读出原来 [windows] 段的 sandbox 值，这一段始终由脚本自己写，旧文件怎么写都不会写坏。
+  $mode = ""
   if (Test-Path -LiteralPath $ConfigFile -PathType Leaf) {
-    $kept = New-Object System.Collections.Generic.List[string]
     $inside = $false
     foreach ($line in ([System.IO.File]::ReadAllText($ConfigFile) -replace "`r`n", "`n").Split("`n")) {
-      $trimmed = $line.Trim()
-      if ($trimmed.StartsWith("[")) {
-        $name = $trimmed.Split("]")[0].Trim("[", "]").Trim()
-        $inside = ($name -ceq "windows") -or $name.StartsWith("windows.", [StringComparison]::Ordinal)
+      if ($line -match '^\s*\[([^\[\]]+)\]\s*(#.*)?$') {
+        $inside = ($Matches[1].Trim() -ceq "windows")
+        continue
       }
-      if ($inside) { $kept.Add($line) }
+      if ($inside -and $line -match '^\s*sandbox\s*=\s*["''](elevated|unelevated)["'']\s*(#.*)?$') {
+        $mode = $Matches[1]
+      }
     }
-    while ($kept.Count -gt 0 -and $kept[$kept.Count - 1].Trim() -eq "") { $kept.RemoveAt($kept.Count - 1) }
-    if ($kept.Count -gt 0) { return ($kept -join "`n") }
   }
-  $mode = "unelevated"
-  if (Test-Path -LiteralPath (Join-Path $CodexHome ".sandbox") -PathType Container) { $mode = "elevated" }
+  if ($mode -eq "") {
+    $mode = "unelevated"
+    if (Test-Path -LiteralPath (Join-Path $CodexHome ".sandbox") -PathType Container) { $mode = "elevated" }
+  }
   return "[windows]`nsandbox = `"$mode`""
 }
 
@@ -381,8 +383,8 @@ goals = true
 image_generation = true
 "@
 
-    # Windows 上 Codex App 要先设置好沙箱才能选完全访问，设置结果记在 [windows] 段，
-    # 所以原样保留；没有这一段时，App 设置过沙箱（有 .sandbox 文件夹）写 elevated，
+    # Windows 上 Codex App 要先设置好沙箱才能选完全访问，设置结果记在 [windows] 段的 sandbox，
+    # 所以沿用原来的值；没有时，App 设置过沙箱（有 .sandbox 文件夹）写 elevated，
     # 否则写不需要管理员权限的 unelevated。与快速接入助手写法一致。
     $content = $content + "`n`n" + (Get-WindowsTable)
 

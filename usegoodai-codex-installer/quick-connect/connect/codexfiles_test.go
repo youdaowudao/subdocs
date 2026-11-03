@@ -193,7 +193,11 @@ func TestWriterKeepsWindowsSandbox(t *testing.T) {
 	}{
 		{"kept as it was", "model = \"x\"\r\n\r\n[windows]\r\nsandbox = \"elevated\"\r\n\r\n[mcp_servers.a]\r\ncommand = \"a\"\r\n",
 			false, "[windows]\nsandbox = \"elevated\""},
-		{"sub-table kept", "[windows]\nsandbox = \"unelevated\"\n[windows.extra]\nx = 1\n\n", false, "[windows]\nsandbox = \"unelevated\"\n[windows.extra]\nx = 1"},
+		{"value kept, table rewritten", "[windows]\nsandbox = 'unelevated' # chosen\n[windows.extra]\nx = 1\n\n", true, "[windows]\nsandbox = \"unelevated\""},
+		// A [windows] line inside a multi-line string is not a table; nothing
+		// of the old file is copied, so the result stays valid.
+		{"inside a multi-line string", "developer_instructions = \"\"\"\n[windows]\nnote\n\"\"\"\n", false, "[windows]\nsandbox = \"unelevated\""},
+		{"sandbox outside [windows] ignored", "[other]\nsandbox = \"elevated\"\n", false, "[windows]\nsandbox = \"unelevated\""},
 		{"set up before", "model = \"x\"\n", true, "[windows]\nsandbox = \"elevated\""},
 		{"new user", "", false, "[windows]\nsandbox = \"unelevated\""},
 	}
@@ -225,7 +229,7 @@ func TestPowerShellInstallerKeepsWindowsSandbox(t *testing.T) {
 	defer usage.Close()
 	home := t.TempDir()
 	codexHome := filepath.Join(home, ".codex")
-	old := "model = \"x\"\r\n\r\n[windows]\r\nsandbox = \"elevated\"\r\n\r\n[mcp_servers.a]\r\ncommand = \"a\"\r\n"
+	old := "model = \"x\"\r\n\r\n[windows]\r\nsandbox = 'elevated' # chosen\r\n\r\n[mcp_servers.a]\r\ncommand = \"a\"\r\n"
 	writeFile(t, filepath.Join(codexHome, "config.toml"), old)
 	prelude := `function Invoke-WebRequest {
   [CmdletBinding()] param([string]$Uri, [hashtable]$Headers, [int]$TimeoutSec, [switch]$UseBasicParsing)

@@ -391,9 +391,13 @@ async function fillFromClipboard() {
   // An installed image tool already has its key; the clipboard might hold
   // the Codex key, which must not replace it unasked.
   if (busy || tool === 'models' || (tool === 'image' && savedImageKey()) || keyInput.value.trim() !== '' || !bridge()) return;
+  const asked = tool;
   try {
     const key = await bridge().ClipboardKey();
-    if (key && keyInput.value.trim() === '') keyInput.value = key;
+    // The window may have moved on while the clipboard was read.
+    if (!key || busy || tool !== asked || keyInput.value.trim() !== '') return;
+    keyInput.value = key;
+    $('connect-label').textContent = idleLabel();
   } catch (error) {
     // The clipboard may be busy; the user can still paste by hand.
   }

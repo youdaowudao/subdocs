@@ -365,8 +365,12 @@ type ClaudeCode struct {
 }
 
 // claudeCodeModelOverrides would send another service's model names to
-// UseGoodAI, so connecting removes them.
+// UseGoodAI, or send the CLI to another cloud (Bedrock, Vertex, Foundry)
+// altogether, so connecting removes them.
 var claudeCodeModelOverrides = []string{
+	"CLAUDE_CODE_USE_BEDROCK",
+	"CLAUDE_CODE_USE_VERTEX",
+	"CLAUDE_CODE_USE_FOUNDRY",
 	"ANTHROPIC_API_KEY",
 	"ANTHROPIC_MODEL",
 	"ANTHROPIC_DEFAULT_OPUS_MODEL",
@@ -429,6 +433,11 @@ func WriteClaudeCode(c ClaudeCode, key string, now time.Time) error {
 	for _, name := range claudeCodeModelOverrides {
 		env.remove(name)
 	}
+	// A model the CLI was set to elsewhere (glm-5, a relay's look-alike
+	// name) would keep being asked for; aliases and official IDs stay.
+	if model := settings.getString("model"); model != "" && !claudeCodeModelKept(model) {
+		settings.remove("model")
+	}
 	if err := env.set("ANTHROPIC_BASE_URL", BaseURL); err != nil {
 		return err
 	}
@@ -451,6 +460,17 @@ func WriteClaudeCode(c ClaudeCode, key string, now time.Time) error {
 		changes = append(changes, change)
 	}
 	return writeFileGroup(changes, now)
+}
+
+// claudeCodeModelKept tells the models UseGoodAI can serve: the CLI's
+// aliases (opus, sonnet[1m], ...) and official Claude model IDs.
+func claudeCodeModelKept(model string) bool {
+	name := strings.TrimSuffix(strings.TrimSpace(model), "[1m]")
+	switch name {
+	case "default", "best", "opus", "sonnet", "haiku", "fable", "opusplan":
+		return true
+	}
+	return claudeModelPattern.MatchString(name)
 }
 
 func (c ClaudeCode) statePath() string { return filepath.Join(c.Home, ".claude.json") }

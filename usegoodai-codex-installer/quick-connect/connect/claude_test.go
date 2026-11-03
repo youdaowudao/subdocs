@@ -354,7 +354,7 @@ func TestClaudeCode(t *testing.T) {
 	}
 
 	settings := filepath.Join(home, ".claude", "settings.json")
-	writeFile(t, settings, `{"model":"opus","env":{"DISABLE_TELEMETRY":"1","ANTHROPIC_API_KEY":"sk-ant-old","ANTHROPIC_DEFAULT_OPUS_MODEL":"glm-5"},"permissions":{"allow":["Bash(ls)"]}}`)
+	writeFile(t, settings, `{"model":"opus","env":{"DISABLE_TELEMETRY":"1","ANTHROPIC_API_KEY":"sk-ant-old","ANTHROPIC_DEFAULT_OPUS_MODEL":"glm-5","CLAUDE_CODE_USE_BEDROCK":"1"},"permissions":{"allow":["Bash(ls)"]}}`)
 	if c.ConnectedWith(fixtureKey) {
 		t.Fatal("connected before writing")
 	}
@@ -379,6 +379,17 @@ func TestClaudeCode(t *testing.T) {
 	}
 	if backups := listBackups(t, filepath.Join(home, ".claude"), "settings.json.bak."); len(backups) != 1 {
 		t.Fatalf("backups: %v", backups)
+	}
+
+	// A model UseGoodAI cannot serve is dropped; aliases and official IDs stay.
+	for model, kept := range map[string]bool{"glm-5": false, "claude-opus-5.5": false, "sonnet[1m]": true, "claude-opus-5-5": true} {
+		writeFile(t, settings, `{"model":"`+model+`"}`)
+		if err := WriteClaudeCode(c, fixtureKey, fixedTime); err != nil {
+			t.Fatal(err)
+		}
+		if _, has := readJSON(t, settings)["model"]; has != kept {
+			t.Errorf("model %q kept=%v", model, has)
+		}
 	}
 
 	// A CLI already opened keeps its state; the first-run setup is marked done.
@@ -555,7 +566,7 @@ func TestConnectClaudeRefusals(t *testing.T) {
 	server := fakeGateway(t, 200, `{"isValid":true,"remaining":0}`, 403, `{"code":"INSUFFICIENT_BALANCE"}`)
 	broke, stops := newClaudeService(t, `{}`, `{}`)
 	broke.BaseURL = server.URL
-	if result := broke.ConnectClaude(context.Background(), fixtureKey, ""); result.Tone != ToneWarning || result.Message != MessageClaudeNeedBalance || *stops != 0 || fileExists(broke.Claude.profilePath()) {
+	if result := broke.ConnectClaude(context.Background(), fixtureKey, ""); result.Tone != ToneError || result.Message != MessageClaudeNeedBalance || *stops != 0 || fileExists(broke.Claude.profilePath()) {
 		t.Fatalf("zero balance: %+v stops %d", result, *stops)
 	}
 

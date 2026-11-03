@@ -208,10 +208,10 @@ func (s *Service) InstallImage(ctx context.Context, raw, name string) Result {
 	case ModelsNoImage:
 		return s.result(ToneError, MessageImageNoModel)
 	case ModelsNoBalance:
-		return s.result(ToneWarning, MessageImageNeedBalance)
+		return s.result(ToneError, MessageImageNeedBalance)
 	case ModelsRejected:
 		if check.State == KeyNoBalance {
-			return s.result(ToneWarning, MessageImageNeedBalance)
+			return s.result(ToneError, MessageImageNeedBalance)
 		}
 		return s.result(ToneError, MessageImageRejected)
 	case ModelsTimeout:

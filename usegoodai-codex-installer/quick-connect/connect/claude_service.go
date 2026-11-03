@@ -80,10 +80,10 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 	ids, state, code := ListModels(ctx, s.Client, s.BaseURL, key)
 	switch state {
 	case ModelsNoBalance:
-		return s.result(ToneWarning, MessageClaudeNeedBalance)
+		return s.result(ToneError, MessageClaudeNeedBalance)
 	case ModelsRejected:
 		if check.State == KeyNoBalance {
-			return s.result(ToneWarning, MessageClaudeNeedBalance)
+			return s.result(ToneError, MessageClaudeNeedBalance)
 		}
 		return s.result(ToneError, MessageClaudeRejected)
 	case ModelsTimeout:

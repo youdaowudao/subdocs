@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -39,40 +40,43 @@ func ConfigContent() string { return configContent }
 
 // ConfigFor is the config.toml written over old, the file it replaces.
 // The Codex App on Windows only offers Full Access once its sandbox is set
-// up, which it records as a [windows] table; so that table is carried over
-// as it was. Without one, sandbox = "elevated" is written when the App has
-// already set up its sandbox (codexHome holds .sandbox), else "unelevated",
-// which needs no administrator rights. install/codex.ps1 does the same.
+// up, which it records as sandbox = "elevated" or "unelevated" in [windows];
+// so that choice is carried over. Without one, "elevated" is written when the
+// App has already set up its sandbox (codexHome holds .sandbox), else
+// "unelevated", which needs no administrator rights. Only the value is read
+// from old, and the table is always written here, so whatever old holds the
+// new file stays valid TOML. install/codex.ps1 does the same.
 func ConfigFor(old string, sandboxReady bool) string {
-	if table := windowsTable(old); table != "" {
-		return configContent + "\n\n" + table
-	}
-	mode := "unelevated"
-	if sandboxReady {
-		mode = "elevated"
+	mode := windowsSandbox(old)
+	if mode == "" {
+		mode = "unelevated"
+		if sandboxReady {
+			mode = "elevated"
+		}
 	}
 	return configContent + "\n\n[windows]\nsandbox = \"" + mode + "\""
 }
 
-// windowsTable returns the [windows] table of a config.toml, and any
-// [windows.*] table, line for line, without trailing blank lines.
-func windowsTable(config string) string {
-	var kept []string
+var (
+	tomlTableHeader    = regexp.MustCompile(`^\s*\[([^\[\]]+)\]\s*(#.*)?$`)
+	tomlWindowsSandbox = regexp.MustCompile(`^\s*sandbox\s*=\s*["'](elevated|unelevated)["']\s*(#.*)?$`)
+)
+
+// windowsSandbox returns the sandbox value of the [windows] table of a
+// config.toml, or "" when there is none.
+func windowsSandbox(config string) string {
 	inside := false
+	mode := ""
 	for _, line := range strings.Split(strings.ReplaceAll(config, "\r\n", "\n"), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "[") {
-			name := strings.TrimSpace(strings.Trim(strings.SplitN(trimmed, "]", 2)[0], "[]"))
-			inside = name == "windows" || strings.HasPrefix(name, "windows.")
+		if header := tomlTableHeader.FindStringSubmatch(line); header != nil {
+			inside = strings.TrimSpace(header[1]) == "windows"
+			continue
 		}
-		if inside {
-			kept = append(kept, line)
+		if match := tomlWindowsSandbox.FindStringSubmatch(line); inside && match != nil {
+			mode = match[1]
 		}
 	}
-	for len(kept) > 0 && strings.TrimSpace(kept[len(kept)-1]) == "" {
-		kept = kept[:len(kept)-1]
-	}
-	return strings.Join(kept, "\n")
+	return mode
 }
 
 // AuthContent returns the auth.json the installer writes for key.
