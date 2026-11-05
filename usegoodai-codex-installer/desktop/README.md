@@ -51,3 +51,9 @@ python3 -m unittest test_packaging.py -v
 ## 供生图工具复用启动器
 
 `../../usegoodai-imagines-tool/release/build_desktop.py` 只读取这里的通用启动器和打包函数，把已核对的 V0.9.0 原生程序装入独立成品。生图源码、版本和打包入口继续在生图子项目维护；其缓存及成品留在生图子项目 `dist/`，不改动线上安装脚本或父仓库发布目录。Windows 合并版由 `quick-connect/build.py` 内附同版程序、Skill 和规则，支持 GPT Image 2.6 与 GIF 参数。
+
+## 网页交付
+
+从 2026-11-05 起，最终合集发布到父仓库 `docs/public/download/usegoodai-tools.zip`，下载地址固定为 `https://docs.usegoodai.com/download/usegoodai-tools.zip`。`docs/public/_headers` 设置中文附件名 `中转站快速导入工具_年月日-时分.zip`，每次发布同步改时间；成品不再复制到项目外的“传资料”目录。
+
+交付 ZIP 中 Windows 只有 `1.UseGoodAI中转快速接入助手.exe`，生图和国产模型导入使用同一窗口；Mac 保留 1、2、3 三个 `.app`。根目录只放 `使用说明.txt`，内部校验记录不放进 ZIP。发布前运行父仓库 `tests/quick-connect-download.test.mjs`，验证单一 Windows EXE、内嵌生图版本、Mac 三工具及下载文件名。

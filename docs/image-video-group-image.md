@@ -40,7 +40,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 <details>
 <summary>不想用 PowerShell？</summary>
 
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载最新的 `中转站快速导入工具_日期-时间.zip`。Windows 双击 `1.UseGoodAI中转快速接入助手.exe`，点下方“安装生图工具”；Mac 双击 `2.UseGoodAI生图工具.app`。按提示粘贴**专门画图分组 Key**。
+直接[下载工具合集 ZIP](/download/usegoodai-tools.zip)，解压后按系统打开。Windows 只有一个 `1.UseGoodAI中转快速接入助手.exe`，生图和国产模型导入都在同一窗口；点下方“安装生图工具”。Mac 双击 `2.UseGoodAI生图工具.app`。按提示粘贴**专门画图分组 Key**。
 
 </details>
 
@@ -93,7 +93,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 <details>
 <summary>更新、卸载和文件位置</summary>
 
-更新：对 Codex 说“更新生图工具”，按提示运行命令，重新粘贴专门画图分组 Key。双击版从群文件下载最新安装包重新运行。
+更新：对 Codex 说“更新生图工具”，按提示运行命令，重新粘贴专门画图分组 Key。双击版重新下载本页的最新工具合集后运行。
 
 卸载：对 Codex 说“卸载中转站生图工具”。专门画图 Key 默认保留，永久删除前会单独确认。
 

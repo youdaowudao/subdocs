@@ -108,3 +108,36 @@ test('Mac download is the zipped app with the published codex.sh', async () => {
     assert.equal(entries.get(contents + name).mode & 0o111, 0o111, `${name} is executable`)
   }
 })
+
+test('tool-set download keeps Windows in one GUI and bundles the current image tool', async () => {
+  const rules = await headerRules()
+  const headers = rules.get('/download/usegoodai-tools.zip')
+  assert.ok(headers.includes('Content-Type: application/zip'))
+  const disposition = headers.find((line) => /^content-disposition:/i.test(line))
+  const filename = decodeURIComponent(disposition.match(/filename\*=UTF-8''([^;\s]+)/)[1])
+  assert.match(filename, /^中转站快速导入工具_\d{8}-\d{4}\.zip$/)
+
+  const data = await readFile(new URL('docs/public/download/usegoodai-tools.zip', root))
+  assert.ok(data.length <= limit, `${data.length} bytes`)
+  const entries = readZip(data)
+  const windowsFiles = [...entries.keys()].filter((name) => name.startsWith('Windows-x64/') && !name.endsWith('/'))
+  assert.deepEqual(windowsFiles, [`Windows-x64/1.${product}.exe`])
+  const window = entries.get(windowsFiles[0]).body
+  assert.deepEqual(window, await readFile(new URL(`docs/public/download/${exeName}`, root)))
+  const release = 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.0/'
+  const nativeWindows = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.0-windows-amd64.exe`, root))
+  assert.ok(window.includes(nativeWindows), 'the single Windows GUI embeds the current native image tool')
+
+  const macApps = [...new Set([...entries.keys()].flatMap((name) => {
+    const match = name.match(/^Mac-Apple芯片\/([^/]+\.app)\//)
+    return match ? [match[1]] : []
+  }))].sort()
+  assert.deepEqual(macApps, [`1.${product}.app`, '2.UseGoodAI生图工具.app', '3.Codex国产模型导入.app'].sort())
+  const nativeMac = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.0-darwin-arm64`, root))
+  assert.deepEqual(entries.get('Mac-Apple芯片/2.UseGoodAI生图工具.app/Contents/Resources/tool').body, nativeMac)
+  for (const app of macApps) {
+    assert.equal(entries.get(`Mac-Apple芯片/${app}/Contents/MacOS/launcher`).mode & 0o111, 0o111)
+  }
+  assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.0/)
+  assert.ok(![...entries.keys()].some((name) => /SHA256SUMS|来源记录/.test(name)))
+})
