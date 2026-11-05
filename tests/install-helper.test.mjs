@@ -34,7 +34,7 @@ test('helper opener downloads the runnable exe, never the zip, and names the QQ 
   assert.ok(script.includes(`"${exeUrl}"`))
   assert.doesNotMatch(script, /\.zip/)
   assert.match(script, /\$QqGroup = "1020015031"/)
-  assert.match(script, /下载失败时，进 QQ 群 \$QqGroup，在群文件下载/)
+  assert.match(script, /下载失败时，进 QQ 群 1020015031，在群文件下载/)
   assert.match(script, /下载或打开失败/)
   // 在 irm | iex 里 exit 会关掉用户的 PowerShell 窗口。
   assert.doesNotMatch(script, /^\s*exit\b/m)
@@ -78,6 +78,7 @@ async function runHelper(base, route, { windows = true } = {}) {
     if (windows) {
       env.OS = 'Windows_NT'
     }
+    let firstOutputMs
     // 必须异步启动：本地假服务器和测试在同一个进程，同步等待会让它无法回应下载请求。
     const result = await new Promise((resolve, reject) => {
       const child = spawn(powershellCommand, ['-NoProfile', '-File', join(home, 'run.ps1')], {
@@ -86,10 +87,16 @@ async function runHelper(base, route, { windows = true } = {}) {
       })
       let stdout = ''
       let stderr = ''
-      child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk })
+      const started = Date.now()
+      child.stdout.setEncoding('utf8').on('data', (chunk) => {
+        if (stdout === '') {
+          firstOutputMs = Date.now() - started
+        }
+        stdout += chunk
+      })
       child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk })
       child.on('error', reject)
-      child.on('close', (status) => resolve({ status, stdout, stderr }))
+      child.on('close', (status) => resolve({ status, stdout, stderr, firstOutputMs, totalMs: Date.now() - started }))
     })
     const opened = await readFile(join(home, 'opened.txt'), 'utf8').catch(() => '')
     const desktopFiles = await readdir(desktop)
@@ -171,7 +178,7 @@ test('helper opener retries once, then shows the error and the QQ group', { skip
       assert.equal(requests, 2)
       assert.deepEqual(run.desktopFiles, [])
       assert.equal(run.opened, '')
-      assert.match(run.result.stdout, /第 1 次下载没成功，2 秒后重试/)
+      assert.match(run.result.stdout, /第 1 次下载没成功（.+），2 秒后重试/)
       assert.match(run.result.stdout, /下载或打开失败：/)
       assert.match(run.result.stdout, /1020015031/)
       assert.deepEqual(run.leftovers, [])
@@ -191,6 +198,31 @@ test('helper opener tells Mac users to use the QQ group file', { skip: powershel
       assert.match(run.result.stdout, /这条命令只能在 Windows 上用。Mac 请进 QQ 群 1020015031/)
       assert.deepEqual(run.desktopFiles, [])
       assert.equal(run.opened, '')
+    },
+  )
+})
+
+test('helper opener prints at once and keeps showing progress while the download waits', { skip: powershellSkip }, async () => {
+  await withServer(
+    async (request, response) => {
+      // 服务器先沉默 2.5 秒，再发一半，停 1.5 秒，再发完，模拟慢网络。
+      await new Promise((resolve) => setTimeout(resolve, 2500))
+      response.writeHead(200, { 'Content-Type': 'application/octet-stream' })
+      response.write(fakeExe.subarray(0, 1024 * 1024))
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      response.end(fakeExe.subarray(1024 * 1024))
+    },
+    async (base) => {
+      const run = await runHelper(base, '/slow.exe')
+      assert.equal(run.result.status, 0, run.result.stderr || run.result.stdout)
+      assert.deepEqual(run.downloaded, fakeExe)
+      // 下载要等 4 秒以上，但第一行字在 PowerShell 启动后立刻出现。
+      assert.ok(run.result.totalMs > 4000, `total ${run.result.totalMs}ms`)
+      assert.ok(run.result.firstOutputMs < 2000, `first output after ${run.result.firstOutputMs}ms`)
+      assert.match(run.result.stdout, /^UseGoodAI 中转快速接入助手：下载到桌面并打开。/)
+      assert.match(run.result.stdout, /正在连接服务器，已等待 [1-9] 秒/)
+      assert.match(run.result.stdout, /正在下载，已用 \d+ 秒，已下载 1\.0 MB/)
+      assert.match(run.result.stdout, /助手已打开/)
     },
   )
 })

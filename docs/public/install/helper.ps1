@@ -1,18 +1,57 @@
 # UseGoodAI中转快速接入助手：下载到桌面并打开（Windows）。
 # 下载的是可直接运行的程序，不是压缩包。下载失败时去 QQ 群文件下载。
 
+# 先出字：后面任何一步慢，用户都已经看到脚本在运行。
+Write-Host "UseGoodAI 中转快速接入助手：下载到桌面并打开。"
+Write-Host "下载失败时，进 QQ 群 1020015031，在群文件下载「中转站快速导入工具」，解压后打开「1.UseGoodAI中转快速接入助手」。"
+Write-Host ""
+
+# 下载并每 0.5 秒刷新一次进度，下载慢的时候用户能看到还在动。
+# 60 秒没有收到任何数据就判定网络中断。
+function Save-UseGoodAIDownload([string]$Url, [string]$Path) {
+  $client = New-Object System.Net.WebClient
+  $client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) UseGoodAI-Helper")
+  $started = Get-Date
+  $lastGrowth = $started
+  $lastSize = [long]0
+  try {
+    $task = $client.DownloadFileTaskAsync($Url, $Path)
+    while (-not $task.IsCompleted) {
+      Start-Sleep -Milliseconds 500
+      $size = [long]0
+      if (Test-Path -LiteralPath $Path) {
+        $size = (Get-Item -LiteralPath $Path).Length
+      }
+      $now = Get-Date
+      if ($size -gt $lastSize) {
+        $lastSize = $size
+        $lastGrowth = $now
+      } elseif (($now - $lastGrowth).TotalSeconds -gt 60) {
+        $client.CancelAsync()
+        Write-Host ""
+        throw "60 秒没有收到数据，网络可能中断了。"
+      }
+      $seconds = [int]($now - $started).TotalSeconds
+      if ($size -eq 0) {
+        Write-Host -NoNewline ("`r正在连接服务器，已等待 {0} 秒……          " -f $seconds)
+      } else {
+        Write-Host -NoNewline ("`r正在下载，已用 {0} 秒，已下载 {1:N1} MB（约 20 MB）          " -f $seconds, ($size / 1MB))
+      }
+    }
+    Write-Host ""
+    $task.GetAwaiter().GetResult()
+  } finally {
+    $client.Dispose()
+  }
+}
+
 function Start-UseGoodAIHelper {
   $ErrorActionPreference = "Stop"
-  $ProgressPreference = "SilentlyContinue"
 
   $QqGroup = "1020015031"
   $DownloadUrl = "https://docs.usegoodai.com/download/usegoodai-quick-connect-windows-x64.exe"
   $FileName = "UseGoodAI中转快速接入助手.exe"
   $MinimumBytes = 1MB
-
-  Write-Host "UseGoodAI 中转快速接入助手：下载到桌面并打开。"
-  Write-Host "下载失败时，进 QQ 群 $QqGroup，在群文件下载「中转站快速导入工具」，解压后打开「1.UseGoodAI中转快速接入助手」。"
-  Write-Host ""
 
   if ($env:OS -ne "Windows_NT") {
     Write-Host "这条命令只能在 Windows 上用。Mac 请进 QQ 群 $QqGroup，在群文件下载 Mac 版。"
@@ -30,7 +69,9 @@ function Start-UseGoodAIHelper {
     }
     $target = Join-Path $desktop $FileName
 
-    $running = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $target })
+    # 只按程序名查一个进程，不枚举全部进程，避免卡住。
+    $processName = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+    $running = @(Get-Process -Name $processName -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $target })
     if ($running.Count -gt 0) {
       Write-Host "助手已经在运行，已把它的窗口调到前面。"
       Start-Process -FilePath $target
@@ -43,17 +84,16 @@ function Start-UseGoodAIHelper {
       # 系统已经默认支持 TLS 1.2 时不需要设置。
     }
 
-    Write-Host "正在下载助手（约 20 MB），请稍候……"
     $downloaded = $false
     for ($attempt = 1; $attempt -le 2 -and -not $downloaded; $attempt++) {
       try {
-        Invoke-WebRequest -Uri $DownloadUrl -OutFile $partial -UseBasicParsing -TimeoutSec 300
+        Save-UseGoodAIDownload $DownloadUrl $partial
         $downloaded = $true
       } catch {
         if ($attempt -ge 2) {
           throw
         }
-        Write-Host "第 $attempt 次下载没成功，2 秒后重试……"
+        Write-Host "第 $attempt 次下载没成功（$($_.Exception.Message)），2 秒后重试……"
         Start-Sleep -Seconds 2
       }
     }
