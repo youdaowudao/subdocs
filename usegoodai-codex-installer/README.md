@@ -14,6 +14,14 @@
 - `https://docs.usegoodai.com/download/usegoodai-quick-connect-windows-x64.exe`
 - `https://docs.usegoodai.com/download/usegoodai-quick-connect-mac-arm64.zip`
 
+网页不再提供下载按钮，用户进 QQ 群 1020015031 在群文件下载，或在 Windows PowerShell 运行下面的命令：
+
+```powershell
+irm https://docs.usegoodai.com/install/helper.ps1 | iex
+```
+
+`install/helper.ps1` 把上面的 Windows `.exe`（直接可运行的程序，不是压缩包）下载到桌面 `UseGoodAI中转快速接入助手.exe` 并打开，助手第一次启动时注册 `usegoodai://`，之后网站的「一键导入」按钮就能调用它。PowerShell 下载的文件没有网络来源标记，不会出现 SmartScreen 的「更多信息 → 仍要运行」。下载失败、下载内容不是 Windows 程序时，脚本提示去群文件下载。
+
 原有在线命令继续使用下面的入口。
 
 ## Windows
@@ -92,6 +100,7 @@ desktop/             双击成品的启动器和打包程序
 install/
   codex.ps1
   codex.sh
+  helper.ps1
   codex-restore.ps1
   codex-restore.sh
   codex-models.ps1
@@ -121,7 +130,7 @@ bash tests/installers.sh
 原 GPT 脚本和还原脚本 `codex-restore.*` 在 `install/` 里维护；国产模型导入脚本只在 `codex-domestic-models/` 内开发、构建和测试，再手动复制交付物到本目录的 `install/`。把要发布的脚本复制到文档站部署位置，再提交并推送：
 
 ```bash
-cp install/codex.sh install/codex.ps1 install/codex-restore.sh install/codex-restore.ps1 ../docs/public/install/
+cp install/codex.sh install/codex.ps1 install/helper.ps1 install/codex-restore.sh install/codex-restore.ps1 ../docs/public/install/
 cp codex-domestic-models/install/codex-models.sh codex-domestic-models/install/codex-models.ps1 install/
 cp install/codex-models.sh install/codex-models.ps1 ../docs/public/install/
 # 先手动触发 Actions 的 Mac 打包并下载产物，见 desktop/README.md

@@ -4,6 +4,10 @@
 /install/codex.sh
   Content-Type: text/plain; charset=utf-8
 
+/install/helper.ps1
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
 /install/codex-models.ps1
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=0, must-revalidate

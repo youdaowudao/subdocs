@@ -37,9 +37,27 @@ title: 快速开始
 
 ## 3. 连接 Codex
 
-1. [下载 Windows 接入助手](/download/usegoodai-quick-connect-windows-x64.exe)，双击打开一次。Mac 用 [Mac 版](/download/usegoodai-quick-connect-mac-arm64.zip)（Apple 芯片）。
+1. 先打开一次接入助手。进 QQ 群 <span style="color: #d93025;"><strong>1020015031</strong></span>，在群文件下载 `中转站快速导入工具`，解压后双击 `1.UseGoodAI中转快速接入助手`（Mac 在 `Mac-Apple芯片` 文件夹里）。Windows 也可以[用 PowerShell 命令下载并打开](#helper-powershell)。
 2. 回后台点 **一键导入 Codex**：首页第 3 步选好密钥点，或在 **API 密钥** 页那把密钥的「操作」列点。
 3. 浏览器问是否打开时，点 **打开**。
+
+<a id="helper-powershell"></a>
+
+<details>
+<summary>Windows：用 PowerShell 命令下载并打开助手</summary>
+
+1. 按 `Win + X` 打开 **终端**（Win10 叫 **Windows PowerShell**）；也可以点开始菜单，往下拉找到 **Windows PowerShell** 打开。
+2. 点下面命令右上角的复制按钮，粘贴到窗口里，回车：
+
+```powershell
+irm https://docs.usegoodai.com/install/helper.ps1 | iex
+```
+
+3. 窗口里刷出几行字后，助手会下载到桌面并自动弹出来，回后台点 **一键导入 Codex** 即可。以后双击桌面上的 `UseGoodAI中转快速接入助手` 也能打开。
+
+下载失败时，窗口里会提示去群文件下载。
+
+</details>
 
 导入时会先自动关闭 Codex，先保存正在进行的任务。权限默认设为 **完全访问**。
 
@@ -81,6 +99,7 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 | 提示或现象 | 怎么办 |
 | --- | --- |
 | 点 **一键导入 Codex** 没反应 | 先打开一次助手再点；还不行用 [命令行](#command-line) |
+| PowerShell 命令提示下载或打开失败 | 进 QQ 群 1020015031，在群文件下载 `中转站快速导入工具`，解压后打开 `1.UseGoodAI中转快速接入助手` |
 | 要安装 WebView2 运行库 | 点 **确定** 下载安装，或改用 [命令行](#command-line) |
 | 密钥格式不对 | 回后台重新复制完整密钥（带 `****` 的是遮挡过的，不能用） |
 | 密钥无效、已停用、过期或额度用完 | 换一把可用的密钥 |
@@ -127,7 +146,6 @@ curl -fsSL https://docs.usegoodai.com/install/codex-restore.sh | bash
 
 ## 其他方式
 
-- 网站下载慢：QQ 群文件下载 `中转站快速导入工具.zip`，解压后打开 `1.UseGoodAI中转快速接入助手`。
 - 要在官方账号和中转站之间来回切：[CC Switch 接入](/codex-cc-switch)。
 - 接入 Claude 桌面版（Windows 助手也能一键连接）：[Claude Desktop 接入](/claude/desktop)。
 - 自己改配置文件：[手动配置](/codex/manual-config)。

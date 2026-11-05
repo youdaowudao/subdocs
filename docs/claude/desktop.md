@@ -12,7 +12,7 @@ Claude Desktop 是 Anthropic 的桌面应用，包含 Chat、Cowork 和 Code 等
 
 适用于从 [Claude 下载页](https://claude.com/download) 安装的 Claude Desktop。
 
-1. [下载 Windows 接入助手](/download/usegoodai-quick-connect-windows-x64.exe)，打开后点右上角 **Claude**。还没装 Claude Desktop 时，点卡片里的 **官网下载**；打不开官网就进 QQ 群在群文件下载。
+1. 打开接入助手（没有就按 [快速开始第 3 步](/quick-start#quick-connect-helper) 获取），点右上角 **Claude**。还没装 Claude Desktop 时，点卡片里的 **官网下载**；打不开官网就进 QQ 群在群文件下载。
 2. 后台 **API 密钥** 页复制一把 Claude 分组的密钥，粘贴到助手输入框，点 **一键连接 Claude**。助手会先关闭 Claude，再写入这把密钥能用的全部 Claude 模型（Fable、Opus、Sonnet、Haiku）。
 3. 重新打开 Claude Desktop，新建对话，发送 `测试`。能回复就接入完成了。
 

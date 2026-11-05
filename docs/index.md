@@ -12,7 +12,7 @@ UseGoodAI 中转站让 Codex 使用 AI 模型，并支持在对话中生成、�
   <a class="home-entry home-entry--main" href="/quick-start">
     <span>1. 新手入口</span>
     <strong>快速开始</strong>
-    <p>下载接入助手，在后台一键导入 Codex。</p>
+    <p>打开接入助手，在后台一键导入 Codex。</p>
   </a>
   <a class="home-entry home-entry--switch" href="/codex-cc-switch">
     <span>2. 图形化接入</span>

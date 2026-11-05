@@ -17,6 +17,15 @@ test('serves the PowerShell installer as UTF-8 text', async () => {
   )
 })
 
+test('serves the helper opener as fresh UTF-8 text', async () => {
+  const headers = await readHeaders()
+
+  assert.match(
+    headers,
+    /\/install\/helper\.ps1\s+Content-Type:\s*text\/plain;\s*charset=utf-8\s+Cache-Control:\s*public, max-age=0, must-revalidate/i,
+  )
+})
+
 test('serves the shell installer as UTF-8 text', async () => {
   const headers = await readHeaders()
 
