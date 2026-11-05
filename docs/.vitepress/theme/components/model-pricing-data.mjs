@@ -690,11 +690,11 @@ export const IMAGE_GROUP = {
 
 export const IMAGE_MODELS = [
   {
-    id: 'gpt-image-2.5-flare',
-    name: 'GPT Image 2.5 Flare',
-    description: '最新推荐模型，适合快速生成、普通生图和批量任务',
+    id: 'gpt-image-2.6-flare',
+    name: 'GPT Image 2.6 Flare',
+    description: '最新推荐模型，适合快速生成、普通生图和循环 GIF',
     route: '/v1/images/generations',
-    spec: '1K / 2K / 4K',
+    spec: '静态图 / GIF',
     groupCnyPerImage: 0.05,
     sizePricesCny: [
       { size: '1K', cnyPerImage: 0.04 },
@@ -704,9 +704,23 @@ export const IMAGE_MODELS = [
     recommended: true,
   },
   {
-    id: 'gpt-image-2.5-sunburst',
-    name: 'GPT Image 2.5 Sunburst',
-    description: '最新推荐模型，适合高清、精修和重要成品',
+    id: 'gpt-image-2.6-sunburst',
+    name: 'GPT Image 2.6 Sunburst',
+    description: '最新推荐模型，适合高清、精修和循环 GIF',
+    route: '/v1/images/generations',
+    spec: '静态图 / GIF',
+    groupCnyPerImage: 0.05,
+    sizePricesCny: [
+      { size: '1K', cnyPerImage: 0.04 },
+      { size: '2K', cnyPerImage: 0.05 },
+      { size: '4K', cnyPerImage: 0.08 },
+    ],
+    recommended: true,
+  },
+  {
+    id: 'gpt-image-2.5-flare',
+    name: 'GPT Image 2.5 Flare',
+    description: '上一代模型，适合普通静态生图和批量任务',
     route: '/v1/images/generations',
     spec: '1K / 2K / 4K',
     groupCnyPerImage: 0.05,
@@ -715,7 +729,19 @@ export const IMAGE_MODELS = [
       { size: '2K', cnyPerImage: 0.05 },
       { size: '4K', cnyPerImage: 0.08 },
     ],
-    recommended: true,
+  },
+  {
+    id: 'gpt-image-2.5-sunburst',
+    name: 'GPT Image 2.5 Sunburst',
+    description: '上一代模型，适合静态图片精修和重要成品',
+    route: '/v1/images/generations',
+    spec: '1K / 2K / 4K',
+    groupCnyPerImage: 0.05,
+    sizePricesCny: [
+      { size: '1K', cnyPerImage: 0.04 },
+      { size: '2K', cnyPerImage: 0.05 },
+      { size: '4K', cnyPerImage: 0.08 },
+    ],
   },
   {
     id: 'gpt-image-1k-th',

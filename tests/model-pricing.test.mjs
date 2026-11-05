@@ -1034,7 +1034,7 @@ test('keeps the requested drawing prices in RMB without applying USD conversion'
   assert.match(pricingComponentSource, /按分辨率计费/)
 })
 
-test('places the latest recommended GPT Image 2.5 models first at GPT Image 2 prices', () => {
+test('places GPT Image 2.6 first with the same prices as GPT Image 2.5', () => {
   const gptImage2 = IMAGE_MODELS.find((model) => model.id === 'gpt-image-2')
   const latestModels = IMAGE_MODELS.slice(0, 2)
 
@@ -1042,15 +1042,15 @@ test('places the latest recommended GPT Image 2.5 models first at GPT Image 2 pr
     latestModels.map(({ id, name, description, recommended }) => ({ id, name, description, recommended })),
     [
       {
-        id: 'gpt-image-2.5-flare',
-        name: 'GPT Image 2.5 Flare',
-        description: '最新推荐模型，适合快速生成、普通生图和批量任务',
+        id: 'gpt-image-2.6-flare',
+        name: 'GPT Image 2.6 Flare',
+        description: '最新推荐模型，适合快速生成、普通生图和循环 GIF',
         recommended: true,
       },
       {
-        id: 'gpt-image-2.5-sunburst',
-        name: 'GPT Image 2.5 Sunburst',
-        description: '最新推荐模型，适合高清、精修和重要成品',
+        id: 'gpt-image-2.6-sunburst',
+        name: 'GPT Image 2.6 Sunburst',
+        description: '最新推荐模型，适合高清、精修和循环 GIF',
         recommended: true,
       },
     ],
@@ -1058,7 +1058,7 @@ test('places the latest recommended GPT Image 2.5 models first at GPT Image 2 pr
 
   for (const model of latestModels) {
     assert.equal(model.route, '/v1/images/generations')
-    assert.equal(model.spec, gptImage2.spec)
+    assert.equal(model.spec, '静态图 / GIF')
     assert.equal(model.groupCnyPerImage, gptImage2.groupCnyPerImage)
     assert.deepEqual(model.sizePricesCny, gptImage2.sizePricesCny)
   }
@@ -1066,11 +1066,16 @@ test('places the latest recommended GPT Image 2.5 models first at GPT Image 2 pr
   assert.equal(gptImage2.recommended, undefined)
   assert.deepEqual(
     IMAGE_MODELS.filter((model) => model.recommended).map((model) => model.id),
-    ['gpt-image-2.5-flare', 'gpt-image-2.5-sunburst'],
+    ['gpt-image-2.6-flare', 'gpt-image-2.6-sunburst'],
   )
   assert.match(pricingComponentSource, /v-if="model\.recommended"/)
   assert.match(pricingComponentSource, /<span v-if="model\.recommended">最新推荐模型<\/span>/)
-  assert.match(pricingComponentSource, /IMAGE_MODELS\.find\(\(model\) => model\.id === 'gpt-image-2\.5-flare'\)/)
+  assert.match(pricingComponentSource, /IMAGE_MODELS\.find\(\(model\) => model\.id === 'gpt-image-2\.6-flare'\)/)
+  for (const id of ['gpt-image-2.5-flare', 'gpt-image-2.5-sunburst']) {
+    const legacy = IMAGE_MODELS.find((model) => model.id === id)
+    assert.equal(legacy.groupCnyPerImage, gptImage2.groupCnyPerImage)
+    assert.deepEqual(legacy.sizePricesCny, gptImage2.sizePricesCny)
+  }
 })
 
 test('shows the unified size-price note only for gpt-image-2-adobe', () => {

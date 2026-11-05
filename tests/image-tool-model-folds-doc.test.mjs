@@ -6,7 +6,7 @@ const source = readFileSync(new URL('../docs/images/params.md', import.meta.url)
 
 const modelSections = [
   {
-    heading: '## GPT Image 2.5 {#gpt-image-2-5}',
+    heading: '## GPT Image 2.6 {#gpt-image-2-6}',
     required: ['`size`、`quality` 和 `output_format`', '| 3:4 |', '`768x1024`', '`xhigh`', '`max`'],
   },
   {
@@ -51,6 +51,8 @@ test('gives every image model its own top-level section on the params page', () 
 test('lists every model endpoint in one table', () => {
   const content = sectionContent('## 接口和鉴权')
   for (const model of [
+    'gpt-image-2.6-flare',
+    'gpt-image-2.6-sunburst',
     'gpt-image-2.5-flare',
     'gpt-image-2.5-sunburst',
     'gpt-image-2',

@@ -50,4 +50,4 @@ python3 -m unittest test_packaging.py -v
 
 ## 供生图工具复用启动器
 
-`../../usegoodai-imagines-tool/release/build_desktop.py` 只读取这里的通用启动器和打包函数，把已核对的 V0.8.2 原生程序装入独立成品。生图源码、版本和打包入口继续在生图子项目维护；其缓存及成品留在生图子项目 `dist/`，不改动线上安装脚本或父仓库发布目录。
+`../../usegoodai-imagines-tool/release/build_desktop.py` 只读取这里的通用启动器和打包函数，把已核对的 V0.9.0 原生程序装入独立成品。生图源码、版本和打包入口继续在生图子项目维护；其缓存及成品留在生图子项目 `dist/`，不改动线上安装脚本或父仓库发布目录。Windows 合并版由 `quick-connect/build.py` 内附同版程序、Skill 和规则，支持 GPT Image 2.6 与 GIF 参数。

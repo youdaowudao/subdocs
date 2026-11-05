@@ -4,7 +4,7 @@ title: 安装生图工具
 
 # 安装生图工具
 
-安装后在 Codex 里说“画一张……”，Codex 会调用 UseGoodAI 的图片模型生成或修改图片，并直接显示在对话中。需要先完成 [快速开始](/quick-start)。
+生图工具适合在 Codex 中直接制作图片、修改产品图或生成 GIF 动图：说出要求后，结果直接显示在对话中。本文安装 V0.9.0 工具与 Skill，安装器自动写入 Codex 的工具目录、Skill 和生图规则，无需手工改配置；先完成 [快速开始](/quick-start)。
 
 ## 1. 创建专门画图分组的 API Key
 
@@ -40,13 +40,15 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 <details>
 <summary>不想用 PowerShell？</summary>
 
-加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载 `中转站快速导入工具.zip`，解压后双击 `2.UseGoodAI生图工具`（Windows 在 `Windows-x64` 文件夹，Mac 在 `Mac-Apple芯片` 文件夹），按提示粘贴**专门画图分组 Key**。
+加入 <span style="color: #d93025;"><strong>QQ 群：1020015031</strong></span>，在群文件下载最新的 `中转站快速导入工具_日期-时间.zip`。Windows 双击 `1.UseGoodAI中转快速接入助手.exe`，点下方“安装生图工具”；Mac 双击 `2.UseGoodAI生图工具.app`。按提示粘贴**专门画图分组 Key**。
 
 </details>
 
 ## 3. 打开 Codex 开始生图
 
 新建任务（Codex 已经打开时不用退出），发送 `画一张白底红苹果`。图片会直接显示在对话中。
+
+生成动图时发送 `画一个红色立方体旋转的循环 GIF 动图`。默认使用 2.6 Flare 和自动尺寸；指定 `用 gpt-image-2.6-sunburst` 可换 Sunburst。当前接口不能保证精确帧数、时长或固定像素，工具会报告文件的实际动画信息，详细参数见 [GIF 动图](/images/params#gif)。
 
 <details>
 <summary>查看常用说法</summary>
@@ -74,8 +76,9 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 
 | 模型 | 什么时候用 |
 | --- | --- |
-| `gpt-image-2.5-flare` | 默认模型，普通生图、修图和批量，输出 2K |
-| `gpt-image-2.5-sunburst` | 说“高清”“精修”“重要成品”时自动使用，输出 2K |
+| `gpt-image-2.6-flare` | 默认模型，普通生图、修图和批量，输出 2K |
+| `gpt-image-2.6-sunburst` | 说“高清”“精修”“重要成品”时自动使用，输出 2K |
+| `gpt-image-2.5-flare`、`gpt-image-2.5-sunburst` | 上一代静态图模型，明确指定时使用 |
 | `gpt-image-2` | 指定时使用 |
 | `gpt-image-1k-th` | 低成本 1K 方图，适合草图 |
 | `gpt-image-2-adobe` | 2:3 竖图，只能文生图 |
@@ -131,8 +134,9 @@ https://docs.usegoodai.com/images/params.html （各模型接口和参数）
 3. 除“生成图片.py”和 AGENTS.md 外，不创建其它文件，不自动安装依赖。
 4. 为 UseGoodAI API Key 保留一个明显的配置项，创建完成后只让我填写这个值。
 5. 脚本由 Codex 调用，每次接收完整图片描述、模型、数量、规格和可选原图文件，不把图片描述写死。
-6. 模型选择顺序固定为：用户明确指定模型时使用该模型；未指定模型且明确要求高清、高质量、精细细节、精修、严格保留原图或重要成品时使用 gpt-image-2.5-sunburst；其余未指定模型的任务默认使用 gpt-image-2.5-flare。
+6. 模型选择顺序固定为：用户明确指定模型时使用该模型；未指定模型且明确要求高清、高质量、精细细节、精修、严格保留原图或重要成品时使用 gpt-image-2.6-sunburst；其余未指定模型的任务默认使用 gpt-image-2.6-flare。
 7. 多图按张拆成独立的单张请求，每张只发送一次，禁止自动重试或静默更换模型。
+   GIF 使用两个 2.6 模型，按生图参数汇总的 GIF 请求体发送；默认 output_format=gif、size=auto、quality=low、n=1，不接参考图。帧数与时长不能保证精确生效，以解码后的文件为准。
 8. 成功后最终回复用绝对路径 Markdown 图片语法嵌入每张图片，例如 `![生成结果](/absolute/path/image.png)`，不得只回复文件路径或普通链接。失败时显示脱敏错误，不创建空图片。
 ```
 

@@ -44,7 +44,7 @@
 要求：
 1. 生成 6 到 12 条测试任务，每条只改一个主要变量，例如构图、背景、光线、色彩、风格、材质、文字区域。
 2. 任务写进 `批量提示词.json`，字段：编号、方向、测试目的、提示词、尺寸、输出文件名。
-3. 调用 POST https://api.usegoodai.com/v1/images/generations，模型用 gpt-image-2.5-flare，请求体包含 model、prompt、size。
+3. 调用 POST https://api.usegoodai.com/v1/images/generations，模型用 gpt-image-2.6-flare，请求体包含 model、prompt、size。
 4. API Key 从环境变量 `USEGOODAI_API_KEY` 读取，不写进脚本。
 5. 不安装新依赖；缺少必要工具时先告诉我缺什么，等我确认。
 6. 图片保存到 `输出图片/`，每条结果追加写入 `结果记录.md`；单张失败时记录错误信息，继续下一张。

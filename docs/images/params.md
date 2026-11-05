@@ -8,6 +8,8 @@
 
 | 模型 | 文生图 | 参考图和修图 | 尺寸参数 |
 | --- | --- | --- | --- |
+| `gpt-image-2.6-flare` | `POST /v1/images/generations` | `POST /v1/images/edits` | `size` |
+| `gpt-image-2.6-sunburst` | `POST /v1/images/generations` | `POST /v1/images/edits` | `size` |
 | `gpt-image-2.5-flare` | `POST /v1/images/generations` | `POST /v1/images/edits` | `size` |
 | `gpt-image-2.5-sunburst` | `POST /v1/images/generations` | `POST /v1/images/edits` | `size` |
 | `gpt-image-2` | `POST /v1/images/generations` | `POST /v1/images/edits` | `size` |
@@ -19,19 +21,21 @@
 
 `/v1/images/edits` 用 `multipart/form-data` 上传：一张图字段名 `image`，多张图用 `image[]`。Nano Banana 把图片放进请求体，见下文。
 
-## GPT Image 2.5 {#gpt-image-2-5}
+## GPT Image 2.6 {#gpt-image-2-6}
 
-`gpt-image-2.5-flare` 适合普通生图和批量任务，`gpt-image-2.5-sunburst` 适合高清、精修和重要成品。两个模型参数相同，都支持文生图、参考图、修图和多图，使用 `size`、`quality` 和 `output_format`，不使用 `resolution` 或 `aspect_ratio`。
+`gpt-image-2.6-flare` 适合普通生图和批量任务，`gpt-image-2.6-sunburst` 适合高清、精修和重要成品。两个模型参数相同，都支持文生图、参考图、修图和多图，使用 `size`、`quality` 和 `output_format`，不使用 `resolution` 或 `aspect_ratio`。
+
+下表列出一键生图工具开放的静态图参数范围。GIF 使用后面的动画参数。
 
 | 参数 | 写法 |
 | --- | --- |
 | `prompt` | 必填，完整图片描述或修改指令 |
 | `size` | `auto` 或 `WIDTHxHEIGHT`：宽高为 16 的倍数，单边不超过 3840，长短边比例不超过 3:1，总像素为 655360 至 8294400 |
 | `quality` | `low`、`medium`、`high`、`xhigh`、`max`、`auto` |
-| `output_format` | `png` |
+| `output_format` | 静态图使用 `png`；文字生成 GIF 使用 `gif` |
 | `n` | `1` 至 `10` |
 
-省略 `size` 或 `quality` 时两者默认 `auto`；`size=auto` 时模型根据提示词选择尺寸。`xhigh` 和 `max` 只适用于两个 GPT Image 2.5 模型。
+一键工具的静态图默认传 `size=2048x2048`、`quality=high`；`size=auto` 时模型根据提示词选择尺寸。`xhigh` 和 `max` 适用于 GPT Image 2.6 和 2.5，不用于 GPT Image 2。
 
 ### 1K、2K、4K 对应的 `size`
 
@@ -48,7 +52,7 @@
 | 4K 横图 | `3840x2160` |
 | 4K 竖图 | `2160x3840` |
 
-最大方图是 `2880x2880`（总像素上限）。超过 `2560x1440` 的输出属于实验性范围。
+工具允许的最大方图是 `2880x2880`（总像素上限）。表中尺寸是请求值，实际交付尺寸以返回文件为准。
 
 ### 按比例对应的 `size`
 
@@ -70,9 +74,48 @@
 
 比例超过 3:1 的 `4:1`、`1:4`、`8:1`、`1:8` 不支持。
 
+### 生成 GIF 动图 {#gif}
+
+在 Codex 中安装 V0.9.0 生图工具后，直接说 `画一个红色立方体旋转的循环 GIF 动图`。Skill 自动使用 2.6 Flare；说“用 2.6 Sunburst”则使用 Sunburst。GIF 只支持文字生成，不接参考图或修图。
+
+自己调用时，向 `POST https://api.usegoodai.com/v1/images/generations` 发送 JSON，请求头仍为 `Authorization: Bearer <API_KEY>`，并设置 `Content-Type: application/json`：
+
+```json
+{
+  "model": "gpt-image-2.6-flare",
+  "prompt": "一个红色立方体绕竖直轴旋转一周，白色背景，固定镜头，无缝循环，不要文字。",
+  "output_format": "gif",
+  "size": "auto",
+  "quality": "low",
+  "n": 1,
+  "frame_count": 9,
+  "frame_duration_ms": 200
+}
+```
+
+改用 Sunburst 时只替换模型名。把 `data[].b64_json` 解码后直接保存为 `.gif`，无需本地拼帧；通用解码方法见 [生图 API](/images/image-generation)。
+
+| API 参数 | 原生工具参数 | 填写方法 |
+| --- | --- | --- |
+| `output_format` | `--output-format gif` | 必须显式开启 GIF，默认仍为静态 PNG |
+| `size` | `--size auto` | GIF 默认自动尺寸；固定 `512x512` 在两个模型的本站测试中均失败，先用自动尺寸 |
+| `quality` | `--quality low` | GIF 默认 `low`，先用来验证动作和循环效果 |
+| `frame_count` | `--frame-count` | 可选，默认请求 9 帧；工具接受 2 至 16 |
+| `frame_duration_ms` | `--frame-duration-ms` | 可选，默认请求每帧 200 毫秒；工具接受 20 至 2000 |
+
+**帧数和时长目前不能精确控制。** 本站已验证两个模型都能返回真实多帧、无限循环 GIF；实测文件为 8 至 16 帧、每帧 120 毫秒，与请求的 4 或 9 帧、每帧 200 或 500 毫秒不完全一致。不能把请求值相乘当作成品时长。
+
+工具原样保存文件，stdout 的 `animations` 返回实际尺寸、帧数、每帧毫秒数、总时长与循环信息；参数未完全生效时另有 `warnings`，Codex 会据此说明实际结果。工具不自动重试、改帧率或补帧。
+
+[OpenAI 生图指南](https://developers.openai.com/api/docs/guides/image-generation#generate-animated-gif-output)列出的帧数范围为 2 至 64，而 [API 参数表](https://developers.openai.com/api/reference/resources/images/methods/generate)为 2 至 16；本工具采用共同范围。官方还规定 GIF 不用于编辑、流式输出、局部预览图、自定义压缩或 `prompt_rewriter`，总像素预算由接口检查。
+
+## GPT Image 2.5 {#gpt-image-2-5}
+
+`gpt-image-2.5-flare`、`gpt-image-2.5-sunburst` 继续支持原有静态生图、参考图、修图和六档质量，尺寸按上面的静态图表填写。一键工具不再默认选择它们；明确写出模型名时使用。不开放 GIF 参数。
+
 ## GPT Image 2
 
-和 GPT Image 2.5 的差异只有 `quality`：可选 `low`、`medium`、`high`、`auto`，不支持 `xhigh` 和 `max`。
+静态图质量可选 `low`、`medium`、`high`、`auto`，不支持 `xhigh` 和 `max`。
 
 ## GPT Image 1K TH
 
@@ -82,7 +125,7 @@
 | `quality` | `low` 或 `high` |
 | `n` | `1` 至 `10` |
 
-只出 1K 方图，2K、4K 和其它比例会被拒绝。需要其它尺寸时换 GPT Image 2.5。
+只出 1K 方图，2K、4K 和其它比例会被拒绝。需要其它尺寸时换 GPT Image 2.6。
 
 ## GPT Image 2 Adobe
 
@@ -163,4 +206,4 @@ Nano Banana Pro 实测交付文件都是 `1024x1024`，2K、4K、横图和竖图
 | `/v1/images/generations`、`/v1/images/edits` | `data[].b64_json`（Base64 解码）或 `data[].url`（下载一次）；两者都有时用 Base64 |
 | `/v1/responses` | 只在 `output` 里找：结构化图片、Markdown 里的 Data URL 或 HTTPS 图片链接 |
 
-图片字节非空、文件头是有效 PNG 或 JPEG 才算成功，扩展名按实际格式决定。没有有效图片时报错，不写空文件。
+图片字节非空，按实际 PNG、JPEG、WebP 或 GIF 格式保存，扩展名按真实格式决定。GIF 还要解码检查帧数、帧间隔和循环信息；没有有效图片时报错，不写空文件。

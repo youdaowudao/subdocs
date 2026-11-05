@@ -1,6 +1,8 @@
 # 生图 API
 
-自己写程序生成图片时看本页：用 `gpt-image-2.5-flare` 生成一张图并保存到本地。API Key 使用 **专门画图分组** 的 Key；其它模型和尺寸看 [生图参数汇总](/images/params)。
+自己写程序生成图片时看本页：用 `gpt-image-2.6-flare` 生成一张图并保存到本地。API Key 使用 **专门画图分组** 的 Key；其它模型和尺寸看 [生图参数汇总](/images/params)。
+
+制作循环动画时，使用参数页的 [GIF 请求体](/images/params#gif)，将解码后的结果保存为 `.gif`。
 
 ## 懒人方法：让 AI 写一个测试脚本
 
@@ -13,8 +15,8 @@
 1. 只写一个脚本文件，文件名用中文，例如 `生成图片.py`、`生成图片.ps1` 或 `生成图片.sh`。
 2. 不安装依赖；本机确实缺少工具时先告诉我缺什么，等我确认。
 3. 调用接口：POST https://api.usegoodai.com/v1/images/generations，请求头 Authorization: Bearer <API_KEY>，API Key 留一个配置项让我自己填。
-4. 请求体参考 gpt-image-2.5-flare 的 1K 方图调用方法，例如：
-   {"model":"gpt-image-2.5-flare","prompt":"生成一张白底玻璃杯产品图","size":"1024x1024"}
+4. 请求体参考 gpt-image-2.6-flare 的 1K 方图调用方法，例如：
+   {"model":"gpt-image-2.6-flare","prompt":"生成一张白底玻璃杯产品图","size":"1024x1024"}
 5. 原始返回保存为 response.json；有 data[].b64_json 时先解码，没有时下载 data[].url；都没有有效图片时保留 response.json 并显示接口返回的错误信息。
 6. 图片保存为 outputs/image.png。
 ```
@@ -42,7 +44,7 @@ curl https://api.usegoodai.com/v1/images/generations \
   -H "Authorization: Bearer $USEGOODAI_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-image-2.5-flare",
+    "model": "gpt-image-2.6-flare",
     "prompt": "为一家现代咖啡店生成一张温暖明亮的产品宣传图，画面包含一杯拿铁、一块可颂和简洁的中文标题区域。",
     "size": "1024x1024"
   }' \
@@ -99,7 +101,7 @@ with open("outputs/image.png", "wb") as file:
 ```bash
 curl https://api.usegoodai.com/v1/images/edits \
   -H "Authorization: Bearer $USEGOODAI_API_KEY" \
-  -F "model=gpt-image-2.5-flare" \
+  -F "model=gpt-image-2.6-flare" \
   -F "image=@input.png" \
   -F "prompt=保持主体不变，把背景改成明亮的办公室场景。" \
   -o response.json

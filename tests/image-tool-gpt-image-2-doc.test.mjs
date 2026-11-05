@@ -20,8 +20,8 @@ function sectionContent(heading) {
   return paramsSource.slice(contentStart, next === -1 ? undefined : next)
 }
 
-test('makes GPT Image 2.5 the complete primary GPT Image guide', () => {
-  const gptImage25 = sectionContent('## GPT Image 2.5 {#gpt-image-2-5}')
+test('makes GPT Image 2.6 the complete primary GPT Image guide', () => {
+  const gptImage26 = sectionContent('## GPT Image 2.6 {#gpt-image-2-6}')
 
   const resolutionMappings = [
     ['1K 方图', '1024x1024'],
@@ -49,26 +49,38 @@ test('makes GPT Image 2.5 the complete primary GPT Image guide', () => {
     ['1:3', '512x1536'],
   ]
 
-  assert.match(gptImage25, /使用 `size`、`quality` 和 `output_format`/)
-  assert.match(gptImage25, /宽高为 16 的倍数/)
-  assert.match(gptImage25, /单边不超过 3840/)
-  assert.match(gptImage25, /总像素为 655360 至 8294400/)
-  assert.match(gptImage25, /`size=auto` 时模型根据提示词选择尺寸/)
+  assert.match(gptImage26, /使用 `size`、`quality` 和 `output_format`/)
+  assert.match(gptImage26, /宽高为 16 的倍数/)
+  assert.match(gptImage26, /单边不超过 3840/)
+  assert.match(gptImage26, /总像素为 655360 至 8294400/)
+  assert.match(gptImage26, /`size=auto` 时模型根据提示词选择尺寸/)
   for (const [label, size] of resolutionMappings) {
-    assert.ok(gptImage25.includes(`| ${label} | \`${size}\` |`), `missing resolution mapping: ${label}`)
+    assert.ok(gptImage26.includes(`| ${label} | \`${size}\` |`), `missing resolution mapping: ${label}`)
   }
   for (const [ratio, size] of ratioMappings) {
-    assert.ok(gptImage25.includes(`| ${ratio} | \`${size}\` |`), `missing ratio mapping: ${ratio}`)
+    assert.ok(gptImage26.includes(`| ${ratio} | \`${size}\` |`), `missing ratio mapping: ${ratio}`)
   }
-  assert.match(gptImage25, /`2880x2880`/)
-  assert.match(gptImage25, /比例超过 3:1 的 `4:1`、`1:4`、`8:1`、`1:8` 不支持/)
-  assert.match(gptImage25, /超过 `2560x1440` 的输出属于实验性范围/)
-  assert.match(gptImage25, /`xhigh` 和 `max` 只适用于两个 GPT Image 2\.5 模型/)
+  assert.match(gptImage26, /`2880x2880`/)
+  assert.match(gptImage26, /比例超过 3:1 的 `4:1`、`1:4`、`8:1`、`1:8` 不支持/)
+  assert.match(gptImage26, /实际交付尺寸以返回文件为准/)
+  assert.match(gptImage26, /`xhigh` 和 `max` 适用于 GPT Image 2\.6 和 2\.5/)
+})
+
+test('documents GIF controls and distinguishes requested values from actual output', () => {
+  const gptImage26 = sectionContent('## GPT Image 2.6 {#gpt-image-2-6}')
+  for (const field of ['output_format', 'frame_count', 'frame_duration_ms']) {
+    assert.ok(gptImage26.includes(`"${field}":`), field)
+  }
+  assert.match(gptImage26, /帧数和时长目前不能精确控制/)
+  assert.match(gptImage26, /`animations`/)
+  assert.match(gptImage26, /`warnings`/)
+  assert.match(gptImage26, /512x512.*失败.*自动尺寸/)
+  assert.match(sectionContent('## GPT Image 2.5 {#gpt-image-2-5}'), /不开放 GIF 参数/)
 })
 
 test('points the API guide and the tool page to the params page', () => {
   assert.match(apiDocSource, /\[生图参数汇总\]\(\/images\/params\)/)
-  assert.match(apiDocSource, /"model": "gpt-image-2\.5-flare"/)
+  assert.match(apiDocSource, /"model": "gpt-image-2\.6-flare"/)
   assert.match(imageToolDocSource, /\[生图参数汇总\]\(\/images\/params\)/)
 })
 
@@ -80,8 +92,8 @@ test('keeps only the GPT Image 2 quality difference', () => {
 })
 
 test('keeps the default model routing rule in the DIY prompt', () => {
-  const routingRule = '模型选择顺序固定为：用户明确指定模型时使用该模型；未指定模型且明确要求高清、高质量、精细细节、精修、严格保留原图或重要成品时使用 gpt-image-2.5-sunburst；其余未指定模型的任务默认使用 gpt-image-2.5-flare。'
+  const routingRule = '模型选择顺序固定为：用户明确指定模型时使用该模型；未指定模型且明确要求高清、高质量、精细细节、精修、严格保留原图或重要成品时使用 gpt-image-2.6-sunburst；其余未指定模型的任务默认使用 gpt-image-2.6-flare。'
   assert.ok(imageToolDocSource.includes(routingRule))
-  assert.match(imageToolDocSource, /`gpt-image-2\.5-flare` \| 默认模型/)
-  assert.match(imageToolDocSource, /`gpt-image-2\.5-sunburst` \| 说“高清”“精修”“重要成品”时自动使用/)
+  assert.match(imageToolDocSource, /`gpt-image-2\.6-flare` \| 默认模型/)
+  assert.match(imageToolDocSource, /`gpt-image-2\.6-sunburst` \| 说“高清”“精修”“重要成品”时自动使用/)
 })
