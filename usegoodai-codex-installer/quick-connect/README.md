@@ -23,7 +23,7 @@
 品牌行右侧的「Codex / Claude」两个标签切换主入口，Claude 页用陶土橙主题，复用同一张状态卡、输入框和主按钮。只支持官网下载的新版（Microsoft Store 包 `Claude_pzs8sxrjxfjjc`），旧的 `%LOCALAPPDATA%\AnthropicClaude` 安装不处理。
 
 - **检测**：`%LOCALAPPDATA%\Packages\Claude_*` 存在算已安装。没装时状态卡显示「没检测到 Claude 桌面版」和「官网下载 / 群文件下载」两个按钮，不写任何文件。
-- **连接流程**：`/v1/usage` 检查密钥（同 Codex）→ `GET /v1/models` → 只留官方格式的 Fable、Opus、Sonnet、Haiku 模型（`^claude-(fable|opus|sonnet|haiku)-主版本(-次版本)?(-8位日期)?$`，同一版本有不带日期的就去掉带日期的；`claude-opus-5.5`、大小写不对、`[1m]`、`-thinking`、带前缀的一律丢弃，不改写），顺序 Fable、Opus、Sonnet、Haiku，同系列新版本在前，第一条是 Claude 的默认模型。一个都没有就提示换分组，不写入。
+- **连接流程**：`GET /v1/usage` 检查密钥 → `GET /v1/models`，各自最多等待 20 秒，错误提示区分密钥检查与模型列表查询；请求不指定模型，不发起对话，只有 Opus 的分组也能导入。只留官方格式的 Fable、Opus、Sonnet、Haiku 模型（`^claude-(fable|opus|sonnet|haiku)-主版本(-次版本)?(-8位日期)?$`，同一版本有不带日期的就去掉带日期的；`claude-opus-5.5`、大小写不对、`[1m]`、`-thinking`、带前缀的一律丢弃，不改写），顺序 Fable、Opus、Sonnet、Haiku，同系列新版本在前，第一条是 Claude 的默认模型。一个都没有就提示换分组，不写入。
 - **写入**（全部成功或全部不改，配置文件和 `_meta.json` 先做 `.bak.时间` 备份，其它字段和顺序保留）：
   - `deploymentMode: "3p"` 写进三份 `claude_desktop_config.json`：`%LOCALAPPDATA%\Claude-3p\`、`%LOCALAPPDATA%\Claude\`、`Packages\Claude_*\LocalCache\Roaming\Claude\`。
   - `%LOCALAPPDATA%\Claude-3p\configLibrary\00000000-0000-4000-8000-00000000600d.json`：网关地址、Bearer、密钥、`modelDiscoveryEnabled: false`、`inferenceModels`。

@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ModelsState is the outcome of GET /v1/models for a key.
@@ -34,7 +35,11 @@ const (
 // read too. On success the state is ModelsImage; the caller decides what the
 // list means.
 func ListModels(ctx context.Context, client *http.Client, baseURL, key string) ([]string, ModelsState, int) {
-	ctx, cancel := context.WithTimeout(ctx, usageTimeout)
+	return listModels(ctx, client, baseURL, key, usageTimeout)
+}
+
+func listModels(ctx context.Context, client *http.Client, baseURL, key string, timeout time.Duration) ([]string, ModelsState, int) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+modelsPath, nil)
 	if err != nil {
