@@ -1,0 +1,73 @@
+# 查接入助手在 Win11 上闪退：11-05 构建不闪退，11-07 16:05 构建和 1.1.4 闪退。
+# 1. 用最新病毒库扫描三版助手和两版生图程序（Windows 安全中心是否拦截新版）。
+# 2. 三版助手各反复「开着时再带导入链接打开」20 次，看有没有窗口闪退。
+# 成品从 Git 历史取出，不新增二进制文件；不使用任何密钥或 Secrets。
+name: Windows 接入助手闪退排查
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tests/windows-helper-crash/**
+      - .github/workflows/windows-helper-crash.yml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - name: 检出时保留原始换行
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 从 Git 历史取出各版成品
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP "builds"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $files = [ordered]@{
+            "helper-1105-ok.exe"       = "5267829:docs/public/download/usegoodai-quick-connect-windows-x64.exe"
+            "helper-1107-1605.exe"     = "053b218:docs/public/download/usegoodai-quick-connect-windows-x64.exe"
+            "helper-1.1.4.exe"         = "b1fa505:docs/public/download/usegoodai-quick-connect-windows-x64.exe"
+            "imagetool-v0.9.0.exe"     = "b1fa505:docs/public/install/usegoodai-imagines-tool/releases/v0.9.0/usegoodai-imagines-tool-v0.9.0-windows-amd64.exe"
+            "imagetool-v0.9.1.exe"     = "b1fa505:docs/public/install/usegoodai-imagines-tool/releases/v0.9.1/usegoodai-imagines-tool-v0.9.1-windows-amd64.exe"
+          }
+          foreach ($name in $files.Keys) {
+            $target = Join-Path $out $name
+            cmd /c "git show $($files[$name]) > `"$target`""
+            "{0}  {1}  {2}" -f (Get-FileHash $target).Hash.Substring(0, 16), (Get-Item $target).Length, $name
+          }
+
+      - name: 病毒库扫描
+        shell: powershell
+        run: .\tests\windows-helper-crash\defender_scan.ps1 -Folder "$env:RUNNER_TEMP\builds"
+
+      - name: 摘要表头
+        shell: pwsh
+        run: |
+          "### 反复接管（${{ matrix.os }}）`n`n| 版本 | 次数 | 失败 | 失败情况 |`n|---|---|---|---|" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+      - name: 11-05 构建反复打开
+        if: always()
+        shell: powershell
+        run: .\tests\windows-helper-crash\takeover_stress.ps1 -Exe "$env:RUNNER_TEMP\builds\helper-1105-ok.exe" -Label 1105
+
+      - name: 11-07 16:05 构建反复打开
+        if: always()
+        shell: powershell
+        run: .\tests\windows-helper-crash\takeover_stress.ps1 -Exe "$env:RUNNER_TEMP\builds\helper-1107-1605.exe" -Label 1605
+
+      - name: 1.1.4 反复打开
+        if: always()
+        shell: powershell
+        run: .\tests\windows-helper-crash\takeover_stress.ps1 -Exe "$env:RUNNER_TEMP\builds\helper-1.1.4.exe" -Label 1.1.4
