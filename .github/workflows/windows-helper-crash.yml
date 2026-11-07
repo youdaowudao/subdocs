@@ -1,6 +1,8 @@
 # 查接入助手在 Win11 上闪退：11-05 构建不闪退，11-07 16:05 构建和 1.1.4 闪退。
 # 1. 用最新病毒库扫描三版助手和两版生图程序（Windows 安全中心是否拦截新版）。
-# 2. 三版助手各反复「开着时再带导入链接打开」20 次，看有没有窗口闪退。
+# 2. 打开实时保护和云保护（不上传样本），给文件加上下载标记后启动，按用户电脑的样子运行。
+# 3. 三版助手各反复「开着时再带导入链接打开」20 次，看有没有窗口闪退。
+# windows-11-arm 是 GitHub 提供的 Windows 11 机器（x64 程序经系统转译运行）。
 # 成品从 Git 历史取出，不新增二进制文件；不使用任何密钥或 Secrets。
 name: Windows 接入助手闪退排查
 
@@ -19,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2022, windows-2025]
+        os: [windows-2022, windows-2025, windows-11-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     steps:
@@ -51,6 +53,11 @@ jobs:
       - name: 病毒库扫描
         shell: powershell
         run: .\tests\windows-helper-crash\defender_scan.ps1 -Folder "$env:RUNNER_TEMP\builds"
+
+      - name: 实时保护下运行
+        if: always()
+        shell: powershell
+        run: .\tests\windows-helper-crash\defender_realtime.ps1 -Folder "$env:RUNNER_TEMP\builds"
 
       - name: 摘要表头
         shell: pwsh
