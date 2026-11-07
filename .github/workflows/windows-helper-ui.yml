@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/windows-helper-ui.yml
       - tests/windows-helper-crash/window_trace.ps1
+      - usegoodai-codex-installer/quick-connect/tools/css_compare.py
 permissions:
   contents: read
 jobs:
@@ -62,4 +63,53 @@ jobs:
             ${{ runner.temp }}/helper-window-trace/*.json
             ${{ runner.temp }}/helper-window-trace/*.txt
             ${{ runner.temp }}/helper-window-trace/*.log
+          retention-days: 14
+  css:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: usegoodai-codex-installer/quick-connect/go.mod
+          cache: false
+      - name: 关闭测试虚拟机的首次登录隐私页面
+        if: matrix.os == 'windows-11-arm'
+        shell: pwsh
+        run: |
+          $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OOBE'
+          New-Item -Path $policy -Force | Out-Null
+          New-ItemProperty -Path $policy -Name DisablePrivacyExperience -PropertyType DWord -Value 1 -Force | Out-Null
+          Get-Process -Name CloudExperienceHostBroker, UserOOBEBroker -ErrorAction SilentlyContinue |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 3
+          if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
+            Start-Process explorer.exe
+            Start-Sleep -Seconds 3
+          }
+      - name: 只替换 CSS 构建两版内部测试程序
+        shell: pwsh
+        run: python usegoodai-codex-installer/quick-connect/tools/css_compare.py
+      - name: 同机比较旧 CSS 和新 CSS 的窗口轨迹
+        shell: powershell
+        run: ./tests/windows-helper-crash/window_trace.ps1 -Folder usegoodai-codex-installer/quick-connect/.work/css-compare/builds -WorkName helper-css-trace
+      - name: 保存 CSS 对照证据
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: helper-css-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/helper-css-trace/*.png
+            ${{ runner.temp }}/helper-css-trace/*.json
+            ${{ runner.temp }}/helper-css-trace/*.txt
+            ${{ runner.temp }}/helper-css-trace/*.log
+            usegoodai-codex-installer/quick-connect/.work/css-compare/metadata.json
           retention-days: 14

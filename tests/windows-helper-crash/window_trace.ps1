@@ -1,6 +1,9 @@
 ﻿# Check the actual usegoodai:// registry entry and visible desktop windows,
 # rather than treating a live process/MainWindowHandle as a visible UI.
-param([Parameter(Mandatory = $true)][string]$Folder)
+param(
+  [Parameter(Mandatory = $true)][string]$Folder,
+  [string]$WorkName = 'helper-window-trace'
+)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 Add-Type -TypeDefinition @'
@@ -48,7 +51,7 @@ public static class WindowTrace {
 }
 '@
 
-$root = Join-Path $env:RUNNER_TEMP 'helper-window-trace'
+$root = Join-Path $env:RUNNER_TEMP $WorkName
 New-Item -ItemType Directory -Force -Path $root | Out-Null
 $env:CODEX_HOME = Join-Path $root 'isolated-codex'
 $product = 'UseGoodAI中转快速接入助手'
