@@ -24,7 +24,7 @@ test('puts the image tool installation on one three-step customer path', () => {
   assert.match(imageToolDocSource, /\/images\/画图\/画图专用分组\.jpg/)
   assert.match(imageToolDocSource, /irm https:\/\/docs\.usegoodai\.com\/install\/usegoodai-imagines-tool\/install\.ps1 \| iex/)
   assert.match(imageToolDocSource, /curl -fsSL https:\/\/docs\.usegoodai\.com\/install\/usegoodai-imagines-tool\/install\.sh \| bash/)
-  assert.match(imageToolDocSource, /新建任务（Codex 已经打开时不用退出）/)
+  assert.match(imageToolDocSource, /完全退出 Codex 再重新打开（放行规则在启动时加载），新建任务/)
   assert.match(imageToolDocSource, /图片会直接显示在对话中/)
 })
 

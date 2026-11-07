@@ -4,7 +4,7 @@ title: 安装生图工具
 
 # 安装生图工具
 
-生图工具适合在 Codex 中直接制作图片、修改产品图或生成 GIF 动图：说出要求后，结果直接显示在对话中。本文安装 V0.9.0 工具与 Skill，安装器自动写入 Codex 的工具目录、Skill 和生图规则，无需手工改配置；先完成 [快速开始](/quick-start)。
+生图工具适合在 Codex 中直接制作图片、修改产品图或生成 GIF 动图：说出要求后，结果直接显示在对话中。本文安装 V0.9.1 工具与 Skill，安装器自动写入 Codex 的工具目录、Skill、生图规则和放行规则，生图时不弹权限申请，无需手工改配置；先完成 [快速开始](/quick-start)。
 
 ## 1. 创建专门画图分组的 API Key
 
@@ -46,7 +46,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 
 ## 3. 打开 Codex 开始生图
 
-新建任务（Codex 已经打开时不用退出），发送 `画一张白底红苹果`。图片会直接显示在对话中。
+完全退出 Codex 再重新打开（放行规则在启动时加载），新建任务，发送 `画一张白底红苹果`。图片会直接显示在对话中。
 
 生成动图时发送 `画一个红色立方体旋转的循环 GIF 动图`。默认使用 2.6 Flare 和自动尺寸；指定 `用 gpt-image-2.6-sunburst` 可换 Sunburst。当前接口不能保证精确帧数、时长或固定像素，工具会报告文件的实际动画信息，详细参数见 [GIF 动图](/images/params#gif)。
 
@@ -99,13 +99,14 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 
 生成的图片保存在当前项目的 `images` 文件夹；没有打开项目时保存在桌面的 `images` 文件夹。
 
-安装器写入这三处（Windows 在 `C:\Users\你的用户名\.codex\`，Mac 和 Linux 在 `~/.codex/`）：
+安装器写入这四处（Windows 在 `C:\Users\你的用户名\.codex\`，Mac 和 Linux 在 `~/.codex/`）：
 
 | 位置 | 内容 |
 | --- | --- |
 | `tools/usegoodai-imagines-tool/` | 工具程序和专门画图 Key |
 | `skills/usegoodai-image-generation/` | 生图 Skill |
 | `AGENTS.md` | 追加生图规则，不改动原有内容 |
+| `rules/usegoodai-imagines-tool.rules` | 放行规则：生图工具的命令直接运行，不弹权限申请 |
 
 </details>
 
@@ -114,6 +115,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 | 遇到的问题 | 处理方法 |
 | --- | --- |
 | 安装器提示 Key 无效，或生图返回鉴权错误 | 在 **API 密钥** 页面复制 **专门画图分组** 的 Key，重新运行第 2 步命令 |
+| 生图时弹出权限申请，或提示无法联网 | 完全退出 Codex 再重新打开，新建任务后再试 |
 | Codex 只回复图片路径，没有显示图片 | 对 Codex 说“把图片直接显示在对话里” |
 | 生图接口返回错误 | 工具不会自动重试或换模型，稍后重新发一次 |
 | 图片无法保存 | 在 Codex 里打开一个有写入权限的项目文件夹后再试 |

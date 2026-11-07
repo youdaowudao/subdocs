@@ -124,8 +124,8 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
   assert.deepEqual(windowsFiles, [`Windows-x64/1.${product}.exe`])
   const window = entries.get(windowsFiles[0]).body
   assert.deepEqual(window, await readFile(new URL(`docs/public/download/${exeName}`, root)))
-  const release = 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.0/'
-  const nativeWindows = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.0-windows-amd64.exe`, root))
+  const release = 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.1/'
+  const nativeWindows = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.1-windows-amd64.exe`, root))
   assert.ok(window.includes(nativeWindows), 'the single Windows GUI embeds the current native image tool')
 
   const macApps = [...new Set([...entries.keys()].flatMap((name) => {
@@ -133,11 +133,11 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
     return match ? [match[1]] : []
   }))].sort()
   assert.deepEqual(macApps, [`1.${product}.app`, '2.UseGoodAI生图工具.app', '3.Codex国产模型导入.app'].sort())
-  const nativeMac = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.0-darwin-arm64`, root))
+  const nativeMac = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.1-darwin-arm64`, root))
   assert.deepEqual(entries.get('Mac-Apple芯片/2.UseGoodAI生图工具.app/Contents/Resources/tool').body, nativeMac)
   for (const app of macApps) {
     assert.equal(entries.get(`Mac-Apple芯片/${app}/Contents/MacOS/launcher`).mode & 0o111, 0o111)
   }
-  assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.0/)
+  assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.1/)
   assert.ok(![...entries.keys()].some((name) => /SHA256SUMS|来源记录/.test(name)))
 })
