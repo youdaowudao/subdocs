@@ -1,0 +1,40 @@
+# 复现客户在 Windows PowerShell 5.1 运行 irm 时的报错
+# 「基础连接已经关闭: 未能为 SSL/TLS 安全通道建立信任关系」：
+# 分别看正常电脑、电脑时间不对、根证书缺失时 PowerShell 和 Go 程序报什么错。
+# 只访问公开网址，不使用任何密钥或 Secrets。
+name: Windows 证书信任报错复现
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tests/windows-tls/**
+      - .github/workflows/windows-tls-trust.yml
+
+permissions:
+  contents: read
+
+jobs:
+  trust:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+        scenario: [baseline, clock, roots]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: false
+
+      - name: 编译 Go 探测程序
+        shell: pwsh
+        run: go build -o "$env:RUNNER_TEMP\tls_probe.exe" tests/windows-tls/tls_probe.go
+
+      - name: 复现 ${{ matrix.scenario }}
+        shell: powershell
+        run: .\tests\windows-tls\trust.ps1 -Scenario ${{ matrix.scenario }} -Probe "$env:RUNNER_TEMP\tls_probe.exe"
