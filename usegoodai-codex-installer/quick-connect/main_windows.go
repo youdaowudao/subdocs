@@ -17,13 +17,16 @@ import (
 	"usegoodai-quick-connect/connect"
 )
 
-// singleInstanceID keeps one window per user; the newest launch takes over
-// (see takeover.go and instance_windows.go).
+// singleInstanceID keeps one window per user; later launches hand their
+// link to it.
 const singleInstanceID = "usegoodai-quick-connect-5c0f2a7e"
 
 func main() {
+	// Everything a launch does is written to startup.log, so a window that
+	// closes by itself leaves a reason behind.
 	log := openStartupLog(webviewDataPath())
 	log.captureCrashes()
+	log.redirect()
 	log.printf("启动 %s", connect.Version)
 	defer func() {
 		if failure := recover(); failure != nil {
@@ -32,17 +35,13 @@ func main() {
 			os.Exit(2)
 		}
 	}()
-	// A busy running window comes to the front instead of this launch.
+	if runningWindow() {
+		log.printf("已有助手窗口，本次打开把参数交给它后结束")
+	}
+
+	// A link opened while the window exists starts a second process that only
+	// forwards the link. Let the running window take the foreground.
 	allowAnyForegroundWindow()
-	keep, err := claimInstance(log)
-	if err != nil {
-		log.printf("没有打开：%v", err)
-		showError(err.Error())
-		os.Exit(1)
-	}
-	if !keep {
-		os.Exit(0)
-	}
 
 	codexHome, _ := connect.CodexHome()
 	imageHome, _ := connect.ImageCodexHome()
@@ -69,12 +68,9 @@ func main() {
 	service.Claude = connect.ClaudeDesktop{LocalAppData: localAppData}
 	service.ClaudeCLI = connect.ClaudeCode{Home: userHome, AppData: roamingAppData}
 	service.StopClaude = connect.StopClaudeDesktop
-	app := newApp(service, connect.FindImportLink(os.Args[1:]))
-	if err := listenForLaunches(app); err != nil {
-		log.printf("后来打开的助手找不到本窗口：%v", err)
-	}
+	app := newApp(service, connect.FindImportLink(os.Args[1:]), log)
 
-	err = wails.Run(&options.App{
+	err := wails.Run(&options.App{
 		Title:              connect.ProductName,
 		Width:              420,
 		Height:             690,
@@ -82,10 +78,17 @@ func main() {
 		BackgroundColour:   &options.RGBA{R: 244, G: 247, B: 250, A: 255},
 		AssetServer:        &assetserver.Options{Assets: frontendFiles()},
 		OnStartup:          app.startup,
+		OnDomReady:         app.domReady,
+		OnBeforeClose:      app.beforeClose,
+		OnShutdown:         app.shutdown,
 		Bind:               []interface{}{app},
-		Logger:             logger.NewDefaultLogger(),
+		Logger:             wailsLogger{log},
 		LogLevel:           logger.ERROR,
 		LogLevelProduction: logger.ERROR,
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               singleInstanceID,
+			OnSecondInstanceLaunch: app.secondInstance,
+		},
 		Windows: &windows.Options{
 			Theme:               windows.Light,
 			WebviewUserDataPath: webviewDataPath(),
@@ -98,6 +101,14 @@ func main() {
 		os.Exit(1)
 	}
 	log.printf("正常退出")
+}
+
+// runningWindow reports whether a helper window already runs: Wails then
+// hands this launch's arguments to it and ends this process.
+func runningWindow() bool {
+	className, _ := syscall.UTF16PtrFromString("wails-app-" + singleInstanceID + "-sic")
+	hwnd, _, _ := syscall.NewLazyDLL("user32.dll").NewProc("FindWindowW").Call(uintptr(unsafe.Pointer(className)), 0)
+	return hwnd != 0
 }
 
 // showError makes a failed start visible instead of a silent exit.

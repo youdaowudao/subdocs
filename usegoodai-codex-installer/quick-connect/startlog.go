@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	stdlog "log"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -62,3 +63,27 @@ func (l *startupLog) printf(format string, arguments ...any) {
 	defer l.mu.Unlock()
 	_, _ = fmt.Fprintf(l.file, "%s pid=%d %s\n", time.Now().Format(time.RFC3339), os.Getpid(), fmt.Sprintf(format, arguments...))
 }
+
+// redirect sends what the libraries print into the log. go-webview2 prints
+// a failed WebView2 start to standard output and then ends the process,
+// and Wails ends it through the standard log: a window that vanishes
+// leaves its reason here instead of nowhere.
+func (l *startupLog) redirect() {
+	if l == nil || l.file == nil {
+		return
+	}
+	os.Stdout, os.Stderr = l.file, l.file
+	stdlog.SetOutput(l.file)
+}
+
+// wailsLogger writes the messages of Wails itself, such as a failed
+// WebView2 process, into the log.
+type wailsLogger struct{ log *startupLog }
+
+func (w wailsLogger) Print(message string)   { w.log.printf("Wails：%s", message) }
+func (w wailsLogger) Trace(message string)   { w.log.printf("Wails 跟踪：%s", message) }
+func (w wailsLogger) Debug(message string)   { w.log.printf("Wails 调试：%s", message) }
+func (w wailsLogger) Info(message string)    { w.log.printf("Wails：%s", message) }
+func (w wailsLogger) Warning(message string) { w.log.printf("Wails 警告：%s", message) }
+func (w wailsLogger) Error(message string)   { w.log.printf("Wails 错误：%s", message) }
+func (w wailsLogger) Fatal(message string)   { w.log.printf("Wails 致命错误：%s", message) }
