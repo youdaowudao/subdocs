@@ -8,8 +8,44 @@ on:
       - usegoodai-codex-installer/quick-connect/tools/css_compare.py
 permissions:
   contents: read
+concurrency:
+  group: helper-ui-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: 释放本排查分支重复运行占用的 Windows 机器
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TASK_BRANCH: ${{ github.ref_name }}
+          TASK_RUN: ${{ github.run_id }}
+          TASK_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          branch = os.environ['TASK_BRANCH']
+          if not branch.startswith('investigate-helper-ui-'):
+              raise SystemExit(0)
+          repo = os.environ['TASK_REPOSITORY']
+          current = int(os.environ['TASK_RUN'])
+          # Keep the already running narrow-viewport comparison as evidence.
+          keep = {current, 42389200249}
+          names = {'Windows 接入助手闪退排查', 'Windows 快速接入助手测试', 'Windows 助手界面消失排查'}
+          data = json.loads(subprocess.check_output(['gh', 'api', '--method', 'GET',
+              f'repos/{repo}/actions/runs', '-f', f'branch={branch}', '-f', 'per_page=100']))
+          for run in data['workflow_runs']:
+              if (run['id'] not in keep and run['head_branch'] == branch and run['name'] in names
+                      and run['status'] in {'queued', 'in_progress'}):
+                  print(f"Cancel superseded task run {run['id']}: {run['name']}", flush=True)
+                  subprocess.run(['gh', 'api', '--method', 'POST',
+                      f"repos/{repo}/actions/runs/{run['id']}/cancel"], check=False)
+          PY
   trace:
+    needs: cleanup
     strategy:
       fail-fast: false
       matrix:
@@ -83,6 +119,7 @@ jobs:
             ${{ runner.temp }}/helper-window-trace/*.log
           retention-days: 14
   css:
+    needs: cleanup
     strategy:
       fail-fast: false
       matrix:
