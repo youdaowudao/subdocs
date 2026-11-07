@@ -102,7 +102,7 @@ func (b *BundledImageTool) Install(ctx context.Context, codexHome, key string) e
 	}
 	ctx, cancel := context.WithTimeout(ctx, installTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, program, "install")
+	command := exec.CommandContext(ctx, program, installArguments(b.Version())...)
 	command.Env = append(withoutCodexHome(os.Environ()), "CODEX_HOME="+codexHome)
 	command.Stdin = strings.NewReader(key + "\n")
 	var stdout, stderr bytes.Buffer
@@ -143,4 +143,14 @@ func withoutCodexHome(env []string) []string {
 		}
 	}
 	return kept
+}
+
+// installArguments names where the key comes from. From 0.9.2 on, the image
+// tool keeps a saved key unless told the key arrives on standard input, so
+// an update never asks for it; the assistant always brings a new key.
+func installArguments(bundled string) []string {
+	if versionLess(bundled, "0.9.2") {
+		return []string{"install"}
+	}
+	return []string{"install", "--key-stdin"}
 }

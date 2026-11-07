@@ -202,6 +202,8 @@ func (s *Service) InstallImage(ctx context.Context, raw, name string) Result {
 		return s.result(ToneError, MessageImageOffline)
 	case KeyServerError:
 		return s.result(ToneError, fmt.Sprintf(MessageImageServerError, serverProblem(check.StatusCode)))
+	case KeyClockWrong, KeyUntrusted:
+		return s.result(ToneError, certificateMessage(check.State, s.Now(), "生图工具没有改动。"))
 	}
 	models, code := CheckImageModels(ctx, s.Client, s.BaseURL, key)
 	switch models {

@@ -125,6 +125,8 @@ func (s *Service) Connect(ctx context.Context, raw, name string) Result {
 		return s.result(ToneError, MessageOffline)
 	case KeyServerError:
 		return s.result(ToneError, fmt.Sprintf(MessageServerError, serverProblem(check.StatusCode)))
+	case KeyClockWrong, KeyUntrusted:
+		return s.result(ToneError, certificateMessage(check.State, s.Now(), "Codex 配置没有改动。"))
 	}
 	if s.CodexHome == "" {
 		return s.result(ToneError, writeFailed(errors.New("找不到当前用户的文件夹")))

@@ -87,6 +87,8 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 		return s.result(ToneError, MessageClaudeOffline)
 	case KeyServerError:
 		return s.result(ToneError, fmt.Sprintf(MessageClaudeServerError, serverProblem(check.StatusCode)))
+	case KeyClockWrong, KeyUntrusted:
+		return s.result(ToneError, certificateMessage(check.State, s.Now(), "Claude 配置没有改动。"))
 	}
 	ids, state, code := listModels(ctx, &client, s.BaseURL, key, claudeRequestTimeout)
 	switch state {
