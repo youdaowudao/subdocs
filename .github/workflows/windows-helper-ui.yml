@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/windows-helper-ui.yml
       - tests/windows-helper-crash/window_trace.ps1
+      - tests/windows-helper-crash/prepare_desktop.ps1
       - usegoodai-codex-installer/quick-connect/tools/css_compare.py
 permissions:
   contents: read
@@ -64,30 +65,7 @@ jobs:
       - name: 关闭测试虚拟机的首次登录隐私页面
         if: matrix.os == 'windows-11-arm'
         shell: powershell
-        run: |
-          $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OOBE'
-          New-Item -Path $policy -Force | Out-Null
-          New-ItemProperty -Path $policy -Name DisablePrivacyExperience -PropertyType DWord -Value 1 -Force | Out-Null
-          Get-Process -Name CloudExperienceHostBroker, UserOOBEBroker -ErrorAction SilentlyContinue |
-            Stop-Process -Force -ErrorAction SilentlyContinue
-          Start-Sleep -Seconds 3
-          if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
-            Start-Process explorer.exe
-            Start-Sleep -Seconds 3
-          }
-          # Also finish an already running privacy flow. Policy alone does
-          # not dismiss it on all hosted ARM images (runner-images#14069).
-          Add-Type -AssemblyName System.Windows.Forms
-          [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-          Start-Sleep -Seconds 3
-          [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-          Start-Sleep -Seconds 3
-          [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-          Start-Sleep -Seconds 2
-          Get-Process -Name explorer, winlogon, WWAHost, CloudExperienceHostBroker, UserOOBEBroker -ErrorAction SilentlyContinue |
-            Select-Object Id, ProcessName, SessionId, MainWindowTitle
-          query session
-          Get-Process | Where-Object MainWindowTitle | Select-Object Id, ProcessName, MainWindowTitle
+        run: ./tests/windows-helper-crash/prepare_desktop.ps1
       - name: 取出三版原始成品
         shell: pwsh
         run: |
@@ -117,6 +95,7 @@ jobs:
             ${{ runner.temp }}/helper-window-trace/*.json
             ${{ runner.temp }}/helper-window-trace/*.txt
             ${{ runner.temp }}/helper-window-trace/*.log
+            ${{ runner.temp }}/helper-desktop-check/
           retention-days: 14
   css:
     needs: cleanup
@@ -139,27 +118,7 @@ jobs:
       - name: 关闭测试虚拟机的首次登录隐私页面
         if: matrix.os == 'windows-11-arm'
         shell: powershell
-        run: |
-          $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OOBE'
-          New-Item -Path $policy -Force | Out-Null
-          New-ItemProperty -Path $policy -Name DisablePrivacyExperience -PropertyType DWord -Value 1 -Force | Out-Null
-          Get-Process -Name CloudExperienceHostBroker, UserOOBEBroker -ErrorAction SilentlyContinue |
-            Stop-Process -Force -ErrorAction SilentlyContinue
-          Start-Sleep -Seconds 3
-          if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
-            Start-Process explorer.exe
-            Start-Sleep -Seconds 3
-          }
-          Add-Type -AssemblyName System.Windows.Forms
-          [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-          Start-Sleep -Seconds 3
-          [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-          Start-Sleep -Seconds 3
-          [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-          Start-Sleep -Seconds 2
-          Get-Process -Name explorer, winlogon, WWAHost, CloudExperienceHostBroker, UserOOBEBroker -ErrorAction SilentlyContinue |
-            Select-Object Id, ProcessName, SessionId, MainWindowTitle
-          query session
+        run: ./tests/windows-helper-crash/prepare_desktop.ps1
       - name: 只替换 CSS 构建两版内部测试程序
         shell: pwsh
         run: python usegoodai-codex-installer/quick-connect/tools/css_compare.py
@@ -176,5 +135,6 @@ jobs:
             ${{ runner.temp }}/helper-css-trace/*.json
             ${{ runner.temp }}/helper-css-trace/*.txt
             ${{ runner.temp }}/helper-css-trace/*.log
+            ${{ runner.temp }}/helper-desktop-check/
             usegoodai-codex-installer/quick-connect/.work/css-compare/metadata.json
           retention-days: 14
