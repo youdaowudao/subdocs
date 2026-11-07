@@ -48,15 +48,24 @@ jobs:
           Start-Sleep -Seconds 3
           [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
           Start-Sleep -Seconds 2
+          Get-Process -Name explorer, winlogon, WWAHost, CloudExperienceHostBroker, UserOOBEBroker -ErrorAction SilentlyContinue |
+            Select-Object Id, ProcessName, SessionId, MainWindowTitle
+          query session
           Get-Process | Where-Object MainWindowTitle | Select-Object Id, ProcessName, MainWindowTitle
       - name: 取出三版原始成品
         shell: pwsh
         run: |
           $folder = Join-Path $env:RUNNER_TEMP 'ui-builds'
           New-Item -ItemType Directory -Force -Path $folder | Out-Null
-          foreach ($entry in @(@('1105','5267829'), @('1107-1605','053b218'), @('1.1.4','b1fa505'))) {
+          foreach ($entry in @(
+            @('1105','5267829:docs/public/download/usegoodai-quick-connect-windows-x64.exe'),
+            @('1107-1605','053b218:docs/public/download/usegoodai-quick-connect-windows-x64.exe'),
+            @('1.1.4','b1fa505:docs/public/download/usegoodai-quick-connect-windows-x64.exe'),
+            @('candidate','85cb9d2:tests/windows-helper-crash/builds/helper-candidate.exe')
+          )) {
             $path = Join-Path $folder "helper-$($entry[0]).exe"
-            cmd /c "git show $($entry[1]):docs/public/download/usegoodai-quick-connect-windows-x64.exe > `"$path`""
+            cmd /c "git show $($entry[1]) > `"$path`""
+            if ($LASTEXITCODE -ne 0) { throw "Cannot extract $($entry[0])" }
             Get-FileHash -LiteralPath $path
           }
       - name: 记录实际协议唤起、最小化还原和连续唤起后的窗口
@@ -111,6 +120,9 @@ jobs:
           Start-Sleep -Seconds 3
           [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
           Start-Sleep -Seconds 2
+          Get-Process -Name explorer, winlogon, WWAHost, CloudExperienceHostBroker, UserOOBEBroker -ErrorAction SilentlyContinue |
+            Select-Object Id, ProcessName, SessionId, MainWindowTitle
+          query session
       - name: 只替换 CSS 构建两版内部测试程序
         shell: pwsh
         run: python usegoodai-codex-installer/quick-connect/tools/css_compare.py
