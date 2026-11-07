@@ -133,6 +133,11 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
     return match ? [match[1]] : []
   }))].sort()
   assert.deepEqual(macApps, [`1.${product}.app`, '2.UseGoodAI生图工具.app', '3.Codex国产模型导入.app'].sort())
+  assert.deepEqual(
+    entries.get(`Mac-Apple芯片/1.${product}.app/Contents/Resources/install.sh`).body,
+    await readFile(new URL('docs/public/install/codex.sh', root)),
+    'the bundled Mac assistant runs the published installer',
+  )
   const nativeMac = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.1-darwin-arm64`, root))
   assert.deepEqual(entries.get('Mac-Apple芯片/2.UseGoodAI生图工具.app/Contents/Resources/tool').body, nativeMac)
   for (const app of macApps) {

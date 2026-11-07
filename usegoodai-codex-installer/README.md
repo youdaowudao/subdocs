@@ -123,6 +123,15 @@ bash tests/installers.sh
 
 检查密钥的请求全部转到 `tests/fake_usage_server.py`，不访问真实接口，也不用真实密钥。
 
+Mac 使用系统自带的 Bash 3.2 验证兼容性；其它机器可通过 `INSTALLER_TEST_BASH` 指定已有的 Bash 3.2：
+
+```bash
+INSTALLER_TEST_BASH=/bin/bash /bin/bash tests/installers.sh
+INSTALLER_TEST_LOCALE=en_US.ISO8859-1 INSTALLER_TEST_BASH=/bin/bash /bin/bash tests/installers.sh
+```
+
+第二条在 Mac 自带的非 UTF-8 语言环境下重跑，覆盖中文标点紧跟变量时的余额显示、HTTP 错误提示和 sudo 提示；Linux 使用已安装的对应语言环境，并通过 `LOCPATH` 指定本地语言环境目录。
+
 `reference/original/` 是不进 Git 的本机对照材料，没有时跳过两项参考文件检查。临时文件建在 `TMPDIR`（默认系统临时目录）。
 
 ## 部署

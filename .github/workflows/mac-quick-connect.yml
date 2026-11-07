@@ -35,6 +35,13 @@ jobs:
         working-directory: usegoodai-codex-installer/quick-connect
         run: go test -count=1 -v ./connect/ ./macapp/
 
+      - name: 用 Mac 系统 Bash 测试安装脚本
+        env:
+          INSTALLER_TEST_BASH: /bin/bash
+        run: |
+          /bin/bash tests/installers.sh
+          INSTALLER_TEST_LOCALE=en_US.ISO8859-1 /bin/bash tests/installers.sh
+
       - name: 打包
         run: python3 desktop/build.py --mac-only
 
