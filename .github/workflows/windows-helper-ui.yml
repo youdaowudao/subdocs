@@ -1,6 +1,9 @@
 name: Windows 助手界面消失排查
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/windows-helper-ui.yml
 permissions:
   contents: read
 jobs:
