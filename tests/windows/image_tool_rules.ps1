@@ -107,12 +107,14 @@ function Test-ToolCase([string]$label, [string]$codexHome, [string]$prefix, [str
     $network = if ($r.Output -match '网络已连通') { '能联网' } elseif ($r.Output -match '无法联网') { '联网被拦' } else { '未知' }
     $write = if ($r.Output -match '"name":"输出目录","ok":true') { '能写入' } elseif ($r.Output -match '"name":"输出目录","ok":false') { '写入被拦' } else { '未知' }
     $sandboxEnv = if ($r.Output -match '当前命令在 Codex 沙箱（([^）]*)）') { "沙箱变量=$($Matches[1])" } else { '无沙箱变量' }
-    Note "| $label | ``$command`` | $network | $write | $sandboxEnv |"
+    $shellName = if ($r.Ran -match '^"?([^"]+?\.exe)') { Split-Path -Leaf $Matches[1] } else { '-' }
+    Note "| $label | ``$command`` | $network | $write | $sandboxEnv | $shellName |"
     Add-Content -Path (Join-Path $WorkRoot 'details.txt') -Value "== $label`nCodex 执行：$($r.Ran)`n$($r.Output)`n" -Encoding UTF8
     return ($network -eq '能联网' -and $write -eq '能写入')
 }
 
-Note "## 沙箱设置：$Sandbox（$([Environment]::OSVersion.VersionString)）"
+Note "## 沙箱设置：$Sandbox；测试脚本运行在 PowerShell $($PSVersionTable.PSVersion)（$([Environment]::OSVersion.VersionString)）"
+Note "Codex：$(codex --version 2>&1)"
 $homes = [ordered]@{
     '默认位置'   = (Join-Path $env:USERPROFILE '.codex')
     '中文用户名' = (Join-Path $env:USERPROFILE '张三\.codex')
@@ -122,8 +124,8 @@ $prefixes = @{}
 foreach ($name in $homes.Keys) { $prefixes[$name] = Install-Into $homes[$name] }
 
 Note ''
-Note '| 情况 | Codex 收到的命令 | 联网 | 写沙箱外目录 | 沙箱变量 |'
-Note '|---|---|---|---|---|'
+Note '| 情况 | Codex 收到的命令 | 联网 | 写沙箱外目录 | 沙箱变量 | Codex 用的 shell |'
+Note '|---|---|---|---|---|---|'
 $results = [ordered]@{}
 $i = 0
 foreach ($name in $homes.Keys) {
@@ -137,13 +139,26 @@ New-Item -ItemType Directory -Force -Path (Split-Path $other) | Out-Null
 Copy-Item -LiteralPath $Tool -Destination $other -Force
 $control = Test-ToolCase '对照：未放行的同名程序' $homes['默认位置'] $other (Join-Path $outside 'probe-control')
 
+# 模型可能不照抄 Skill，换一种 PowerShell 写法；只记录结果，不算失败。
+$plainExe = $prefixes['默认位置']
+$variants = [ordered]@{
+    '写法：前面加 &'         = "& $plainExe"
+    '写法：& 加单引号路径'   = "& '$plainExe'"
+    '写法：& 加双引号路径'   = "& `"$plainExe`""
+}
+$v = 0
+foreach ($label in $variants.Keys) {
+    $v++
+    [void](Test-ToolCase $label $homes['默认位置'] $variants[$label] (Join-Path $outside "variant$v"))
+}
+
 # 解除下载锁定的规则：给程序加上下载标记，让 Codex 执行 Skill 里的修复命令。
 $defaultExe = Join-Path $homes['默认位置'] 'tools\usegoodai-imagines-tool\usegoodai-imagines-tool.exe'
 Set-Content -LiteralPath $defaultExe -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3"
 $unblockCommand = "Unblock-File -LiteralPath $($prefixes['默认位置'])"
 $r = Invoke-Codex $homes['默认位置'] $unblockCommand
 $unblocked = -not (Get-Item -LiteralPath $defaultExe -Stream Zone.Identifier -ErrorAction SilentlyContinue)
-Note "| 修复：解除下载锁定 | ``$unblockCommand`` | - | $(if ($unblocked) { '已解除' } else { '没解除' }) | - |"
+Note "| 修复：解除下载锁定 | ``$unblockCommand`` | - | $(if ($unblocked) { '已解除' } else { '没解除' }) | - | - |"
 Add-Content -Path (Join-Path $WorkRoot 'details.txt') -Value "== 解除下载锁定`nCodex 执行：$($r.Ran)`n$($r.Output)`n" -Encoding UTF8
 
 # Codex 自带的规则检查（只比较拆好的命令词，不经过 PowerShell 解析）
