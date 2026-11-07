@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -534,76 +532,6 @@ func TestConnectClaude(t *testing.T) {
 	writeFile(t, filepath.Join(service.ClaudeCLI.Home, ".claude", "settings.json"), `{"env":{"ANTHROPIC_BASE_URL":"https://other.example","ANTHROPIC_AUTH_TOKEN":"x"}}`)
 	if changed, err := RestoreClaudeCode(service.ClaudeCLI, fixedTime); changed || err != nil {
 		t.Fatalf("other service: %v %v", changed, err)
-	}
-}
-
-func TestConnectClaudeOnlyOpusWithSlowDiscovery(t *testing.T) {
-	for _, slowPath := range []string{"/v1/usage", "/v1/models"} {
-		t.Run(slowPath, func(t *testing.T) {
-			t.Parallel()
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodGet || r.URL.RawQuery != "" || r.ContentLength > 0 ||
-					r.Header.Get("Authorization") != "Bearer "+fixtureKey {
-					t.Error("discovery must use authenticated GET requests without a model or body")
-				}
-				if r.URL.Path == slowPath {
-					select {
-					case <-time.After(11 * time.Second):
-					case <-r.Context().Done():
-						return
-					}
-				}
-				switch r.URL.Path {
-				case "/v1/usage":
-					_, _ = w.Write([]byte(`{"isValid":true,"remaining":3}`))
-				case "/v1/models":
-					_, _ = w.Write([]byte(`{"data":[{"id":"claude-opus-5-5"}]}`))
-				default:
-					t.Errorf("unexpected endpoint: %s", r.URL.Path)
-					http.NotFound(w, r)
-				}
-			}))
-			t.Cleanup(server.Close)
-			service, stops := newClaudeService(t, `{}`, `{}`)
-			service.BaseURL = server.URL
-			result := service.ConnectClaude(context.Background(), fixtureKey, "")
-			if result.Tone != ToneSuccess || result.Claude.State != ClaudeUseGoodAI || *stops != 1 {
-				t.Fatalf("only Opus after slow %s: %+v stops %d", slowPath, result, *stops)
-			}
-			if got := readJSON(t, service.Claude.profilePath())["inferenceModels"]; !reflect.DeepEqual(got, []any{"claude-opus-5-5"}) {
-				t.Fatalf("models: %v", got)
-			}
-			if service.Client.Timeout != usageTimeout {
-				t.Fatal("Claude changed the shared client's timeout")
-			}
-		})
-	}
-}
-
-func TestConnectClaudeTimeoutStage(t *testing.T) {
-	for _, slowPath := range []string{"/v1/usage", "/v1/models"} {
-		t.Run(slowPath, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == slowPath {
-					<-r.Context().Done()
-					return
-				}
-				_, _ = w.Write([]byte(`{"isValid":true,"remaining":3}`))
-			}))
-			t.Cleanup(server.Close)
-			service, stops := newClaudeService(t, `{}`, `{}`)
-			service.BaseURL = server.URL
-			ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-			defer cancel()
-			result := service.ConnectClaude(ctx, fixtureKey, "")
-			want := MessageClaudeTimeout
-			if slowPath == "/v1/models" {
-				want = MessageClaudeModelsTimeout
-			}
-			if result.Tone != ToneError || result.Message != want || *stops != 0 || fileExists(service.Claude.profilePath()) {
-				t.Fatalf("timeout: %+v stops %d", result, *stops)
-			}
-		})
 	}
 }
 

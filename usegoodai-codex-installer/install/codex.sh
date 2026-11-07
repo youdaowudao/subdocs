@@ -505,7 +505,7 @@ obtain_api_key() {
         ;;
       server_error)
         if [ -n "$key_http" ]; then
-          say "UseGoodAI 服务器暂时出错（HTTP $key_http），暂时无法检查密钥，继续写入。"
+          say "UseGoodAI 服务器暂时出错（HTTP ${key_http}），暂时无法检查密钥，继续写入。"
         else
           say "UseGoodAI 服务器暂时出错（返回内容异常），暂时无法检查密钥，继续写入。"
         fi
@@ -515,7 +515,7 @@ obtain_api_key() {
         ;;
       *)
         if [ -n "$key_balance" ]; then
-          say "密钥检查通过，余额 \$$key_balance。"
+          say "密钥检查通过，余额 \$${key_balance}。"
         else
           say "密钥检查通过。"
         fi
@@ -649,7 +649,7 @@ main() {
   done
 
   if [ "$(id -u)" -eq 0 ]; then
-    say "请不要用 sudo 运行。脚本只应该写入当前用户的 $CODEX_HOME。"
+    say "请不要用 sudo 运行。脚本只应该写入当前用户的 ${CODEX_HOME}。"
     exit 1
   fi
 

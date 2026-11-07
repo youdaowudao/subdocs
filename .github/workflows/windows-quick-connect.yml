@@ -1,7 +1,7 @@
 # Windows 版 UseGoodAI中转快速接入助手：在 GitHub 的 Windows 机器上测试仓库里要发布的 exe。
-# 先跑 Windows 原生的 Go 测试，再实际打开窗口：第一次打开、再次打开由新窗口接管、
-# 旧窗口卡死时接管、旧版 1.1.3 运行时接管。Windows 上的测试都在这里跑。
-# 不使用任何密钥或 Secrets，导入链接里只有假密钥，启动记录里不能出现它。
+# 先跑 Windows 原生的 Go 测试，再实际打开窗口：第一次打开、再次打开、网站导入链接
+# 交给已开的窗口、没有窗口时用链接打开、上一稳定版运行时打开新版，窗口都要一直留着。
+# 不使用任何密钥或 Secrets，导入链接里只有假密钥。
 name: Windows 快速接入助手测试
 
 on:
@@ -53,13 +53,12 @@ jobs:
             -Previous docs/public/download/previous/usegoodai-quick-connect-windows-x64.exe `
             -Version $version
 
-      - name: 保存启动记录和截图
+      - name: 保存截图
         if: always()
         uses: actions/upload-artifact@v5
         with:
           name: windows-smoke-${{ matrix.os }}
           path: |
             ${{ runner.temp }}/helper-smoke/*.png
-            ${{ runner.temp }}/helper-smoke/startup.log
           if-no-files-found: ignore
           retention-days: 14

@@ -60,11 +60,7 @@ func NewHTTPClient() *http.Client {
 // CheckKey asks the usage endpoint under baseURL about key. Production code
 // always passes BaseURL; tests pass a local fake server.
 func CheckKey(ctx context.Context, client *http.Client, baseURL, key string) KeyCheck {
-	return checkKey(ctx, client, baseURL, key, usageTimeout)
-}
-
-func checkKey(ctx context.Context, client *http.Client, baseURL, key string, timeout time.Duration) KeyCheck {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(ctx, usageTimeout)
 	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+usagePath, nil)
 	if err != nil {

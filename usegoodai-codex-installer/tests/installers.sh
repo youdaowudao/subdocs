@@ -3,6 +3,12 @@ set -u
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SHELL_SCRIPT="$ROOT_DIR/install/codex.sh"
+INSTALLER_TEST_BASH="${INSTALLER_TEST_BASH:-bash}"
+if [ -n "${INSTALLER_TEST_LOCALE:-}" ] &&
+   ! LC_ALL="$INSTALLER_TEST_LOCALE" locale charmap >/dev/null 2>&1; then
+  printf '测试语言环境不可用：%s\n' "$INSTALLER_TEST_LOCALE" >&2
+  exit 1
+fi
 POWERSHELL_SCRIPT="$ROOT_DIR/install/codex.ps1"
 README_FILE="$ROOT_DIR/README.md"
 REFERENCE_SHELL_SCRIPT="$ROOT_DIR/reference/original/codex.sh"
@@ -71,7 +77,7 @@ make_test_path() {
   cat > "$bin_dir/id" <<'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = "-u" ]; then
-  printf '1000\n'
+  printf '%s\n' "${USEGOODAI_TEST_UID:-1000}"
 else
   /usr/bin/id "$@"
 fi
@@ -196,7 +202,7 @@ run_shell_script() {
       done
     }
     export -f kill
-    printf '%b' "$input" | env HOME="$home_dir" PATH="$bin_dir:$PATH" USEGOODAI_TEST_KILL_LOG="$home_dir/kill.log" bash "$SHELL_SCRIPT" "${@:4}" > "$output_file" 2>&1
+    printf '%b' "$input" | env HOME="$home_dir" PATH="$bin_dir:$PATH" LC_ALL="${INSTALLER_TEST_LOCALE:-${LC_ALL:-}}" USEGOODAI_TEST_KILL_LOG="$home_dir/kill.log" "$INSTALLER_TEST_BASH" "$SHELL_SCRIPT" "${@:4}" > "$output_file" 2>&1
   )
 }
 
@@ -284,6 +290,20 @@ if [ -f "$REFERENCE_POWERSHELL_SCRIPT" ] || [ -f "$REFERENCE_SHELL_SCRIPT" ]; th
   fi
 else
   printf 'SKIP: 本机没有 reference/original，跳过原始参考文件检查\n'
+fi
+
+sudo_home="$TEST_ROOT/sudo-home"
+mkdir -p "$sudo_home"
+USEGOODAI_TEST_UID=0 run_shell_script "$sudo_home" '' "$sudo_home/output.txt"
+sudo_status=$?
+if [ "$sudo_status" -eq 1 ] &&
+   grep -Fq -- "请不要用 sudo 运行。脚本只应该写入当前用户的 $sudo_home/.codex。" "$sudo_home/output.txt" &&
+   ! grep -Fq 'unbound variable' "$sudo_home/output.txt" &&
+   [ ! -e "$sudo_home/.codex" ] && [ ! -s "$sudo_home/kill.log" ]; then
+  pass "sudo 运行时显示完整路径并退出，不写配置或关闭客户端"
+else
+  fail "sudo 运行时显示完整路径并退出，不写配置或关闭客户端"
+  cat "$sudo_home/output.txt"
 fi
 
 new_home="$TEST_ROOT/new-home"
@@ -721,9 +741,9 @@ for runner in run_shell_script run_powershell_script; do
        grep -Fq '配置已经完成' "$home/output.txt" &&
        grep -Fq 'sandbox_mode = "danger-full-access"' "$home/.codex/config.toml" &&
        [ "$(find "$home/.codex" -name '.codex-global-state.json*' | wc -l)" -eq 1 ]; then
-      pass "$name App 状态文件无法识别（$broken）时不动它，配置照常完成"
+      pass "$name App 状态文件无法识别（${broken}）时不动它，配置照常完成"
     else
-      fail "$name App 状态文件无法识别（$broken）时不动它，配置照常完成"
+      fail "$name App 状态文件无法识别（${broken}）时不动它，配置照常完成"
       sed -n '1,40p' "$home/output.txt"
     fi
   done

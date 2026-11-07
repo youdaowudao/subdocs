@@ -3,7 +3,6 @@ package connect
 import (
 	"context"
 	"fmt"
-	"time"
 )
 
 // ClaudeStopResult tells whether Claude Desktop was running and whether it
@@ -13,33 +12,26 @@ type ClaudeStopResult struct {
 	Left  bool
 }
 
-const claudeRequestTimeout = 20 * time.Second
-
-const messageClaudeGroupRetry = "也可能是当前分组暂时没有可用模型，可到网站切换其他 Claude 分组后重新导入。"
-
 // Messages for Claude Desktop and the Claude Code CLI.
 const (
-	MessageClaudeEmpty             = "还没有输入密钥。到 UseGoodAI 网站的「API 密钥」页选一个密钥，点「一键导入 Claude」；或复制密钥粘贴到上面，再点「一键连接 Claude」。"
-	MessageClaudeNotInstalled      = "没检测到 Claude 桌面版。先点上面的「官网下载」安装（打不开官网就进 QQ 群在群文件下载），装好后再点「一键连接 Claude」。"
-	MessageClaudeRejected          = "密钥无效，请回网站重新复制完整的密钥。Claude 配置没有改动。"
-	MessageClaudeDisabled          = "这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。Claude 配置没有改动。"
-	MessageClaudeTimeout           = "检查密钥超时：20 秒内未完成检查。Claude 配置没有改动。" + messageClaudeGroupRetry
-	MessageClaudeOffline           = "检查密钥时无法连接 UseGoodAI 服务器。Claude 配置没有改动。" + messageClaudeGroupRetry
-	MessageClaudeServerError       = "UseGoodAI 服务器暂时出错（%s），无法确认密钥。Claude 配置没有改动。" + messageClaudeGroupRetry + "仍不行请进 QQ 群联系客服。"
-	MessageClaudeModelsTimeout     = "密钥检查已通过，但获取 Claude 模型列表超时：20 秒内未完成查询。Claude 配置没有改动。" + messageClaudeGroupRetry
-	MessageClaudeModelsOffline     = "密钥检查已通过，但获取 Claude 模型列表时无法连接 UseGoodAI 服务器。Claude 配置没有改动。" + messageClaudeGroupRetry
-	MessageClaudeModelsServerError = "密钥检查已通过，但获取 Claude 模型列表失败（%s）。Claude 配置没有改动。" + messageClaudeGroupRetry + "仍不行请进 QQ 群联系客服。"
-	MessageClaudeNoModel           = "当前分组暂时没有可用的 Claude 模型。Claude 配置没有改动。请到网站切换其他 Claude 分组后重新导入。"
-	MessageClaudeNeedBalance       = "密钥没问题，但账户余额为 $0：余额为 0 时服务器不让查询这个密钥能用哪些 Claude 模型。充值后再点「一键连接 Claude」，新人进群领 2 元。Claude 配置没有改动。"
-	MessageClaudeNoBalance         = "已连接 UseGoodAI，写入了 %d 个 Claude 模型，但余额为 $0，充值后才能用；新人进群领 2 元。"
-	MessageClaudeClosed            = "Claude 已关闭，重新打开即可，新建对话，发送“测试”。"
-	MessageClaudeNotClosed         = "没能自动关闭 Claude，请从右下角托盘彻底退出后重新打开，新建对话，发送“测试”。"
-	MessageClaudeOpen              = "打开 Claude，新建对话，发送“测试”。"
-	MessageClaudeRestored          = "已恢复官方登录，重新打开 Claude 后用官方账号登录。"
-	MessageClaudeRestoredOpen      = "已恢复官方登录，但没能自动关闭 Claude，请从右下角托盘彻底退出后重新打开，用官方账号登录。"
-	MessageClaudeCodeRestored      = "Claude Code CLI 也已取消 UseGoodAI 连接，新开终端运行 claude 后用官方账号登录。"
-	MessageClaudeCodeConnected     = "Claude Code CLI 也已接入 ✓ 新开一个终端运行 claude 即可。"
-	MessageClaudeCodeFailed        = "Claude Code CLI 接入失败：%s。Claude 桌面版不受影响，可以再点一次「一键连接 Claude」。"
+	MessageClaudeEmpty         = "还没有输入密钥。到 UseGoodAI 网站的「API 密钥」页选一个密钥，点「一键导入 Claude」；或复制密钥粘贴到上面，再点「一键连接 Claude」。"
+	MessageClaudeNotInstalled  = "没检测到 Claude 桌面版。先点上面的「官网下载」安装（打不开官网就进 QQ 群在群文件下载），装好后再点「一键连接 Claude」。"
+	MessageClaudeRejected      = "密钥无效，请回网站重新复制完整的密钥。Claude 配置没有改动。"
+	MessageClaudeDisabled      = "这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。Claude 配置没有改动。"
+	MessageClaudeTimeout       = "网络超时：UseGoodAI 服务器 10 秒内没有回应。Claude 配置没有改动。网络慢或开了代理时，稍后再点一次。"
+	MessageClaudeOffline       = "连不上 UseGoodAI 服务器：网络不通，或被代理、防火墙拦截。Claude 配置没有改动。检查网络后再点一次。"
+	MessageClaudeServerError   = "UseGoodAI 服务器暂时出错（%s），无法确认密钥。Claude 配置没有改动。稍后再点一次，仍不行请进 QQ 群联系客服。"
+	MessageClaudeNoModel       = "这个密钥的分组没有可用的 Claude 模型。请到网站换一个能用 Claude 的分组的密钥。Claude 配置没有改动。"
+	MessageClaudeNeedBalance   = "密钥没问题，但账户余额为 $0：余额为 0 时服务器不让查询这个密钥能用哪些 Claude 模型。充值后再点「一键连接 Claude」，新人进群领 2 元。Claude 配置没有改动。"
+	MessageClaudeNoBalance     = "已连接 UseGoodAI，写入了 %d 个 Claude 模型，但余额为 $0，充值后才能用；新人进群领 2 元。"
+	MessageClaudeClosed        = "Claude 已关闭，重新打开即可，新建对话，发送“测试”。"
+	MessageClaudeNotClosed     = "没能自动关闭 Claude，请从右下角托盘彻底退出后重新打开，新建对话，发送“测试”。"
+	MessageClaudeOpen          = "打开 Claude，新建对话，发送“测试”。"
+	MessageClaudeRestored      = "已恢复官方登录，重新打开 Claude 后用官方账号登录。"
+	MessageClaudeRestoredOpen  = "已恢复官方登录，但没能自动关闭 Claude，请从右下角托盘彻底退出后重新打开，用官方账号登录。"
+	MessageClaudeCodeRestored  = "Claude Code CLI 也已取消 UseGoodAI 连接，新开终端运行 claude 后用官方账号登录。"
+	MessageClaudeCodeConnected = "Claude Code CLI 也已接入 ✓ 新开一个终端运行 claude 即可。"
+	MessageClaudeCodeFailed    = "Claude Code CLI 接入失败：%s。Claude 桌面版不受影响，可以再点一次「一键连接 Claude」。"
 )
 
 // ClaudeStatus reads the Claude card.
@@ -72,10 +64,7 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 	if !s.Claude.Installed() {
 		return s.result(ToneError, MessageClaudeNotInstalled)
 	}
-	// Both the client and each request's context must allow the longer wait.
-	client := *s.Client
-	client.Timeout = claudeRequestTimeout
-	check := checkKey(ctx, &client, s.BaseURL, key, claudeRequestTimeout)
+	check := CheckKey(ctx, s.Client, s.BaseURL, key)
 	switch check.State {
 	case KeyRejected:
 		return s.result(ToneError, MessageClaudeRejected)
@@ -88,7 +77,7 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 	case KeyServerError:
 		return s.result(ToneError, fmt.Sprintf(MessageClaudeServerError, serverProblem(check.StatusCode)))
 	}
-	ids, state, code := listModels(ctx, &client, s.BaseURL, key, claudeRequestTimeout)
+	ids, state, code := ListModels(ctx, s.Client, s.BaseURL, key)
 	switch state {
 	case ModelsNoBalance:
 		return s.result(ToneError, MessageClaudeNeedBalance)
@@ -98,11 +87,11 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 		}
 		return s.result(ToneError, MessageClaudeRejected)
 	case ModelsTimeout:
-		return s.result(ToneError, MessageClaudeModelsTimeout)
+		return s.result(ToneError, MessageClaudeTimeout)
 	case ModelsOffline:
-		return s.result(ToneError, MessageClaudeModelsOffline)
+		return s.result(ToneError, MessageClaudeOffline)
 	case ModelsServerError:
-		return s.result(ToneError, fmt.Sprintf(MessageClaudeModelsServerError, serverProblem(code)))
+		return s.result(ToneError, fmt.Sprintf(MessageClaudeServerError, serverProblem(code)))
 	}
 	models := ClaudeDesktopModels(ids)
 	if len(models) == 0 {

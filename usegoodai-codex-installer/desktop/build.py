@@ -32,7 +32,7 @@ ASSISTANT_TOOL = "1." + ASSISTANT
 # Same identifier as the former "1.Codex接入配置", so the permission to
 # control Terminal carries over.
 ASSISTANT_IDENTIFIER = "com.usegoodai.codex-config"
-ASSISTANT_VERSION = "1.1.4"
+ASSISTANT_VERSION = "1.1.5"
 WINDOWS_DOWNLOAD = "usegoodai-quick-connect-windows-x64.exe"
 MAC_DOWNLOAD = "usegoodai-quick-connect-mac-arm64.zip"
 

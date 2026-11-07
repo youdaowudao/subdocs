@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -17,32 +16,14 @@ import (
 	"usegoodai-quick-connect/connect"
 )
 
-// singleInstanceID keeps one window per user; the newest launch takes over
-// (see takeover.go and instance_windows.go).
+// singleInstanceID keeps one window per user; later launches hand their
+// link to it.
 const singleInstanceID = "usegoodai-quick-connect-5c0f2a7e"
 
 func main() {
-	log := openStartupLog(webviewDataPath())
-	log.captureCrashes()
-	log.printf("启动 %s", connect.Version)
-	defer func() {
-		if failure := recover(); failure != nil {
-			log.printf("出错退出：%v", failure)
-			showError(fmt.Sprintf("助手出错退出：%v\n\n记录在：%s", failure, log.path))
-			os.Exit(2)
-		}
-	}()
-	// A busy running window comes to the front instead of this launch.
+	// A link opened while the window exists starts a second process that only
+	// forwards the link. Let the running window take the foreground.
 	allowAnyForegroundWindow()
-	keep, err := claimInstance(log)
-	if err != nil {
-		log.printf("没有打开：%v", err)
-		showError(err.Error())
-		os.Exit(1)
-	}
-	if !keep {
-		os.Exit(0)
-	}
 
 	codexHome, _ := connect.CodexHome()
 	imageHome, _ := connect.ImageCodexHome()
@@ -70,11 +51,8 @@ func main() {
 	service.ClaudeCLI = connect.ClaudeCode{Home: userHome, AppData: roamingAppData}
 	service.StopClaude = connect.StopClaudeDesktop
 	app := newApp(service, connect.FindImportLink(os.Args[1:]))
-	if err := listenForLaunches(app); err != nil {
-		log.printf("后来打开的助手找不到本窗口：%v", err)
-	}
 
-	err = wails.Run(&options.App{
+	err := wails.Run(&options.App{
 		Title:              connect.ProductName,
 		Width:              420,
 		Height:             690,
@@ -86,6 +64,10 @@ func main() {
 		Logger:             logger.NewDefaultLogger(),
 		LogLevel:           logger.ERROR,
 		LogLevelProduction: logger.ERROR,
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               singleInstanceID,
+			OnSecondInstanceLaunch: app.secondInstance,
+		},
 		Windows: &windows.Options{
 			Theme:               windows.Light,
 			WebviewUserDataPath: webviewDataPath(),
@@ -93,11 +75,9 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.printf("窗口没有打开：%v", err)
 		showError(err.Error())
 		os.Exit(1)
 	}
-	log.printf("正常退出")
 }
 
 // showError makes a failed start visible instead of a silent exit.
