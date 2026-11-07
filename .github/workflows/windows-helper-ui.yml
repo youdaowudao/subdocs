@@ -21,6 +21,24 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # The hosted ARM image can stay on its first-login privacy desktop.
+      # Without dismissing it, window existence checks give false confidence:
+      # https://github.com/actions/runner-images/issues/14069
+      - name: 关闭测试虚拟机的首次登录隐私页面
+        if: matrix.os == 'windows-11-arm'
+        shell: pwsh
+        run: |
+          $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OOBE'
+          New-Item -Path $policy -Force | Out-Null
+          New-ItemProperty -Path $policy -Name DisablePrivacyExperience -PropertyType DWord -Value 1 -Force | Out-Null
+          Get-Process -Name CloudExperienceHostBroker, UserOOBEBroker -ErrorAction SilentlyContinue |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 3
+          if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
+            Start-Process explorer.exe
+            Start-Sleep -Seconds 3
+          }
+          Get-Process | Where-Object MainWindowTitle | Select-Object Id, ProcessName, MainWindowTitle
       - name: 取出三版原始成品
         shell: pwsh
         run: |
