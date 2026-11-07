@@ -1,0 +1,68 @@
+# Windows 版生图工具：检查安装后写入的 Codex 放行规则在真实 Codex 里是否生效。
+# 安装发布版生图工具（假 Key），用本地假模型服务器让 Codex 执行 Skill 里的命令，
+# 看命令是否离开沙箱（能联网、能写沙箱外目录），并用未放行的同名程序做对照。
+# 不使用任何密钥或 Secrets。
+name: Windows 生图工具放行规则测试
+
+on:
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: 要测试的 Windows 生图工具 exe（仓库内路径）
+        required: false
+        default: docs/public/install/usegoodai-imagines-tool/releases/v0.9.1/usegoodai-imagines-tool-v0.9.1-windows-amd64.exe
+  push:
+    paths:
+      - docs/public/install/usegoodai-imagines-tool/**
+      - tests/windows/**
+      - .github/workflows/windows-image-tool.yml
+
+permissions:
+  contents: read
+
+jobs:
+  rules:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+        sandbox: [default, unelevated, elevated]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      TOOL: ${{ inputs.tool || 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.1/usegoodai-imagines-tool-v0.9.1-windows-amd64.exe' }}
+    steps:
+      - name: 检出时保留原始换行
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: 安装 Codex CLI
+        shell: pwsh
+        run: |
+          npm install -g @openai/codex@latest
+          codex --version
+
+      - name: 让 Codex 执行生图命令
+        shell: pwsh
+        run: ./tests/windows/image_tool_rules.ps1 -Tool $env:TOOL -Sandbox ${{ matrix.sandbox }}
+
+      - name: 保存结果
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: image-rules-${{ matrix.os }}-${{ matrix.sandbox }}
+          path: |
+            ${{ runner.temp }}/image-rules/report.md
+            ${{ runner.temp }}/image-rules/details.txt
+            ${{ runner.temp }}/image-rules/exec.err
+            ${{ runner.temp }}/image-rules/mock.err
+            ${{ runner.temp }}/image-rules/mock-log/
+          if-no-files-found: ignore
+          retention-days: 14
