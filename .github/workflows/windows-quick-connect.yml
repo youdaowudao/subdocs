@@ -24,6 +24,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
+      # 测试拿仓库里的期望文件逐字节比较，检出时不能改成 Windows 换行。
+      - name: 检出时保留原始换行
+        run: git config --global core.autocrlf false
+
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
@@ -40,6 +44,7 @@ jobs:
         run: go test -count=1 ./...
 
       - name: 实际打开助手
+        if: ${{ !cancelled() }}
         shell: pwsh
         run: |
           $version = (Select-String -Path usegoodai-codex-installer/quick-connect/connect/product.go -Pattern 'Version\s+=\s+"([^"]+)"').Matches[0].Groups[1].Value

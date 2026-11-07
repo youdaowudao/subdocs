@@ -23,6 +23,7 @@ const singleInstanceID = "usegoodai-quick-connect-5c0f2a7e"
 
 func main() {
 	log := openStartupLog(webviewDataPath())
+	log.captureCrashes()
 	log.printf("启动 %s", connect.Version)
 	defer func() {
 		if failure := recover(); failure != nil {

@@ -25,8 +25,9 @@ const (
 )
 
 // openStartupLog appends to startup.log in directory, keeping one older
-// file once it grows past the limit. A crash report of the Go runtime is
-// written to the same file. It never fails: without a file it logs nothing.
+// file once it grows past the limit. It never fails: without a file it logs
+// nothing. Windows cannot rename the file while another running helper
+// still has it open; the old file is then kept until a later launch.
 func openStartupLog(directory string) *startupLog {
 	log := &startupLog{}
 	if directory == "" || os.MkdirAll(directory, 0o700) != nil {
@@ -42,8 +43,15 @@ func openStartupLog(directory string) *startupLog {
 		return log
 	}
 	log.file = file
-	_ = debug.SetCrashOutput(file, debug.CrashOptions{})
 	return log
+}
+
+// captureCrashes writes the Go runtime's crash report to the same file, for
+// a crash the window can no longer show.
+func (l *startupLog) captureCrashes() {
+	if l != nil && l.file != nil {
+		_ = debug.SetCrashOutput(l.file, debug.CrashOptions{})
+	}
 }
 
 func (l *startupLog) printf(format string, arguments ...any) {
