@@ -56,8 +56,14 @@ jobs:
         shell: cmd
         run: move "C:\Program Files\PowerShell\7" "C:\Program Files\PowerShell\7-hidden"
 
-      - name: 让 Codex 执行生图命令
-        shell: ${{ matrix.shell }}
+      - name: 让 Codex 执行生图命令（PowerShell 7）
+        if: matrix.shell == 'pwsh'
+        shell: pwsh
+        run: ./tests/windows/image_tool_rules.ps1 -Tool $env:TOOL -Sandbox ${{ matrix.sandbox }}
+
+      - name: 让 Codex 执行生图命令（Windows PowerShell 5.1）
+        if: matrix.shell == 'powershell'
+        shell: powershell
         run: ./tests/windows/image_tool_rules.ps1 -Tool $env:TOOL -Sandbox ${{ matrix.sandbox }}
 
       - name: 保存结果
