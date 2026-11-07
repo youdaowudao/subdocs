@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - .github/workflows/windows-helper-ui.yml
+      - tests/windows-helper-crash/window_trace.ps1
 permissions:
   contents: read
 jobs:

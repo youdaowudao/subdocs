@@ -1,4 +1,4 @@
-# Check the actual usegoodai:// registry entry and visible desktop windows,
+﻿# Check the actual usegoodai:// registry entry and visible desktop windows,
 # rather than treating a live process/MainWindowHandle as a visible UI.
 param([Parameter(Mandatory = $true)][string]$Folder)
 $ErrorActionPreference = 'Stop'
