@@ -141,3 +141,31 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
   assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.1/)
   assert.ok(![...entries.keys()].some((name) => /SHA256SUMS|来源记录/.test(name)))
 })
+
+test('previous stable tool set and helper stay downloadable beside the current ones', async () => {
+  const rules = await headerRules()
+  const attachment = (path) => {
+    const lines = rules.get(path)
+    assert.ok(lines, path)
+    const disposition = lines.find((line) => /^content-disposition:/i.test(line))
+    return decodeURIComponent(disposition.match(/filename\*=UTF-8''([^;\s]+)/)[1])
+  }
+  assert.ok(rules.get('/download/previous/usegoodai-tools.zip').includes('Content-Type: application/zip'))
+  const zipFile = attachment('/download/previous/usegoodai-tools.zip')
+  const stamp = zipFile.match(/^中转站快速导入工具_(\d{8}-\d{4})\.zip$/)?.[1]
+  assert.ok(stamp, zipFile)
+  assert.notEqual(zipFile, attachment('/download/usegoodai-tools.zip'))
+  assert.equal(attachment(`/download/previous/${exeName}`), `${product}_${stamp}.exe`)
+
+  const data = await readFile(new URL('docs/public/download/previous/usegoodai-tools.zip', root))
+  assert.ok(data.length <= limit, `${data.length} bytes`)
+  const entries = readZip(data)
+  const window = entries.get(`Windows-x64/1.${product}.exe`).body
+  assert.deepEqual(window, await readFile(new URL(`docs/public/download/previous/${exeName}`, root)))
+  const release = 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.0/'
+  const nativeWindows = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.0-windows-amd64.exe`, root))
+  assert.ok(window.includes(nativeWindows), 'the previous helper embeds the previous native image tool')
+  const nativeMac = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.0-darwin-arm64`, root))
+  assert.deepEqual(entries.get('Mac-Apple芯片/2.UseGoodAI生图工具.app/Contents/Resources/tool').body, nativeMac)
+  assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.0/)
+})

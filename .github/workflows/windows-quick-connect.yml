@@ -1,0 +1,65 @@
+# Windows 版 UseGoodAI中转快速接入助手：在 GitHub 的 Windows 机器上测试仓库里要发布的 exe。
+# 先跑 Windows 原生的 Go 测试，再实际打开窗口：第一次打开、再次打开由新窗口接管、
+# 旧窗口卡死时接管、旧版 1.1.3 运行时接管。Windows 上的测试都在这里跑。
+# 不使用任何密钥或 Secrets，导入链接里只有假密钥，启动记录里不能出现它。
+name: Windows 快速接入助手测试
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - usegoodai-codex-installer/quick-connect/**
+      - docs/public/download/**
+      - .github/workflows/windows-quick-connect.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      # 测试拿仓库里的期望文件逐字节比较，检出时不能改成 Windows 换行。
+      - name: 检出时保留原始换行
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: usegoodai-codex-installer/quick-connect/go.mod
+          cache: false
+
+      - name: Go 测试（Windows 原生）
+        working-directory: usegoodai-codex-installer/quick-connect
+        env:
+          QUICK_CONNECT_EXE: ${{ github.workspace }}\docs\public\download\usegoodai-quick-connect-windows-x64.exe
+        run: go test -count=1 ./...
+
+      - name: 实际打开助手
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path usegoodai-codex-installer/quick-connect/connect/product.go -Pattern 'Version\s+=\s+"([^"]+)"').Matches[0].Groups[1].Value
+          ./usegoodai-codex-installer/quick-connect/tools/windows_smoke.ps1 `
+            -New docs/public/download/usegoodai-quick-connect-windows-x64.exe `
+            -Previous docs/public/download/previous/usegoodai-quick-connect-windows-x64.exe `
+            -Version $version
+
+      - name: 保存启动记录和截图
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: windows-smoke-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/helper-smoke/*.png
+            ${{ runner.temp }}/helper-smoke/startup.log
+          if-no-files-found: ignore
+          retention-days: 14

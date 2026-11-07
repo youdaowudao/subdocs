@@ -3,6 +3,7 @@ package connect
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -133,6 +134,9 @@ func TestRestoreRollsBackConfigWhenAuthFails(t *testing.T) {
 func TestRestoreReportsInspectionErrors(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores folder permissions")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not lock a folder through permission bits")
 	}
 	parent := t.TempDir()
 	codexHome := filepath.Join(parent, ".codex")
