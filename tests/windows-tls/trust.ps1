@@ -10,12 +10,24 @@ $docs = "https://docs.usegoodai.com/install/helper.ps1"
 $api = "https://api.usegoodai.com/v1/usage"
 $rows = New-Object System.Collections.Generic.List[string]
 
+# 用 -EncodedCommand 传给新的 Windows PowerShell 5.1 进程，避免命令里的引号被改写。
+function Invoke-Child([string]$Command) {
+  $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Command))
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    return (& powershell.exe -NoProfile -EncodedCommand $encoded | Out-String).Trim()
+  } finally {
+    $ErrorActionPreference = $previous
+  }
+}
+
 function Invoke-Probes([string]$Label) {
   $irm = 'try { $r = Invoke-RestMethod -Uri "' + $docs + '" -TimeoutSec 20; "OK " + $r.Length + " chars" } catch { "ERR " + $_.Exception.Message }'
   $iwr = 'try { Invoke-WebRequest -UseBasicParsing -Uri "' + $api + '" -TimeoutSec 20 | Out-Null; "OK" } catch { "ERR " + $_.Exception.Message }'
-  $irmResult = (& powershell.exe -NoProfile -Command $irm 2>&1 | Out-String).Trim()
-  $iwrResult = (& powershell.exe -NoProfile -Command $iwr 2>&1 | Out-String).Trim()
-  $goResult = (& $Probe $docs $api 2>&1 | Out-String).Trim()
+  $irmResult = Invoke-Child $irm
+  $iwrResult = Invoke-Child $iwr
+  $goResult = (& $Probe $docs $api | Out-String).Trim()
   Write-Host "=== $Label（本机时间 $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')）"
   Write-Host "PS5 irm docs : $irmResult"
   Write-Host "PS5 iwr api  : $iwrResult"
@@ -67,8 +79,9 @@ switch ($Scenario) {
       if ($found.Count -gt 0) {
         $saved[$subject] = $found[0].RawData
       }
+      # 第三方根证书同时出现在 AuthRoot 和 Root 两个视图里，删掉一处另一处也没了。
       foreach ($certificate in $found) {
-        Remove-Item -LiteralPath $certificate.PSPath -Force
+        Remove-Item -LiteralPath $certificate.PSPath -Force -ErrorAction SilentlyContinue
       }
       Write-Host ("删除后 {0}: {1} 份" -f $subject, (Get-Roots $subject).Count)
     }
