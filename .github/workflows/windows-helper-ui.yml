@@ -100,7 +100,7 @@ jobs:
         run: python usegoodai-codex-installer/quick-connect/tools/css_compare.py
       - name: 同机比较旧 CSS 和新 CSS 的窗口轨迹
         shell: powershell
-        run: ./tests/windows-helper-crash/window_trace.ps1 -Folder usegoodai-codex-installer/quick-connect/.work/css-compare/builds -WorkName helper-css-trace
+        run: ./tests/windows-helper-crash/window_trace.ps1 -Folder usegoodai-codex-installer/quick-connect/.work/css-compare/builds -WorkName helper-css-trace -ExerciseLayout
       - name: 保存 CSS 对照证据
         if: always()
         uses: actions/upload-artifact@v5

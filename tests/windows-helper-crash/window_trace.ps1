@@ -2,7 +2,8 @@
 # rather than treating a live process/MainWindowHandle as a visible UI.
 param(
   [Parameter(Mandatory = $true)][string]$Folder,
-  [string]$WorkName = 'helper-window-trace'
+  [string]$WorkName = 'helper-window-trace',
+  [switch]$ExerciseLayout
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
@@ -32,6 +33,7 @@ public static class WindowTrace {
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
   [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hwnd, int command);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int width, int height, uint flags);
   public static State[] Windows() {
     var states = new List<State>();
     IntPtr foreground = GetForegroundWindow();
@@ -171,6 +173,16 @@ try {
     Browser-ToFront
     1..3 | ForEach-Object { Start-Process -FilePath $link; Start-Sleep -Milliseconds 100 }
     Watch-UI 20
+    if ($ExerciseLayout) {
+      # Exercise the media query and scrolling changes on the very same
+      # native window, rather than comparing only identical default layouts.
+      Begin-Phase 'small-viewport'
+      $ids = @(Helpers | ForEach-Object { $_.Id })
+      foreach ($window in [WindowTrace]::Windows() | Where-Object { $_.pid -in $ids -and $_.title -eq $product }) {
+        [void][WindowTrace]::SetWindowPos([IntPtr]$window.hwnd, [IntPtr]::Zero, 100, 100, 320, 440, 4)
+      }
+      Watch-UI
+    }
     Stop-Helpers
   }
 } finally {
