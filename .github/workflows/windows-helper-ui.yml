@@ -27,7 +27,7 @@ jobs:
       # https://github.com/actions/runner-images/issues/14069
       - name: 关闭测试虚拟机的首次登录隐私页面
         if: matrix.os == 'windows-11-arm'
-        shell: pwsh
+        shell: powershell
         run: |
           $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OOBE'
           New-Item -Path $policy -Force | Out-Null
@@ -39,6 +39,15 @@ jobs:
             Start-Process explorer.exe
             Start-Sleep -Seconds 3
           }
+          # Also finish an already running privacy flow. Policy alone does
+          # not dismiss it on all hosted ARM images (runner-images#14069).
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+          Start-Sleep -Seconds 3
+          [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+          Start-Sleep -Seconds 3
+          [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+          Start-Sleep -Seconds 2
           Get-Process | Where-Object MainWindowTitle | Select-Object Id, ProcessName, MainWindowTitle
       - name: 取出三版原始成品
         shell: pwsh
@@ -83,7 +92,7 @@ jobs:
           cache: false
       - name: 关闭测试虚拟机的首次登录隐私页面
         if: matrix.os == 'windows-11-arm'
-        shell: pwsh
+        shell: powershell
         run: |
           $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OOBE'
           New-Item -Path $policy -Force | Out-Null
@@ -95,6 +104,13 @@ jobs:
             Start-Process explorer.exe
             Start-Sleep -Seconds 3
           }
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+          Start-Sleep -Seconds 3
+          [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+          Start-Sleep -Seconds 3
+          [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+          Start-Sleep -Seconds 2
       - name: 只替换 CSS 构建两版内部测试程序
         shell: pwsh
         run: python usegoodai-codex-installer/quick-connect/tools/css_compare.py

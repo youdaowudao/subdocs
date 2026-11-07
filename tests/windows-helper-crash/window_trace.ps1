@@ -136,6 +136,14 @@ function Browser-ToFront {
 }
 
 try {
+  Begin-Phase 'desktop-check'
+  Browser-ToFront
+  Snapshot
+  $foreground = @([WindowTrace]::Windows() | Where-Object foreground)
+  if (-not ($foreground | Where-Object { $_.hwnd -eq $form.Handle.ToInt64() })) {
+    Save-Screen 'desktop-blocked'
+    throw 'Test desktop is not interactive: the foreground simulation cannot become active. Do not count this as a helper failure or successful GUI verification.'
+  }
   foreach ($file in Get-ChildItem -LiteralPath $Folder -Filter 'helper-*.exe' | Sort-Object Name) {
     $script:label = $file.BaseName
     $dir = Join-Path $root $script:label

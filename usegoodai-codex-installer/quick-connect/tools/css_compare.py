@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +22,7 @@ HISTORICAL_CSS = "5267829:usegoodai-codex-installer/quick-connect/frontend/style
 
 
 def main() -> None:
+    sys.dont_write_bytecode = True
     spec = importlib.util.spec_from_file_location("quick_connect_build", ROOT / "build.py")
     build = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(build)
