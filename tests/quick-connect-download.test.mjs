@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { inflateRawSync } from 'node:zlib'
@@ -124,8 +125,8 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
   assert.deepEqual(windowsFiles, [`Windows-x64/1.${product}.exe`])
   const window = entries.get(windowsFiles[0]).body
   assert.deepEqual(window, await readFile(new URL(`docs/public/download/${exeName}`, root)))
-  const release = 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.1/'
-  const nativeWindows = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.1-windows-amd64.exe`, root))
+  const release = 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.2/'
+  const nativeWindows = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.2-windows-amd64.exe`, root))
   assert.ok(window.includes(nativeWindows), 'the single Windows GUI embeds the current native image tool')
 
   const macApps = [...new Set([...entries.keys()].flatMap((name) => {
@@ -138,12 +139,12 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
     await readFile(new URL('docs/public/install/codex.sh', root)),
     'the bundled Mac assistant runs the published installer',
   )
-  const nativeMac = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.1-darwin-arm64`, root))
+  const nativeMac = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.2-darwin-arm64`, root))
   assert.deepEqual(entries.get('Mac-Apple芯片/2.UseGoodAI生图工具.app/Contents/Resources/tool').body, nativeMac)
   for (const app of macApps) {
     assert.equal(entries.get(`Mac-Apple芯片/${app}/Contents/MacOS/launcher`).mode & 0o111, 0o111)
   }
-  assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.1/)
+  assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.2/)
   assert.ok(![...entries.keys()].some((name) => /SHA256SUMS|来源记录/.test(name)))
 })
 
@@ -167,10 +168,14 @@ test('previous stable tool set and helper stay downloadable beside the current o
   const entries = readZip(data)
   const window = entries.get(`Windows-x64/1.${product}.exe`).body
   assert.deepEqual(window, await readFile(new URL(`docs/public/download/previous/${exeName}`, root)))
-  const release = 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.0/'
-  const nativeWindows = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.0-windows-amd64.exe`, root))
-  assert.ok(window.includes(nativeWindows), 'the previous helper embeds the previous native image tool')
-  const nativeMac = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.0-darwin-arm64`, root))
-  assert.deepEqual(entries.get('Mac-Apple芯片/2.UseGoodAI生图工具.app/Contents/Resources/tool').body, nativeMac)
+  // The previous stable set is the 20261105-1538 build with image tool
+  // V0.9.0. V0.9.0's release folder has left the site, so the files are
+  // known by their SHA-256 (the Mac tool's is in V0.9.0's SHA256SUMS).
+  const sha256 = (body) => createHash('sha256').update(body).digest('hex')
+  assert.equal(sha256(window), '331bf0c7a7d1fe7052b2db2fbd6921dec75a59c8c5df1038d87bc63afc604630')
+  assert.equal(
+    sha256(entries.get('Mac-Apple芯片/2.UseGoodAI生图工具.app/Contents/Resources/tool').body),
+    '9e0b73b893ee97a1c9926cb688f197b24a4f1584423f1bbae6010d0d806fd34f',
+  )
   assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.0/)
 })

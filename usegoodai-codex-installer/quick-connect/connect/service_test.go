@@ -2,6 +2,8 @@ package connect
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -107,6 +109,49 @@ func TestNetworkFailureMessages(t *testing.T) {
 		t.Fatalf("timeout: %q", result.Message)
 	}
 	assertOnlyFiles(t, offline.CodexHome)
+}
+
+// TestCertificateFailureMessages: Windows PowerShell reports a wrong clock
+// and an untrusted certificate alike as "未能为 SSL/TLS 安全通道建立信任关系"
+// (reproduced on the Windows runners); the window names the cause and what
+// to click instead of "网络不通".
+func TestCertificateFailureMessages(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("a request got past a failed certificate check")
+	}))
+	defer server.Close()
+	roots := x509.NewCertPool()
+	roots.AddCert(server.Certificate())
+	skewedClient := func(clock time.Time) *http.Client {
+		client := NewHTTPClient()
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{RootCAs: roots, Time: func() time.Time { return clock }}}
+		return client
+	}
+	home := filepath.Join(t.TempDir(), ".codex")
+	noStop := func() StopResult { t.Fatal("must not stop Codex"); return StopResult{} }
+	shown := time.Date(2026, 10, 8, 13, 49, 0, 0, time.Local)
+
+	for _, clock := range []time.Time{time.Date(1960, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC)} {
+		service := &Service{CodexHome: home, BaseURL: server.URL, Client: skewedClient(clock), Now: func() time.Time { return shown }, StopClients: noStop}
+		result := service.Connect(context.Background(), fixtureKey, "")
+		for _, want := range []string{"电脑的日期时间不对", "2026年10月8日 13:49", "Codex 配置没有改动", "自动设置时间", "立即同步", "HTTPS 扫描"} {
+			if !strings.Contains(result.Message, want) {
+				t.Errorf("clock %v: %q lacks %q", clock.Year(), result.Message, want)
+			}
+		}
+	}
+
+	untrusted := &Service{CodexHome: home, BaseURL: server.URL, Client: NewHTTPClient(), Now: time.Now, StopClients: noStop}
+	result := untrusted.Connect(context.Background(), fixtureKey, "")
+	if !strings.Contains(result.Message, "不信任 UseGoodAI 服务器的安全证书") || !strings.Contains(result.Message, "Codex 配置没有改动") {
+		t.Errorf("untrusted: %q", result.Message)
+	}
+	for _, message := range []string{result.Message, certificateMessage(KeyClockWrong, shown, "")} {
+		if strings.Contains(message, "网络不通") || strings.Contains(message, "PowerShell") || strings.Contains(message, "命令") {
+			t.Errorf("certificate message misleads or asks for a command: %q", message)
+		}
+	}
+	assertOnlyFiles(t, home)
 }
 
 func TestEmptyKeyWhenConnected(t *testing.T) {

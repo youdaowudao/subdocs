@@ -5,7 +5,7 @@ package connect
 
 const (
 	ProductName = "UseGoodAI中转快速接入助手"
-	Version     = "1.1.5"
+	Version     = "1.1.6"
 
 	// BaseURL is the only address the assistant ever writes or calls. Import
 	// links never carry an address.

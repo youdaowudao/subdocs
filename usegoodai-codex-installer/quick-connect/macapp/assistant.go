@@ -12,6 +12,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -45,6 +46,21 @@ const (
 	lockName     = "run.lock"
 	runnerMarker = "run.command"
 )
+
+// The Mac image tool's window (2.UseGoodAI生图工具, "install --from-app")
+// reads stateDirName/image-key/key.fifo while it waits for a key. An
+// app=codex link then goes to it instead of Codex, the way the Windows
+// window sends the link to the image tool while that page is open. The
+// image tool (usegoodai-imagines-tool/appkey.go) offers 「一键导入」 only
+// when this assistant is 1.1.6 or newer.
+const (
+	imageHandoffDirName = "image-key"
+	imageHandoffFIFO    = "key.fifo"
+)
+
+// MessageImageHandoffFailed prefixes why the key did not reach the image
+// tool's window.
+const MessageImageHandoffFailed = "没能把密钥交给「2.UseGoodAI生图工具」的窗口："
 
 // Assistant reacts to a double click (Open) and to import links (OpenLink).
 type Assistant struct {
@@ -110,6 +126,9 @@ func (a *Assistant) OpenLink(raw string) {
 		a.Alert(connect.MessageLinkIncomplete)
 		return
 	}
+	if a.handToImageTool(link) {
+		return
+	}
 
 	// Checking and reserving under one lock keeps two quick clicks from
 	// both opening a window.
@@ -140,6 +159,40 @@ func (a *Assistant) OpenLink(raw string) {
 	// Errors here mean run.command gave up or never started; it reports
 	// that in its own window, so nothing more is shown.
 	_ = deliver(fifo, []byte(link.Key+"\n"+shown+"\n"), a.HandoffTimeout)
+}
+
+// handToImageTool gives the key to a waiting image tool window and reports
+// whether one was waiting. Nobody reading the FIFO (the window was closed
+// or killed) or anything but the user's own FIFO there means no window, and
+// the link connects Codex as before.
+func (a *Assistant) handToImageTool(link connect.ImportLink) bool {
+	fifo := filepath.Join(a.StateDir, imageHandoffDirName, imageHandoffFIFO)
+	info, err := os.Lstat(fifo)
+	if err != nil || info.Mode()&os.ModeNamedPipe == 0 {
+		return false
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); !ok || int(stat.Uid) != os.Getuid() {
+		return false
+	}
+	file, err := os.OpenFile(fifo, os.O_WRONLY|syscall.O_NONBLOCK|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return false
+	}
+	payload, _ := json.Marshal(struct {
+		Key  string `json:"key"`
+		Name string `json:"name"`
+	}{link.Key, link.Name})
+	_, err = file.Write(append(payload, '\n'))
+	if closeErr := file.Close(); err == nil {
+		err = closeErr
+	}
+	if a.ShowTerminal != nil {
+		a.ShowTerminal()
+	}
+	if err != nil {
+		a.Alert(MessageImageHandoffFailed + err.Error())
+	}
+	return true
 }
 
 func (a *Assistant) busy() bool {

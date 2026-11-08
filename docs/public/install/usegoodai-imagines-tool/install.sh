@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-release_revision="V0.9.1"
-release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.9.1"
+release_revision="V0.9.2"
+release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.9.2"
 
 if ! command -v curl >/dev/null 2>&1; then
   echo "安装失败：未找到 curl，无法下载安装程序。" >&2
@@ -19,22 +19,22 @@ fi
 
 case "$system_name/$machine_name/$translated" in
   Darwin/arm64/*|Darwin/x86_64/1)
-    artifact="usegoodai-imagines-tool-v0.9.1-darwin-arm64"
-    expected_sha256="3f084efa578050e3dc1f3b0709ce1c22370eb9c76ee4a9e073721b5c958227b4"
+    artifact="usegoodai-imagines-tool-v0.9.2-darwin-arm64"
+    expected_sha256="13d1941c91c84e668aee11bb808910607897a02dcb282d8e8ca906a2172677b4"
     expected_binary_format="macho-arm64"
     ;;
   Darwin/x86_64/*)
-    artifact="usegoodai-imagines-tool-v0.9.1-darwin-amd64"
-    expected_sha256="884d51f6e44f2659f8bfa7398f3aea95d1d1e8eedfbbe0980a4d6e6250e1ea94"
+    artifact="usegoodai-imagines-tool-v0.9.2-darwin-amd64"
+    expected_sha256="f993f4cd429cebd811429cdacb129de6ce1f283d3e844f0b5de7cc4c16404428"
     expected_binary_format="macho-x86_64"
     ;;
   Linux/x86_64/*|Linux/amd64/*)
-    artifact="usegoodai-imagines-tool-v0.9.1-linux-amd64"
-    expected_sha256="56e55ff1330d556f9283a7e8c3803961c8413bb23edb4a4ebcf5052dfdd53fae"
+    artifact="usegoodai-imagines-tool-v0.9.2-linux-amd64"
+    expected_sha256="e629977b7490d26063f7f6df23cfd5a3421117414ad080e8c328621880c9014c"
     expected_binary_format="elf-x86_64"
     ;;
   *)
-    echo "安装失败：V0.9.1 仅支持 64 位 x64 Linux、Apple Silicon Mac 或 Intel 64 位 Mac，当前为 $system_name/$machine_name。" >&2
+    echo "安装失败：V0.9.2 仅支持 64 位 x64 Linux、Apple Silicon Mac 或 Intel 64 位 Mac，当前为 $system_name/$machine_name。" >&2
     exit 1
     ;;
 esac
@@ -92,7 +92,7 @@ else
   trap 'exit 130' INT
   trap 'exit 143' TERM
 
-  echo "正在下载中转站生图工具 V0.9.1……"
+  echo "正在下载中转站生图工具 V0.9.2……"
   curl --fail --location --progress-bar --show-error --proto '=https' --proto-redir '=https' --tlsv1.2 \
     "$release_base/$artifact" --output "$binary_path"
 

@@ -4,7 +4,7 @@ title: 安装生图工具
 
 # 安装生图工具
 
-生图工具适合在 Codex 中直接制作图片、修改产品图或生成 GIF 动图：说出要求后，结果直接显示在对话中。本文安装 V0.9.1 工具与 Skill，安装器自动写入 Codex 的工具目录、Skill、生图规则和放行规则，生图时不弹权限申请，无需手工改配置；先完成 [快速开始](/quick-start)。
+生图工具适合在 Codex 中直接制作图片、修改产品图或生成 GIF 动图：说出要求后，结果直接显示在对话中。本文安装 V0.9.2 工具与 Skill，安装器自动写入 Codex 的工具目录、Skill、生图规则和放行规则，生图时不弹权限申请，无需手工改配置；先完成 [快速开始](/quick-start)。
 
 ## 1. 创建专门画图分组的 API Key
 
@@ -40,7 +40,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 <details>
 <summary>不想用 PowerShell？</summary>
 
-直接[下载工具合集 ZIP](/download/usegoodai-tools.zip)，解压后按系统打开。Windows 只有一个 `1.UseGoodAI中转快速接入助手.exe`，生图和国产模型导入都在同一窗口；点下方“安装生图工具”。Mac 双击 `2.UseGoodAI生图工具.app`。按提示粘贴**专门画图分组 Key**。
+直接[下载工具合集 ZIP](/download/usegoodai-tools.zip)，解压后按系统打开。Windows 只有一个 `1.UseGoodAI中转快速接入助手.exe`，生图和国产模型导入都在同一窗口；点下方“安装生图工具”。Mac 先双击打开一次 `1.UseGoodAI中转快速接入助手.app`，再双击 `2.UseGoodAI生图工具.app`，装好后保持窗口打开，到网站选**专门画图分组**的密钥点「一键导入」，或把 Key 粘贴进窗口。
 
 </details>
 
@@ -93,7 +93,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 <details>
 <summary>更新、卸载和文件位置</summary>
 
-更新：对 Codex 说“更新生图工具”，按提示运行命令，重新粘贴专门画图分组 Key。双击版重新下载本页的最新工具合集后运行。
+更新：对 Codex 说“更新生图工具”，Codex 会自己完成更新，沿用已保存的专门画图 Key；完成后完全退出并重新打开 Codex。双击版重新下载本页的最新工具合集后运行。
 
 卸载：对 Codex 说“卸载中转站生图工具”。专门画图 Key 默认保留，永久删除前会单独确认。
 

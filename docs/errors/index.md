@@ -126,6 +126,15 @@ sidebarTitle: 遇到问题
 - 关闭或更换代理后重试；检查公司网络、防火墙是否放行接口域名。
 - Docker / WSL / 远程服务器上运行的客户端，要在它实际运行的环境里测网络。
 
+<a id="ssl-trust"></a>
+
+## `未能为 SSL/TLS 安全通道建立信任关系` / `certificate has expired or is not yet valid`
+
+也会显示为 `Could not establish trust relationship for the SSL/TLS secure channel`、`SSL certificate problem`、`certificate signed by unknown authority`。电脑不信任网站的安全证书，请求没有发出，不扣费。
+
+- 最常见是电脑日期时间不对：右键任务栏右下角的时间，选 **调整日期和时间**，打开 **自动设置时间**，点 **立即同步**，再重试。Mac 在 **系统设置 → 通用 → 日期与时间** 打开 **自动设置日期与时间**。
+- 时间正确还报错：关掉代理和安全软件的 HTTPS 扫描，或在 **设置 → Windows 更新** 装完更新后重试。
+
 ## `model not found` / `The model does not exist`
 
 也会显示为 `Invalid model`、`model_not_found`。模型名写错，或当前 Key 分组没有这个模型。从 [模型价格](/models) 或后台复制准确的模型名，不要手写猜测；先用一个确定可用的模型跑通，再换别的。遇到 `model_not_found` 不要反复重试同一个模型名。

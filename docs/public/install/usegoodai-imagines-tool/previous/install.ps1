@@ -44,8 +44,8 @@ function Download-WithPercent {
     }
 }
 
-$ReleaseRevision = "V0.9.0"
-$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.9.0"
+$ReleaseRevision = "V0.9.1"
+$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.9.1"
 $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
     $env:PROCESSOR_ARCHITECTURE
 } else {
@@ -53,10 +53,10 @@ $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
 }
 
 if ($Architecture.ToUpperInvariant() -ne "AMD64") {
-    throw ("安装失败：V0.9.0 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
+    throw ("安装失败：V0.9.1 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
 }
-$Artifact = "usegoodai-imagines-tool-v0.9.0-windows-amd64.exe"
-$ExpectedSha256 = "be59246fe0ee0aa4f14dd8cf9ec3604efe6ae06b6735973c91ad042e7eba62de"
+$Artifact = "usegoodai-imagines-tool-v0.9.1-windows-amd64.exe"
+$ExpectedSha256 = "09a86ffc747209e7e6788fe374bf064175d397fa9489915025804e58d310652a"
 
 $ToolCodexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { Join-Path $HOME ".codex" } else { $env:CODEX_HOME }
 $InstalledReleasePath = Join-Path $ToolCodexHome "tools\usegoodai-imagines-tool\RELEASE"
@@ -81,7 +81,7 @@ try {
         $TemporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("usegoodai-imagines-tool-" + [System.Guid]::NewGuid().ToString("N"))
         $BinaryPath = Join-Path $TemporaryRoot $Artifact
         New-Item -ItemType Directory -Path $TemporaryRoot | Out-Null
-        Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.9.0"
+        Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.9.1"
         $ActualSha256 = (Get-FileHash -LiteralPath $BinaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($ActualSha256 -ne $ExpectedSha256) {
             throw "安装程序 SHA-256 校验不通过，已停止安装。"

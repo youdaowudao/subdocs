@@ -3,7 +3,9 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -438,4 +441,109 @@ func encodeURIComponent(text string) string {
 		}
 	}
 	return out.String()
+}
+
+// imageWindow stands in for 2.UseGoodAI生图工具 waiting for a key: it makes
+// the FIFO and keeps it open for reading, as appkey.go does.
+func (r *rig) imageWindow() (fifo string, reader *bufio.Reader, closeWindow func()) {
+	r.t.Helper()
+	directory := filepath.Join(r.assistant.StateDir, imageHandoffDirName)
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		r.t.Fatal(err)
+	}
+	fifo = filepath.Join(directory, imageHandoffFIFO)
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		r.t.Fatal(err)
+	}
+	file, err := os.OpenFile(fifo, os.O_RDWR, 0)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	return fifo, bufio.NewReader(file), func() { file.Close(); os.RemoveAll(directory) }
+}
+
+func TestCodexLinkGoesToTheWaitingImageWindow(t *testing.T) {
+	for _, name := range []string{"", "画图 Key & 测试"} {
+		r := newRig(t)
+		_, reader, closeWindow := r.imageWindow()
+		nameParameter := ""
+		if name != "" {
+			nameParameter = "&name=" + encodeURIComponent(name)
+		}
+		r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + encodeURIComponent(fixtureKey) + nameParameter)
+		line := make(chan string, 1)
+		go func() { text, _ := reader.ReadString('\n'); line <- text }()
+		var message struct{ Key, Name string }
+		select {
+		case text := <-line:
+			if err := json.Unmarshal([]byte(text), &message); err != nil {
+				t.Fatalf("%v: %s", err, mask(text))
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("the image window got nothing")
+		}
+		if message.Key != fixtureKey || message.Name != name {
+			t.Fatalf("handed over %q %q", mask(message.Key), message.Name)
+		}
+		if len(r.commands) != 0 || len(r.alerts) != 0 || r.shown != 1 {
+			t.Fatalf("terminal commands %d, alerts %q, shown %d: Codex must not be touched", len(r.commands), r.alerts, r.shown)
+		}
+		if _, ran := r.recorded("args"); ran {
+			t.Fatal("install.sh ran although the image window took the key")
+		}
+		closeWindow()
+		r.assertClean()
+	}
+}
+
+func TestClaudeLinkIsNotHandedToTheImageWindow(t *testing.T) {
+	r := newRig(t)
+	_, _, closeWindow := r.imageWindow()
+	defer closeWindow()
+	r.assistant.OpenLink("usegoodai://import?v=1&app=claude&key=" + encodeURIComponent(fixtureKey))
+	r.output()
+	r.expectRejected(MessageNoClaude)
+}
+
+// A FIFO nobody reads is left by a closed or killed image window, and a
+// file that is not the user's FIFO was not made by it: the link connects
+// Codex as before and nothing is written there.
+func TestNoWaitingImageWindowConnectsCodex(t *testing.T) {
+	for _, planted := range []string{"stale fifo", "regular file", "symlink"} {
+		t.Run(planted, func(t *testing.T) {
+			r := newRig(t)
+			directory := filepath.Join(r.assistant.StateDir, imageHandoffDirName)
+			if err := os.MkdirAll(directory, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			fifo := filepath.Join(directory, imageHandoffFIFO)
+			target := filepath.Join(t.TempDir(), "target")
+			write(t, target, "")
+			switch planted {
+			case "stale fifo":
+				if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			case "regular file":
+				write(t, fifo, "")
+			case "symlink":
+				if err := os.Symlink(target, fifo); err != nil {
+					t.Fatal(err)
+				}
+			}
+			r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + encodeURIComponent(fixtureKey))
+			r.expectImported(r.output(), "")
+			if planted != "stale fifo" {
+				for _, path := range []string{fifo, target} {
+					if data, _ := os.ReadFile(path); len(data) != 0 {
+						t.Fatalf("the key was written to %s", path)
+					}
+				}
+			}
+			if err := os.RemoveAll(directory); err != nil {
+				t.Fatal(err)
+			}
+			r.assertClean()
+		})
+	}
 }

@@ -5,8 +5,8 @@ import test from 'node:test'
 
 // The site keeps the current release and the previous stable one, so users
 // can go back when the new version fails on their machine.
-const currentVersion = '0.9.1'
-const previousVersion = '0.9.0'
+const currentVersion = '0.9.2'
+const previousVersion = '0.9.1'
 
 const publicRoot = new URL('../docs/public/', import.meta.url)
 const entryRoot = new URL('install/usegoodai-imagines-tool/', publicRoot)
@@ -64,7 +64,7 @@ async function checkRelease(version, scriptsRoot) {
 }
 
 test('publishes exactly the current and the previous stable release', async () => {
-  assert.deepEqual((await readdir(entryRoot)).sort(), ['install.ps1', 'install.sh', 'previous', 'releases'])
+  assert.deepEqual((await readdir(entryRoot)).sort(), ['install.ps1', 'install.sh', 'latest.json', 'previous', 'releases'])
   assert.deepEqual((await readdir(previousRoot)).sort(), ['install.ps1', 'install.sh'])
   assert.deepEqual(
     (await readdir(releasesRoot)).sort(),
@@ -116,4 +116,33 @@ test('publishes explicit content types and cache policy', async () => {
       new RegExp(`${release}SHA256SUMS\\s+Content-Type:\\s*text/plain;\\s*charset=utf-8\\s+Cache-Control:\\s*public,\\s*max-age=31536000,\\s*immutable`, 'i'),
     )
   }
+})
+
+// The installed tool's update command reads latest.json (V0.9.2 on), so it
+// must name the current release and never be served from a cache.
+test('latest.json points the update command at the current release', async () => {
+  const manifest = JSON.parse(await readFile(new URL('latest.json', entryRoot), 'utf8'))
+  assert.equal(manifest.version, currentVersion)
+  assert.equal(manifest.release, `V${currentVersion}`)
+  const root = releaseRoot(currentVersion)
+  const checksums = parseChecksums(await readFile(new URL('SHA256SUMS', root), 'utf8'))
+  const platforms = {
+    'windows/amd64': 'windows-amd64.exe',
+    'darwin/arm64': 'darwin-arm64',
+    'darwin/amd64': 'darwin-amd64',
+    'linux/amd64': 'linux-amd64',
+  }
+  assert.deepEqual(Object.keys(manifest.files).sort(), Object.keys(platforms).sort())
+  for (const [key, platform] of Object.entries(platforms)) {
+    const name = `usegoodai-imagines-tool-v${currentVersion}-${platform}`
+    const file = manifest.files[key]
+    assert.equal(file.path, `releases/v${currentVersion}/${name}`)
+    assert.equal(file.sha256, checksums.get(name))
+    assert.equal(file.size, (await readFile(new URL(name, root))).length)
+  }
+  const headers = await readFile(headersUrl, 'utf8')
+  assert.match(
+    headers,
+    /\/install\/usegoodai-imagines-tool\/latest\.json\s+Content-Type:\s*application\/json;\s*charset=utf-8\s+Cache-Control:\s*no-store/i,
+  )
 })

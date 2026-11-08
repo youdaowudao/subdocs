@@ -1,0 +1,26 @@
+{
+  "version": "0.9.2",
+  "release": "V0.9.2",
+  "files": {
+    "windows/amd64": {
+      "path": "releases/v0.9.2/usegoodai-imagines-tool-v0.9.2-windows-amd64.exe",
+      "sha256": "11947f21ae3a591bf46f092f322c7ad7cc97758edf7cdbaf344f9a423ca8f282",
+      "size": 6909440
+    },
+    "darwin/arm64": {
+      "path": "releases/v0.9.2/usegoodai-imagines-tool-v0.9.2-darwin-arm64",
+      "sha256": "13d1941c91c84e668aee11bb808910607897a02dcb282d8e8ca906a2172677b4",
+      "size": 6436466
+    },
+    "darwin/amd64": {
+      "path": "releases/v0.9.2/usegoodai-imagines-tool-v0.9.2-darwin-amd64",
+      "sha256": "f993f4cd429cebd811429cdacb129de6ce1f283d3e844f0b5de7cc4c16404428",
+      "size": 6874096
+    },
+    "linux/amd64": {
+      "path": "releases/v0.9.2/usegoodai-imagines-tool-v0.9.2-linux-amd64",
+      "sha256": "e629977b7490d26063f7f6df23cfd5a3421117414ad080e8c328621880c9014c",
+      "size": 6758584
+    }
+  }
+}

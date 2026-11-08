@@ -300,3 +300,15 @@ func TestUpdateImage(t *testing.T) {
 		t.Fatalf("no key: %+v", result)
 	}
 }
+
+func TestInstallArgumentsPassTheKeyFlagFrom092(t *testing.T) {
+	for bundled, want := range map[string]string{
+		"0.9.1": "install",
+		"0.9.2": "install --key-stdin",
+		"1.0.0": "install --key-stdin",
+	} {
+		if got := strings.Join(installArguments(bundled), " "); got != want {
+			t.Errorf("installArguments(%q) = %q, want %q", bundled, got, want)
+		}
+	}
+}

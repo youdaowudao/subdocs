@@ -1,10 +1,17 @@
 # Mac 版 UseGoodAI中转快速接入助手：在 GitHub 的 Apple 芯片 macOS 机器上测试并打包。
 # 接收 usegoodai:// 导入链接要用 Apple 的系统接口（Cocoa），Linux 上编译不了。
-# 只能手动触发；不使用任何密钥或 Secrets，测试只用临时生成的假密钥，不打印。
+# 手动触发，或推送助手的 Mac 相关文件时自动运行；不使用任何密钥或 Secrets，测试只用临时生成的假密钥，不打印。
 name: Mac 快速接入助手打包
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - usegoodai-codex-installer/quick-connect/macapp/**
+      - usegoodai-codex-installer/quick-connect/connect/**
+      - usegoodai-codex-installer/install/codex.sh
+      - usegoodai-codex-installer/desktop/**
+      - .github/workflows/mac-quick-connect.yml
 
 permissions:
   contents: read
