@@ -19,7 +19,9 @@ for (const [name, path, sourcePath] of installers) {
   test(`${name} installer writes the required OpenAI auth config`, async () => {
     const installer = await readFile(path, 'utf8')
 
-    assert.match(installer, /^requires_openai_auth = true$/m)
+    // The scripts build config.toml from strings; the written file is compared
+    // byte for byte with the helper's in quick-connect/connect/importconfig_test.go.
+    assert.match(installer, /requires_openai_auth = true/)
     assert.doesNotMatch(installer, /x-openai-actor-authorization|local-image-extension/)
   })
 

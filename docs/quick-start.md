@@ -59,7 +59,7 @@ irm https://docs.usegoodai.com/install/helper.ps1 | iex
 
 </details>
 
-导入时会先自动关闭 Codex，先保存正在进行的任务。权限默认设为 **完全访问**。
+导入时会先自动关闭 Codex，先保存正在进行的任务。
 
 打不开助手时：Windows 点 **更多信息** → **仍要运行**；Mac 到 **系统设置 → 隐私与安全性** 点 **仍要打开**，问到控制“终端”时点 **允许**。
 
@@ -113,13 +113,12 @@ curl -fsSL https://docs.usegoodai.com/install/codex.sh | bash
 <details>
 <summary>改了哪些文件</summary>
 
-只改 `C:\Users\你的用户名\.codex\`（Mac 为 `~/.codex/`）里的三个文件：
+只改 `C:\Users\你的用户名\.codex\`（Mac 为 `~/.codex/`）里的两个文件：
 
-- `config.toml`：接口地址、模型和完全访问权限；Windows 原有的沙箱设置（`[windows]` 段）保留
+- `config.toml`：写入接口地址和模型；去掉以前写入的完全访问设置和其它接口，MCP、插件、项目信任、沙箱设置等其余设置保留
 - `auth.json`：密钥
-- `.codex-global-state.json`：Codex App 输入框下方的权限选择，改成完全访问
 
-旧文件备份在同目录，文件名带 `.bak.时间戳`。原来配过 MCP 的，从备份里复制回 `config.toml`。
+旧文件备份在同目录，文件名带 `.bak.时间戳`。
 
 </details>
 

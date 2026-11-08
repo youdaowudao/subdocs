@@ -192,7 +192,7 @@ json_escape() {
 show_write_plan() {
   if [ -f "$CONFIG_FILE" ] || [ -f "$AUTH_FILE" ]; then
     say ""
-    say "检测到已有旧配置，将会在备份后再覆盖。"
+    say "检测到已有配置，会先备份；config.toml 改写中转站接口和模型，去掉以前写入的完全访问设置和其它接口，其余设置保留。"
   fi
 }
 
@@ -526,11 +526,160 @@ obtain_api_key() {
   done
 }
 
+# 导入时 config.toml 只写中转站这几行：开头的 model_provider、model，以及作为第一个段的
+# [model_providers.OpenAI]。删掉的内容：开头的 review_model、以前版本写的完全访问和沙箱
+# 设置、推理强度、国产模型列表 model_catalog_json（重新接入后国产模型照旧要再导入）、
+# profile（会盖过 model 的设置）、会让 Key 不生效的登录设置 forced_login_method 和
+# cli_auth_credentials_store；所有接口段 [model_providers.*]，包括写成
+# model_providers.xx = 或 {…} 形式的。其它内容原样保留（包括 Codex App 设置沙箱时写的
+# [windows]），旧文件另有备份。取舍见 quick-connect/取舍记录.md。
+# 与快速接入助手 connect/codexfiles.go 的 ConfigFor、install/codex.ps1 逐字节一致。
+# 按字节处理（LC_ALL=C），各系统的 awk 结果相同。
+codex_config() {
+  LC_ALL=C awk -v model="$CODEX_MODEL" -v base_url="$CODEX_BASE_URL" '
+    # 跟踪 TOML 多行字符串和数组、行内表的括号，字符串里的内容不会被当成表或键。
+    # multiline 是这一行结束时还没关上的 """ 或 \047\047\047，depth 加上这一行打开减去
+    # 关上的 [ { 个数；注释和单行字符串整段跳过，里面的引号和括号不算。
+    # 与 connect/codexfiles.go 的 scanLine 相同（codex-restore.sh 仍用旧的写法）。
+    function update_multiline(line,    n, i, c, extra) {
+      n = length(line)
+      i = 1
+      while (i <= n) {
+        c = substr(line, i, 1)
+        if (multiline != "") {
+          if (multiline == "\"\"\"" && c == "\\") {
+            i += 2
+          } else if (substr(line, i, 3) == multiline) {
+            # 后面最多再两个引号也属于字符串。
+            i += 3
+            extra = 0
+            while (extra < 2 && i <= n && substr(line, i, 1) == substr(multiline, 1, 1)) {
+              i++
+              extra++
+            }
+            multiline = ""
+          } else {
+            i++
+          }
+        } else if (c == "#") {
+          return
+        } else if (c == "[" || c == "{") {
+          depth++
+          i++
+        } else if (c == "]" || c == "}") {
+          depth--
+          i++
+        } else if (substr(line, i, 3) == "\"\"\"" || substr(line, i, 3) == "\047\047\047") {
+          multiline = substr(line, i, 3)
+          i += 3
+        } else if (c == "\"" || c == "\047") {
+          i++
+          while (i <= n && substr(line, i, 1) != c) {
+            if (c == "\"" && substr(line, i, 1) == "\\") {
+              i++
+            }
+            i++
+          }
+          i++
+        } else {
+          i++
+        }
+      }
+    }
+
+    BEGIN {
+      # 表头按 TOML 键名写法识别：裸键、带转义的 "…"、单引号字符串，用点连接；
+      # 引号里的 ] 不算表头结束。
+      key = "([A-Za-z0-9_-]+|\"([^\"\\\\]|\\\\.)*\"|\047[^\047]*\047)"
+      header_re = "^[ \t]*\\[\\[?[ \t]*" key "([ \t]*\\.[ \t]*" key ")*[ \t]*\\]\\]?[ \t]*(#.*)?$"
+      # 要删的根级键和 model_providers 都可以写成裸键、"…" 或单引号形式。
+      names = "(model_provider|model|review_model|model_reasoning_effort|disable_response_storage|approval_policy|sandbox_mode|network_access|windows_wsl_setup_acknowledged|model_catalog_json|profile|forced_login_method|cli_auth_credentials_store)"
+      providers = "(model_providers|\"model_providers\"|\047model_providers\047)"
+      root_re = "^[ \t]*((" names "|\"" names "\"|\047" names "\047)[ \t]*=|" providers "[ \t]*[.=])"
+      provider_re = "^[ \t]*\\[[ \t]*" providers "([ \t]*\\.[ \t]*" key ")*[ \t]*\\][ \t]*(#.*)?$"
+      in_root = 1
+      skip_table = 0
+      multiline = ""
+      depth = 0
+      skip_value = 0
+      root_count = 0
+      table_count = 0
+      crlf = 0
+    }
+
+    {
+      line = $0
+      if (NR == 1 && substr(line, 1, 3) == "\357\273\277") {
+        line = substr(line, 4)
+      }
+      if (sub(/\r$/, "", line)) {
+        crlf = 1
+      }
+      lower = tolower(line)
+
+      if (skip_value) {
+        # 被删键的值还没结束：多行字符串、数组或行内表关上之前都跳过。
+        update_multiline(line)
+        skip_value = multiline != "" || depth > 0
+        next
+      }
+      in_string = multiline != ""
+      depth = 0
+      update_multiline(line)
+      if (in_string) {
+        if (skip_table) {
+          next
+        }
+      } else {
+        if (lower ~ header_re) {
+          in_root = 0
+          skip_table = lower ~ provider_re
+        }
+        if (skip_table) {
+          next
+        }
+        if (in_root && lower ~ root_re) {
+          skip_value = multiline != "" || depth > 0
+          next
+        }
+      }
+      if (in_root) {
+        root[++root_count] = line
+      } else {
+        table[++table_count] = line
+      }
+    }
+
+    END {
+      newline = crlf ? "\r\n" : "\n"
+      # 去掉开头和结尾只有空格、Tab 的行（TOML 只认这两种空白）。
+      root_start = 1
+      while (root_start <= root_count && root[root_start] ~ /^[ \t]*$/) root_start++
+      root_end = root_count
+      while (root_end >= root_start && root[root_end] ~ /^[ \t]*$/) root_end--
+      table_start = 1
+      while (table_start <= table_count && table[table_start] ~ /^[ \t]*$/) table_start++
+      table_end = table_count
+      while (table_end >= table_start && table[table_end] ~ /^[ \t]*$/) table_end--
+
+      out = "model_provider = \"OpenAI\"" newline "model = \"" model "\""
+      for (i = root_start; i <= root_end; i++) out = out newline root[i]
+      out = out newline newline "[model_providers.OpenAI]" newline "name = \"OpenAI\"" newline "base_url = \"" base_url "\"" newline "wire_api = \"responses\"" newline "requires_openai_auth = true"
+      if (table_start <= table_end) {
+        out = out newline newline table[table_start]
+        for (i = table_start + 1; i <= table_end; i++) out = out newline table[i]
+      }
+      printf "%s", out
+    }
+  ' "$1"
+}
+
 write_codex_files() {
   local api_key="$1"
   local escaped_key
   local config_temp=""
   local auth_temp=""
+  local old_config="/dev/null"
 
   escaped_key="$(json_escape "$api_key")"
   mkdir -p "$CODEX_HOME"
@@ -540,27 +689,10 @@ write_codex_files() {
 
   trap 'rm -f "${config_temp:-}" "${auth_temp:-}"' RETURN
 
-  cat > "$config_temp" <<EOF
-model_provider = "OpenAI"
-model = "$CODEX_MODEL"
-review_model = "$CODEX_MODEL"
-model_reasoning_effort = "high"
-disable_response_storage = true
-approval_policy = "never"
-sandbox_mode = "danger-full-access"
-network_access = "enabled"
-windows_wsl_setup_acknowledged = true
-
-[model_providers.OpenAI]
-name = "OpenAI"
-base_url = "$CODEX_BASE_URL"
-wire_api = "responses"
-requires_openai_auth = true
-
-[features]
-goals = true
-image_generation = true
-EOF
+  if [ -f "$CONFIG_FILE" ]; then
+    old_config="$CONFIG_FILE"
+  fi
+  codex_config "$old_config" > "$config_temp"
   printf '{\n  "OPENAI_API_KEY": "%s"\n}\n' "$escaped_key" > "$auth_temp"
 
   backup_if_exists "$CONFIG_FILE"
@@ -569,75 +701,6 @@ EOF
   mv -f "$auth_temp" "$AUTH_FILE"
   chmod 600 "$AUTH_FILE" 2>/dev/null || true
   trap - RETURN
-}
-
-# Codex App 底部的权限按钮读的是 .codex-global-state.json，不是 config.toml。
-# 只改 App 选择“完全访问”时写入的三项，其它内容原样保留；文件不存在就新建，
-# 文件无法识别就不动。必须在关闭 Codex 之后调用，否则 App 退出时会写回旧值。
-grant_app_full_access() {
-  local state_file="$CODEX_HOME/.codex-global-state.json"
-  if [ "$(uname -s)" = "Darwin" ]; then
-    # macOS 自带 JavaScript for Automation；python3 可能只是会弹安装窗口的占位程序。
-    USEGOODAI_STATE_FILE="$state_file" osascript -l JavaScript >/dev/null 2>&1 <<'EOF' || true
-ObjC.import('Foundation');
-const path = $.NSProcessInfo.processInfo.environment.objectForKey('USEGOODAI_STATE_FILE').js;
-let state = {};
-if ($.NSFileManager.defaultManager.fileExistsAtPath(path)) {
-  const text = $.NSString.stringWithContentsOfFileEncodingError(path, $.NSUTF8StringEncoding, null);
-  if (text.isNil()) { throw new Error('unreadable'); }
-  state = JSON.parse(text.js);
-}
-if (state === null || typeof state !== 'object' || Array.isArray(state)) { throw new Error('unknown'); }
-const root = 'electron-persisted-atom-state';
-if (!(root in state)) { state[root] = {}; }
-const atoms = state[root];
-if (atoms === null || typeof atoms !== 'object' || Array.isArray(atoms)) { throw new Error('unknown'); }
-const hosts = atoms['agent-mode-by-host-id'];
-atoms['agent-mode-by-host-id'] = (hosts && typeof hosts === 'object' && !Array.isArray(hosts)) ? hosts : {};
-atoms['agent-mode-by-host-id'].local = 'full-access';
-atoms['permission-selection-by-host-id:local'] = { kind: 'agent-mode', agentMode: 'full-access' };
-atoms['full-access-warning-dismissed-at-v2'] = Date.now();
-if (!$(JSON.stringify(state)).writeToFileAtomicallyEncodingError(path, true, $.NSUTF8StringEncoding, null)) {
-  throw new Error('write failed');
-}
-EOF
-    return 0
-  fi
-  if ! command -v python3 >/dev/null 2>&1; then
-    return 0
-  fi
-  USEGOODAI_STATE_FILE="$state_file" python3 -I - >/dev/null 2>&1 <<'EOF' || true
-import json, os, time
-path = os.environ['USEGOODAI_STATE_FILE']
-mode = 0o644
-try:
-    with open(path, encoding='utf-8') as f:
-        state = json.load(f)
-    mode = os.stat(path).st_mode & 0o777
-except FileNotFoundError:
-    state = {}
-if not isinstance(state, dict):
-    raise SystemExit(1)
-atoms = state.setdefault('electron-persisted-atom-state', {})
-if not isinstance(atoms, dict):
-    raise SystemExit(1)
-hosts = atoms.get('agent-mode-by-host-id')
-if not isinstance(hosts, dict):
-    hosts = atoms['agent-mode-by-host-id'] = {}
-hosts['local'] = 'full-access'
-atoms['permission-selection-by-host-id:local'] = {'kind': 'agent-mode', 'agentMode': 'full-access'}
-atoms['full-access-warning-dismissed-at-v2'] = int(time.time() * 1000)
-temporary = path + '.tmp.%d' % os.getpid()
-try:
-    with open(temporary, 'w', encoding='utf-8') as f:
-        json.dump(state, f, ensure_ascii=False, separators=(',', ':'))
-    os.chmod(temporary, mode)
-    os.replace(temporary, path)
-finally:
-    if os.path.exists(temporary):
-        os.unlink(temporary)
-EOF
-  return 0
 }
 
 main() {
@@ -655,7 +718,7 @@ main() {
 
   say "欢迎使用 UseGoodAI 中转站 Codex 一键配置脚本。"
   say ""
-  say "本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml、auth.json 和 Codex App 权限设置。"
+  say "本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml 和 auth.json。"
 
   show_write_plan
   say ""
@@ -667,7 +730,6 @@ main() {
 
   stop_running_clients
   write_codex_files "$api_key"
-  grant_app_full_access
 
   say ""
   say "配置已经完成，可以关闭终端了。"

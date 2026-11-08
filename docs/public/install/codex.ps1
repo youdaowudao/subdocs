@@ -129,7 +129,7 @@ function Show-WritePlan {
   }
 
   Say ""
-  Say "检测到已有旧配置，将会在备份后再覆盖。"
+  Say "检测到已有配置，会先备份；config.toml 改写中转站接口和模型，去掉以前写入的完全访问设置和其它接口，其余设置保留。"
 }
 
 function Read-ValidatedApiKey {
@@ -331,26 +331,129 @@ function Write-Utf8NoBom([string]$Path, [string]$Content) {
   [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
 }
 
-function Get-WindowsTable {
-  # 只读出原来 [windows] 段的 sandbox 值，这一段始终由脚本自己写，旧文件怎么写都不会写坏。
-  $mode = ""
-  if (Test-Path -LiteralPath $ConfigFile -PathType Leaf) {
-    $inside = $false
-    foreach ($line in ([System.IO.File]::ReadAllText($ConfigFile) -replace "`r`n", "`n").Split("`n")) {
-      if ($line -match '^\s*\[([^\[\]]+)\]\s*(#.*)?$') {
-        $inside = ($Matches[1].Trim() -ceq "windows")
-        continue
+# 跟踪 TOML 多行字符串和数组、行内表的括号，字符串里的内容不会被当成表或键。返回这一行
+# 结束时还没关上的 """ 或 '''，以及 $Depth 加上这一行打开减去关上的 [ { 个数；注释和单行
+# 字符串整段跳过，里面的引号和括号不算。与 connect/codexfiles.go 的 scanLine 相同
+# （codex-restore.ps1 仍用旧的写法）。
+function Update-MultilineState([string]$Line, [string]$Open, [int]$Depth) {
+  $i = 0
+  while ($i -lt $Line.Length) {
+    $c = $Line[$i]
+    if ($Open -ne '') {
+      if ($Open -eq '"""' -and $c -eq [char]'\') {
+        $i += 2
+      } elseif ([string]::CompareOrdinal($Line, $i, $Open, 0, 3) -eq 0) {
+        # 后面最多再两个引号也属于字符串。
+        $i += 3
+        $extra = 0
+        while ($extra -lt 2 -and $i -lt $Line.Length -and $Line[$i] -eq $Open[0]) {
+          $i++
+          $extra++
+        }
+        $Open = ''
+      } else {
+        $i++
       }
-      if ($inside -and $line -match '^\s*sandbox\s*=\s*["''](elevated|unelevated)["'']\s*(#.*)?$') {
-        $mode = $Matches[1]
+    } elseif ($c -eq [char]'#') {
+      return '', $Depth
+    } elseif ($c -eq [char]'[' -or $c -eq [char]'{') {
+      $Depth++
+      $i++
+    } elseif ($c -eq [char]']' -or $c -eq [char]'}') {
+      $Depth--
+      $i++
+    } elseif ([string]::CompareOrdinal($Line, $i, '"""', 0, 3) -eq 0 -or [string]::CompareOrdinal($Line, $i, "'''", 0, 3) -eq 0) {
+      $Open = $Line.Substring($i, 3)
+      $i += 3
+    } elseif ($c -eq [char]'"' -or $c -eq [char]"'") {
+      $i++
+      while ($i -lt $Line.Length -and $Line[$i] -ne $c) {
+        if ($c -eq [char]'"' -and $Line[$i] -eq [char]'\') {
+          $i++
+        }
+        $i++
       }
+      $i++
+    } else {
+      $i++
     }
   }
-  if ($mode -eq "") {
-    $mode = "unelevated"
-    if (Test-Path -LiteralPath (Join-Path $CodexHome ".sandbox") -PathType Container) { $mode = "elevated" }
+  return $Open, $Depth
+}
+
+# 去掉开头和结尾只有空格、Tab 的行（TOML 只认这两种空白）。
+function Remove-BlankEnds([System.Collections.Generic.List[string]]$Lines) {
+  $blank = [char[]]@([char]' ', [char]9)
+  while ($Lines.Count -gt 0 -and $Lines[0].Trim($blank) -eq '') { $Lines.RemoveAt(0) }
+  while ($Lines.Count -gt 0 -and $Lines[$Lines.Count - 1].Trim($blank) -eq '') { $Lines.RemoveAt($Lines.Count - 1) }
+}
+
+# 导入时 config.toml 只写中转站这几行：开头的 model_provider、model，以及作为第一个段的
+# [model_providers.OpenAI]。删掉的内容：开头的 review_model、以前版本写的完全访问和沙箱
+# 设置、推理强度、国产模型列表 model_catalog_json（重新接入后国产模型照旧要再导入）、
+# profile（会盖过 model 的设置）、会让 Key 不生效的登录设置 forced_login_method 和
+# cli_auth_credentials_store；所有接口段 [model_providers.*]，包括写成
+# model_providers.xx = 或 {…} 形式的。其它内容原样保留（包括 Codex App 设置沙箱时写的
+# [windows]），旧文件另有备份。取舍见 quick-connect/取舍记录.md。
+# 与快速接入助手 connect/codexfiles.go 的 ConfigFor 逐字节一致。
+function Get-CodexConfig([string]$Old) {
+  $root = "model_provider = `"OpenAI`"`nmodel = `"$CodexModel`""
+  $provider = "[model_providers.OpenAI]`nname = `"OpenAI`"`nbase_url = `"$CodexBaseUrl`"`nwire_api = `"responses`"`nrequires_openai_auth = true"
+  if ($Old.StartsWith([string][char]0xFEFF, [System.StringComparison]::Ordinal)) { $Old = $Old.Substring(1) }
+  $newline = if ($Old.Contains("`r`n")) { "`r`n" } else { "`n" }
+  # 表头按 TOML 键名写法识别：裸键、带转义的 "…"、'…'，用点连接；引号里的 ] 不算表头结束。
+  $key = '(?:[A-Za-z0-9_-]+|"(?:[^"\\]|\\.)*"|''[^'']*'')'
+  $headerPattern = '^[\t ]*\[\[?[\t ]*' + $key + '(?:[\t ]*\.[\t ]*' + $key + ')*[\t ]*\]\]?[\t ]*(?:#.*)?$'
+  # 要删的根级键和 model_providers 都可以写成裸键、"…" 或 '…'。
+  $names = '(?:model_provider|model|review_model|model_reasoning_effort|disable_response_storage|approval_policy|sandbox_mode|network_access|windows_wsl_setup_acknowledged|model_catalog_json|profile|forced_login_method|cli_auth_credentials_store)'
+  $providers = '(?:model_providers|"model_providers"|''model_providers'')'
+  $rootPattern = '^[\t ]*(?:(?:' + $names + '|"' + $names + '"|''' + $names + ''')[\t ]*=|' + $providers + '[\t ]*[.=])'
+  $providerPattern = '^[\t ]*\[[\t ]*' + $providers + '(?:[\t ]*\.[\t ]*' + $key + ')*[\t ]*\][\t ]*(?:#.*)?$'
+  $rootLines = New-Object System.Collections.Generic.List[string]
+  $tableLines = New-Object System.Collections.Generic.List[string]
+  $inRoot = $true
+  $skipTable = $false
+  $multiline = ''
+  $depth = 0
+  $skipValue = $false
+  foreach ($line in [System.Text.RegularExpressions.Regex]::Split($Old, "`r`n|`n|`r")) {
+    if ($skipValue) {
+      # 被删键的值还没结束：多行字符串、数组或行内表关上之前都跳过。
+      $multiline, $depth = Update-MultilineState $line $multiline $depth
+      $skipValue = $multiline -ne '' -or $depth -gt 0
+      continue
+    }
+    $inString = $multiline -ne ''
+    $multiline, $depth = Update-MultilineState $line $multiline 0
+    if ($inString) {
+      if ($skipTable) {
+        continue
+      }
+    } else {
+      if ($line -match $headerPattern) {
+        $inRoot = $false
+        $skipTable = $line -match $providerPattern
+      }
+      if ($skipTable) {
+        continue
+      }
+      if ($inRoot -and $line -match $rootPattern) {
+        $skipValue = $multiline -ne '' -or $depth -gt 0
+        continue
+      }
+    }
+    if ($inRoot) { $rootLines.Add($line) } else { $tableLines.Add($line) }
   }
-  return "[windows]`nsandbox = `"$mode`""
+  Remove-BlankEnds $rootLines
+  Remove-BlankEnds $tableLines
+  $head = New-Object System.Collections.Generic.List[string]
+  $head.AddRange([string[]]$root.Split("`n"))
+  $head.AddRange($rootLines)
+  $parts = New-Object System.Collections.Generic.List[string]
+  $parts.Add([string]::Join($newline, $head))
+  $parts.Add($provider.Replace("`n", $newline))
+  if ($tableLines.Count -gt 0) { $parts.Add([string]::Join($newline, $tableLines)) }
+  return [string]::Join($newline + $newline, $parts)
 }
 
 function Write-CodexFiles([string]$ApiKey) {
@@ -361,32 +464,11 @@ function Write-CodexFiles([string]$ApiKey) {
   $configTemp = Join-Path $CodexHome (".config.toml.tmp." + [Guid]::NewGuid().ToString("N"))
   $authTemp = Join-Path $CodexHome (".auth.json.tmp." + [Guid]::NewGuid().ToString("N"))
   try {
-    $content = @"
-model_provider = "OpenAI"
-model = "$CodexModel"
-review_model = "$CodexModel"
-model_reasoning_effort = "high"
-disable_response_storage = true
-approval_policy = "never"
-sandbox_mode = "danger-full-access"
-network_access = "enabled"
-windows_wsl_setup_acknowledged = true
-
-[model_providers.OpenAI]
-name = "OpenAI"
-base_url = "$CodexBaseUrl"
-wire_api = "responses"
-requires_openai_auth = true
-
-[features]
-goals = true
-image_generation = true
-"@
-
-    # Windows 上 Codex App 要先设置好沙箱才能选完全访问，设置结果记在 [windows] 段的 sandbox，
-    # 所以沿用原来的值；没有时，App 设置过沙箱（有 .sandbox 文件夹）写 elevated，
-    # 否则写不需要管理员权限的 unelevated。与快速接入助手写法一致。
-    $content = $content + "`n`n" + (Get-WindowsTable)
+    $old = ""
+    if (Test-Path -LiteralPath $ConfigFile -PathType Leaf) {
+      $old = [System.IO.File]::ReadAllText($ConfigFile)
+    }
+    $content = Get-CodexConfig $old
 
     # 固定格式，Windows PowerShell 5.1 和 PowerShell 7 写出的内容一致。
     $escapedKey = ConvertTo-JsonText $ApiKey
@@ -404,85 +486,9 @@ image_generation = true
   }
 }
 
-# Codex App 底部的权限按钮读的是 .codex-global-state.json，不是 config.toml。
-# 只改 App 选择“完全访问”时写入的三项，其它内容原样保留；文件不存在就新建，
-# 文件无法识别就不动。必须在关闭 Codex 之后调用，否则 App 退出时会写回旧值。
-# 不用 ConvertFrom-Json/ConvertTo-Json：5.1 版遇到只差大小写的键会报错，
-# 写回时还会截断深层内容。7 版用 System.Text.Json，5.1 版用 JavaScriptSerializer。
-function Grant-AppFullAccess {
-  $stateFile = Join-Path $CodexHome ".codex-global-state.json"
-  $temporary = Join-Path $CodexHome (".codex-global-state.json.tmp." + [Guid]::NewGuid().ToString("N"))
-  $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-  try {
-    $text = $null
-    if (Test-Path -LiteralPath $stateFile -PathType Leaf) {
-      $text = [System.IO.File]::ReadAllText($stateFile, [System.Text.Encoding]::UTF8)
-    }
-    $nodes = "System.Text.Json.Nodes.JsonNode" -as [type]
-    if ($nodes) {
-      if ($null -eq $text) { $text = "{}" }
-      $state = [System.Text.Json.Nodes.JsonNode]::Parse($text)
-      if ($state -isnot [System.Text.Json.Nodes.JsonObject]) { return }
-      $atoms = $state["electron-persisted-atom-state"]
-      if ($null -eq $atoms) {
-        $atoms = [System.Text.Json.Nodes.JsonObject]::new()
-        $state["electron-persisted-atom-state"] = $atoms
-      } elseif ($atoms -isnot [System.Text.Json.Nodes.JsonObject]) {
-        return
-      }
-      $hosts = $atoms["agent-mode-by-host-id"]
-      if ($hosts -isnot [System.Text.Json.Nodes.JsonObject]) {
-        $hosts = [System.Text.Json.Nodes.JsonObject]::new()
-        $atoms["agent-mode-by-host-id"] = $hosts
-      }
-      $hosts["local"] = [System.Text.Json.Nodes.JsonValue]::Create([string]"full-access")
-      $atoms["permission-selection-by-host-id:local"] = [System.Text.Json.Nodes.JsonNode]::Parse('{"kind":"agent-mode","agentMode":"full-access"}')
-      $atoms["full-access-warning-dismissed-at-v2"] = [System.Text.Json.Nodes.JsonValue]::Create([long]$now)
-      $options = [System.Text.Json.JsonSerializerOptions]::new()
-      $options.Encoder = [System.Text.Encodings.Web.JavaScriptEncoder]::UnsafeRelaxedJsonEscaping
-      $output = $state.ToJsonString($options)
-    } else {
-      Add-Type -AssemblyName System.Web.Extensions
-      $serializer = New-Object System.Web.Script.Serialization.JavaScriptSerializer
-      $serializer.MaxJsonLength = [int]::MaxValue
-      $serializer.RecursionLimit = 1000
-      if ($null -eq $text) {
-        $state = New-Object 'System.Collections.Generic.Dictionary[string,object]'
-      } else {
-        $state = $serializer.DeserializeObject($text)
-      }
-      if ($state -isnot [System.Collections.Generic.Dictionary[string, object]]) { return }
-      if (-not $state.ContainsKey("electron-persisted-atom-state")) {
-        $state["electron-persisted-atom-state"] = New-Object 'System.Collections.Generic.Dictionary[string,object]'
-      }
-      $atoms = $state["electron-persisted-atom-state"]
-      if ($atoms -isnot [System.Collections.Generic.Dictionary[string, object]]) { return }
-      $hosts = $null
-      if ($atoms.ContainsKey("agent-mode-by-host-id")) { $hosts = $atoms["agent-mode-by-host-id"] }
-      if ($hosts -isnot [System.Collections.Generic.Dictionary[string, object]]) {
-        $hosts = New-Object 'System.Collections.Generic.Dictionary[string,object]'
-        $atoms["agent-mode-by-host-id"] = $hosts
-      }
-      $hosts["local"] = "full-access"
-      $selection = New-Object 'System.Collections.Generic.Dictionary[string,object]'
-      $selection["kind"] = "agent-mode"
-      $selection["agentMode"] = "full-access"
-      $atoms["permission-selection-by-host-id:local"] = $selection
-      $atoms["full-access-warning-dismissed-at-v2"] = [long]$now
-      $output = $serializer.Serialize($state)
-    }
-    Write-Utf8NoBom -Path $temporary -Content $output
-    Move-Item -LiteralPath $temporary -Destination $stateFile -Force
-  } catch {
-    # config.toml 已经是完全访问，这一步失败不影响使用。
-  } finally {
-    Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
-  }
-}
-
 Say "欢迎使用 UseGoodAI 中转站 Codex 一键配置脚本。"
 Say ""
-Say "本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml、auth.json 和 Codex App 权限设置。"
+Say "本脚本不会安装、修改任何软件，只会配置用户目录下 .codex 文件夹中的 config.toml 和 auth.json。"
 
 Show-WritePlan
 Say ""
@@ -493,7 +499,6 @@ $ApiKey = Get-CheckedApiKey
 
 $StopResult = Stop-RunningClients
 Write-CodexFiles -ApiKey $ApiKey
-Grant-AppFullAccess
 
 Say ""
 Say "配置已经完成，可以关闭 PowerShell 了。"
