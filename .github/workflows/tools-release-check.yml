@@ -78,6 +78,6 @@ jobs:
       - name: 安装站点构建依赖
         run: npm ci
       - name: 核对脚本、响应头和压缩包实际内容
-        run: node --test tests/install-codex-models.test.mjs tests/install-codex-config.test.mjs tests/install-headers.test.mjs tests/quick-connect-download.test.mjs
+        run: node --test tests/install-codex-models.test.mjs tests/install-codex-config.test.mjs tests/install-headers.test.mjs tests/quick-connect-download.test.mjs tests/release-gate.test.mjs
       - name: 构建文档站
         run: npm run docs:build

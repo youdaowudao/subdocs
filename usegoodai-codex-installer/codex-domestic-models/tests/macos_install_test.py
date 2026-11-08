@@ -8,8 +8,6 @@ import json
 import os
 from pathlib import Path
 import platform
-import plistlib
-import shlex
 import shutil
 import subprocess
 import sys
