@@ -179,3 +179,12 @@ test('previous stable tool set and helper stay downloadable beside the current o
   )
   assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.0/)
 })
+
+
+test('Mac domestic model app contains the current published installer', async () => {
+  const archive = await readFile(new URL('docs/public/download/usegoodai-tools.zip', root))
+  const entries = readZip(archive)
+  const path = 'Mac-Apple芯片/3.Codex国产模型导入.app/Contents/Resources/install.sh'
+  assert.deepEqual(entries.get(path).body, await readFile(new URL('docs/public/install/codex-models.sh', root)))
+  assert.equal(entries.get(path).mode & 0o111, 0o111)
+})

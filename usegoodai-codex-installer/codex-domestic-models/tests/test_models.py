@@ -395,7 +395,9 @@ theme = "dark"
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertIn(f"已导入 {len(DOMESTIC['models'])} 个国产模型",result.stdout)
         first=json.loads((target/'usegoodai-models.json').read_text())
-        terra=next(m for m in OFFICIAL['models'] if m['slug']=='gpt-6.1-terra')
+        native=json.loads(execute([CODEX,'debug','models','--bundled'],check=True).stdout)
+        terra=next((m for m in native['models'] if m['slug']=='gpt-6.1-terra'),
+                   next(m for m in OFFICIAL['models'] if m['slug']=='gpt-6.1-terra'))
         self.assertEqual([m for m in first['models'] if m['slug']=='gpt-6.1-terra'],[terra])
         gpt=next(m for m in first['models'] if m['slug'].startswith('gpt-'))
         gpt['keep_metadata']={'nested':True}

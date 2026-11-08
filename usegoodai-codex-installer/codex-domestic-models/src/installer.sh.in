@@ -52,7 +52,11 @@ if [ -z "$app_backend" ] && [ "$script_platform" = Darwin ]; then
     if [ -f "$app_root/Contents/Info.plist" ]; then
       bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_root/Contents/Info.plist" 2>/dev/null || true)"
       [ "$bundle_id" = com.openai.codex ] || continue
-      for candidate in "$app_root/Contents/Resources/codex" "$app_root/Contents/Resources/bin/codex"; do
+      for candidate in \
+        "$app_root/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex" \
+        "$app_root/Contents/Resources/codex-cli/bin/codex" \
+        "$app_root/Contents/Resources/codex" \
+        "$app_root/Contents/Resources/bin/codex"; do
         if [ -f "$candidate" ] && [ -x "$candidate" ]; then app_backend="$candidate"; break; fi
       done
     fi
@@ -80,14 +84,19 @@ if [ -z "$app_backend" ]; then app_backend="$(command -v codex || true)"; fi
 }
 fi
 
-if import_message="$(run_model_import "$target_codex_home" "$app_backend" "$model_action" <<'USEGOODAI_JAVASCRIPT'
+# Keep the literal here-document outside command substitution: the macOS system
+# Bash 3.2 otherwise interprets backticks in JavaScript as shell substitutions.
+invoke_model_import() {
+run_model_import "$target_codex_home" "$app_backend" "$model_action" <<'USEGOODAI_JAVASCRIPT'
 // @DOMESTIC_CATALOG@
 // @OFFICIAL_CATALOG@
 // @CORE@
 // @MACOS_HOST@
 // @LINUX_HOST@
 USEGOODAI_JAVASCRIPT
-)"
+}
+
+if import_message="$(invoke_model_import)"
 then
   if [ "$model_action" = uninstall ]; then
     case "$import_message" in

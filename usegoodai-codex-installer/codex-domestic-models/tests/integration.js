@@ -63,15 +63,16 @@ function setup(name) {
     const config=`# preserve comments\nmodel = ${JSON.stringify(selected)}\nreview_model = ${JSON.stringify(selected)}\nmodel_provider = "relay"\nmodel_reasoning_effort = "high"\n[model_providers.relay]\nname = "relay"\nbase_url = "https://example.invalid/v1"\nwire_api = "responses"\nrequires_openai_auth = false\n[desktop]\ntheme = "dark"\n`;
     fs.writeFileSync(path.join(home,'config.toml'),config);
     fs.writeFileSync(path.join(home,'auth.json'),'sentinel-do-not-read');
-    return {home,config};
+    return {home,config,exported};
 }
 {
-    const {home,config}=setup('success');
+    const {home,config,exported}=setup('success');
     check(core.importModels(host(home),home,backend,domestic,official)===domestic.models.length);
     const catalog=path.join(home,'usegoodai-models.json');
     let value=JSON.parse(fs.readFileSync(catalog,'utf8'));
     check(value.models.filter(m=>m.slug.startsWith('gpt-')).length>0);
-    assert.deepEqual(value.models.filter(m=>m.slug==='gpt-6.1-terra'),official.models.filter(m=>m.slug==='gpt-6.1-terra')); assertions++;
+    const terra=exported.models.find(m=>m.slug==='gpt-6.1-terra') || official.models.find(m=>m.slug==='gpt-6.1-terra');
+    assert.deepEqual(value.models.filter(m=>m.slug==='gpt-6.1-terra'),[terra]); assertions++;
     check(fs.readFileSync(path.join(home,'auth.json'),'utf8')==='sentinel-do-not-read');
     check(fs.readdirSync(home).some(name=>name.startsWith('config.toml.bak.')));
     const gpt=value.models.find(m=>m.slug.startsWith('gpt-')); gpt.custom_metadata={keep:true};

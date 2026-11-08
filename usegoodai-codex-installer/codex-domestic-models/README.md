@@ -2,7 +2,7 @@
 
 这个脚本给已安装 Codex 的用户导入 10 个国产模型，让 GPT 与国产模型并列可选。官方账号、任意中转站和自定义接口均可导入；它只修改用户配置目录的 `config.toml` 中两项设置，并生成完整的本地模型目录，保留默认模型、服务名称、接口、Key 和其他配置。
 
-Windows 只读写 `CODEX_HOME` 内的配置和模型文件，不查找、启动或复制任何可执行文件；本机是否安装 CLI 不影响导入。导入成功后沿用一键安装脚本 `install/codex.ps1` 的进程关闭代码（构建时原样取出）关闭当前用户会话里的 ChatGPT 和 Codex，因为 Codex 启动时才读取 `config.toml` 和模型目录。macOS 优先定位 App，再查找现有 Codex CLI。Linux 使用已有的 Codex 后端和 Node.js 16+；仅安装原生 Codex 二进制并不代表本机有 Node，脚本缺少运行环境时会在写入前退出。
+Windows 只读写 `CODEX_HOME` 内的配置和模型文件，不查找、启动或复制任何可执行文件；本机是否安装 CLI 不影响导入。导入成功后沿用一键安装脚本 `install/codex.ps1` 的进程关闭代码（构建时原样取出）关闭当前用户会话里的 ChatGPT 和 Codex，因为 Codex 启动时才读取 `config.toml` 和模型目录。macOS 优先定位 App 内的 `Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex`，兼容同目录下的 CLI 启动脚本及旧版两个后端位置，再查找现有 Codex CLI。Linux 使用已有的 Codex 后端和 Node.js 16+；仅安装原生 Codex 二进制并不代表本机有 Node，脚本缺少运行环境时会在写入前退出。
 
 当前交付物是 [Windows 脚本](install/codex-models.ps1) 和 [Linux/macOS 共用脚本](install/codex-models.sh)。源码、设定和测试都在本子项目；交付物按用户要求迁移到上级安装目录与站点发布目录，供用户实机测试。
 
@@ -67,6 +67,18 @@ python3 tests/test_models.py
 测试只在 `tests/.work/` 内创建配置、模拟数据和输出，读取本子项目源码；进程测试拦截终止操作。目录合并用例同时经过 JavaScript 和 PowerShell，修改结果再由 Python 标准 TOML 解析器校验。Windows 集成和 HTTP 管道测试不需要后端；另用真实后端验证发布元数据及 Linux 路径。
 
 完整结果及未执行的实机检查见 [测试记录](测试记录.md)。独立代码审查见 [审阅记录](审阅记录.md)。
+
+### 发布门禁
+
+父仓库的「工具发布门禁」工作流在每个面向 `main` 的 PR 和主分支提交上运行，三项检查均须成功：
+
+- 「Mac 国产模型导入门禁」在真实 Apple 芯片 Mac 安装官方 App，使用系统 `sh`、Bash 3.2 和 JXA 验证自动发现、完整导入、HTTP 管道、重复更新、配置与认证保留、失败保护、卸载和合集第三个 `.app` 的终端执行入口。
+- 「国产模型导入回归」运行 Linux 和 PowerShell 的完整回归，包括备份恢复、用户模型保留、旧后端快照补齐与新后端原元数据保留。
+- 「发布文件检查」核对三个脚本副本、下载响应头、ZIP 内真实文件、发布门禁行为与站点构建。
+
+Mac 门禁读取本次提交的候选脚本和 ZIP，不能以旧线上脚本的测试结果代替候选版本验收。正式 Cloudflare Pages 构建还会按当前提交哈希等待以上三项检查；任何失败、缺失、取消或超时都会停止发布。GitHub 合并保护需另行将这三项设为必需检查，不能把「工作流存在」记为「合并保护已开启」。
+
+JavaScript 的字面量输入块置于普通函数中，再捕获函数输出，兼容系统 Bash 3.2；不得重新把该输入块嵌套回命令替换。门禁不包含用户桌面上的 Gatekeeper 弹窗和控制终端的交互授权验收。
 
 ## 配置持久化和恢复
 
