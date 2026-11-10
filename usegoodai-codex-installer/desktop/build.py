@@ -33,6 +33,7 @@ ASSISTANT_TOOL = "1." + ASSISTANT
 # control Terminal carries over.
 ASSISTANT_IDENTIFIER = "com.usegoodai.codex-config"
 ASSISTANT_VERSION = "1.1.6"
+DOMESTIC_VERSION = (PROJECT_ROOT / "codex-domestic-models" / "VERSION").read_text().strip()
 WINDOWS_DOWNLOAD = "usegoodai-quick-connect-windows-x64.exe"
 MAC_DOWNLOAD = "usegoodai-quick-connect-mac-arm64.zip"
 
@@ -64,6 +65,12 @@ def assistant_mac(output: Path, launcher: Path, runner: str) -> Path:
     return mac_application(output, ASSISTANT_IDENTIFIER, ASSISTANT_VERSION, {
         "install.sh": (PROJECT_ROOT / "install" / "codex.sh").read_bytes(),
     }, runner=runner, launcher=launcher, extra_info=URL_TYPES)
+
+
+def domestic_mac(output: Path, launcher: Path | None = None) -> Path:
+    return mac_application(output, "com.usegoodai.codex-models", DOMESTIC_VERSION, {
+        "install.sh": (PROJECT_ROOT / "install" / "codex-models.sh").read_bytes(),
+    }, launcher=launcher)
 
 
 def check_mac_launcher(path: Path) -> Path:
@@ -123,9 +130,7 @@ def main() -> None:
             "start.ps1": powershell_runner("    & (Join-Path $PSScriptRoot 'install.ps1')"),
             "install.ps1": powershell,
         })
-        mac_application(MAC / f"{title}.app", identifier, "1.0.0", {
-            "install.sh": (PROJECT_ROOT / "install" / f"{script}.sh").read_bytes(),
-        })
+        domestic_mac(MAC / f"{title}.app")
 
 
     write_checksums(OUTPUT_ROOT)

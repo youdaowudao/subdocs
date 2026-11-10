@@ -181,10 +181,26 @@ test('previous stable tool set and helper stay downloadable beside the current o
 })
 
 
-test('Mac domestic model app contains the current published installer', async () => {
+test('Mac domestic model app and all published scripts match the source release version', async () => {
   const archive = await readFile(new URL('docs/public/download/usegoodai-tools.zip', root))
   const entries = readZip(archive)
-  const path = 'Mac-Apple芯片/3.Codex国产模型导入.app/Contents/Resources/install.sh'
-  assert.deepEqual(entries.get(path).body, await readFile(new URL('docs/public/install/codex-models.sh', root)))
+  const prefix = 'Mac-Apple芯片/3.Codex国产模型导入.app/Contents/'
+  const path = prefix + 'Resources/install.sh'
+  const version = (await readFile(new URL('usegoodai-codex-installer/codex-domestic-models/VERSION', root), 'utf8')).trim()
+  assert.match(version, /^\d+\.\d+\.\d+$/)
+  const published = await readFile(new URL('docs/public/install/codex-models.sh', root))
+  assert.deepEqual(entries.get(path).body, published)
+  for (const script of [
+    'usegoodai-codex-installer/codex-domestic-models/install/codex-models.sh',
+    'usegoodai-codex-installer/install/codex-models.sh',
+  ]) {
+    assert.deepEqual(published, await readFile(new URL(script, root)), script)
+  }
+  assert.ok(published.toString('utf8').startsWith(`#!/bin/sh\n# UseGoodAI codex-models version: ${version}\n`))
+  const plist = entries.get(prefix + 'Info.plist').body.toString('utf8')
+  for (const key of ['CFBundleShortVersionString', 'CFBundleVersion']) {
+    const value = plist.match(new RegExp(`<key>${key}</key>\\s*<string>([^<]+)</string>`))?.[1]
+    assert.equal(value, version, key)
+  }
   assert.equal(entries.get(path).mode & 0o111, 0o111)
 })
