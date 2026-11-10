@@ -195,6 +195,53 @@ test('renders only supported models and their exact copy IDs in the 0.7 CC TEST 
   }
 })
 
+test('renders Fable 5.2 first in both CC MAX groups with the correct prices and copy ID', async () => {
+  const server = await createServer({
+    configFile: false,
+    plugins: [vue()],
+    server: { middlewareMode: true },
+    appType: 'custom',
+  })
+
+  try {
+    const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
+    const expectedPrices = {
+      group: ['¥12.00', '¥60.00', '¥0.30', '¥72.00'],
+      official: ['¥56.00', '¥280.00', '¥1.40', '¥336.00'],
+    }
+    for (const groupId of ['anthropic-max', 'anthropic-max-external']) {
+      for (const priceMode of ['group', 'official']) {
+        const component = {
+          ...pricing,
+          setup(props, context) {
+            const state = pricing.setup(props, context)
+            state.activeCategory.value = 'anthropic'
+            state.activeGroupId.value = groupId
+            state.priceMode.value = priceMode
+            return state
+          },
+        }
+        const html = await renderToString(createSSRApp(component))
+        const rows = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)]
+          .map(([row]) => row)
+          .filter((row) => row.includes('class="model-id-cell"'))
+        const ids = rows.map((row) => row.match(/<strong>(claude-[^<]+)<\/strong>/)[1])
+
+        assert.deepEqual(ids.slice(0, 3), ['claude-fable-5-2', 'claude-fable-5-1', 'claude-opus-5-5'])
+        assert.equal(ids.filter((id) => id === 'claude-fable-5-2').length, 1)
+        assert.ok(rows[0].includes('aria-label="复制 claude-fable-5-2"'))
+        const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'
+        const amounts = [...rows[0].matchAll(new RegExp(`<strong class="${priceClass}">([^<]+)<`, 'g'))]
+          .map((match) => match[1])
+        assert.deepEqual(amounts, expectedPrices[priceMode], `${groupId}/${priceMode}`)
+        assert.doesNotMatch(rows[0], /NaN|价格待确认|此分组无/)
+      }
+    }
+  } finally {
+    await server.close()
+  }
+})
+
 test('renders MiniMax M3 once with both RMB context tiers and the exact installer ID', async () => {
   const server = await createServer({
     configFile: false,

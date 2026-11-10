@@ -74,6 +74,7 @@ const CC_TEST_HIGH_CACHE_MODEL_IDS = [
 ]
 
 const CC_MAX_MODEL_IDS = [
+  'claude-fable-5-2',
   'claude-fable-5-1',
   ...ANTHROPIC_OPUS_MODEL_IDS,
   'claude-sonnet-5-5',
@@ -383,9 +384,16 @@ export const TEXT_MODELS = [
     officialUsd: { input: 10, output: 50, cachedInput: 1 },
   },
   {
+    id: 'claude-fable-5-2',
+    name: 'Claude Fable 5.2',
+    description: 'Anthropic 最新满血模型，适合复杂推理、长期任务和高难度代码工作',
+    // https://platform.claude.com/docs/en/models/fable-5-2/overview
+    officialUsd: { input: 8, output: 40, cachedInput: 0.2 },
+  },
+  {
     id: 'claude-fable-5-1',
     name: 'Claude Fable 5.1',
-    description: 'Anthropic 最新满血模型，适合长期任务、复杂代码和知识工作',
+    description: 'Anthropic 满血模型，适合长期任务、复杂代码和知识工作',
     officialUsd: { input: 10, output: 50, cachedInput: 0.25 },
   },
   {

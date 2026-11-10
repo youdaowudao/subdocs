@@ -255,7 +255,7 @@ test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () 
   assert.ok(isClose(price.group.total, 16.2))
 })
 
-test('orders all Anthropic groups from Fable 5.1 through Opus 5.5 to Opus 5', () => {
+test('orders the CC MAX groups from Fable 5.2 through Fable 5.1 and keeps other Anthropic groups unchanged', () => {
   const mainModels = getTextModelsForGroup('anthropic-main')
   const ccTestModels = getTextModelsForGroup('anthropic-cc-test')
   const ccMaxModels = getTextModelsForGroup('anthropic-max')
@@ -280,6 +280,7 @@ test('orders all Anthropic groups from Fable 5.1 through Opus 5.5 to Opus 5', ()
     ...mainOrder.slice(9),
   ]
   const ccMaxOrder = [
+    'claude-fable-5-2',
     'claude-fable-5-1',
     ...mainOrder.slice(0, 9),
     'claude-sonnet-4-5-20250929',
@@ -478,21 +479,44 @@ test('includes Claude Opus 5.5 once at official pricing in every Anthropic group
   }
 })
 
-test('uses Anthropic official pricing for Claude Fable 5.1 in the CC MAX groups', () => {
-  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-max')
-  const externalGroup = TEXT_GROUPS.find((item) => item.id === 'anthropic-max-external')
-  const model = getTextModelsForGroup(group.id).find((item) => item.id === 'claude-fable-5-1')
+test('uses official Fable 5.2 and 5.1 pricing only in the two 1.5x CC MAX groups', () => {
+  const ccMaxGroupIds = ['anthropic-max', 'anthropic-max-external']
+  const cases = [
+    {
+      id: 'claude-fable-5-2',
+      usd: { input: 8, output: 40, cachedInput: 0.2 },
+      official: { input: 56, output: 280, cachedInput: 1.4, total: 336 },
+      group: { input: 12, output: 60, cachedInput: 0.3, total: 72 },
+    },
+    {
+      id: 'claude-fable-5-1',
+      usd: { input: 10, output: 50, cachedInput: 0.25 },
+      official: { input: 70, output: 350, cachedInput: 1.75, total: 420 },
+      group: { input: 15, output: 75, cachedInput: 0.375, total: 90 },
+    },
+  ]
 
-  assert.deepEqual(model.officialUsd, { input: 10, output: 50, cachedInput: 0.25 })
-  assert.equal(group.multiplier, 1.5)
-  assert.equal(externalGroup.multiplier, 1.5)
+  for (const group of TEXT_GROUPS) {
+    const models = getTextModelsForGroup(group.id)
+    for (const expected of cases) {
+      const matches = models.filter((item) => item.id === expected.id)
+      if (!ccMaxGroupIds.includes(group.id)) {
+        assert.equal(matches.length, 0, `${expected.id} is not available in ${group.id}`)
+        continue
+      }
 
-  const price = calculateTextPrice(model.officialUsd, externalGroup.multiplier)
-  assert.deepEqual(price.official, { input: 70, output: 350, cachedInput: 1.75, total: 420 })
-  assert.ok(isClose(price.group.input, 15))
-  assert.ok(isClose(price.group.output, 75))
-  assert.ok(isClose(price.group.cachedInput, 0.375))
-  assert.ok(isClose(price.group.total, 90))
+      assert.equal(matches.length, 1)
+      const [model] = matches
+      assert.deepEqual(model.officialUsd, expected.usd)
+      assert.equal(model.unavailableMessage, '')
+      assert.equal(group.multiplier, 1.5)
+      const price = calculateTextPrice(model.officialUsd, group.multiplier)
+      for (const field of ['input', 'output', 'cachedInput', 'total']) {
+        assert.ok(isClose(price.official[field], expected.official[field]), `${group.id}/${expected.id}/official/${field}`)
+        assert.ok(isClose(price.group[field], expected.group[field]), `${group.id}/${expected.id}/group/${field}`)
+      }
+    }
+  }
 })
 
 test('replaces unavailable group prices with one row message', () => {
