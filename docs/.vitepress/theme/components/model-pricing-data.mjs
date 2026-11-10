@@ -113,6 +113,13 @@ export const TEXT_GROUPS = [
     modelIds: GPT_MODEL_IDS,
   },
   {
+    id: 'gpt-0.35',
+    name: 'GPT 0.35 倍率分组',
+    multiplier: 0.35,
+    description: 'GPT 模型按 0.35 倍率计费',
+    modelIds: GPT_MODEL_IDS,
+  },
+  {
     id: 'anthropic-main',
     name: 'Anthropic 低价分组1M上下文 缓存高',
     multiplier: 0.16,
@@ -241,7 +248,7 @@ export const MODEL_CATEGORIES = [
     name: 'GPT',
     iconSvg: OPENAI_ICON,
     kind: 'text',
-    groupIds: ['pro-plus', 'gpt-0.18', 'full'],
+    groupIds: ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35'],
     defaultGroupId: 'gpt-0.18',
   },
   {

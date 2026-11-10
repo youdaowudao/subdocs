@@ -375,7 +375,7 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
         </div>
         <p v-if="isGptCategory" class="astra-pricing-note">
           <strong>GPT-6 Astra 计费说明：</strong>
-          输入和输出按官方公开价 $10、$50 计算；缓存读取的官方公开价为 $1，但社区长期观察并经大量用户实际调用验证，实际按 $2 计费。本站三个 GPT 分组的 Astra 缓存读取因此按实测基准 $2 乘对应分组倍率计算。官方价格或计费规则发生变化后，本站会尽快同步调整。
+          输入和输出按官方公开价 $10、$50 计算；缓存读取的官方公开价为 $1，但社区长期观察并经大量用户实际调用验证，实际按 $2 计费。本站各 GPT 分组的 Astra 缓存读取因此按实测基准 $2 乘对应分组倍率计算。官方价格或计费规则发生变化后，本站会尽快同步调整。
         </p>
       </div>
 

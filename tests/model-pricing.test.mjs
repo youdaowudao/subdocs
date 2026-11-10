@@ -32,6 +32,7 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.1 },
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
+      { id: 'gpt-0.35', name: 'GPT 0.35 倍率分组', multiplier: 0.35 },
       { id: 'anthropic-main', name: 'Anthropic 低价分组1M上下文 缓存高', multiplier: 0.16 },
       { id: 'anthropic-cc-test', name: '0.45Anthropic CCTEST满分渠道', multiplier: 0.45 },
       { id: 'anthropic-cc-test-0.7', name: '0.7xcctest满分 【主力分组推荐使用】', multiplier: 0.7 },
@@ -56,7 +57,7 @@ test('keeps the model category tabs in the requested order', () => {
   assert.deepEqual(
     MODEL_CATEGORIES.map(({ id, name, kind, groupIds, defaultGroupId }) => ({ id, name, kind, groupIds, defaultGroupId })),
     [
-      { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full'], defaultGroupId: 'gpt-0.18' },
+      { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35'], defaultGroupId: 'gpt-0.18' },
       { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-cc-test-0.7', 'anthropic-max', 'anthropic-max-external'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity', 'gemini-4-argon'], defaultGroupId: undefined },
@@ -132,7 +133,7 @@ test('keeps the GPT Plus discount group at 0.1 with instability copy', () => {
 })
 
 test('keeps the GPT family models in the expected order', () => {
-  for (const groupId of ['pro-plus', 'gpt-0.18', 'full']) {
+  for (const groupId of ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35']) {
     assert.deepEqual(
       getTextModelsForGroup(groupId).map((model) => model.id),
       [
@@ -149,12 +150,13 @@ test('keeps the GPT family models in the expected order', () => {
   }
 })
 
-test('prices GPT-5.6 Terra from the $2 official input baseline in all three GPT groups', () => {
+test('prices GPT-5.6 Terra from the $2 official input baseline in all GPT groups', () => {
   const officialUsd = { input: 2, output: 15, cachedInput: 0.25 }
   const expectedGroupInputs = new Map([
     ['pro-plus', 0.2],
     ['gpt-0.18', 0.3],
     ['full', 0.54],
+    ['gpt-0.35', 0.7],
   ])
 
   for (const [groupId, expectedInput] of expectedGroupInputs) {
@@ -170,12 +172,13 @@ test('prices GPT-5.6 Terra from the $2 official input baseline in all three GPT 
   }
 })
 
-test('prices GPT-6.1 Sol from the official Standard baseline in all three GPT groups', () => {
+test('prices GPT-6.1 Sol from the official Standard baseline in all GPT groups', () => {
   const officialUsd = { input: 2, output: 10, cachedInput: 0.1 }
   const expectedGroupPrices = new Map([
     ['pro-plus', { input: 0.2, output: 1, cachedInput: 0.01, total: 1.2 }],
     ['gpt-0.18', { input: 0.3, output: 1.5, cachedInput: 0.015, total: 1.8 }],
     ['full', { input: 0.54, output: 2.7, cachedInput: 0.027, total: 3.24 }],
+    ['gpt-0.35', { input: 0.7, output: 3.5, cachedInput: 0.035, total: 4.2 }],
   ])
 
   for (const [groupId, expectedGroup] of expectedGroupPrices) {
@@ -197,12 +200,13 @@ test('prices GPT-6.1 Sol from the official Standard baseline in all three GPT gr
   }
 })
 
-test('prices GPT-6 Sol from the official Standard baseline in all three GPT groups', () => {
+test('prices GPT-6 Sol from the official Standard baseline in all GPT groups', () => {
   const officialUsd = { input: 2, output: 10, cachedInput: 0.2 }
   const expectedGroupPrices = new Map([
     ['pro-plus', { input: 0.2, output: 1, cachedInput: 0.02, total: 1.2 }],
     ['gpt-0.18', { input: 0.3, output: 1.5, cachedInput: 0.03, total: 1.8 }],
     ['full', { input: 0.54, output: 2.7, cachedInput: 0.054, total: 3.24 }],
+    ['gpt-0.35', { input: 0.7, output: 3.5, cachedInput: 0.07, total: 4.2 }],
   ])
 
   for (const [groupId, expectedGroup] of expectedGroupPrices) {
@@ -224,7 +228,7 @@ test('prices GPT-6 Sol from the official Standard baseline in all three GPT grou
   }
 })
 
-test('prices GPT-6 Astra in all three GPT groups with the revised baseline', () => {
+test('prices GPT-6 Astra in the original GPT groups with the revised baseline', () => {
   const proPlusModel = getTextModelsForGroup('pro-plus').find((model) => model.id === 'gpt-6-astra')
   const mixedModel = getTextModelsForGroup('gpt-0.18').find((model) => model.id === 'gpt-6-astra')
   const proModel = getTextModelsForGroup('full').find((model) => model.id === 'gpt-6-astra')
@@ -984,6 +988,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['pro-plus', 3.5],
     ['gpt-0.18', 5.25],
     ['full', 9.45],
+    ['gpt-0.35', 12.25],
     ['anthropic-main', 5.6],
     ['anthropic-cc-test', 15.75],
     ['anthropic-cc-test-0.7', 24.5],

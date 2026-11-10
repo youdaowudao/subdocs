@@ -5,6 +5,69 @@ import vue from '@vitejs/plugin-vue'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 
+test('renders the new 0.35 GPT group with all model prices and the Astra cache override', async () => {
+  const server = await createServer({
+    configFile: false,
+    plugins: [vue()],
+    server: { middlewareMode: true },
+    appType: 'custom',
+  })
+
+  try {
+    const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
+    const expected = [
+      ['gpt-6-astra', ['¥3.50', '¥17.50', '¥0.70', '¥21.00']],
+      ['gpt-6.1-sol', ['¥0.70', '¥3.50', '¥0.035', '¥4.20']],
+      ['gpt-6.1-terra', ['¥0.35', '¥1.75', '¥0.0175', '¥2.10']],
+      ['gpt-6-sol', ['¥0.70', '¥3.50', '¥0.07', '¥4.20']],
+      ['gpt-6-luna', ['¥0.035', '¥0.18', '¥0.0035', '¥0.21']],
+      ['gpt-5.6-sol', ['¥1.75', '¥10.50', '¥0.18', '¥12.25']],
+      ['gpt-5.6-terra', ['¥0.70', '¥5.25', '¥0.0875', '¥5.95']],
+      ['gpt-5.6-luna', ['¥0.35', '¥2.10', '¥0.035', '¥2.45']],
+    ]
+
+    for (const priceMode of ['group', 'official']) {
+      const component = {
+        ...pricing,
+        setup(props, context) {
+          const state = pricing.setup(props, context)
+          state.activeGroupId.value = 'gpt-0.35'
+          state.priceMode.value = priceMode
+          return state
+        },
+      }
+      const html = await renderToString(createSSRApp(component))
+      const rows = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)]
+        .map(([row]) => row)
+        .filter((row) => row.includes('class="model-id-cell"'))
+
+      assert.equal(rows.length, expected.length)
+      assert.doesNotMatch(html, /NaN|价格待确认|本站三个 GPT 分组/)
+      for (const [index, [id, amounts]] of expected.entries()) {
+        assert.ok(rows[index].includes(`<strong>${id}</strong>`))
+        assert.ok(rows[index].includes(`aria-label="复制 ${id}"`))
+        if (priceMode === 'group') {
+          const actual = [...rows[index].matchAll(/<strong class="group-price">([^<]+)</g)]
+            .map((match) => match[1])
+          assert.deepEqual(actual, amounts, id)
+        }
+      }
+      if (priceMode === 'group') {
+        const activeCard = html.match(/<button\b[^>]*class="[^"]*pricing-group-card[^"]*"[^>]*aria-pressed="true"[^>]*>[\s\S]*?<\/button>/)[0]
+        assert.match(activeCard, /GPT 0\.35 倍率分组/)
+        assert.match(activeCard, /0\.35 倍率/)
+        assert.match(rows[0], /实测基准 \$2 × 0\.35/)
+      } else {
+        const astraPrices = [...rows[0].matchAll(/<strong class="official-price">([^<]+)</g)]
+          .map((match) => match[1])
+        assert.deepEqual(astraPrices, ['¥70.00', '¥350.00', '¥7.00', '¥420.00'])
+      }
+    }
+  } finally {
+    await server.close()
+  }
+})
+
 test('renders Argon in its own 0.5 group and keeps Barium in the 0.35 Gemini group', async () => {
   const server = await createServer({
     configFile: false,
