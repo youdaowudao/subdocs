@@ -114,9 +114,9 @@ export const TEXT_GROUPS = [
   },
   {
     id: 'gpt-0.35',
-    name: 'GPT 0.35 倍率分组',
+    name: 'GPT VIP 分组',
     multiplier: 0.35,
-    description: 'GPT 模型按 0.35 倍率计费',
+    description: 'VIP 分组，GPT 模型按 0.35 倍率计费',
     modelIds: GPT_MODEL_IDS,
   },
   {

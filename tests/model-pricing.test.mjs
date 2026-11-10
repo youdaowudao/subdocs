@@ -32,7 +32,7 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'pro-plus', name: 'GPT Plus 特惠分组（最近不稳定）', multiplier: 0.1 },
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
-      { id: 'gpt-0.35', name: 'GPT 0.35 倍率分组', multiplier: 0.35 },
+      { id: 'gpt-0.35', name: 'GPT VIP 分组', multiplier: 0.35 },
       { id: 'anthropic-main', name: 'Anthropic 低价分组1M上下文 缓存高', multiplier: 0.16 },
       { id: 'anthropic-cc-test', name: '0.45Anthropic CCTEST满分渠道', multiplier: 0.45 },
       { id: 'anthropic-cc-test-0.7', name: '0.7xcctest满分 【主力分组推荐使用】', multiplier: 0.7 },

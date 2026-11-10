@@ -5,7 +5,7 @@ import vue from '@vitejs/plugin-vue'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 
-test('renders the new 0.35 GPT group with all model prices and the Astra cache override', async () => {
+test('renders the 0.35 GPT VIP group with all model prices and the Astra cache override', async () => {
   const server = await createServer({
     configFile: false,
     plugins: [vue()],
@@ -54,7 +54,7 @@ test('renders the new 0.35 GPT group with all model prices and the Astra cache o
       }
       if (priceMode === 'group') {
         const activeCard = html.match(/<button\b[^>]*class="[^"]*pricing-group-card[^"]*"[^>]*aria-pressed="true"[^>]*>[\s\S]*?<\/button>/)[0]
-        assert.match(activeCard, /GPT 0\.35 倍率分组/)
+        assert.match(activeCard, /GPT VIP 分组/)
         assert.match(activeCard, /0\.35 倍率/)
         assert.match(rows[0], /实测基准 \$2 × 0\.35/)
       } else {
