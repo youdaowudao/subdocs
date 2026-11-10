@@ -1,4 +1,5 @@
 #!/bin/sh
+# UseGoodAI codex-models version: @TOOL_VERSION@
 set -eu
 
 say() { printf '%s\n' "$*"; }

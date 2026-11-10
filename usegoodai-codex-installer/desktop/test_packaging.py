@@ -97,6 +97,9 @@ class DesktopPackagingTests(unittest.TestCase):
             app = output / "Mac-Apple芯片" / f"{title}.app/Contents"
             info = plistlib.loads((app / "Info.plist").read_bytes())
             self.assertEqual(info["CFBundleDisplayName"], title)
+            version = (PROJECT_ROOT / "codex-domestic-models/VERSION").read_text().strip()
+            self.assertEqual(info["CFBundleShortVersionString"], version)
+            self.assertEqual(info["CFBundleVersion"], version)
             launcher = app / "MacOS" / info["CFBundleExecutable"]
             self.assertEqual(struct.unpack_from("<II", launcher.read_bytes()), (0xFEEDFACF, 0x0100000C))
             self.assertTrue(os.access(launcher, os.X_OK))
