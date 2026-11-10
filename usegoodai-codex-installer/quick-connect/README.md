@@ -7,6 +7,13 @@
 
 技术选型：Go 1.25 + Wails v2（WebView2）。不需要管理员权限；系统缺少 WebView2 时弹出中文提示并打开微软下载页。
 
+## 1.1.7（2026-11-10）
+
+- 内置生图工具 0.9.3。旧版本和目标版本同时显示；缺少 Key 的旧安装同样显示升级按钮。
+- 升级已有安装调用 `install --keep-key`，不要求新 Key、不做余额/密钥/模型网络检查，保留 Key 原样；没有 Key 也可先升级再补。
+- 已有生图安装不自动读取剪贴板，防止升级时误导入编程密钥；主动粘贴或网站导入仍走新密钥检查。
+- 测试记录见 [生图工具升级测试](../test-records/20261110-image-upgrade.md)，未执行的桌面和真实接口项目明确列出。
+
 ## 行为
 
 - **导入链接**：每次启动在 `HKCU\Software\Classes\usegoodai` 注册协议，命令为 `"<exe 路径>" "%1"`。单实例：助手已打开时，新链接转给原窗口并置前；未打开时随链接启动并处理。
@@ -45,7 +52,7 @@ Codex 页没检测到 ChatGPT/Codex（没有 `Packages\OpenAI.*`，也没有 `.c
 - **检测**：先用 `/v1/usage` 确认密钥可用，再查 `GET /v1/models`。列表里没有任何 `gpt-image` 开头的模型，判定为选错分组、不安装；有就安装。编程分组也带画图模型、画图分组也有其他画图模型，所以不按分组区分，能画就算对；接入 Codex 也不按模型拦截。
 - **安装**：助手内附生图工具已发布的程序（见 [imagetool/README.md](imagetool/README.md)），运行前核对 SHA-256，解到 `%LOCALAPPDATA%\UseGoodAI\QuickConnect\image-tool\`，以 `CODEX_HOME=<目录> install` 运行、密钥从标准输入传入，与客户在终端里输入完全相同；不弹控制台窗口，不碰 Codex 配置、不关闭 Codex。失败时显示生图程序的「安装失败：」原因（密钥会被遮挡）。
 - **状态**：读 `<CODEX_HOME 或 ~/.codex>\tools\usegoodai-imagines-tool\` 的 `install-manifest.json`、`api-key`、`key-source`。
-- **升级**：生图工具发布新版后，改 `build.py` 的 `IMAGE_TOOL_RELEASE` 重新打包。
+- **升级**：状态按已安装版本与内置版本比较，缺 Key 时也显示旧版本和升级按钮。输入框留空直接升级程序，保留原 Key，不联网检查凭据；粘贴新 Key 才验证并替换。较新的安装保留、不降级。维护时改 `build.py` 的 `IMAGE_TOOL_RELEASE` 再打包。
 
 ### 国产模型导入
 

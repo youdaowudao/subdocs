@@ -89,7 +89,9 @@ function cardFor() {
     const ok = image.state === 'ready';
     return {
       state: ok ? 'ok' : image.state === 'none' ? 'none' : 'other',
-      title: titles[image.state] || titles.none,
+      title: image.updateAvailable
+        ? `V${image.version} 已安装，可更新到 V${image.bundled}${image.key ? '' : '，尚未配置 Key'}`
+        : titles[image.state] || titles.none,
       name: image.shared ? '与 Codex 共用' : image.name || '',
       key: image.key || '',
     };
@@ -150,7 +152,7 @@ function renderEntries() {
     outdated: '生图工具（可更新）',
     nokey: '生图工具（缺少 Key）',
   };
-  $('go-image-label').textContent = imageLabels[image.state] || '安装生图工具';
+  $('go-image-label').textContent = image.updateAvailable ? '生图工具（可更新）' : imageLabels[image.state] || '安装生图工具';
   $('go-image').dataset.state = image.state === 'ready' ? 'done' : image.state === 'none' ? '' : 'attention';
 
   const models = state.models || { state: 'none' };
@@ -173,25 +175,37 @@ function renderEntries() {
   }
 }
 
-// The image tool keeps its key, so an installed one updates or reinstalls
-// with it unless a new key is typed in. A link or a pasted key still
-// replaces it.
+// Updating software never requires a key. Pasting a new key explicitly
+// chooses the separate install/key-replacement action.
 function savedImageKey() {
   const image = state.image;
   return Boolean(image && image.key && (image.state === 'ready' || image.state === 'outdated'));
 }
 
-function usesSavedImageKey() {
-  return tool === 'image' && savedImageKey() && keyInput.value.trim() === '';
+function installedImage() {
+  const image = state.image;
+  return Boolean(image && image.version && ['ready', 'outdated', 'nokey'].includes(image.state));
+}
+
+function usesImageUpdate() {
+  return tool === 'image' && installedImage() && keyInput.value.trim() === '';
+}
+
+function newerImageInstalled() {
+  const image = state.image;
+  return installedImage() && image.bundled && image.version !== image.bundled && !image.updateAvailable;
 }
 
 function imageGuide() {
-  if (!savedImageKey()) return TOOLS.image.guide;
+  if (!installedImage()) return TOOLS.image.guide;
   const image = state.image;
-  const first = image.state === 'outdated'
-    ? `已有密钥，直接点「一键更新」升级到 V${image.bundled}，不用再粘贴。`
-    : '已装好，密钥也在。';
-  return first + '要换密钥才需要粘贴新的，或在网站点「一键导入」。';
+  if (newerImageInstalled()) return `本机 V${image.version} 比助手内置的 V${image.bundled} 更新，保留当前版本，不降级。`;
+  const first = image.updateAvailable
+    ? `已安装 V${image.version}，直接点「一键更新」升级到 V${image.bundled}。`
+    : `已安装 V${image.version}，可以直接修复安装文件。`;
+  return first + (savedImageKey()
+    ? '已有密钥保持不变，不需要重新粘贴；要换密钥才填写新的或在网站点「一键导入」。'
+    : '升级不需要 Key；画图前再填写画图分组密钥或到网站点「一键导入」。');
 }
 
 function guideFor(name) {
@@ -199,8 +213,9 @@ function guideFor(name) {
 }
 
 function idleLabel() {
-  if (usesSavedImageKey()) {
-    return state.image.state === 'outdated' ? `一键更新到 V${state.image.bundled}` : '用已有密钥重新安装';
+  if (usesImageUpdate()) {
+    if (newerImageInstalled()) return `保留已安装的 V${state.image.version}`;
+    return state.image.updateAvailable ? `一键更新到 V${state.image.bundled}` : '重新安装当前版本';
   }
   if (tool === 'models') {
     if (confirming === 'import') return '确认导入（会关闭 Codex）';
@@ -323,8 +338,8 @@ function submit() {
     return;
   }
   const key = keyInput.value;
-  if (usesSavedImageKey()) {
-    run('正在更新…', '正在用已有密钥更新生图工具…', () => bridge().UpdateImage());
+  if (usesImageUpdate()) {
+    run('正在更新…', '正在更新生图程序，保留原有密钥配置…', () => bridge().UpdateImage());
     return;
   }
   if (tool === 'image') {
@@ -388,9 +403,9 @@ function nextLink() {
 }
 
 async function fillFromClipboard() {
-  // An installed image tool already has its key; the clipboard might hold
-  // the Codex key, which must not replace it unasked.
-  if (busy || tool === 'models' || (tool === 'image' && savedImageKey()) || keyInput.value.trim() !== '' || !bridge()) return;
+  // Upgrades never import clipboard credentials automatically, including
+  // installations whose image key is currently missing.
+  if (busy || tool === 'models' || (tool === 'image' && installedImage()) || keyInput.value.trim() !== '' || !bridge()) return;
   const asked = tool;
   try {
     const key = await bridge().ClipboardKey();
