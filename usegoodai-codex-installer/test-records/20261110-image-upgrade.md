@@ -1,6 +1,6 @@
 # 生图升级测试（2026-11-10）
 
-记录版本 1.0.1；候选生图 0.9.3、助手 1.1.7；国产模型导入保持 1.0.1。
+记录版本 1.0.2；候选生图 0.9.3、助手 1.1.7；国产模型导入保持 1.0.1。
 
 生图完整源码提交：子项目 usegoodai-imagines-tool 的 58cbd0b。源码、VERSION、release_revision.go、四个平台程序及 SHA256SUMS 已核对；从所属子项目手动迁移到文档站，保留当前版和上一稳定版 0.9.2。
 
@@ -17,3 +17,11 @@
 Windows PowerShell 5.1.26100.33648 的四组原生升级用例已全部通过断言（[运行与 JSON 附件](https://github.com/youdaowudao/subdocs/actions/runs/42765535150)）；该轮最后打印中文报告时退出失败，已修复控制台编码并重跑。最终发布依据是本 PR 最后提交的三项既有门禁成功记录；失败或旧提交的门禁不替代最终检查。
 
 记录 1.0.1：补充四平台原生及 Windows 窗口证据、失败测试环境与输入自动化修正；合集版本与哈希不变。新增发布检查逐项核对前两个 Mac App 的两个版本字段，第三个 App 继续使用既有检查。
+
+## 最终候选复验
+
+- [四平台原生升级测试](https://github.com/youdaowudao/subdocs/actions/runs/42766216019)：Linux x64、Windows x64 系统 PowerShell 5.1、Apple 芯片 Mac 与 Intel Mac 的系统 Bash 3.2 全部成功。原生程序哈希、系统、Shell、四种 Key 状态逐项结果在各平台 JSON 附件中。控制台编码修复后的整个流程成功。
+- [Windows 实际窗口](https://github.com/youdaowudao/subdocs/actions/runs/42766216045)：Server 2022、Server 2025 全部成功；实际启动候选 EXE，真实点击界面，显示 V0.9.2 → V0.9.3，分别验证有旧 Key 与无 Key 的升级。各有 4 张前后截图及报告，不以虚拟 DOM 测试代替。
+- [同一候选提交的既有三项门禁](https://github.com/youdaowudao/subdocs/actions/runs/42766224306) 成功；本次只补记录和客户更换 Key 的明确入口，成品哈希不变，最后提交仍须重新通过既有门禁后再合并。
+- `docs/public/install/usegoodai-imagines-tool/` 的当前程序、脚本、校验及 latest.json 与子项目构建逐字节一致。合集第三个 App 的全部文件和属性与上一版一致；前两个 Mac App 的两个版本字段与源码/发布版本一致。
+- 记录 1.0.2（2026-11-10）：补齐最终四平台、两种 Windows 窗口环境的成功记录；修正教程鉴权失败后更换 Key 的入口，避免普通升级继续保留旧 Key 时误以为已经换好。

@@ -114,11 +114,31 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 
 | 遇到的问题 | 处理方法 |
 | --- | --- |
-| 安装器提示 Key 无效，或生图返回鉴权错误 | 在 **API 密钥** 页面复制 **专门画图分组** 的 Key，重新运行第 2 步命令 |
+| 安装器提示 Key 无效，或生图返回鉴权错误 | 在 Windows 助手或 Mac 第二个 App 里重新导入画图 Key；终端用户打开下方“终端更换画图 Key” |
 | 生图时弹出权限申请，或提示无法联网 | 完全退出 Codex 再重新打开，新建任务后再试 |
 | Codex 只回复图片路径，没有显示图片 | 对 Codex 说“把图片直接显示在对话里” |
 | 生图接口返回错误 | 工具不会自动重试或换模型，稍后重新发一次 |
 | 图片无法保存 | 在 Codex 里打开一个有写入权限的项目文件夹后再试 |
+
+<details>
+<summary>终端更换画图 Key</summary>
+
+已安装工具后，在对应终端运行下面的命令，再粘贴新的画图 Key，按回车。此入口明确更换密钥，保留工具和 Codex 配置。
+
+::: code-group
+
+```powershell [Windows]
+$imageHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
+& (Join-Path $imageHome 'tools\usegoodai-imagines-tool\usegoodai-imagines-tool.exe') install --key-stdin
+```
+
+```bash [Mac / Linux]
+"${CODEX_HOME:-$HOME/.codex}/tools/usegoodai-imagines-tool/usegoodai-imagines-tool" install --key-stdin
+```
+
+:::
+
+</details>
 
 <details>
 <summary>不用一键安装：让 Codex 创建 Python 脚本</summary>
