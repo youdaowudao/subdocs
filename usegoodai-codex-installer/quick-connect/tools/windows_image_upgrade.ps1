@@ -10,12 +10,14 @@ public static class ImageUpgradeMouse {
   [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
 }
 '@
-$Repo = (Resolve-Path (Join-Path $PSScriptRoot '../../../..')).Path
+$Repo = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 $Work = Join-Path $env:RUNNER_TEMP 'image-upgrade-window'
 New-Item -ItemType Directory -Force $Work | Out-Null
 $Candidate = (Get-Content -LiteralPath (Join-Path $Repo 'docs/public/install/usegoodai-imagines-tool/latest.json') -Raw | ConvertFrom-Json).version
 $Previous = Join-Path $Repo 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.2/usegoodai-imagines-tool-v0.9.2-windows-amd64.exe'
 $OriginalHome = $env:CODEX_HOME
+$OriginalBrowserArguments = $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
+$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--force-renderer-accessibility'
 $ImageExe = (Resolve-Path $Exe).Path
 $Results = @()
 
@@ -30,6 +32,9 @@ function Wait-Text($Root, [string]$Text) {
     if ($null -ne $element) { return $element }
     Start-Sleep -Milliseconds 250
   }
+  Screen 'failed'
+  $Root.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition) |
+    ForEach-Object { $_.Current.Name } | Set-Content -LiteralPath (Join-Path $Work 'failed-ui-names.txt') -Encoding UTF8
   throw "窗口未显示：$Text"
 }
 function Click($Element) {
@@ -96,4 +101,7 @@ try {
   }
   @{ version='1.0.0'; candidate=$Candidate; scope='实际 Windows 助手窗口及内置程序；临时假 Key，无真实鉴权'; results=$Results } |
     ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $Work 'report.json') -Encoding UTF8
-} finally { $env:CODEX_HOME = $OriginalHome }
+} finally {
+  $env:CODEX_HOME = $OriginalHome
+  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = $OriginalBrowserArguments
+}

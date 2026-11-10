@@ -30,7 +30,12 @@ jobs:
         with:
           python-version: '3.13'
       - name: 运行真实原生安装入口和升级程序
-        shell: ${{ startsWith(matrix.os, 'windows') && 'powershell' || 'bash' }}
+        if: runner.os != 'Windows'
+        shell: bash
+        run: python tests/image-upgrade-native.py
+      - name: 用系统 Windows PowerShell 运行原生升级
+        if: runner.os == 'Windows'
+        shell: powershell
         run: python tests/image-upgrade-native.py
       - name: 检查升级按钮和旧版本显示
         run: node --test tests/image-upgrade-ui.test.mjs
