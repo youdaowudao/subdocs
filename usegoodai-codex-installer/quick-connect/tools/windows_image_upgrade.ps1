@@ -6,6 +6,7 @@ Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 public static class ImageUpgradeMouse {
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
 }
@@ -38,16 +39,18 @@ function Wait-Text($Root, [string]$Text) {
   throw "窗口未显示：$Text"
 }
 function Click($Element) {
-  $pattern = $null
-  if ($Element.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$pattern)) {
-    $pattern.Invoke()
-  } else {
-    $bounds = $Element.Current.BoundingRectangle
-    if ($bounds.IsEmpty) { throw '控件无可点击位置' }
-    [ImageUpgradeMouse]::SetCursorPos([int]($bounds.X+$bounds.Width/2), [int]($bounds.Y+$bounds.Height/2)) | Out-Null
-    [ImageUpgradeMouse]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
-    [ImageUpgradeMouse]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
-  }
+  # Bring the real window forward before pointer input. A WebView text
+  # provider's Invoke action can merely focus the parent on Server 2025.
+  [ImageUpgradeMouse]::SetForegroundWindow($process.MainWindowHandle) | Out-Null
+  Start-Sleep -Milliseconds 250
+  $bounds = $Element.Current.BoundingRectangle
+  if ($bounds.IsEmpty) { throw '控件无可点击位置' }
+  Write-Host "点击实际窗口：$($Element.Current.Name)"
+  [ImageUpgradeMouse]::SetCursorPos([int]($bounds.X+$bounds.Width/2), [int]($bounds.Y+$bounds.Height/2)) | Out-Null
+  Start-Sleep -Milliseconds 100
+  [ImageUpgradeMouse]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
+  Start-Sleep -Milliseconds 100
+  [ImageUpgradeMouse]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
 }
 function Screen([string]$Name) {
   $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
