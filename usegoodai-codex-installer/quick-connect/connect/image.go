@@ -37,12 +37,13 @@ const (
 
 // ImageStatus is what the image card shows. Key is masked.
 type ImageStatus struct {
-	State   string `json:"state"`
-	Version string `json:"version,omitempty"`
-	Bundled string `json:"bundled,omitempty"`
-	Key     string `json:"key,omitempty"`
-	Name    string `json:"name,omitempty"`
-	Shared  bool   `json:"shared,omitempty"`
+	State           string `json:"state"`
+	Version         string `json:"version,omitempty"`
+	Bundled         string `json:"bundled,omitempty"`
+	Key             string `json:"key,omitempty"`
+	Name            string `json:"name,omitempty"`
+	Shared          bool   `json:"shared,omitempty"`
+	UpdateAvailable bool   `json:"updateAvailable,omitempty"`
 }
 
 // ImageCodexHome is where the image tool installs: CODEX_HOME when set, as
@@ -75,6 +76,7 @@ func ReadImageStatus(codexHome, bundled string) (ImageStatus, string) {
 		return status, ""
 	}
 	status.Version = strings.TrimPrefix(strings.TrimSpace(manifest.Version), "V")
+	status.UpdateAvailable = bundled != "" && versionLess(status.Version, bundled)
 
 	key := ""
 	source, _ := os.ReadFile(filepath.Join(toolDir, imageKeySourceName))
@@ -129,34 +131,55 @@ type ImageInstaller interface {
 	// Version is the bundled program's version, "" when none is bundled.
 	Version() string
 	Install(ctx context.Context, codexHome, key string) error
+	Update(ctx context.Context, codexHome string) error
 }
 
 // Messages for the image tool.
 const (
-	MessageImageEmpty       = "现在导入的是生图工具的 Key。到 UseGoodAI 网站「API 密钥」页或首页「快速开始」，选一个画图分组的密钥，点「一键导入」；也可以复制密钥粘贴到上面。"
-	MessageImageNotBundled  = "这个版本的助手没有内置生图工具，请下载新版助手。"
-	MessageImageRejected    = "密钥无效，请回网站重新复制完整的密钥。生图工具没有改动。"
-	MessageImageDisabled    = "这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。生图工具没有改动。"
-	MessageImageNoModel     = "这个密钥的分组不能画图（查不到 gpt-image 模型）。请到网站选画图分组的密钥，再点「一键导入」。生图工具没有改动。"
-	MessageImageTimeout     = "网络超时：UseGoodAI 服务器 10 秒内没有回应。生图工具没有改动。网络慢或开了代理时，稍后再试一次。"
-	MessageImageOffline     = "连不上 UseGoodAI 服务器：网络不通，或被代理、防火墙拦截。生图工具没有改动。检查网络后再试一次。"
-	MessageImageServerError = "UseGoodAI 服务器暂时出错（%s），无法确认密钥。生图工具没有改动。稍后再试一次，仍不行请进 QQ 群联系客服。"
-	MessageImageNeedBalance = "密钥没问题，但账户余额为 $0：余额为 0 时服务器不让查询这个密钥能不能画图。充值后再点「一键导入」，新人进群领 2 元。生图工具没有改动。"
-	MessageImageNoBalance   = "生图工具已装好，但余额为 $0，充值后才能画图；新人进群领 2 元。"
-	MessageImageInstalled   = "生图工具 V%s 已装好 ✓ 重新打开 Codex 或新建任务，说“画一张白底红苹果”试试。"
-	MessageImageNoSavedKey  = "生图工具里没有可用的密钥，请到网站选画图分组的密钥点「一键导入」，或复制密钥粘贴到上面。"
+	MessageImageEmpty        = "现在导入的是生图工具的 Key。到 UseGoodAI 网站「API 密钥」页或首页「快速开始」，选一个画图分组的密钥，点「一键导入」；也可以复制密钥粘贴到上面。"
+	MessageImageNotBundled   = "这个版本的助手没有内置生图工具，请下载新版助手。"
+	MessageImageRejected     = "密钥无效，请回网站重新复制完整的密钥。生图工具没有改动。"
+	MessageImageDisabled     = "这个密钥已停用、过期或额度用完，请在网站换一个可用的密钥。生图工具没有改动。"
+	MessageImageNoModel      = "这个密钥的分组不能画图（查不到 gpt-image 模型）。请到网站选画图分组的密钥，再点「一键导入」。生图工具没有改动。"
+	MessageImageTimeout      = "网络超时：UseGoodAI 服务器 10 秒内没有回应。生图工具没有改动。网络慢或开了代理时，稍后再试一次。"
+	MessageImageOffline      = "连不上 UseGoodAI 服务器：网络不通，或被代理、防火墙拦截。生图工具没有改动。检查网络后再试一次。"
+	MessageImageServerError  = "UseGoodAI 服务器暂时出错（%s），无法确认密钥。生图工具没有改动。稍后再试一次，仍不行请进 QQ 群联系客服。"
+	MessageImageNeedBalance  = "密钥没问题，但账户余额为 $0：余额为 0 时服务器不让查询这个密钥能不能画图。充值后再点「一键导入」，新人进群领 2 元。生图工具没有改动。"
+	MessageImageNoBalance    = "生图工具已装好，但余额为 $0，充值后才能画图；新人进群领 2 元。"
+	MessageImageInstalled    = "生图工具 V%s 已装好 ✓ 重新打开 Codex 或新建任务，说“画一张白底红苹果”试试。"
+	MessageImageNotInstalled = "还没有安装生图工具，请先点「安装生图工具」。"
+	MessageImageUpdated      = "生图工具已更新到 V%s，已有密钥保持不变，不需要重新输入。重新打开 Codex 后新建任务即可使用。"
+	MessageImageUpdatedNoKey = "生图工具已更新到 V%s，无需填写 Key 即可完成升级。暂未配置画图密钥，之后到网站选画图分组的密钥点「一键导入」。"
 )
 
-// UpdateImage reinstalls the bundled image tool with the key it already
-// holds, so updating needs no pasting. The key is checked again first.
+// UpdateImage upgrades files without validating or replacing credentials.
+// A missing, expired or zero-balance key never prevents a software update.
 func (s *Service) UpdateImage(ctx context.Context) Result {
-	_, key := ReadImageStatus(s.ImageHome, "")
-	if key == "" {
-		result := s.result(ToneError, MessageImageNoSavedKey)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.Image == nil || s.Image.Version() == "" {
+		return s.result(ToneError, MessageImageNotBundled)
+	}
+	status, _ := ReadImageStatus(s.ImageHome, s.Image.Version())
+	if status.State == ImageNone {
+		result := s.result(ToneError, MessageImageNotInstalled)
 		result.Action = ActionOpenSite
 		return result
 	}
-	return s.InstallImage(ctx, key, "")
+	if status.State == ImageUnmanaged {
+		return s.result(ToneError, "无法确认现有生图文件的版本，未改动原有文件。")
+	}
+	if versionLess(s.Image.Version(), status.Version) {
+		return s.result(ToneSuccess, fmt.Sprintf("已安装较新的生图工具 V%s，保留当前版本，不降级。", status.Version))
+	}
+	if err := s.Image.Update(ctx, s.ImageHome); err != nil {
+		return s.result(ToneError, "更新生图工具失败："+strings.TrimRight(err.Error(), "。.")+"。原有文件没有改动，可以重试。")
+	}
+	result := s.result(ToneSuccess, fmt.Sprintf(MessageImageUpdated, s.Image.Version()))
+	if result.Image.State == ImageNoKey {
+		result.Tone, result.Message = ToneWarning, fmt.Sprintf(MessageImageUpdatedNoKey, s.Image.Version())
+	}
+	return result
 }
 
 // ImageStatus reads the image card.

@@ -93,6 +93,18 @@ func (b *BundledImageTool) unpack() (string, error) {
 
 // Install runs the image tool's installer for codexHome with key.
 func (b *BundledImageTool) Install(ctx context.Context, codexHome, key string) error {
+	return b.runInstaller(ctx, codexHome, installArguments(b.Version()), key)
+}
+
+// Update never passes credentials or opens an input prompt.
+func (b *BundledImageTool) Update(ctx context.Context, codexHome string) error {
+	if versionLess(b.Version(), "0.9.2") {
+		return errors.New("内置生图程序太旧，无法保留密钥升级，请下载新版助手")
+	}
+	return b.runInstaller(ctx, codexHome, []string{"install", "--keep-key"}, "")
+}
+
+func (b *BundledImageTool) runInstaller(ctx context.Context, codexHome string, arguments []string, key string) error {
 	if b.Version() == "" {
 		return errors.New("助手没有内置生图工具")
 	}
@@ -102,9 +114,11 @@ func (b *BundledImageTool) Install(ctx context.Context, codexHome, key string) e
 	}
 	ctx, cancel := context.WithTimeout(ctx, installTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, program, installArguments(b.Version())...)
+	command := exec.CommandContext(ctx, program, arguments...)
 	command.Env = append(withoutCodexHome(os.Environ()), "CODEX_HOME="+codexHome)
-	command.Stdin = strings.NewReader(key + "\n")
+	if key != "" {
+		command.Stdin = strings.NewReader(key + "\n")
+	}
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	hideConsole(command)

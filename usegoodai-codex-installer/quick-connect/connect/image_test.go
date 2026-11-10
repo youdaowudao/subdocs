@@ -4,13 +4,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -19,9 +22,23 @@ type fakeImageTool struct {
 	version string
 	err     error
 	calls   []string
+	updates int
 }
 
 func (f *fakeImageTool) Version() string { return f.version }
+
+func (f *fakeImageTool) Update(_ context.Context, home string) error {
+	f.updates++
+	if f.err != nil {
+		return f.err
+	}
+	dir := filepath.Join(home, "tools", imageToolDirectory)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	manifest := `{"schema_version":1,"managed_by":"usegoodai-imagines-tool","version":"` + f.version + `","files":{}}`
+	return os.WriteFile(filepath.Join(dir, imageManifestName), []byte(manifest), 0o600)
+}
 
 func (f *fakeImageTool) Install(_ context.Context, home, key string) error {
 	f.calls = append(f.calls, key)
@@ -181,7 +198,9 @@ func TestReadImageStatus(t *testing.T) {
 		{"ready", managed("0.8.2"), fixtureKey, "dedicated-image-key", "",
 			ImageStatus{State: ImageReady, Version: "0.8.2", Bundled: "0.8.2", Key: MaskKey(fixtureKey)}},
 		{"older version", managed("0.8.1"), fixtureKey, "", "",
-			ImageStatus{State: ImageOutdated, Version: "0.8.1", Bundled: "0.8.2", Key: MaskKey(fixtureKey)}},
+			ImageStatus{State: ImageOutdated, Version: "0.8.1", Bundled: "0.8.2", Key: MaskKey(fixtureKey), UpdateAvailable: true}},
+		{"older without key still offers upgrade", managed("0.8.1"), "", "", "",
+			ImageStatus{State: ImageNoKey, Version: "0.8.1", Bundled: "0.8.2", UpdateAvailable: true}},
 		{"newer than bundled", managed("0.10.0"), fixtureKey, "", "",
 			ImageStatus{State: ImageReady, Version: "0.10.0", Bundled: "0.8.2", Key: MaskKey(fixtureKey)}},
 		{"key missing", managed("0.8.2"), "", "", "",
@@ -221,29 +240,34 @@ func TestInstallFailureHidesKey(t *testing.T) {
 	}
 }
 
-// TestBundledImageToolInstallsRelease runs the released Linux image tool from
-// the parent repository's publish folder into a temporary CODEX_HOME, the
-// same way the Windows window runs the Windows program.
+// TestBundledImageToolInstallsRelease runs the actual program for this OS
+// into a temporary CODEX_HOME, including key-preserving upgrades.
 func TestBundledImageToolInstallsRelease(t *testing.T) {
-	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-		t.Skip("发布目录里用于本测试的是 linux-amd64 程序")
+	versionData, err := os.ReadFile(filepath.Join(installerRoot(t), "..", "docs", "public", "install", "usegoodai-imagines-tool", "latest.json"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	releases := filepath.Join(installerRoot(t), "..", "docs", "public", "install", "usegoodai-imagines-tool", "releases")
-	matches, _ := filepath.Glob(filepath.Join(releases, "v*", "usegoodai-imagines-tool-v*-linux-amd64"))
-	if len(matches) == 0 {
-		t.Skip("没有找到已发布的生图程序")
+	var manifest struct {
+		Version string `json:"version"`
 	}
-	path := matches[len(matches)-1]
+	if err := json.Unmarshal(versionData, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	release := manifest.Version
+	suffix := ""
+	if runtime.GOOS == "windows" {
+		suffix = ".exe"
+	}
+	name := fmt.Sprintf("usegoodai-imagines-tool-v%s-%s-%s%s", release, runtime.GOOS, runtime.GOARCH, suffix)
+	path := filepath.Join(installerRoot(t), "..", "docs", "public", "install", "usegoodai-imagines-tool", "releases", "v"+release, name)
 	program, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	release := strings.TrimPrefix(filepath.Base(filepath.Dir(path)), "v")
 	sum := sha256.Sum256(program)
 	tool := &BundledImageTool{Program: program, Release: release, SHA256: hex.EncodeToString(sum[:]), CacheDir: t.TempDir()}
 
 	home := filepath.Join(t.TempDir(), ".codex")
-	t.Setenv("HOME", t.TempDir()) // the tool must use CODEX_HOME, never the real home
 	if err := tool.Install(context.Background(), home, fixtureKey); err != nil {
 		t.Fatal(err)
 	}
@@ -261,6 +285,21 @@ func TestBundledImageToolInstallsRelease(t *testing.T) {
 	}
 	if _, key := ReadImageStatus(home, release); key != other {
 		t.Fatalf("key not replaced: %q", key)
+	}
+	if err := tool.Update(context.Background(), home); err != nil {
+		t.Fatal(err)
+	}
+	if _, key := ReadImageStatus(home, release); key != other {
+		t.Fatal("upgrade changed the saved key")
+	}
+	if err := os.Remove(filepath.Join(home, "tools", imageToolDirectory, imageKeyName)); err != nil {
+		t.Fatal(err)
+	}
+	if err := tool.Update(context.Background(), home); err != nil {
+		t.Fatal(err)
+	}
+	if status, key := ReadImageStatus(home, release); status.State != ImageNoKey || key != "" {
+		t.Fatalf("upgrade without a key did not complete: %+v", status)
 	}
 
 	tool.SHA256 = strings.Repeat("0", 64)
@@ -291,12 +330,12 @@ func TestUpdateImage(t *testing.T) {
 		t.Fatalf("before: %+v", status)
 	}
 	result := service.UpdateImage(context.Background())
-	if result.Tone != ToneSuccess || len(tool.calls) != 1 || tool.calls[0] != fixtureKey || result.Image.State != ImageReady {
+	if result.Tone != ToneSuccess || tool.updates != 1 || len(tool.calls) != 0 || result.Image.State != ImageReady {
 		t.Fatalf("update: %+v calls %v", result, tool.calls)
 	}
 
 	empty := &Service{ImageHome: t.TempDir(), Image: tool, Now: service.Now}
-	if result := empty.UpdateImage(context.Background()); result.Message != MessageImageNoSavedKey || result.Action != ActionOpenSite {
+	if result := empty.UpdateImage(context.Background()); result.Message != MessageImageNotInstalled || result.Action != ActionOpenSite {
 		t.Fatalf("no key: %+v", result)
 	}
 }
@@ -310,5 +349,47 @@ func TestInstallArgumentsPassTheKeyFlagFrom092(t *testing.T) {
 		if got := strings.Join(installArguments(bundled), " "); got != want {
 			t.Errorf("installArguments(%q) = %q, want %q", bundled, got, want)
 		}
+	}
+}
+
+func TestImageUpgradeDoesNotNeedKeyValidationOrANewKey(t *testing.T) {
+	for _, saved := range []bool{true, false} {
+		t.Run(fmt.Sprint(saved), func(t *testing.T) {
+			home := t.TempDir()
+			old := &fakeImageTool{version: "0.9.1"}
+			if err := old.Install(context.Background(), home, fixtureKey); err != nil {
+				t.Fatal(err)
+			}
+			keyPath := filepath.Join(home, "tools", imageToolDirectory, imageKeyName)
+			if !saved {
+				if err := os.Remove(keyPath); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var requests atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				w.WriteHeader(http.StatusForbidden)
+			}))
+			defer server.Close()
+			tool := &fakeImageTool{version: "0.9.2"}
+			service := &Service{ImageHome: home, CodexHome: home, Image: tool, BaseURL: server.URL,
+				Client: NewHTTPClient(), Now: time.Now, NamesFile: filepath.Join(t.TempDir(), "names.json")}
+			result := service.UpdateImage(context.Background())
+			if requests.Load() != 0 {
+				t.Fatalf("file upgrade attempted %d key-validation requests", requests.Load())
+			}
+			if result.Tone == ToneError || tool.updates != 1 || len(tool.calls) != 0 {
+				t.Fatalf("upgrade did not use the key-preserving path: %+v, updates=%d", result, tool.updates)
+			}
+			if saved {
+				data, err := os.ReadFile(keyPath)
+				if err != nil || string(data) != fixtureKey {
+					t.Fatal("upgrade changed the saved key")
+				}
+			} else if _, err := os.Stat(keyPath); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("upgrade created a key")
+			}
+		})
 	}
 }

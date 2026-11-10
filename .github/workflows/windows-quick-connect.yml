@@ -69,3 +69,16 @@ jobs:
             ${{ runner.temp }}/helper-smoke/*.png
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: 实际点击生图升级按钮（旧 Key 与缺 Key）
+        shell: pwsh
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File usegoodai-codex-installer/quick-connect/tools/windows_image_upgrade.ps1 -Exe docs/public/download/usegoodai-quick-connect-windows-x64.exe
+
+      - name: 保存生图升级窗口记录
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: image-upgrade-window-${{ matrix.os }}
+          path: ${{ runner.temp }}/image-upgrade-window/*.*
+          if-no-files-found: ignore
+          retention-days: 30

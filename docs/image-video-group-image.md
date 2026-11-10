@@ -4,7 +4,7 @@ title: 安装生图工具
 
 # 安装生图工具
 
-生图工具适合在 Codex 中直接制作图片、修改产品图或生成 GIF 动图：说出要求后，结果直接显示在对话中。本文安装 V0.9.2 工具与 Skill，安装器自动写入 Codex 的工具目录、Skill、生图规则和放行规则，生图时不弹权限申请，无需手工改配置；先完成 [快速开始](/quick-start)。
+生图工具适合在 Codex 中直接制作图片、修改产品图或生成 GIF 动图：说出要求后，结果直接显示在对话中。本文安装 V0.9.3 工具与 Skill，安装器自动写入 Codex 的工具目录、Skill、生图规则和放行规则，生图时不弹权限申请，无需手工改配置；先完成 [快速开始](/quick-start)。
 
 ## 1. 创建专门画图分组的 API Key
 
@@ -35,7 +35,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 
 :::
 
-看到“请输入专门画图分组 Key”时，粘贴第 1 步复制的 Key，按回车。支持 x64 Windows、x64 Linux 和 Mac（Apple 芯片和 Intel 芯片）。
+首次安装看到“请输入专门画图分组 Key”时，粘贴第 1 步复制的 Key，按回车。没有 Key 时直接回车，先装好工具，之后再补；不会反复要求输入。支持 x64 Windows、x64 Linux 和 Mac（Apple 芯片和 Intel 芯片）。
 
 <details>
 <summary>不想用 PowerShell？</summary>
@@ -93,7 +93,7 @@ curl -fsSL https://docs.usegoodai.com/install/usegoodai-imagines-tool/install.sh
 <details>
 <summary>更新、卸载和文件位置</summary>
 
-更新：对 Codex 说“更新生图工具”，Codex 会自己完成更新，沿用已保存的专门画图 Key；完成后完全退出并重新打开 Codex。双击版重新下载本页的最新工具合集后运行。
+更新：对 Codex 说“更新生图工具”，Codex 会自己完成更新，沿用已保存的专门画图 Key；不需要输入新 Key。也可重新运行第 2 步安装命令，自动显示已安装版本并保留 Key。缺少 Key 也能先升级程序。完成后完全退出并重新打开 Codex，新建任务。Windows 助手显示旧版本时点“生图工具（可更新）”，再点“一键更新”；Mac 重新下载最新合集后运行第二个 App。
 
 卸载：对 Codex 说“卸载中转站生图工具”。专门画图 Key 默认保留，永久删除前会单独确认。
 

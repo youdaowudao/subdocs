@@ -42,11 +42,11 @@
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=31536000, immutable
 
-/install/usegoodai-imagines-tool/releases/v0.9.1/usegoodai-imagines-tool-*
+/install/usegoodai-imagines-tool/releases/v0.9.3/usegoodai-imagines-tool-*
   Content-Type: application/octet-stream
   Cache-Control: public, max-age=31536000, immutable
 
-/install/usegoodai-imagines-tool/releases/v0.9.1/SHA256SUMS
+/install/usegoodai-imagines-tool/releases/v0.9.3/SHA256SUMS
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=31536000, immutable
 
