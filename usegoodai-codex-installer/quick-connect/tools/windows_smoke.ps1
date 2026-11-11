@@ -31,6 +31,15 @@ public static class SmokeNative {
 
 function Step([string]$Text) { Write-Host ""; Write-Host "== $Text" }
 
+# 启动记录（见 startrecord.go）：每次启动写几行阶段，已有实例时追加。
+$Record = Join-Path $env:LOCALAPPDATA 'UseGoodAI\QuickConnect\logs\启动记录.txt'
+function Assert-Record([string[]]$Contains, [string[]]$Absent = @()) {
+  $text = Get-Content -LiteralPath $Record -Raw -Encoding UTF8
+  foreach ($want in $Contains) { if (-not $text.Contains($want)) { throw "启动记录缺少「$want」：`n$text" } }
+  foreach ($bad in $Absent) { if ($text.Contains($bad)) { throw "启动记录不应包含「$bad」：`n$text" } }
+  Write-Host $text
+}
+
 function Start-Helper([string]$Exe, [string[]]$Arguments = @()) {
   if ($Arguments.Count -gt 0) {
     return Start-Process -FilePath $Exe -ArgumentList $Arguments -PassThru
@@ -105,17 +114,21 @@ try {
   Wait-Window $a
   Assert-Stays $a
   Save-Screen "first-open"
+  Step "启动记录：第一次打开走完全部阶段"
+  Assert-Record @('启动', '创建窗口', '窗口已建立', '页面就绪') @('已有实例')
 
   Step "再次打开：参数交给已开的窗口，后来的进程退出"
   $b = Start-Helper $NewExe
   Wait-Exit $b 20
   Assert-Stays $a
+  Assert-Record @('页面就绪', "已有实例  进程 $($a.Id)，窗口可见")
 
   Step "带导入链接打开（网站一键导入）：链接交给已开的窗口，窗口留着"
   $c = Start-Helper $NewExe @($FakeLink)
   Wait-Exit $c 20
   Assert-Stays $a 15
   Save-Screen "after-link"
+  Assert-Record @('带导入链接：是') @('usegoodai://', $FakeLink)
   $left = @(Helper-Processes)
   if ($left.Count -ne 1 -or $left[0].Id -ne $a.Id) { throw "应只剩第一次打开的助手进程，实际 $($left.Count) 个" }
 
@@ -127,6 +140,7 @@ try {
   Wait-Window $d
   Assert-Stays $d 15
   Save-Screen "cold-link"
+  Assert-Record @('带导入链接：是', '页面就绪') @('已有实例', 'usegoodai://', $FakeLink)
 
   Step "上一稳定版在运行时打开新版：链接交给上一稳定版的窗口"
   Stop-Process -Id $d.Id -Force
@@ -137,6 +151,7 @@ try {
   $e = Start-Helper $NewExe @($FakeLink)
   Wait-Exit $e 20
   Assert-Stays $old
+  Assert-Record @("已有实例  进程 $($old.Id)") @('usegoodai://', $FakeLink)
 
   Write-Host ""
   Write-Host "全部通过"
