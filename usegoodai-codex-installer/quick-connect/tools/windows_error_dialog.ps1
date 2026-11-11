@@ -75,7 +75,7 @@ try {
   if ($process.HasExited) { throw '复制操作关闭了错误弹窗' }
   $names=$window.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name }
   if (-not (($names -join "`n").Contains('错误信息已复制'))) { throw '复制成功后没有显示确认' }
-  Shot 'copied-error' 
+  Shot 'copied-error'
   if (-not (Test-Path -LiteralPath $expectedLog)) { throw '未按固定位置保存备用日志' }
   $log=Get-Content -LiteralPath $expectedLog -Raw
   if ($log.Contains('sk-ui-fake-secret') -or -not $log.Contains('0x80004005')) { throw '日志没有错误详情或未隐藏 Key' }
