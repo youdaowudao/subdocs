@@ -414,3 +414,48 @@ test('renders Haiku 5.5 once with both context prices in the same row', async ()
     await server.close()
   }
 })
+
+test('labels every GPT price cell so phone cards show input, output, cache and total', async () => {
+  const server = await createServer({
+    configFile: false,
+    plugins: [vue()],
+    server: { middlewareMode: true },
+    appType: 'custom',
+  })
+
+  try {
+    const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
+    const labels = ['输入价格', '输出价格', '缓存读取', '输入 + 输出合计']
+
+    for (const groupId of ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35']) {
+      for (const priceMode of ['group', 'official']) {
+        const component = {
+          ...pricing,
+          setup(props, context) {
+            const state = pricing.setup(props, context)
+            state.activeGroupId.value = groupId
+            state.priceMode.value = priceMode
+            return state
+          },
+        }
+        const html = await renderToString(createSSRApp(component))
+        const headers = [...html.matchAll(/<th scope="col">([^<]+)<\/th>/g)].map((match) => match[1])
+        assert.deepEqual(headers, ['模型 ID', ...labels, '节省幅度'])
+        const rows = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)]
+          .map(([row]) => row)
+          .filter((row) => row.includes('class="model-id-cell"'))
+
+        assert.equal(rows.length, 8, `${groupId}/${priceMode}`)
+        for (const row of rows) {
+          const cells = [...row.matchAll(/<td class="pricing-cell-price" data-label="([^"]+)">([\s\S]*?)<\/td>/g)]
+          assert.deepEqual(cells.map((match) => match[1]), labels, `${groupId}/${priceMode}`)
+          const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'
+          for (const [, , cell] of cells) assert.match(cell, new RegExp(`class="${priceClass}">¥[0-9.]+<`))
+          assert.match(row, /class="pricing-cell-saving"/)
+        }
+      }
+    }
+  } finally {
+    await server.close()
+  }
+})

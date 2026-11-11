@@ -130,6 +130,14 @@ const formatUsd = (value) => value.toFixed(3).replace(/0+$/, '').replace(/\.$/, 
 
 const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] != null
 
+// 表头和手机卡片里的价格标签共用一份，避免两处文字不一致。
+const PRICE_FIELDS = [
+  { key: 'input', label: '输入价格' },
+  { key: 'output', label: '输出价格' },
+  { key: 'cachedInput', label: '缓存读取' },
+  { key: 'total', label: '输入 + 输出合计' },
+]
+
 </script>
 
 <template>
@@ -284,10 +292,7 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
               <tr>
                 <th scope="col">模型 ID</th>
                 <th v-if="isDeepSeekCategory" scope="col">计费时段</th>
-                <th scope="col">输入价格</th>
-                <th scope="col">输出价格</th>
-                <th scope="col">缓存读取</th>
-                <th scope="col">输入 + 输出合计</th>
+                <th v-for="field in PRICE_FIELDS" :key="field.key" scope="col">{{ field.label }}</th>
                 <th scope="col">节省幅度</th>
               </tr>
             </thead>
@@ -297,7 +302,7 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                 :key="`${model.id}-${model.priceLabel || 'default'}`"
                 :class="{ 'is-featured-model': model.featured }"
               >
-                <td>
+                <td class="pricing-cell-model">
                   <div class="model-id-cell">
                     <div>
                       <div class="model-id-title">
@@ -329,10 +334,15 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                   </td>
                 </template>
                 <template v-else>
-                  <td v-if="isDeepSeekCategory" class="deepseek-price-period">
+                  <td v-if="isDeepSeekCategory" class="deepseek-price-period" data-label="计费时段">
                     <strong>{{ model.priceLabel }}</strong>
                   </td>
-                  <td v-for="field in ['input', 'output', 'cachedInput', 'total']" :key="field">
+                  <td
+                    v-for="{ key: field, label } in PRICE_FIELDS"
+                    :key="field"
+                    class="pricing-cell-price"
+                    :data-label="label"
+                  >
                     <div
                       v-for="tier in model.priceTiers ?? [model]"
                       :key="tier.priceLabel || 'default'"
@@ -360,7 +370,7 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                       </template>
                     </div>
                   </td>
-                  <td>
+                  <td class="pricing-cell-saving">
                     <span v-if="priceMode === 'group'" class="saving-badge">
                       省 {{ model.savingsPercent }}%
                     </span>
@@ -406,7 +416,7 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
             </thead>
             <tbody>
               <tr v-for="model in IMAGE_MODELS" :key="model.id">
-                <td>
+                <td class="pricing-cell-model">
                   <div class="model-id-cell">
                     <div>
                       <strong
@@ -425,12 +435,12 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
                     ><span aria-hidden="true"></span></button>
                   </div>
                 </td>
-                <td><span class="model-description">{{ model.description }}</span></td>
-                <td>
+                <td class="pricing-cell-wide" data-label="模型介绍"><span class="model-description">{{ model.description }}</span></td>
+                <td class="pricing-cell-wide" data-label="接口 / 规格">
                   <strong class="table-plain-value">{{ model.route }}</strong>
                   <span class="table-subvalue">{{ model.spec }}</span>
                 </td>
-                <td>
+                <td class="pricing-cell-wide" data-label="当前分组价">
                   <template v-if="model.sizePricesCny">
                     <div class="image-size-prices">
                       <span
@@ -1356,7 +1366,86 @@ const hasBillingOverride = (model, field) => model.billingOverridesUsd?.[field] 
   .pricing-groups--single > button > span:last-child { text-align: left; }
   .pricing-groups--single > .pricing-group-placeholder > span:last-child { text-align: left; }
   .pricing-description { align-items: flex-start; flex-direction: column; gap: 2px; }
-  .model-pricing-page .pricing-table { min-width: 980px; }
-  .model-pricing-page .pricing-table--image { min-width: 980px; }
+
+  /* 手机上表格要横向滑动才能看到输出、缓存和合计，客户会以为价格缺了；改成每个模型一张卡片。 */
+  .pricing-table-scroll {
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .model-pricing-page .pricing-table,
+  .model-pricing-page .pricing-table--image {
+    display: block;
+    min-width: 0;
+    table-layout: auto;
+  }
+  .model-pricing-page .pricing-table thead { display: none; }
+  .model-pricing-page .pricing-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+  .model-pricing-page .pricing-table tbody tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid var(--site-line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .model-pricing-page .pricing-table tbody tr.is-featured-model {
+    border-color: #d9cff4;
+  }
+  .model-pricing-page .pricing-table tbody tr.is-featured-model::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 4px;
+    background: #8069b3;
+  }
+  .model-pricing-page .pricing-table tbody tr.is-featured-model td:first-child,
+  .dark .model-pricing-page .pricing-table tbody tr.is-featured-model td:first-child {
+    box-shadow: none;
+  }
+  .model-pricing-page .pricing-table td {
+    display: block;
+    min-width: 0;
+    height: auto;
+    padding: 10px 12px;
+    border-bottom: 0;
+  }
+  .model-pricing-page .pricing-table tbody tr td.pricing-cell-model {
+    grid-column: 1 / -1;
+    padding-top: 12px;
+    border-bottom: 1px solid var(--site-line);
+  }
+  .model-pricing-page .pricing-table td.pricing-cell-wide,
+  .model-pricing-page .pricing-table td.deepseek-price-period,
+  .model-pricing-page .pricing-table td.model-unavailable-cell,
+  .model-pricing-page .pricing-table td.pricing-cell-saving {
+    grid-column: 1 / -1;
+  }
+  .model-pricing-page .pricing-table td.deepseek-price-period { min-width: 0; }
+  .model-pricing-page .pricing-table td.model-unavailable-cell { padding: 14px; }
+  .model-pricing-page .pricing-table td.pricing-cell-saving { padding-top: 4px; padding-bottom: 12px; }
+  .model-pricing-page .pricing-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--vp-c-text-3);
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.4;
+  }
+  .model-pricing-page .pricing-table .group-price,
+  .model-pricing-page .pricing-table .official-price { font-size: 19px; }
+  /* 价格和单位之间没有空格，inline-block 让较长价格时单位能换到下一行。 */
+  .model-pricing-page .pricing-table .price-unit { display: inline-block; font-size: 13px; }
+  .model-pricing-page .pricing-table .astra-price-basis,
+  .model-pricing-page .pricing-table .context-tier-label { white-space: normal; }
+  .dark .model-pricing-page .pricing-table tbody tr { border-color: #3a3530; }
+  .dark .model-pricing-page .pricing-table tbody tr.is-featured-model { border-color: #55486f; }
+  .dark .model-pricing-page .pricing-table tbody tr.is-featured-model::before { background: #a18bd0; }
 }
 </style>

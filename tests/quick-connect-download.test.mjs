@@ -122,8 +122,8 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
   assert.ok(data.length <= limit, `${data.length} bytes`)
   const entries = readZip(data)
   const windowsFiles = [...entries.keys()].filter((name) => name.startsWith('Windows-x64/') && !name.endsWith('/'))
-  assert.deepEqual(windowsFiles, [`Windows-x64/1.${product}.exe`])
-  const window = entries.get(windowsFiles[0]).body
+  assert.deepEqual(windowsFiles.sort(), [`Windows-x64/1.${product}.exe`, 'Windows-x64/使用说明.txt'].sort())
+  const window = entries.get(`Windows-x64/1.${product}.exe`).body
   assert.deepEqual(window, await readFile(new URL(`docs/public/download/${exeName}`, root)))
   const release = 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.5/'
   const nativeWindows = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.5-windows-amd64.exe`, root))
@@ -153,7 +153,12 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
   for (const app of macApps) {
     assert.equal(entries.get(`Mac-Apple芯片/${app}/Contents/MacOS/launcher`).mode & 0o111, 0o111)
   }
-  assert.match(entries.get('使用说明.txt').body.toString('utf8'), new RegExp(`V${imageVersion.replaceAll('.', '\\.')}`))
+  // Each system folder carries its own short readme; nothing sits outside them.
+  assert.equal(entries.has('使用说明.txt'), false)
+  const macReadme = entries.get('Mac-Apple芯片/使用说明.txt').body.toString('utf8')
+  for (const step of ['隐私与安全性', '仍要打开', `1.${product}`, '2.UseGoodAI生图工具', '3.Codex国产模型导入']) assert.ok(macReadme.includes(step), step)
+  const windowsReadme = entries.get('Windows-x64/使用说明.txt').body.toString('utf8')
+  for (const step of ['仍要运行', `1.${product}`, '一键导入 Codex']) assert.ok(windowsReadme.includes(step), step)
   assert.ok(![...entries.keys()].some((name) => /SHA256SUMS|来源记录/.test(name)))
 })
 
