@@ -15,7 +15,7 @@ $Repo = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 $Work = Join-Path $env:RUNNER_TEMP 'image-upgrade-window'
 New-Item -ItemType Directory -Force $Work | Out-Null
 $Candidate = (Get-Content -LiteralPath (Join-Path $Repo 'docs/public/install/usegoodai-imagines-tool/latest.json') -Raw | ConvertFrom-Json).version
-$Previous = Join-Path $Repo 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.2/usegoodai-imagines-tool-v0.9.2-windows-amd64.exe'
+$Previous = Join-Path $Repo 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.3/usegoodai-imagines-tool-v0.9.3-windows-amd64.exe'
 $OriginalHome = $env:CODEX_HOME
 $OriginalBrowserArguments = $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--force-renderer-accessibility'
@@ -82,7 +82,7 @@ try {
       if ($process.MainWindowHandle -eq [IntPtr]::Zero) { throw '助手窗口超时' }
       $window = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
       Click (Wait-Text $window '生图工具（可更新）')
-      $title = "V0.9.2 已安装，可更新到 V$Candidate"
+      $title = "V0.9.3 已安装，可更新到 V$Candidate"
       if ($KeyState -eq 'missing') { $title += '，尚未配置 Key' }
       Wait-Text $window $title | Out-Null
       Screen "before-$KeyState"
