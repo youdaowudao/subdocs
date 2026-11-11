@@ -14,8 +14,9 @@ import (
 // App is the bridge the page calls through window.go.main.App. The page
 // never passes an address: links it may open are fixed here.
 type App struct {
-	ctx     context.Context
-	service *connect.Service
+	ctx        context.Context
+	service    *connect.Service
+	diagnostic *startLog
 
 	mu          sync.Mutex
 	pendingLink string
@@ -28,6 +29,7 @@ func newApp(service *connect.Service, launchLink string) *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.diagnostic.line("stage", "startup")
 	if exe, err := os.Executable(); err == nil {
 		_ = connect.RegisterProtocol(exe)
 	}
@@ -36,6 +38,7 @@ func (a *App) startup(ctx context.Context) {
 // secondInstance receives the arguments of a later launch, normally a link
 // opened from the website, and brings this window to the front.
 func (a *App) secondInstance(data options.SecondInstanceData) {
+	a.diagnostic.line("stage", "second-instance-received")
 	if a.ctx == nil {
 		return
 	}
@@ -73,6 +76,7 @@ func (a *App) Info() Info {
 // TakeLaunchLink returns the link this window was started with, once, and
 // marks the page ready for links from later launches.
 func (a *App) TakeLaunchLink() string {
+	a.diagnostic.line("stage", "frontend-ready")
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.pageReady = true

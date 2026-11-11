@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"syscall"
 	"time"
 	"unsafe"
@@ -21,6 +25,25 @@ import (
 const singleInstanceID = "usegoodai-quick-connect-5c0f2a7e"
 
 func main() {
+	diagnostic, logErr := openStartLog(filepath.Join(webviewDataPath(), "logs"))
+	if logErr != nil {
+		diagnostic, logErr = openStartLog(filepath.Join(os.TempDir(), "UseGoodAI-QuickConnect-logs"))
+		if logErr != nil {
+			// Diagnostics must not prevent a previously working GUI from opening.
+			diagnostic = &startLog{path: "未能保存启动日志"}
+		}
+	}
+	defer diagnostic.Close()
+	log.SetOutput(diagnostic)
+	defer func() {
+		if failure := recover(); failure != nil {
+			diagnostic.line("panic", fmt.Sprint(failure)+"\n"+string(debug.Stack()))
+			showError("助手运行出错。\n\n启动日志：" + diagnostic.path)
+			os.Exit(1)
+		}
+	}()
+	software := softwareWebview(os.Args[1:])
+	diagnostic.environment(software)
 	// A link opened while the window exists starts a second process that only
 	// forwards the link. Let the running window take the foreground.
 	allowAnyForegroundWindow()
@@ -51,17 +74,25 @@ func main() {
 	service.ClaudeCLI = connect.ClaudeCode{Home: userHome, AppData: roamingAppData}
 	service.StopClaude = connect.StopClaudeDesktop
 	app := newApp(service, connect.FindImportLink(os.Args[1:]))
+	app.diagnostic = diagnostic
+	diagnostic.line("stage", "before-wails")
 
 	err := wails.Run(&options.App{
-		Title:              connect.ProductName,
-		Width:              420,
-		Height:             690,
-		DisableResize:      true,
-		BackgroundColour:   &options.RGBA{R: 244, G: 247, B: 250, A: 255},
-		AssetServer:        &assetserver.Options{Assets: frontendFiles()},
-		OnStartup:          app.startup,
+		Title:            connect.ProductName,
+		Width:            420,
+		Height:           690,
+		DisableResize:    true,
+		BackgroundColour: &options.RGBA{R: 244, G: 247, B: 250, A: 255},
+		AssetServer:      &assetserver.Options{Assets: frontendFiles()},
+		OnStartup:        app.startup,
+		OnDomReady:       func(context.Context) { diagnostic.line("stage", "dom-ready") },
+		OnBeforeClose: func(context.Context) bool {
+			diagnostic.line("stage", "close-requested")
+			return false
+		},
+		OnShutdown:         func(context.Context) { diagnostic.line("stage", "shutdown") },
 		Bind:               []interface{}{app},
-		Logger:             logger.NewDefaultLogger(),
+		Logger:             diagnostic,
 		LogLevel:           logger.ERROR,
 		LogLevelProduction: logger.ERROR,
 		SingleInstanceLock: &options.SingleInstanceLock{
@@ -69,15 +100,18 @@ func main() {
 			OnSecondInstanceLaunch: app.secondInstance,
 		},
 		Windows: &windows.Options{
-			Theme:               windows.Light,
-			WebviewUserDataPath: webviewDataPath(),
-			Messages:            chineseMessages(),
+			Theme:                windows.Light,
+			WebviewUserDataPath:  filepath.Join(webviewDataPath(), "webview-compat-v1"),
+			WebviewGpuIsDisabled: software,
+			Messages:             chineseMessages(),
 		},
 	})
 	if err != nil {
-		showError(err.Error())
+		diagnostic.line("startup-error", err.Error())
+		showError(err.Error() + "\n\n启动日志：" + diagnostic.path)
 		os.Exit(1)
 	}
+	diagnostic.line("stage", "main-returned")
 }
 
 // showError makes a failed start visible instead of a silent exit.
