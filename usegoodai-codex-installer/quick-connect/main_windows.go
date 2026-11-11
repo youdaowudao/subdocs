@@ -25,20 +25,19 @@ import (
 const singleInstanceID = "usegoodai-quick-connect-5c0f2a7e"
 
 func main() {
-	diagnostic, logErr := openStartLog(filepath.Join(webviewDataPath(), "logs"))
-	if logErr != nil {
-		diagnostic, logErr = openStartLog(filepath.Join(os.TempDir(), "UseGoodAI-QuickConnect-logs"))
-		if logErr != nil {
-			// Diagnostics must not prevent a previously working GUI from opening.
-			diagnostic = &startLog{path: "未能保存启动日志"}
-		}
+	logDirectory := webviewDataPath()
+	if logDirectory != "" {
+		logDirectory = filepath.Join(logDirectory, "logs")
 	}
+	diagnostic := newStartLog(logDirectory, terminalOutput())
+	diagnostic.popup = showFailureReport
 	defer diagnostic.Close()
 	log.SetOutput(diagnostic)
+	log.SetFlags(0)
 	defer func() {
 		if failure := recover(); failure != nil {
 			diagnostic.line("panic", fmt.Sprint(failure)+"\n"+string(debug.Stack()))
-			showError("助手运行出错。\n\n启动日志：" + diagnostic.path)
+			diagnostic.fail(fmt.Sprint(failure))
 			os.Exit(1)
 		}
 	}()
@@ -108,7 +107,7 @@ func main() {
 	})
 	if err != nil {
 		diagnostic.line("startup-error", err.Error())
-		showError(err.Error() + "\n\n启动日志：" + diagnostic.path)
+		diagnostic.fail(err.Error())
 		os.Exit(1)
 	}
 	diagnostic.line("stage", "main-returned")

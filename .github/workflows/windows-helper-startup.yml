@@ -33,25 +33,20 @@ jobs:
       - name: 原生日志与启动参数回归
         working-directory: usegoodai-codex-installer/quick-connect
         shell: pwsh
-        run: go test -count=1 -run 'TestStartLog|TestSoftwareWebview' .
+        run: go test -count=1 -run 'TestStartLog|TestSoftwareWebview|TestNativeTerminalDetection' .
       - name: 实际窗口、再次打开、链接唤起和旧版接管
         shell: pwsh
         run: |
           $env:CODEX_HOME = "$env:RUNNER_TEMP/启动 中文路径/codex"
           $env:LOCALAPPDATA = "$env:RUNNER_TEMP/启动 中文路径/local"
           $env:APPDATA = "$env:RUNNER_TEMP/启动 中文路径/roaming"
+          $version = (Select-String -Path usegoodai-codex-installer/quick-connect/connect/product.go -Pattern 'Version\s+=\s+"([^"]+)"').Matches[0].Groups[1].Value
           ./usegoodai-codex-installer/quick-connect/tools/windows_smoke.ps1 `
             -New "$env:RUNNER_TEMP/candidate/helper.exe" `
             -Previous docs/public/download/usegoodai-quick-connect-windows-x64.exe `
-            -Version 1.1.8
-          $logs = Get-ChildItem "$env:LOCALAPPDATA/UseGoodAI/QuickConnect/logs/startup-*.log"
-          if (-not $logs) { throw '候选没有保存启动日志' }
-          $text = ($logs | Get-Content -Raw) -join "`n"
-          foreach ($stage in @('assistant=1.1.8', 'webview-runtime', 'software', 'dom-ready', 'frontend-ready', 'second-instance-received')) {
-            if (-not $text.Contains($stage)) { throw "缺少启动阶段：$stage" }
-          }
-          if ($text.Contains('sk-smoke-') -or $text.Contains('usegoodai://')) { throw '日志泄露测试密钥或导入链接' }
-      - name: 核对实际渲染参数及正常关闭日志
+            -Version $version
+          if (Test-Path "$env:LOCALAPPDATA/UseGoodAI/QuickConnect/logs/latest-error.log") { throw '正常启动产生了错误日志' }
+      - name: 核对实际渲染参数、正常关闭与无错误日志
         shell: pwsh
         run: |
           $env:CODEX_HOME = "$env:RUNNER_TEMP/启动 中文路径/codex"
@@ -70,9 +65,9 @@ jobs:
                 Start-Sleep -Milliseconds 300
                 $helper.Refresh()
                 if ($helper.HasExited) { throw "$mode 提前退出：$($helper.ExitCode)" }
-                $log = Get-ChildItem "$env:LOCALAPPDATA/UseGoodAI/QuickConnect/logs/startup-*-$($helper.Id).log" -ErrorAction SilentlyContinue
-              } until (($log -and (Get-Content $log.FullName -Raw).Contains('frontend-ready')) -or (Get-Date) -gt $deadline)
-              if (-not $log -or -not (Get-Content $log.FullName -Raw).Contains('frontend-ready') -or $helper.MainWindowHandle -eq 0) { throw "$mode 未就绪" }
+              } until (($helper.MainWindowHandle -ne 0 -and $helper.MainWindowTitle -eq 'UseGoodAI中转快速接入助手') -or (Get-Date) -gt $deadline)
+              if ($helper.MainWindowHandle -eq 0) { throw "$mode 未出现窗口" }
+              Start-Sleep -Seconds 2
               $profile = [IO.Path]::GetFullPath("$env:LOCALAPPDATA/UseGoodAI/QuickConnect/webview-compat-v1")
               $browser = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Where-Object {
                 $_.CommandLine -and $_.CommandLine.IndexOf($profile, [StringComparison]::OrdinalIgnoreCase) -ge 0 -and $_.CommandLine -notmatch '--type='
@@ -82,16 +77,19 @@ jobs:
               if ($disabled -ne ($mode -eq 'software')) { throw "$mode 实际硬件加速参数不符" }
               if (-not $helper.CloseMainWindow() -or -not $helper.WaitForExit(15000)) { throw "$mode 未正常关闭" }
               if ($helper.ExitCode -ne 0) { throw "$mode 关闭退出码异常：$($helper.ExitCode)" }
-              $text = Get-Content $log.FullName -Raw
-              foreach ($stage in @('close-requested', 'shutdown', 'main-returned')) {
-                if (-not $text.Contains($stage)) { throw "$mode 关闭日志缺少 $stage" }
-              }
-              Write-Host "${mode}: 实际渲染参数、前端就绪和正常关闭通过"
+              if (Test-Path "$env:LOCALAPPDATA/UseGoodAI/QuickConnect/logs/latest-error.log") { throw "$mode 正常启动产生错误日志" }
+              Write-Host "${mode}: 实际渲染参数、正常关闭和无错误日志通过"
             } finally {
               if ($helper -and -not $helper.HasExited) { Stop-Process -Id $helper.Id -Force }
             }
             Start-Sleep -Seconds 2
           }
+      - name: 实际操作原生错误弹窗的复制与打开日志按钮
+        working-directory: usegoodai-codex-installer/quick-connect
+        shell: pwsh
+        run: |
+          go test -c -o "$env:RUNNER_TEMP/error-ui-test.exe" .
+          powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tools/windows_error_dialog.ps1 -TestExe "$env:RUNNER_TEMP/error-ui-test.exe"
       - name: 保留候选、日志、截图与系统信息
         if: always()
         shell: pwsh
@@ -109,4 +107,5 @@ jobs:
             ${{ runner.temp }}/candidate/helper.exe
             ${{ runner.temp }}/startup-evidence/*
             ${{ runner.temp }}/helper-smoke/*.png
+            ${{ runner.temp }}/error-ui/report/*
           retention-days: 30
