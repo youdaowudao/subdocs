@@ -153,7 +153,7 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
   for (const app of macApps) {
     assert.equal(entries.get(`Mac-Apple芯片/${app}/Contents/MacOS/launcher`).mode & 0o111, 0o111)
   }
-  assert.match(entries.get('使用说明.txt').body.toString('utf8'), /V0\.9\.3/)
+  assert.match(entries.get('使用说明.txt').body.toString('utf8'), new RegExp(`V${imageVersion.replaceAll('.', '\\.')}`))
   assert.ok(![...entries.keys()].some((name) => /SHA256SUMS|来源记录/.test(name)))
 })
 
