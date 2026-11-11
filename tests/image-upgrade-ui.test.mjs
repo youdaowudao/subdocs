@@ -33,9 +33,9 @@ function imagePanel(image, key = '') {
 
 test('shows the installed old version and the update button even without a key', async () => {
   for (const key of ['', 'sk-****-masked']) {
-    const panel = imagePanel({ state: key ? 'outdated' : 'nokey', version: '0.9.1', bundled: '0.9.4', updateAvailable: true, key })
-    assert.equal(panel.element('connect-label').textContent, '一键更新到 V0.9.4')
-    assert.equal(vm.runInContext('cardFor().title', panel.context).includes('V0.9.1 已安装，可更新到 V0.9.4'), true)
+    const panel = imagePanel({ state: key ? 'outdated' : 'nokey', version: '0.9.1', bundled: '0.9.5', updateAvailable: true, key })
+    assert.equal(panel.element('connect-label').textContent, '一键更新到 V0.9.5')
+    assert.equal(vm.runInContext('cardFor().title', panel.context).includes('V0.9.1 已安装，可更新到 V0.9.5'), true)
     assert.equal(vm.runInContext('imageGuide()', panel.context).includes(key ? '不需要重新粘贴' : '升级不需要 Key'), true)
     let clipboardReads = 0
     panel.context.window.go.main.App.ClipboardKey = async () => { clipboardReads += 1; return 'synthetic-unrelated-key' }
@@ -48,7 +48,7 @@ test('shows the installed old version and the update button even without a key',
 })
 
 test('pasting a replacement key uses key validation and installation explicitly', async () => {
-  const panel = imagePanel({ state: 'outdated', version: '0.9.1', bundled: '0.9.4', updateAvailable: true, key: 'masked' }, 'synthetic-replacement-key')
+  const panel = imagePanel({ state: 'outdated', version: '0.9.1', bundled: '0.9.5', updateAvailable: true, key: 'masked' }, 'synthetic-replacement-key')
   assert.equal(panel.element('connect-label').textContent, '一键导入生图工具')
   vm.runInContext('submit()', panel.context)
   await new Promise((resolve) => setImmediate(resolve))
@@ -56,7 +56,7 @@ test('pasting a replacement key uses key validation and installation explicitly'
 })
 
 test('an installed newer version is shown as preserved instead of offered a downgrade', () => {
-  const panel = imagePanel({ state: 'ready', version: '0.10.0', bundled: '0.9.4', key: 'masked' })
+  const panel = imagePanel({ state: 'ready', version: '0.10.0', bundled: '0.9.5', key: 'masked' })
   assert.equal(panel.element('connect-label').textContent, '保留已安装的 V0.10.0')
   assert.equal(vm.runInContext('imageGuide()', panel.context).includes('不降级'), true)
 })

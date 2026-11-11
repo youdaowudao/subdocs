@@ -23,18 +23,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: 不开VPN-0.9.4
-            key: default-0.9.4
-            args: --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.4/usegoodai-imagines-tool-v0.9.4-darwin-arm64
-          - name: 系统代理VPN-0.9.3
-            key: vpn-0.9.3
-            args: --vpn --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.3/usegoodai-imagines-tool-v0.9.3-darwin-arm64
+          - name: 不开VPN-0.9.5
+            key: default-0.9.5
+            args: --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.5/usegoodai-imagines-tool-v0.9.5-darwin-arm64
           - name: 系统代理VPN-0.9.4
             key: vpn-0.9.4
             args: --vpn --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.4/usegoodai-imagines-tool-v0.9.4-darwin-arm64
-          - name: TUN模式-0.9.4
-            key: tun-0.9.4
-            args: --tun --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.4/usegoodai-imagines-tool-v0.9.4-darwin-arm64
+          - name: 系统代理VPN-0.9.5
+            key: vpn-0.9.5
+            args: --vpn --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.5/usegoodai-imagines-tool-v0.9.5-darwin-arm64
+          - name: TUN模式-0.9.5
+            key: tun-0.9.5
+            args: --tun --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.5/usegoodai-imagines-tool-v0.9.5-darwin-arm64
     steps:
       - uses: actions/checkout@v5
         with:
@@ -61,12 +61,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: 系统代理VPN-0.9.3
-            key: vpn-0.9.3
-            args: --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.3/usegoodai-imagines-tool-v0.9.3-windows-amd64.exe
           - name: 系统代理VPN-0.9.4
             key: vpn-0.9.4
             args: --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.4/usegoodai-imagines-tool-v0.9.4-windows-amd64.exe
+          - name: 系统代理VPN-0.9.5
+            key: vpn-0.9.5
+            args: --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.5/usegoodai-imagines-tool-v0.9.5-windows-amd64.exe
     steps:
       - name: 保留发布文件原始字节
         run: git config --global core.autocrlf false

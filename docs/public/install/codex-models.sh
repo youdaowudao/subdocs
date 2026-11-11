@@ -1,5 +1,5 @@
 #!/bin/sh
-# UseGoodAI codex-models version: 1.0.1
+# UseGoodAI codex-models version: 1.0.2
 set -eu
 
 say() { printf '%s\n' "$*"; }

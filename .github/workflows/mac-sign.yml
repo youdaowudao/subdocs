@@ -1,0 +1,50 @@
+# Mac 工具签名与实际打开：在 Apple 芯片 Mac 上给合集和 Mac 助手 zip 里的每个 App 整体做临时签名，
+# 再按客户方式（浏览器下载、带隔离标记）实际双击，确认不再提示“已损坏”、放行后能运行。
+# 签好的 zip 作为产物上传，由维护者核对后放进网站下载目录。不使用任何密钥或 Secrets。
+name: Mac 工具签名与打开测试
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix-mac-damaged-*]
+    paths:
+      - docs/public/download/**
+      - usegoodai-codex-installer/desktop/sign_mac.py
+      - tests/mac-app-open.py
+      - .github/workflows/mac-sign.yml
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: 整体临时签名
+        run: |
+          mkdir -p "$RUNNER_TEMP/signed"
+          python3 usegoodai-codex-installer/desktop/sign_mac.py docs/public/download/usegoodai-tools.zip "$RUNNER_TEMP/signed/usegoodai-tools.zip"
+          python3 usegoodai-codex-installer/desktop/sign_mac.py docs/public/download/usegoodai-quick-connect-mac-arm64.zip "$RUNNER_TEMP/signed/usegoodai-quick-connect-mac-arm64.zip"
+          shasum -a 256 "$RUNNER_TEMP"/signed/*.zip
+      - name: 按客户方式实际打开
+        run: python3 tests/mac-app-open.py "$RUNNER_TEMP/signed/usegoodai-tools.zip" "$RUNNER_TEMP/signed/usegoodai-quick-connect-mac-arm64.zip"
+      - name: 保留签好的 zip
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: mac-signed-zips
+          path: ${{ runner.temp }}/signed
+          if-no-files-found: error
+          retention-days: 30
+      - name: 保留截图和记录
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: mac-app-open
+          path: ${{ runner.temp }}/mac-app-open/report
+          if-no-files-found: error
+          retention-days: 30
