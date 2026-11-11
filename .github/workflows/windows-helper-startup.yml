@@ -73,10 +73,11 @@ jobs:
                 $log = Get-ChildItem "$env:LOCALAPPDATA/UseGoodAI/QuickConnect/logs/startup-*-$($helper.Id).log" -ErrorAction SilentlyContinue
               } until (($log -and (Get-Content $log.FullName -Raw).Contains('frontend-ready')) -or (Get-Date) -gt $deadline)
               if (-not $log -or -not (Get-Content $log.FullName -Raw).Contains('frontend-ready') -or $helper.MainWindowHandle -eq 0) { throw "$mode 未就绪" }
+              $profile = [IO.Path]::GetFullPath("$env:LOCALAPPDATA/UseGoodAI/QuickConnect/webview-compat-v1")
               $browser = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Where-Object {
-                $_.CommandLine -and $_.CommandLine.Contains($env:LOCALAPPDATA) -and $_.CommandLine.Contains('webview-compat-v1') -and $_.CommandLine -notmatch '--type='
+                $_.CommandLine -and $_.CommandLine.IndexOf($profile, [StringComparison]::OrdinalIgnoreCase) -ge 0 -and $_.CommandLine -notmatch '--type='
               })
-              if ($browser.Count -ne 1) { throw "$mode 无法唯一定位本次 WebView2" }
+              if ($browser.Count -ne 1) { throw "$mode 无法唯一定位本次 WebView2，匹配数 $($browser.Count)" }
               $disabled = $browser[0].CommandLine -match '--disable-gpu(?:\s|$)'
               if ($disabled -ne ($mode -eq 'software')) { throw "$mode 实际硬件加速参数不符" }
               if (-not $helper.CloseMainWindow() -or -not $helper.WaitForExit(15000)) { throw "$mode 未正常关闭" }
