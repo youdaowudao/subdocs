@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-release_revision="V0.9.2"
-release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.9.2"
+release_revision="V0.9.3"
+release_base="https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.9.3"
 
 if ! command -v curl >/dev/null 2>&1; then
   echo "安装失败：未找到 curl，无法下载安装程序。" >&2
@@ -19,22 +19,22 @@ fi
 
 case "$system_name/$machine_name/$translated" in
   Darwin/arm64/*|Darwin/x86_64/1)
-    artifact="usegoodai-imagines-tool-v0.9.2-darwin-arm64"
-    expected_sha256="13d1941c91c84e668aee11bb808910607897a02dcb282d8e8ca906a2172677b4"
+    artifact="usegoodai-imagines-tool-v0.9.3-darwin-arm64"
+    expected_sha256="6a02a87db63ed4766f89c956354e117f9f9a8cf372f08a27df7e4b473c21a95c"
     expected_binary_format="macho-arm64"
     ;;
   Darwin/x86_64/*)
-    artifact="usegoodai-imagines-tool-v0.9.2-darwin-amd64"
-    expected_sha256="f993f4cd429cebd811429cdacb129de6ce1f283d3e844f0b5de7cc4c16404428"
+    artifact="usegoodai-imagines-tool-v0.9.3-darwin-amd64"
+    expected_sha256="b7d3199012ad25883377886d9dcd20b640bd4f5462ec8cc64714b694c5bd8c21"
     expected_binary_format="macho-x86_64"
     ;;
   Linux/x86_64/*|Linux/amd64/*)
-    artifact="usegoodai-imagines-tool-v0.9.2-linux-amd64"
-    expected_sha256="e629977b7490d26063f7f6df23cfd5a3421117414ad080e8c328621880c9014c"
+    artifact="usegoodai-imagines-tool-v0.9.3-linux-amd64"
+    expected_sha256="57eb6ad2da5a274f63775733c021586710d11e3c3467ccc3b2e68d65e3f055fa"
     expected_binary_format="elf-x86_64"
     ;;
   *)
-    echo "安装失败：V0.9.2 仅支持 64 位 x64 Linux、Apple Silicon Mac 或 Intel 64 位 Mac，当前为 $system_name/$machine_name。" >&2
+    echo "安装失败：V0.9.3 仅支持 64 位 x64 Linux、Apple Silicon Mac 或 Intel 64 位 Mac，当前为 $system_name/$machine_name。" >&2
     exit 1
     ;;
 esac
@@ -79,7 +79,7 @@ codex_home="${CODEX_HOME:-$HOME/.codex}"
 installed_release_path="$codex_home/tools/usegoodai-imagines-tool/RELEASE"
 installed_binary_path="$codex_home/tools/usegoodai-imagines-tool/usegoodai-imagines-tool"
 if [[ -f "$installed_release_path" ]] && [[ -f "$installed_binary_path" ]] && [[ -x "$installed_binary_path" ]] && [[ "$(tr -d '\r\n' < "$installed_release_path")" == "$release_revision" ]] && binary_matches_architecture "$installed_binary_path" && [[ "$(sha256_for_file "$installed_binary_path")" == "$expected_sha256" ]]; then
-  echo "中转站生图工具 $release_revision 已是当前系统架构的最新版，无需下载，继续配置画图 Key。"
+  echo "中转站生图工具 $release_revision 已是当前系统架构的最新版，无需下载，正在核对安装文件。"
   binary_path="$installed_binary_path"
 else
   temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/usegoodai-imagines-tool.XXXXXX")"
@@ -92,7 +92,7 @@ else
   trap 'exit 130' INT
   trap 'exit 143' TERM
 
-  echo "正在下载中转站生图工具 V0.9.2……"
+  echo "正在下载中转站生图工具 V0.9.3……"
   curl --fail --location --progress-bar --show-error --proto '=https' --proto-redir '=https' --tlsv1.2 \
     "$release_base/$artifact" --output "$binary_path"
 
@@ -108,8 +108,29 @@ else
   chmod +x "$binary_path"
 fi
 
-if ! { true </dev/tty; } 2>/dev/null; then
-  echo "安装失败：未检测到可输入的终端。请在终端中直接运行安装命令并粘贴画图 Key。" >&2
-  exit 1
+key_mode="auto"
+for argument in "$@"; do
+  case "$argument" in
+    --key-stdin) key_mode="input" ;;
+    --keep-key) key_mode="keep" ;;
+    --from-app) key_mode="app" ;;
+  esac
+done
+if [[ "$key_mode" == auto ]] && [[ -f "$codex_home/tools/usegoodai-imagines-tool/install-manifest.json" ]]; then
+  set -- "$@" --keep-key
+  key_mode="keep"
 fi
-"$binary_path" install "$@" </dev/tty
+
+case "$key_mode" in
+  input) "$binary_path" install "$@" ;;
+  keep) "$binary_path" install "$@" </dev/null ;;
+  *)
+    if { true </dev/tty; } 2>/dev/null; then
+      "$binary_path" install "$@" </dev/tty
+    elif [[ "$key_mode" == app ]]; then
+      "$binary_path" install "$@" </dev/null
+    else
+      "$binary_path" install "$@" --keep-key </dev/null
+    fi
+    ;;
+esac

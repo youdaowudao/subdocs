@@ -1,0 +1,90 @@
+# 生图工具开着 VPN（系统代理）时能否连上 api.usegoodai.com：在 GitHub 的 Apple 芯片 Mac 与 Windows 上，
+# 用官方 Codex 按 Skill 写法运行网站正在发布的生图程序，对比当前版与上一稳定版。
+# 只做验证，不是必需检查；不使用任何密钥或 Secrets，只用临时假 Key。记录见 usegoodai-imagines-tool 的 test-records。
+name: 生图 VPN 系统代理验证
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - docs/public/install/usegoodai-imagines-tool/**
+      - tests/image-vpn-proxy-*.py
+      - .github/workflows/image-vpn-proxy.yml
+
+permissions:
+  contents: read
+
+jobs:
+  mac:
+    name: Mac-${{ matrix.name }}
+    runs-on: macos-15
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: 不开VPN-0.9.4
+            key: default-0.9.4
+            args: --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.4/usegoodai-imagines-tool-v0.9.4-darwin-arm64
+          - name: 系统代理VPN-0.9.3
+            key: vpn-0.9.3
+            args: --vpn --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.3/usegoodai-imagines-tool-v0.9.3-darwin-arm64
+          - name: 系统代理VPN-0.9.4
+            key: vpn-0.9.4
+            args: --vpn --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.4/usegoodai-imagines-tool-v0.9.4-darwin-arm64
+          - name: TUN模式-0.9.4
+            key: tun-0.9.4
+            args: --tun --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.4/usegoodai-imagines-tool-v0.9.4-darwin-arm64
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: 官方 App 后端按 Skill 写法运行生图工具
+        run: python3 tests/image-vpn-proxy-mac.py ${{ matrix.args }}
+      - name: 保留验证记录
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: image-vpn-proxy-mac-${{ matrix.key }}
+          path: ${{ runner.temp }}/image-rule-repro/report
+          if-no-files-found: error
+          retention-days: 30
+
+  windows:
+    name: Windows-${{ matrix.name }}
+    runs-on: windows-2025
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: 系统代理VPN-0.9.3
+            key: vpn-0.9.3
+            args: --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.3/usegoodai-imagines-tool-v0.9.3-windows-amd64.exe
+          - name: 系统代理VPN-0.9.4
+            key: vpn-0.9.4
+            args: --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.4/usegoodai-imagines-tool-v0.9.4-windows-amd64.exe
+    steps:
+      - name: 保留发布文件原始字节
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: 官方 Codex 按 Skill 写法运行生图工具
+        env:
+          PYTHONUTF8: '1'
+        run: python tests/image-vpn-proxy-windows.py ${{ matrix.args }}
+      - name: 保留验证记录
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: image-vpn-proxy-windows-${{ matrix.key }}
+          path: ${{ runner.temp }}/image-rule-repro/report
+          if-no-files-found: error
+          retention-days: 30

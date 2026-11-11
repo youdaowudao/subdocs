@@ -5,8 +5,8 @@ import test from 'node:test'
 
 // The site keeps the current release and the previous stable one, so users
 // can go back when the new version fails on their machine.
-const currentVersion = '0.9.3'
-const previousVersion = '0.9.2'
+const currentVersion = '0.9.4'
+const previousVersion = '0.9.3'
 
 const publicRoot = new URL('../docs/public/', import.meta.url)
 const entryRoot = new URL('install/usegoodai-imagines-tool/', publicRoot)

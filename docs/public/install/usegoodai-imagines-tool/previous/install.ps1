@@ -44,8 +44,8 @@ function Download-WithPercent {
     }
 }
 
-$ReleaseRevision = "V0.9.2"
-$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.9.2"
+$ReleaseRevision = "V0.9.3"
+$ReleaseBase = "https://docs.usegoodai.com/install/usegoodai-imagines-tool/releases/v0.9.3"
 $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
     $env:PROCESSOR_ARCHITECTURE
 } else {
@@ -53,10 +53,10 @@ $Architecture = if ([string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
 }
 
 if ($Architecture.ToUpperInvariant() -ne "AMD64") {
-    throw ("安装失败：V0.9.2 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
+    throw ("安装失败：V0.9.3 仅支持 64 位 x64 Windows，当前架构为 " + $Architecture + "。")
 }
-$Artifact = "usegoodai-imagines-tool-v0.9.2-windows-amd64.exe"
-$ExpectedSha256 = "11947f21ae3a591bf46f092f322c7ad7cc97758edf7cdbaf344f9a423ca8f282"
+$Artifact = "usegoodai-imagines-tool-v0.9.3-windows-amd64.exe"
+$ExpectedSha256 = "4cc18a2e4783db618e5b383fc7d5935a8ad67c272d7c1cb360a05eed2e1e5719"
 
 $ToolCodexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { Join-Path $HOME ".codex" } else { $env:CODEX_HOME }
 $InstalledReleasePath = Join-Path $ToolCodexHome "tools\usegoodai-imagines-tool\RELEASE"
@@ -71,7 +71,7 @@ try {
         if ($InstalledRelease -eq $ReleaseRevision) {
             $InstalledSha256 = (Get-FileHash -LiteralPath $InstalledBinaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($InstalledSha256 -eq $ExpectedSha256) {
-                Write-Output "中转站生图工具 $ReleaseRevision 已是最新版，无需下载，继续配置画图 Key。"
+                Write-Output "中转站生图工具 $ReleaseRevision 已是最新版，无需下载，正在核对安装文件。"
                 $NeedsDownload = $false
             }
         }
@@ -81,14 +81,20 @@ try {
         $TemporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("usegoodai-imagines-tool-" + [System.Guid]::NewGuid().ToString("N"))
         $BinaryPath = Join-Path $TemporaryRoot $Artifact
         New-Item -ItemType Directory -Path $TemporaryRoot | Out-Null
-        Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.9.2"
+        Download-WithPercent -Uri "$ReleaseBase/$Artifact" -Destination $BinaryPath -Activity "正在下载中转站生图工具 V0.9.3"
         $ActualSha256 = (Get-FileHash -LiteralPath $BinaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($ActualSha256 -ne $ExpectedSha256) {
             throw "安装程序 SHA-256 校验不通过，已停止安装。"
         }
     }
 
-    & $BinaryPath install @args
+    $InstallArguments = @($args)
+    $HasKeyMode = @($InstallArguments | Where-Object { $_ -in @('--keep-key', '--key-stdin', '--from-app') }).Count -gt 0
+    $StatePath = Join-Path $ToolCodexHome "tools\usegoodai-imagines-tool\install-manifest.json"
+    if (-not $HasKeyMode -and (Test-Path -LiteralPath $StatePath -PathType Leaf)) {
+        $InstallArguments += '--keep-key'
+    }
+    & $BinaryPath install @InstallArguments
     if ($LASTEXITCODE -ne 0) {
         throw "安装程序返回退出码 $LASTEXITCODE。"
     }
