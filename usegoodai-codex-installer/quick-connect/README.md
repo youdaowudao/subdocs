@@ -1,5 +1,8 @@
 # UseGoodAI中转快速接入助手
 
+> 当前状态：Win11 启动闪退未解决。本分支 1.1.8～1.1.10 仅保留为内部诊断构建，已撤回客户交付；不能作为修复版本或建议客户安装。下载发布目录已恢复 main 的正式文件。历史 Cloudflare 预览仍待后台删除，不能称为全部撤销。
+
+
 编号工具 1，把 Codex 切到 UseGoodAI；Windows 版还能把 Claude 桌面版（Claude App）切到 UseGoodAI。两个系统都接收网站「一键导入」生成的同一种 `usegoodai://` 链接：
 
 - **Windows**：单个 `.exe`，双击打开窗口，粘贴 API Key 或点网站的导入链接。源码在本目录根部。
