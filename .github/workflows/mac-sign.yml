@@ -6,7 +6,7 @@ name: Mac 工具签名与打开测试
 on:
   workflow_dispatch:
   push:
-    branches: [fix-mac-damaged-*]
+    branches: [actions-test]
     paths:
       - docs/public/download/**
       - usegoodai-codex-installer/desktop/sign_mac.py
@@ -30,6 +30,9 @@ jobs:
           python3 usegoodai-codex-installer/desktop/sign_mac.py docs/public/download/usegoodai-tools.zip "$RUNNER_TEMP/signed/usegoodai-tools.zip"
           python3 usegoodai-codex-installer/desktop/sign_mac.py docs/public/download/usegoodai-quick-connect-mac-arm64.zip "$RUNNER_TEMP/signed/usegoodai-quick-connect-mac-arm64.zip"
           shasum -a 256 "$RUNNER_TEMP"/signed/*.zip
+          for name in usegoodai-tools.zip usegoodai-quick-connect-mac-arm64.zip; do
+            if cmp -s "docs/public/download/$name" "$RUNNER_TEMP/signed/$name"; then echo "$name：仓库里的文件已是签好的版本（与重新签名结果逐字节一致）"; else echo "$name：仓库里的文件与签名结果不同"; fi
+          done
       - name: 按客户方式实际打开
         run: python3 tests/mac-app-open.py "$RUNNER_TEMP/signed/usegoodai-tools.zip" "$RUNNER_TEMP/signed/usegoodai-quick-connect-mac-arm64.zip"
       - name: 保留签好的 zip

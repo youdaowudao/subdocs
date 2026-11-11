@@ -5,7 +5,8 @@ name: 生图 VPN 系统代理验证
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
+    branches: [actions-test]
     paths:
       - docs/public/install/usegoodai-imagines-tool/**
       - tests/image-vpn-proxy-*.py
