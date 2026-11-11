@@ -19,26 +19,33 @@ import uuid
 WORK = Path(os.environ.get('RUNNER_TEMP', '/tmp')) / 'mac-app-open'
 FIND_OPEN_ANYWAY = '''
 tell application "System Settings" to activate
-delay 2
+delay 3
 tell application "System Events" to tell process "System Settings"
-  set names to {}
-  repeat with b in (every button of entire contents of window 1)
+  set texts to {}
+  set allItems to entire contents of window 1
+  repeat with x in allItems
     try
-      set end of names to (name of b as text)
-      if name of b is "Open Anyway" then
-        perform action "AXScrollToVisible" of b
+      if (class of x is button) and (name of x is "Open Anyway") then
+        try
+          perform action "AXScrollToVisible" of x
+        end try
         return "found: Open Anyway"
+      end if
+      if class of x is static text then
+        set v to value of x as text
+        if v contains "blocked" or v contains "UseGoodAI" or v contains "Codex" then set end of texts to v
       end if
     end try
   end repeat
-  return "not found; buttons: " & (names as text)
+  return "not found; texts: " & (texts as text)
 end tell'''
 CLICK_OPEN_ANYWAY = '''
 tell application "System Events" to tell process "System Settings"
-  repeat with b in (every button of entire contents of window 1)
+  set allItems to entire contents of window 1
+  repeat with x in allItems
     try
-      if name of b is "Open Anyway" then
-        click b
+      if (class of x is button) and (name of x is "Open Anyway") then
+        click x
         return "clicked"
       end if
     end try
