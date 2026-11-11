@@ -38,7 +38,11 @@ func main() {
 		if runningVisible {
 			window = "可见"
 		}
-		record.stage("已有实例", fmt.Sprintf("进程 %d，窗口%s；本次把参数交给它后退出", runningPID, window))
+		if runningPID == 0 {
+			record.stage("已有实例", "进程未知；本次把参数交给它后退出")
+		} else {
+			record.stage("已有实例", fmt.Sprintf("进程 %d，窗口%s；本次把参数交给它后退出", runningPID, window))
+		}
 	}
 
 	// A link opened while the window exists starts a second process that only

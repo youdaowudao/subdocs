@@ -3,7 +3,7 @@
 ## 0.1.9（2026-11-11）
 
 - 修复 Mac 三个工具经浏览器下载后双击提示“已损坏，无法打开”（且没有「仍要打开」入口）：App 内程序只有编译器自动加的临时签名、App 整体未签名，macOS 判定签名无效。合集与 Mac 助手 zip 里的每个 App 改为在 Apple 芯片 Mac 上整体临时签名（`usegoodai-codex-installer/desktop/sign_mac.py`），双击改为提示“无法验证”，可在「系统设置 → 隐私与安全性」点「仍要打开」；仍无开发者证书与公证。
-- 版本：快速接入助手 1.1.12、生图工具 0.9.5（网站发布 0.9.5，上一稳定版 0.9.4，删除 0.9.3）、国产模型导入 1.0.2；三者功能与上一版相同，版本随成品内容变化递增。合集 `中转站快速导入工具_20261111-1814.zip`（SHA-256 `5cb32f5826193bac7d357d95738b9f140f802899c7bdb5b9fdefed690ac856ec`），Mac 助手 zip SHA-256 `193d9d5e932bd244f711b716cfe6c61235c9ddaf7bb68ec299d57f8e77ad49bf`，Windows 助手 SHA-256 `943133366b6b23635eca1d018121ab8fc6ab65aeef816d7d0216f58703b1424b`。
+- 版本：快速接入助手 1.1.12、生图工具 0.9.5（网站发布 0.9.5，上一稳定版 0.9.4，删除 0.9.3）、国产模型导入 1.0.2；三者功能与上一版相同，版本随成品内容变化递增。合集 `中转站快速导入工具_20261111-1814.zip`（SHA-256 `ec19a2a65980b9169bc6c7ed87f16c0ed04e4a162558fa63f818f545bc6d23dc`），Mac 助手 zip SHA-256 `193d9d5e932bd244f711b716cfe6c61235c9ddaf7bb68ec299d57f8e77ad49bf`，Windows 助手 SHA-256 `24866c7580fa281cfe072c5c9f71a9ecd5d2c948cef2c16e5ae0886a471396b9`。
 - 合集使用说明改为分别放进 `Mac-Apple芯片/` 和 `Windows-x64/`，只写打开和点击步骤；Mac 说明写明第一次在「系统设置 → 隐私与安全性」点「仍要打开」，最外层不再放说明。
 - Windows 助手每次启动写 `%LOCALAPPDATA%\UseGoodAI\QuickConnect\logs\启动记录.txt`（几行阶段；已有实例时追加；Go 崩溃信息写入同一文件；不记启动参数），用于排查部分 Win11 电脑双击后一闪就退出；Windows 使用说明加一行找日志的步骤，助手 README 写明怎么看。分析见 `usegoodai-codex-installer/test-records/20261111-windows-start-record.md`。
 - 新增“Mac 工具签名与打开测试”：按客户方式（浏览器隔离标记）实际双击并截屏；Actions 测试改用固定分支 `actions-test`（规则 1.1.0）。

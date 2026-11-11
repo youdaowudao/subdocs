@@ -28,7 +28,7 @@
 - 合集三个 App 与 Mac 助手 zip 的 App 签名有效（valid on disk，satisfies its Designated Requirement）；`syspolicy_check` 只剩 Notary Ticket Missing（未公证），不再有签名错误。
 - 带隔离标记双击：提示变为 “Not Opened — Apple could not verify … is free of malware”，可在「隐私与安全性」中放行。
 - 生图 App 内部程序带隔离标记直接运行 `version` 输出 0.9.5。
-- 本机核对：签名只改变三个启动器并新增 `_CodeSignature/CodeResources`；生图 App 内程序仍等于网站 0.9.5 darwin-arm64；合集 `中转站快速导入工具_20261111-1814.zip`（SHA-256 `5cb32f5826193bac7d357d95738b9f140f802899c7bdb5b9fdefed690ac856ec`）；使用说明分别放进 Mac、Windows 目录，替换说明不改动其余已签名条目。
+- 本机核对：签名只改变三个启动器并新增 `_CodeSignature/CodeResources`；生图 App 内程序仍等于网站 0.9.5 darwin-arm64；合集 `中转站快速导入工具_20261111-1814.zip`（SHA-256 `ec19a2a65980b9169bc6c7ed87f16c0ed04e4a162558fa63f818f545bc6d23dc`）；使用说明分别放进 Mac、Windows 目录，替换说明不改动其余已签名条目。
 
 ## 未验证
 

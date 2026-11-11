@@ -21,16 +21,26 @@ func windowsVersion() string {
 	return fmt.Sprintf("Windows %d.%d.%d", v.MajorVersion, v.MinorVersion, v.BuildNumber)
 }
 
-// existingInstance finds a running assistant by the hidden message window
-// Wails creates for its single-instance lock (id + "-sic" / id + "-siw").
-// A later launch hands its arguments to that process and exits, so this
-// tells whether the running one has any visible window.
+// existingInstance finds a running assistant by what Wails creates for its
+// single-instance lock: a hidden message window named "wails-app-" + id +
+// "-sic"/"-siw", and a mutex named "wails-app-" + id + "sim". A later launch
+// hands its arguments to that process and exits, so this also tells whether
+// the running one has any visible window. pid is 0 when only the lock is
+// found.
 func existingInstance(id string) (pid uint32, visible bool, running bool) {
+	id = "wails-app-" + id
 	class, _ := syscall.UTF16PtrFromString(id + "-sic")
 	title, _ := syscall.UTF16PtrFromString(id + "-siw")
 	hwnd, _, _ := procFindWindowW.Call(uintptr(unsafe.Pointer(class)), uintptr(unsafe.Pointer(title)))
 	if hwnd == 0 {
-		return 0, false, false
+		name, _ := syscall.UTF16PtrFromString(id + "sim")
+		const synchronize = 0x00100000
+		lock, err := windows.OpenMutex(synchronize, false, name)
+		if err != nil {
+			return 0, false, false
+		}
+		_ = windows.CloseHandle(lock)
+		return 0, false, true
 	}
 	_, _, _ = procGetWindowThreadProcessID.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
 	callback := syscall.NewCallback(func(window, _ uintptr) uintptr {
