@@ -51,6 +51,46 @@ jobs:
             if (-not $text.Contains($stage)) { throw "缺少启动阶段：$stage" }
           }
           if ($text.Contains('sk-smoke-') -or $text.Contains('usegoodai://')) { throw '日志泄露测试密钥或导入链接' }
+      - name: 核对实际渲染参数及正常关闭日志
+        shell: pwsh
+        run: |
+          $env:CODEX_HOME = "$env:RUNNER_TEMP/启动 中文路径/codex"
+          $env:LOCALAPPDATA = "$env:RUNNER_TEMP/启动 中文路径/local"
+          $env:APPDATA = "$env:RUNNER_TEMP/启动 中文路径/roaming"
+          foreach ($mode in @('software', 'system')) {
+            $helper = $null
+            try {
+              if ($mode -eq 'system') {
+                $helper = Start-Process "$env:RUNNER_TEMP/candidate/helper.exe" -ArgumentList '--system-gpu' -PassThru
+              } else {
+                $helper = Start-Process "$env:RUNNER_TEMP/candidate/helper.exe" -PassThru
+              }
+              $deadline = (Get-Date).AddSeconds(45)
+              do {
+                Start-Sleep -Milliseconds 300
+                $helper.Refresh()
+                if ($helper.HasExited) { throw "$mode 提前退出：$($helper.ExitCode)" }
+                $log = Get-ChildItem "$env:LOCALAPPDATA/UseGoodAI/QuickConnect/logs/startup-*-$($helper.Id).log" -ErrorAction SilentlyContinue
+              } until (($log -and (Get-Content $log.FullName -Raw).Contains('frontend-ready')) -or (Get-Date) -gt $deadline)
+              if (-not $log -or -not (Get-Content $log.FullName -Raw).Contains('frontend-ready') -or $helper.MainWindowHandle -eq 0) { throw "$mode 未就绪" }
+              $browser = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Where-Object {
+                $_.CommandLine -and $_.CommandLine.Contains($env:LOCALAPPDATA) -and $_.CommandLine.Contains('webview-compat-v1') -and $_.CommandLine -notmatch '--type='
+              })
+              if ($browser.Count -ne 1) { throw "$mode 无法唯一定位本次 WebView2" }
+              $disabled = $browser[0].CommandLine -match '--disable-gpu(?:\s|$)'
+              if ($disabled -ne ($mode -eq 'software')) { throw "$mode 实际硬件加速参数不符" }
+              if (-not $helper.CloseMainWindow() -or -not $helper.WaitForExit(15000)) { throw "$mode 未正常关闭" }
+              if ($helper.ExitCode -ne 0) { throw "$mode 关闭退出码异常：$($helper.ExitCode)" }
+              $text = Get-Content $log.FullName -Raw
+              foreach ($stage in @('close-requested', 'shutdown', 'main-returned')) {
+                if (-not $text.Contains($stage)) { throw "$mode 关闭日志缺少 $stage" }
+              }
+              Write-Host "${mode}: 实际渲染参数、前端就绪和正常关闭通过"
+            } finally {
+              if ($helper -and -not $helper.HasExited) { Stop-Process -Id $helper.Id -Force }
+            }
+            Start-Sleep -Seconds 2
+          }
       - name: 保留候选、日志、截图与系统信息
         if: always()
         shell: pwsh
