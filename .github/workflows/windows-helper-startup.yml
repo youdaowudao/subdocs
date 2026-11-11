@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/windows-helper-startup.yml
       - usegoodai-codex-installer/quick-connect/startlog*.go
+      - usegoodai-codex-installer/quick-connect/error_dialog_windows.go
       - usegoodai-codex-installer/quick-connect/tools/windows_error_dialog.ps1
 
 permissions:

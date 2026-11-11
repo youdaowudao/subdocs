@@ -40,13 +40,15 @@ func showFailureReport(r failureReport) {
 		}
 		switch button {
 		case 1001:
-			label := "已复制"
+			status := "错误信息已复制。切换到 QQ 按 Ctrl+V 粘贴。"
 			if err := copyErrorText(hwnd, r.copyText); err != nil {
-				label = "复制失败，请重试"
+				status = "复制失败，请再次点击“复制错误信息”，或打开日志文件夹。"
 			}
-			control, _, _ := errorUser32.NewProc("GetDlgItem").Call(hwnd, button)
-			value, _ := syscall.UTF16PtrFromString(label)
-			errorUser32.NewProc("SetWindowTextW").Call(control, uintptr(unsafe.Pointer(value)))
+			value, _ := syscall.UTF16PtrFromString(r.brief + "\n\n" + status)
+			// Task Dialog buttons are nested controls; GetDlgItem on the
+			// top-level window does not reliably find them. Update the
+			// documented content element so both success and failure are visible.
+			errorUser32.NewProc("SendMessageW").Call(hwnd, 1024+108, 0, uintptr(unsafe.Pointer(value)))
 			return 1 // S_FALSE: keep the dialog open after copying.
 		case 1002:
 			if r.saveErr == nil && r.path != "" {

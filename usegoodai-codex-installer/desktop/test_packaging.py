@@ -130,7 +130,7 @@ class DesktopPackagingTests(unittest.TestCase):
             info = plistlib.loads((contents / "Info.plist").read_bytes())
             self.assertEqual(info["CFBundleDisplayName"], name)
             self.assertEqual(info["CFBundleIdentifier"], "com.usegoodai.codex-config")
-            self.assertEqual(info["CFBundleShortVersionString"], "1.1.9")
+            self.assertEqual(info["CFBundleShortVersionString"], "1.1.10")
             self.assertEqual(info["CFBundleURLTypes"], [{"CFBundleURLName": "com.usegoodai.import", "CFBundleURLSchemes": ["usegoodai"]}])
             self.assertIs(info["LSUIElement"], True)
             self.assertEqual((contents / "Resources/install.sh").read_bytes(), (PROJECT_ROOT / "install/codex.sh").read_bytes())
