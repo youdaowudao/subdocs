@@ -41,6 +41,15 @@ const ANTHROPIC_OPUS_MODEL_IDS = [
   'claude-opus-4-5-20251101',
 ]
 
+const ANTHROPIC_MAIN_MODEL_IDS = [
+  ...ANTHROPIC_OPUS_MODEL_IDS,
+  'claude-sonnet-5-5',
+  'claude-sonnet-5',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5-20251001',
+  'claude-fable-5',
+]
+
 const ANTHROPIC_STANDARD_MODEL_IDS = [
   'claude-fable-5-2',
   'claude-fable-5-1',
@@ -103,6 +112,14 @@ export const TEXT_GROUPS = [
     multiplier: 0.35,
     description: 'VIP 分组，GPT 模型按 0.35 倍率计费',
     modelIds: GPT_MODEL_IDS,
+  },
+  {
+    id: 'anthropic-main',
+    name: 'Anthropic 低价分组1M上下文 缓存高',
+    multiplier: 0.18,
+    description: '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5',
+    modelIds: ANTHROPIC_MAIN_MODEL_IDS,
+    unavailableModels: { 'claude-fable-5': '此分组无 Fable 5' },
   },
   {
     id: 'anthropic-0.49',
@@ -225,7 +242,7 @@ export const MODEL_CATEGORIES = [
     name: 'Anthropic',
     iconSvg: CLAUDE_CODE_ICON,
     kind: 'text',
-    groupIds: ['anthropic-0.49', 'anthropic-max', 'anthropic-max-external'],
+    groupIds: ['anthropic-main', 'anthropic-0.49', 'anthropic-max', 'anthropic-max-external'],
   },
   {
     id: 'grok',

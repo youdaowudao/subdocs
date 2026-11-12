@@ -33,6 +33,7 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
       { id: 'gpt-0.35', name: 'GPT VIP 分组', multiplier: 0.35 },
+      { id: 'anthropic-main', name: 'Anthropic 低价分组1M上下文 缓存高', multiplier: 0.18 },
       { id: 'anthropic-0.49', name: 'Claude 0.49 分组', multiplier: 0.49 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.5 },
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.5 },
@@ -56,7 +57,7 @@ test('keeps the model category tabs in the requested order', () => {
     MODEL_CATEGORIES.map(({ id, name, kind, groupIds, defaultGroupId }) => ({ id, name, kind, groupIds, defaultGroupId })),
     [
       { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35'], defaultGroupId: 'gpt-0.18' },
-      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-0.49', 'anthropic-max', 'anthropic-max-external'], defaultGroupId: undefined },
+      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-0.49', 'anthropic-max', 'anthropic-max-external'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity', 'gemini-4-argon'], defaultGroupId: undefined },
       { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek'], defaultGroupId: undefined },
@@ -112,8 +113,12 @@ test('keeps category logos at icon size instead of inheriting VitePress document
 })
 
 test('uses the requested Anthropic group recommendations', () => {
+  const lowPriceGroup = TEXT_GROUPS.find((item) => item.id === 'anthropic-main')
   const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-0.49')
 
+  assert.equal(lowPriceGroup.name, 'Anthropic 低价分组1M上下文 缓存高')
+  assert.equal(lowPriceGroup.multiplier, 0.18)
+  assert.equal(lowPriceGroup.description, '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5')
   assert.equal(group.name, 'Claude 0.49 分组')
   assert.equal(group.description, '适合 Claude Code 和 Claude Desktop 日常任务')
 })
@@ -328,11 +333,19 @@ test('includes Claude Haiku 5.5 in the 0.49 and both CC MAX groups with both con
   }
 })
 
-test('removes all three delisted Anthropic groups from the category and model lookup', () => {
+test('keeps the 0.18 low-price group while removing only the delisted CC TEST groups', () => {
   const category = MODEL_CATEGORIES.find((item) => item.id === 'anthropic')
+  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-main')
 
-  assert.equal(category.groupIds[0], 'anthropic-0.49')
-  for (const groupId of ['anthropic-main', 'anthropic-cc-test', 'anthropic-cc-test-0.7']) {
+  assert.equal(category.groupIds[0], 'anthropic-main')
+  assert.equal(group.multiplier, 0.18)
+  assert.deepEqual(getTextModelsForGroup(group.id).map((model) => model.id), [
+    'claude-opus-5-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7',
+    'claude-opus-4-6', 'claude-opus-4-5-20251101', 'claude-sonnet-5-5',
+    'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-fable-5',
+  ])
+  assert.equal(getTextModelsForGroup(group.id).at(-1).unavailableMessage, '此分组无 Fable 5')
+  for (const groupId of ['anthropic-cc-test', 'anthropic-cc-test-0.7']) {
     assert.ok(!TEXT_GROUPS.some((group) => group.id === groupId))
     assert.ok(!category.groupIds.includes(groupId))
     assert.deepEqual(getTextModelsForGroup(groupId), [])
@@ -374,6 +387,7 @@ test('prices all 14 screenshot models in the relisted 0.49 group with their exac
 
 test('prices Claude Sonnet 5.5 in every Anthropic group', () => {
   const expectedGroupPrices = new Map([
+    ['anthropic-main', { input: 0.36, output: 1.8, cachedInput: 0.018 }],
     ['anthropic-0.49', { input: 0.98, output: 4.9, cachedInput: 0.049 }],
     ['anthropic-max', { input: 3, output: 15, cachedInput: 0.15 }],
     ['anthropic-max-external', { input: 3, output: 15, cachedInput: 0.15 }],
@@ -399,6 +413,7 @@ test('prices Claude Sonnet 5.5 in every Anthropic group', () => {
 
 test('prices Claude Sonnet 5 at the reduced official baseline in all supported groups', () => {
   const expectedGroupPrices = new Map([
+    ['anthropic-main', { input: 0.36, output: 1.8, cachedInput: 0.036, total: 2.16 }],
     ['anthropic-0.49', { input: 0.98, output: 4.9, cachedInput: 0.098, total: 5.88 }],
     ['anthropic-max', { input: 3, output: 15, cachedInput: 0.3, total: 18 }],
     ['anthropic-max-external', { input: 3, output: 15, cachedInput: 0.3, total: 18 }],
@@ -424,6 +439,7 @@ test('prices Claude Sonnet 5 at the reduced official baseline in all supported g
 
 test('includes Claude Opus 5.5 once at official pricing in every Anthropic group', () => {
   const expectedGroupPrices = new Map([
+    ['anthropic-main', { input: 0.72, output: 3.6, cachedInput: 0.036, total: 4.32 }],
     ['anthropic-0.49', { input: 1.96, output: 9.8, cachedInput: 0.098, total: 11.76 }],
     ['anthropic-max', { input: 6, output: 30, cachedInput: 0.3, total: 36 }],
     ['anthropic-max-external', { input: 6, output: 30, cachedInput: 0.3, total: 36 }],
@@ -962,6 +978,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['gpt-0.18', 5.25],
     ['full', 9.45],
     ['gpt-0.35', 12.25],
+    ['anthropic-main', 6.3],
     ['anthropic-0.49', 17.15],
     ['anthropic-max', 52.5],
     ['anthropic-max-external', 52.5],

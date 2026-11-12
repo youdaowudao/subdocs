@@ -207,6 +207,43 @@ test('renders verified Qwen and MiMo IDs with RMB prices in their 0.45 groups', 
   }
 })
 
+test('opens Anthropic on the restored 0.18 low-price group while keeping the 0.49 group available', async () => {
+  const server = await createServer({
+    configFile: false,
+    plugins: [vue()],
+    server: { middlewareMode: true },
+    appType: 'custom',
+  })
+
+  try {
+    const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
+    const component = {
+      ...pricing,
+      setup(props, context) {
+        const state = pricing.setup(props, context)
+        state.setCategory('anthropic')
+        assert.equal(state.activeGroupId.value, 'anthropic-main')
+        return state
+      },
+    }
+    const html = await renderToString(createSSRApp(component))
+    const rows = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)]
+      .map(([row]) => row)
+      .filter((row) => row.includes('class="model-id-cell"'))
+    assert.equal(rows.length, 11)
+    const opusRow = rows.find((row) => row.includes('<strong>claude-opus-5-5</strong>'))
+    const prices = [...opusRow.matchAll(/<strong class="group-price">([^<]+)</g)].map((match) => match[1])
+    assert.deepEqual(prices, ['¥0.72', '¥3.60', '¥0.036', '¥4.32'])
+    assert.match(html, /0\.18 倍率/)
+    assert.match(html, /Claude 0\.49 分组/)
+    assert.match(rows.at(-1), /此分组无 Fable 5/)
+    assert.doesNotMatch(rows.at(-1), /class="group-price"/)
+    assert.doesNotMatch(html, /CCTEST|xcctest/)
+  } finally {
+    await server.close()
+  }
+})
+
 test('renders the 14 screenshot models and exact copy IDs in the relisted 0.49 group', async () => {
   const server = await createServer({
     configFile: false,
@@ -268,11 +305,13 @@ test('renders the 14 screenshot models and exact copy IDs in the relisted 0.49 g
           assert.deepEqual(amounts, expectedAmounts, `${priceMode}/${expectedIds[index]}`)
         }
       }
-      assert.doesNotMatch(html, /NaN|价格待确认|此分组无|claude-sonnet-4-5|低价分组1M|CCTEST|xcctest/)
+      assert.doesNotMatch(html, /NaN|价格待确认|此分组无|claude-sonnet-4-5|CCTEST|xcctest/)
       if (priceMode === 'group') {
         assert.match(html, /Claude 0\.49 分组/)
         assert.match(html, /0\.49 倍率/)
-        assert.equal([...html.matchAll(/<button\b[^>]*class="[^"]*\bpricing-group-card\b[^"]*"[^>]*>/g)].length, 3)
+        assert.match(html, /低价分组1M上下文 缓存高/)
+        assert.match(html, /0\.18 倍率/)
+        assert.equal([...html.matchAll(/<button\b[^>]*class="[^"]*\bpricing-group-card\b[^"]*"[^>]*>/g)].length, 4)
       }
     }
   } finally {
