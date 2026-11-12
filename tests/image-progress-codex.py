@@ -55,6 +55,23 @@ def image_body(padding):
     return json.dumps({'data': [{'b64_json': base64.b64encode(content).decode()}]}).encode()
 
 
+def received_text(item):
+    """模型收到的一次工具输出；Code Mode 每个 text(...) 是一项，按行拼接。"""
+    value = item.get('output')
+    if isinstance(value, list):
+        return '\n'.join(part.get('text', '') for part in value if isinstance(part, dict))
+    return mac.output_text(item)
+
+
+class QuietServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        # 工具主动断开连接（中断、不返回、连接复用结束）是本测试预期的情况，不打印堆栈。
+        if not isinstance(sys.exc_info()[1], (ConnectionError, ssl.SSLError, TimeoutError)):
+            super().handle_error(request, client_address)
+
+
 def make_certificates(work):
     from cryptography import x509
     from cryptography.hazmat.primitives import hashes, serialization
@@ -180,11 +197,10 @@ def serve_api(paths):
             entry.update(sent=sent, finished_at=time.time())
 
     # macOS 只允许普通用户在所有地址上监听 1024 以下端口。
-    server = ThreadingHTTPServer(('127.0.0.1' if sys.platform == 'win32' else '0.0.0.0', 443), Handler)
+    server = QuietServer(('127.0.0.1' if sys.platform == 'win32' else '0.0.0.0', 443), Handler)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(paths['cert'], paths['key'])
     server.socket = context.wrap_socket(server.socket, server_side=True)
-    server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
 
@@ -223,7 +239,7 @@ class SkillCodeModeModel:
                 raise RuntimeError(f'没有可用的命令工具：{tools}')
             new = outputs[len(self.outputs):]
             for item in new:
-                text = mac.output_text(item)
+                text = received_text(item)
                 self.outputs.append(text)
                 self.received.append({'seconds': round(time.time() - self.started, 1), 'text': text})
             latest = self.outputs[-1] if self.outputs else ''
@@ -358,14 +374,14 @@ def expect(name, result, server_entry):
     if name == '慢速' and not any(re.search(r'接收中 .*近 \d+ 秒 \d+ KB/s', line) for line in seen):
         problems.append('慢速接收没有报告速度')
     if name == '中断':
-        if not re.match(r'^接收中断：(1 分钟|1 分 \d+ 秒|60 秒)没有新数据，已收 1\.0 MB/', str(tool.get('error', ''))) \
+        if not re.match(r'^接收中断：60 秒没有新数据，已收 1\.0 MB/[\d.]+ MB。$', str(tool.get('error', ''))) \
                 or tool.get('request_sent') is not True:
             problems.append(f'中断结论不对：{tool}')
         stalled, closed = server_entry.get('stalled_at'), server_entry.get('closed_at')
         if not (stalled and closed and 58 <= closed - stalled <= 75):
             problems.append(f'停止时间不对：停住后 {None if not (stalled and closed) else round(closed - stalled, 1)} 秒断开')
     if name == '不返回':
-        if '中转站没有开始返回' not in str(tool.get('error', '')) or tool.get('request_sent') is not True:
+        if tool.get('error') != '请求已发出，已等 3 分钟，中转站没有开始返回。' or tool.get('request_sent') is not True:
             problems.append(f'不返回结论不对：{tool}')
         received, closed = server_entry.get('received_at'), server_entry.get('closed_at')
         if not (received and closed and 178 <= closed - received <= 195):
