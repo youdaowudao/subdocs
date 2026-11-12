@@ -33,9 +33,7 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
       { id: 'gpt-0.35', name: 'GPT VIP 分组', multiplier: 0.35 },
-      { id: 'anthropic-main', name: 'Anthropic 低价分组1M上下文 缓存高', multiplier: 0.16 },
-      { id: 'anthropic-cc-test', name: '0.45Anthropic CCTEST满分渠道', multiplier: 0.45 },
-      { id: 'anthropic-cc-test-0.7', name: '0.7xcctest满分 【主力分组推荐使用】', multiplier: 0.7 },
+      { id: 'anthropic-0.49', name: 'Claude 0.49 分组', multiplier: 0.49 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.5 },
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.5 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
@@ -58,7 +56,7 @@ test('keeps the model category tabs in the requested order', () => {
     MODEL_CATEGORIES.map(({ id, name, kind, groupIds, defaultGroupId }) => ({ id, name, kind, groupIds, defaultGroupId })),
     [
       { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35'], defaultGroupId: 'gpt-0.18' },
-      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-cc-test-0.7', 'anthropic-max', 'anthropic-max-external'], defaultGroupId: undefined },
+      { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-0.49', 'anthropic-max', 'anthropic-max-external'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity', 'gemini-4-argon'], defaultGroupId: undefined },
       { id: 'deepseek', name: 'DeepSeek', kind: 'text', groupIds: ['deepseek'], defaultGroupId: undefined },
@@ -114,14 +112,10 @@ test('keeps category logos at icon size instead of inheriting VitePress document
 })
 
 test('uses the requested Anthropic group recommendations', () => {
-  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-main')
-  const ccTestGroup = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test')
-  const highCacheGroup = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test-0.7')
+  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-0.49')
 
-  assert.equal(group.name, 'Anthropic 低价分组1M上下文 缓存高')
-  assert.equal(group.description, '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5')
-  assert.equal(ccTestGroup.description, '适合 Claude Code 日常任务')
-  assert.equal(highCacheGroup.description, '主力分组推荐使用')
+  assert.equal(group.name, 'Claude 0.49 分组')
+  assert.equal(group.description, '适合 Claude Code 和 Claude Desktop 日常任务')
 })
 
 test('keeps the GPT Plus discount group at 0.1 with instability copy', () => {
@@ -259,12 +253,12 @@ test('prices GPT-6 Astra in the original GPT groups with the revised baseline', 
   assert.ok(isClose(price.group.total, 16.2))
 })
 
-test('orders the CC MAX groups from Fable 5.2 through Fable 5.1 and keeps other Anthropic groups unchanged', () => {
-  const mainModels = getTextModelsForGroup('anthropic-main')
-  const ccTestModels = getTextModelsForGroup('anthropic-cc-test')
+test('keeps both CC MAX model lists unchanged after relisting the 0.49 group', () => {
   const ccMaxModels = getTextModelsForGroup('anthropic-max')
   const ccMaxExternalModels = getTextModelsForGroup('anthropic-max-external')
-  const mainOrder = [
+  const ccMaxOrder = [
+    'claude-fable-5-2',
+    'claude-fable-5-1',
     'claude-opus-5-5',
     'claude-opus-5',
     'claude-opus-4-8',
@@ -274,43 +268,23 @@ test('orders the CC MAX groups from Fable 5.2 through Fable 5.1 and keeps other 
     'claude-sonnet-5-5',
     'claude-sonnet-5',
     'claude-sonnet-4-6',
+    'claude-sonnet-4-5-20250929',
+    'claude-haiku-5-5',
     'claude-haiku-4-5-20251001',
     'claude-fable-5',
   ]
-  const ccOrder = [
-    ...mainOrder.slice(0, 6),
-    'claude-sonnet-5-5',
-    'claude-haiku-5-5',
-    ...mainOrder.slice(9),
-  ]
-  const ccMaxOrder = [
-    'claude-fable-5-2',
-    'claude-fable-5-1',
-    ...mainOrder.slice(0, 9),
-    'claude-sonnet-4-5-20250929',
-    'claude-haiku-5-5',
-    ...mainOrder.slice(9),
-  ]
 
-  assert.deepEqual(mainModels.map((model) => model.id), mainOrder)
-  assert.deepEqual(ccTestModels.map((model) => model.id), ccOrder)
   assert.deepEqual(ccMaxModels.map((model) => model.id), ccMaxOrder)
   assert.deepEqual(ccMaxExternalModels.map((model) => model.id), ccMaxOrder)
-  assert.equal(mainModels.at(-1).unavailableMessage, '此分组无 Fable 5')
-  assert.equal(ccTestModels.at(-1).unavailableMessage, '此分组无 Fable 5')
   assert.equal(ccMaxModels.at(-1).unavailableMessage, '')
   assert.equal(ccMaxExternalModels.at(-1).unavailableMessage, '')
 })
 
-test('includes Claude Haiku 5.5 in both CC TEST and both CC MAX groups with both context prices', () => {
+test('includes Claude Haiku 5.5 in the 0.49 and both CC MAX groups with both context prices', () => {
   const expectedGroupPrices = new Map([
-    ['anthropic-cc-test', [
-      { input: 0.045, output: 0.225, cachedInput: 0.0045, total: 0.27 },
-      { input: 0.225, output: 1.125, cachedInput: 0.0225, total: 1.35 },
-    ]],
-    ['anthropic-cc-test-0.7', [
-      { input: 0.07, output: 0.35, cachedInput: 0.007, total: 0.42 },
-      { input: 0.35, output: 1.75, cachedInput: 0.035, total: 2.1 },
+    ['anthropic-0.49', [
+      { input: 0.049, output: 0.245, cachedInput: 0.0049, total: 0.294 },
+      { input: 0.245, output: 1.225, cachedInput: 0.0245, total: 1.47 },
     ]],
     ['anthropic-max', [
       { input: 0.15, output: 0.75, cachedInput: 0.015, total: 0.9 },
@@ -345,7 +319,7 @@ test('includes Claude Haiku 5.5 in both CC TEST and both CC MAX groups with both
       }
     }
 
-    const haiku45Id = groupId === 'anthropic-cc-test-0.7' ? 'claude-haiku-4-5' : 'claude-haiku-4-5-20251001'
+    const haiku45Id = groupId === 'anthropic-0.49' ? 'claude-haiku-4-5' : 'claude-haiku-4-5-20251001'
     assert.ok(getTextModelsForGroup(groupId).some((item) => item.id === haiku45Id))
   }
 
@@ -354,38 +328,38 @@ test('includes Claude Haiku 5.5 in both CC TEST and both CC MAX groups with both
   }
 })
 
-test('includes Sonnet 5.5 and Haiku 5.5 in the 0.45 CC TEST group', () => {
-  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test')
+test('removes all three delisted Anthropic groups from the category and model lookup', () => {
+  const category = MODEL_CATEGORIES.find((item) => item.id === 'anthropic')
 
-  assert.equal(group.multiplier, 0.45)
-  for (const modelId of ['claude-sonnet-5-5', 'claude-haiku-5-5']) {
-    const models = getTextModelsForGroup(group.id).filter((model) => model.id === modelId)
-    assert.equal(models.length, 1)
-    assert.equal(models[0].unavailableMessage, '')
+  assert.equal(category.groupIds[0], 'anthropic-0.49')
+  for (const groupId of ['anthropic-main', 'anthropic-cc-test', 'anthropic-cc-test-0.7']) {
+    assert.ok(!TEXT_GROUPS.some((group) => group.id === groupId))
+    assert.ok(!category.groupIds.includes(groupId))
+    assert.deepEqual(getTextModelsForGroup(groupId), [])
   }
 })
 
-test('prices all 12 supported models in the recommended 0.7 CC TEST group', () => {
-  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-cc-test-0.7')
+test('prices all 14 screenshot models in the relisted 0.49 group with their exact copy IDs', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-0.49')
   const models = getTextModelsForGroup(group.id)
   const expectedPrices = new Map([
-    ['claude-opus-5-5', [2.8, 14, 0.14, 16.8]],
-    ['claude-opus-5', [3.5, 17.5, 0.35, 21]],
-    ['claude-opus-4-8', [3.5, 17.5, 0.35, 21]],
-    ['claude-opus-4-7', [3.5, 17.5, 0.35, 21]],
-    ['claude-opus-4-6', [3.5, 17.5, 0.35, 21]],
-    ['claude-opus-4-5', [3.5, 17.5, 0.35, 21]],
-    ['claude-sonnet-5-5', [1.4, 7, 0.07, 8.4]],
-    ['claude-sonnet-5', [1.4, 7, 0.14, 8.4]],
-    ['claude-sonnet-4-6', [2.1, 10.5, 0.21, 12.6]],
-    ['claude-sonnet-4-5', [2.1, 10.5, 0.21, 12.6]],
-    ['claude-haiku-5-5', [0.07, 0.35, 0.007, 0.42]],
-    ['claude-haiku-4-5', [0.7, 3.5, 0.07, 4.2]],
+    ['claude-fable-5-2', [3.92, 19.6, 0.098, 23.52]],
+    ['claude-fable-5-1', [4.9, 24.5, 0.1225, 29.4]],
+    ['claude-opus-5-5', [1.96, 9.8, 0.098, 11.76]],
+    ['claude-opus-5', [2.45, 12.25, 0.245, 14.7]],
+    ['claude-opus-4-8', [2.45, 12.25, 0.245, 14.7]],
+    ['claude-opus-4-7', [2.45, 12.25, 0.245, 14.7]],
+    ['claude-opus-4-6', [2.45, 12.25, 0.245, 14.7]],
+    ['claude-opus-4-5', [2.45, 12.25, 0.245, 14.7]],
+    ['claude-sonnet-5-5', [0.98, 4.9, 0.049, 5.88]],
+    ['claude-sonnet-5', [0.98, 4.9, 0.098, 5.88]],
+    ['claude-sonnet-4-6', [1.47, 7.35, 0.147, 8.82]],
+    ['claude-haiku-5-5', [0.049, 0.245, 0.0049, 0.294]],
+    ['claude-haiku-4-5', [0.49, 2.45, 0.049, 2.94]],
+    ['claude-fable-5', [4.9, 24.5, 0.49, 29.4]],
   ])
 
-  assert.equal(group.multiplier, 0.7)
-  assert.match(group.name, /主力分组推荐使用/)
-  assert.equal(group.description, '主力分组推荐使用')
+  assert.equal(group.multiplier, 0.49)
   assert.deepEqual(models.map((model) => model.id), [...expectedPrices.keys()])
 
   for (const model of models) {
@@ -400,9 +374,7 @@ test('prices all 12 supported models in the recommended 0.7 CC TEST group', () =
 
 test('prices Claude Sonnet 5.5 in every Anthropic group', () => {
   const expectedGroupPrices = new Map([
-    ['anthropic-main', { input: 0.32, output: 1.6, cachedInput: 0.016 }],
-    ['anthropic-cc-test', { input: 0.9, output: 4.5, cachedInput: 0.045 }],
-    ['anthropic-cc-test-0.7', { input: 1.4, output: 7, cachedInput: 0.07 }],
+    ['anthropic-0.49', { input: 0.98, output: 4.9, cachedInput: 0.049 }],
     ['anthropic-max', { input: 3, output: 15, cachedInput: 0.15 }],
     ['anthropic-max-external', { input: 3, output: 15, cachedInput: 0.15 }],
   ])
@@ -427,8 +399,7 @@ test('prices Claude Sonnet 5.5 in every Anthropic group', () => {
 
 test('prices Claude Sonnet 5 at the reduced official baseline in all supported groups', () => {
   const expectedGroupPrices = new Map([
-    ['anthropic-main', { input: 0.32, output: 1.6, cachedInput: 0.032, total: 1.92 }],
-    ['anthropic-cc-test-0.7', { input: 1.4, output: 7, cachedInput: 0.14, total: 8.4 }],
+    ['anthropic-0.49', { input: 0.98, output: 4.9, cachedInput: 0.098, total: 5.88 }],
     ['anthropic-max', { input: 3, output: 15, cachedInput: 0.3, total: 18 }],
     ['anthropic-max-external', { input: 3, output: 15, cachedInput: 0.3, total: 18 }],
   ])
@@ -453,9 +424,7 @@ test('prices Claude Sonnet 5 at the reduced official baseline in all supported g
 
 test('includes Claude Opus 5.5 once at official pricing in every Anthropic group', () => {
   const expectedGroupPrices = new Map([
-    ['anthropic-main', { input: 0.64, output: 3.2, cachedInput: 0.032, total: 3.84 }],
-    ['anthropic-cc-test', { input: 1.8, output: 9, cachedInput: 0.09, total: 10.8 }],
-    ['anthropic-cc-test-0.7', { input: 2.8, output: 14, cachedInput: 0.14, total: 16.8 }],
+    ['anthropic-0.49', { input: 1.96, output: 9.8, cachedInput: 0.098, total: 11.76 }],
     ['anthropic-max', { input: 6, output: 30, cachedInput: 0.3, total: 36 }],
     ['anthropic-max-external', { input: 6, output: 30, cachedInput: 0.3, total: 36 }],
   ])
@@ -483,7 +452,7 @@ test('includes Claude Opus 5.5 once at official pricing in every Anthropic group
   }
 })
 
-test('uses official Fable 5.2 and 5.1 pricing only in the two 1.5x CC MAX groups', () => {
+test('uses official Fable 5.2 and 5.1 pricing in the 0.49 and two 1.5x CC MAX groups', () => {
   const ccMaxGroupIds = ['anthropic-max', 'anthropic-max-external']
   const cases = [
     {
@@ -491,12 +460,14 @@ test('uses official Fable 5.2 and 5.1 pricing only in the two 1.5x CC MAX groups
       usd: { input: 8, output: 40, cachedInput: 0.2 },
       official: { input: 56, output: 280, cachedInput: 1.4, total: 336 },
       group: { input: 12, output: 60, cachedInput: 0.3, total: 72 },
+      standardGroup: { input: 3.92, output: 19.6, cachedInput: 0.098, total: 23.52 },
     },
     {
       id: 'claude-fable-5-1',
       usd: { input: 10, output: 50, cachedInput: 0.25 },
       official: { input: 70, output: 350, cachedInput: 1.75, total: 420 },
       group: { input: 15, output: 75, cachedInput: 0.375, total: 90 },
+      standardGroup: { input: 4.9, output: 24.5, cachedInput: 0.1225, total: 29.4 },
     },
   ]
 
@@ -504,7 +475,8 @@ test('uses official Fable 5.2 and 5.1 pricing only in the two 1.5x CC MAX groups
     const models = getTextModelsForGroup(group.id)
     for (const expected of cases) {
       const matches = models.filter((item) => item.id === expected.id)
-      if (!ccMaxGroupIds.includes(group.id)) {
+      const isStandardGroup = group.id === 'anthropic-0.49'
+      if (!isStandardGroup && !ccMaxGroupIds.includes(group.id)) {
         assert.equal(matches.length, 0, `${expected.id} is not available in ${group.id}`)
         continue
       }
@@ -513,11 +485,12 @@ test('uses official Fable 5.2 and 5.1 pricing only in the two 1.5x CC MAX groups
       const [model] = matches
       assert.deepEqual(model.officialUsd, expected.usd)
       assert.equal(model.unavailableMessage, '')
-      assert.equal(group.multiplier, 1.5)
+      assert.equal(group.multiplier, isStandardGroup ? 0.49 : 1.5)
       const price = calculateTextPrice(model.officialUsd, group.multiplier)
+      const expectedGroup = isStandardGroup ? expected.standardGroup : expected.group
       for (const field of ['input', 'output', 'cachedInput', 'total']) {
         assert.ok(isClose(price.official[field], expected.official[field]), `${group.id}/${expected.id}/official/${field}`)
-        assert.ok(isClose(price.group[field], expected.group[field]), `${group.id}/${expected.id}/group/${field}`)
+        assert.ok(isClose(price.group[field], expectedGroup[field]), `${group.id}/${expected.id}/group/${field}`)
       }
     }
   }
@@ -989,9 +962,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['gpt-0.18', 5.25],
     ['full', 9.45],
     ['gpt-0.35', 12.25],
-    ['anthropic-main', 5.6],
-    ['anthropic-cc-test', 15.75],
-    ['anthropic-cc-test-0.7', 24.5],
+    ['anthropic-0.49', 17.15],
     ['anthropic-max', 52.5],
     ['anthropic-max-external', 52.5],
     ['grok-free', 3.5],

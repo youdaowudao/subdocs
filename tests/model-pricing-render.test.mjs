@@ -207,7 +207,7 @@ test('renders verified Qwen and MiMo IDs with RMB prices in their 0.45 groups', 
   }
 })
 
-test('renders only supported models and their exact copy IDs in the 0.7 CC TEST group', async () => {
+test('renders the 14 screenshot models and exact copy IDs in the relisted 0.49 group', async () => {
   const server = await createServer({
     configFile: false,
     plugins: [vue()],
@@ -218,10 +218,25 @@ test('renders only supported models and their exact copy IDs in the 0.7 CC TEST 
   try {
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
     const expectedIds = [
+      'claude-fable-5-2', 'claude-fable-5-1',
       'claude-opus-5-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7',
       'claude-opus-4-6', 'claude-opus-4-5', 'claude-sonnet-5-5', 'claude-sonnet-5',
-      'claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-haiku-5-5', 'claude-haiku-4-5',
+      'claude-sonnet-4-6', 'claude-haiku-5-5', 'claude-haiku-4-5', 'claude-fable-5',
     ]
+    const expectedPrices = {
+      group: {
+        'claude-fable-5-2': ['¥3.92', '¥19.60', '¥0.098', '¥23.52'],
+        'claude-opus-5-5': ['¥1.96', '¥9.80', '¥0.098', '¥11.76'],
+        'claude-sonnet-5-5': ['¥0.98', '¥4.90', '¥0.049', '¥5.88'],
+        'claude-fable-5': ['¥4.90', '¥24.50', '¥0.49', '¥29.40'],
+      },
+      official: {
+        'claude-fable-5-2': ['¥56.00', '¥280.00', '¥1.40', '¥336.00'],
+        'claude-opus-5-5': ['¥28.00', '¥140.00', '¥1.40', '¥168.00'],
+        'claude-sonnet-5-5': ['¥14.00', '¥70.00', '¥0.70', '¥84.00'],
+        'claude-fable-5': ['¥70.00', '¥350.00', '¥7.00', '¥420.00'],
+      },
+    }
 
     for (const priceMode of ['group', 'official']) {
       const component = {
@@ -229,7 +244,7 @@ test('renders only supported models and their exact copy IDs in the 0.7 CC TEST 
         setup(props, context) {
           const state = pricing.setup(props, context)
           state.activeCategory.value = 'anthropic'
-          state.activeGroupId.value = 'anthropic-cc-test-0.7'
+          state.activeGroupId.value = 'anthropic-0.49'
           state.priceMode.value = priceMode
           return state
         },
@@ -240,17 +255,24 @@ test('renders only supported models and their exact copy IDs in the 0.7 CC TEST 
         .filter((row) => row.includes('class="model-id-cell"'))
       const ids = rows.map((row) => row.match(/<strong>(claude-[^<]+)<\/strong>/)[1])
 
-      assert.deepEqual(ids, expectedIds, `${priceMode} should show all 12 supported models`)
+      assert.deepEqual(ids, expectedIds, `${priceMode} should show all 14 supported models`)
       for (const [index, row] of rows.entries()) {
         assert.ok(row.includes(`aria-label="复制 ${expectedIds[index]}"`))
         const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'
         const priceCount = expectedIds[index] === 'claude-haiku-5-5' ? 8 : 4
         assert.equal([...row.matchAll(new RegExp(`class="${priceClass}"`, 'g'))].length, priceCount)
+        const expectedAmounts = expectedPrices[priceMode][expectedIds[index]]
+        if (expectedAmounts) {
+          const amounts = [...row.matchAll(new RegExp(`<strong class="${priceClass}">([^<]+)<`, 'g'))]
+            .map((match) => match[1])
+          assert.deepEqual(amounts, expectedAmounts, `${priceMode}/${expectedIds[index]}`)
+        }
       }
+      assert.doesNotMatch(html, /NaN|价格待确认|此分组无|claude-sonnet-4-5|低价分组1M|CCTEST|xcctest/)
       if (priceMode === 'group') {
-        assert.match(html, /主力分组推荐使用/)
-        assert.match(html, /0\.7 倍率/)
-        assert.doesNotMatch(html, /临时渠道|不保证长久|会下线|CC TEST 0\.4/)
+        assert.match(html, /Claude 0\.49 分组/)
+        assert.match(html, /0\.49 倍率/)
+        assert.equal([...html.matchAll(/<button\b[^>]*class="[^"]*\bpricing-group-card\b[^"]*"[^>]*>/g)].length, 3)
       }
     }
   } finally {
@@ -367,8 +389,7 @@ test('renders Haiku 5.5 once with both context prices in the same row', async ()
   try {
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
     const expectedGroupPrices = new Map([
-      ['anthropic-cc-test', ['¥0.045', '¥0.23', '¥0.23', '¥1.13', '¥0.0045', '¥0.0225', '¥0.27', '¥1.35']],
-      ['anthropic-cc-test-0.7', ['¥0.07', '¥0.35', '¥0.35', '¥1.75', '¥0.007', '¥0.035', '¥0.42', '¥2.10']],
+      ['anthropic-0.49', ['¥0.049', '¥0.25', '¥0.25', '¥1.23', '¥0.0049', '¥0.0245', '¥0.29', '¥1.47']],
       ['anthropic-max', ['¥0.15', '¥0.75', '¥0.75', '¥3.75', '¥0.015', '¥0.075', '¥0.90', '¥4.50']],
       ['anthropic-max-external', ['¥0.15', '¥0.75', '¥0.75', '¥3.75', '¥0.015', '¥0.075', '¥0.90', '¥4.50']],
     ])

@@ -41,24 +41,9 @@ const ANTHROPIC_OPUS_MODEL_IDS = [
   'claude-opus-4-5-20251101',
 ]
 
-const ANTHROPIC_MAIN_MODEL_IDS = [
-  ...ANTHROPIC_OPUS_MODEL_IDS,
-  'claude-sonnet-5-5',
-  'claude-sonnet-5',
-  'claude-sonnet-4-6',
-  'claude-haiku-4-5-20251001',
-  'claude-fable-5',
-]
-
-const CC_TEST_MODEL_IDS = [
-  ...ANTHROPIC_OPUS_MODEL_IDS,
-  'claude-sonnet-5-5',
-  'claude-haiku-5-5',
-  'claude-haiku-4-5-20251001',
-  'claude-fable-5',
-]
-
-const CC_TEST_HIGH_CACHE_MODEL_IDS = [
+const ANTHROPIC_STANDARD_MODEL_IDS = [
+  'claude-fable-5-2',
+  'claude-fable-5-1',
   'claude-opus-5-5',
   'claude-opus-5',
   'claude-opus-4-8',
@@ -68,9 +53,9 @@ const CC_TEST_HIGH_CACHE_MODEL_IDS = [
   'claude-sonnet-5-5',
   'claude-sonnet-5',
   'claude-sonnet-4-6',
-  'claude-sonnet-4-5',
   'claude-haiku-5-5',
   'claude-haiku-4-5',
+  'claude-fable-5',
 ]
 
 const CC_MAX_MODEL_IDS = [
@@ -120,27 +105,11 @@ export const TEXT_GROUPS = [
     modelIds: GPT_MODEL_IDS,
   },
   {
-    id: 'anthropic-main',
-    name: 'Anthropic 低价分组1M上下文 缓存高',
-    multiplier: 0.16,
-    description: '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5',
-    modelIds: ANTHROPIC_MAIN_MODEL_IDS,
-    unavailableModels: { 'claude-fable-5': '此分组无 Fable 5' },
-  },
-  {
-    id: 'anthropic-cc-test',
-    name: '0.45Anthropic CCTEST满分渠道',
-    multiplier: 0.45,
-    description: '适合 Claude Code 日常任务',
-    modelIds: CC_TEST_MODEL_IDS,
-    unavailableModels: { 'claude-fable-5': '此分组无 Fable 5' },
-  },
-  {
-    id: 'anthropic-cc-test-0.7',
-    name: '0.7xcctest满分 【主力分组推荐使用】',
-    multiplier: 0.7,
-    description: '主力分组推荐使用',
-    modelIds: CC_TEST_HIGH_CACHE_MODEL_IDS,
+    id: 'anthropic-0.49',
+    name: 'Claude 0.49 分组',
+    multiplier: 0.49,
+    description: '适合 Claude Code 和 Claude Desktop 日常任务',
+    modelIds: ANTHROPIC_STANDARD_MODEL_IDS,
   },
   {
     id: 'anthropic-max',
@@ -256,7 +225,7 @@ export const MODEL_CATEGORIES = [
     name: 'Anthropic',
     iconSvg: CLAUDE_CODE_ICON,
     kind: 'text',
-    groupIds: ['anthropic-main', 'anthropic-cc-test', 'anthropic-cc-test-0.7', 'anthropic-max', 'anthropic-max-external'],
+    groupIds: ['anthropic-0.49', 'anthropic-max', 'anthropic-max-external'],
   },
   {
     id: 'grok',
