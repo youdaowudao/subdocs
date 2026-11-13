@@ -23,7 +23,7 @@ MAC_RUNNER = ROOT / "macapp" / "run.command"
 MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024
 # The image tool release the window carries. Its source lives in
 # usegoodai-imagines-tool/; only the published program is copied in here.
-IMAGE_TOOL_RELEASE = "0.9.5"
+IMAGE_TOOL_RELEASE = "0.9.6"
 IMAGE_TOOL_RELEASES = ROOT.parent.parent / "docs" / "public" / "install" / "usegoodai-imagines-tool" / "releases"
 IMAGE_TOOL_BUNDLE = ROOT / "imagetool"
 MODELS_SCRIPT = ROOT.parent / "install" / "codex-models.ps1"

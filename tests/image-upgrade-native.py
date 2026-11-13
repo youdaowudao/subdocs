@@ -21,7 +21,7 @@ import threading
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "docs/public/install/usegoodai-imagines-tool"
 CURRENT = json.loads((PUBLIC / "latest.json").read_text())['version']
-PREVIOUS = "0.9.4"
+PREVIOUS = "0.9.5"
 SYSTEM = {"Windows": "windows", "Darwin": "darwin", "Linux": "linux"}[platform.system()]
 ARCH = "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "amd64"
 SUFFIX = ".exe" if SYSTEM == "windows" else ""

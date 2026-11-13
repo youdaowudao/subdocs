@@ -1,0 +1,85 @@
+# 生图工具进度汇报与卡住自停：在 GitHub 的 Windows 与 Apple 芯片 Mac 上，用官方 Codex 按 Skill 的 Code Mode 脚本
+# 运行候选生图工具，本机冒充 api.usegoodai.com 模拟正常、慢速、中断和不返回四种情况。
+# 只做验证，不是必需检查；不使用任何密钥或 Secrets，只用临时假 Key。脚本见 tests/image-progress-codex.py。
+name: 生图进度汇报验证
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [actions-test]
+    paths:
+      - docs/public/install/usegoodai-imagines-tool/releases/v0.9.6/**
+      - docs/public/install/usegoodai-imagines-tool/latest.json
+      - tests/image-progress-codex.py
+      - .github/workflows/image-progress.yml
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows-${{ matrix.name }}
+    runs-on: windows-2025
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: PowerShell7
+            key: pwsh7
+            args: ''
+          - name: WindowsPowerShell5.1
+            key: powershell51
+            args: --powershell51
+    steps:
+      - name: 保留发布文件原始字节
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: 安装测试证书依赖
+        run: python -m pip install cryptography==44.0.0
+      - name: 隐藏 PowerShell 7，让 Codex 只能用系统自带的 Windows PowerShell 5.1
+        if: matrix.key == 'powershell51'
+        shell: cmd
+        run: ren "C:\Program Files\PowerShell\7" 7-hidden
+      - name: 官方 Codex 按 Skill 运行生图工具（四种返回情况）
+        shell: cmd
+        env:
+          PYTHONUTF8: '1'
+        run: python tests/image-progress-codex.py --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.6/usegoodai-imagines-tool-v0.9.6-windows-amd64.exe ${{ matrix.args }}
+      - name: 保留验证记录
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: image-progress-windows-${{ matrix.key }}
+          path: ${{ runner.temp }}/image-progress/report
+          if-no-files-found: error
+          retention-days: 30
+
+  mac:
+    name: Mac-Apple芯片
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: 安装测试证书依赖
+        run: python3 -m pip install cryptography==44.0.0
+      - name: 官方 App 后端按 Skill 运行生图工具（四种返回情况）
+        run: python3 tests/image-progress-codex.py --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.6/usegoodai-imagines-tool-v0.9.6-darwin-arm64
+      - name: 保留验证记录
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: image-progress-mac
+          path: ${{ runner.temp }}/image-progress/report
+          if-no-files-found: error
+          retention-days: 30
