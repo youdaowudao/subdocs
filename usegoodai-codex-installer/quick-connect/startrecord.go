@@ -34,16 +34,17 @@ func openStartRecord(directory string, appendOnly bool) *startRecord {
 		return &startRecord{}
 	}
 	path := filepath.Join(directory, startRecordName)
-	flags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
-	if appendOnly {
-		flags = os.O_CREATE | os.O_WRONLY | os.O_APPEND
+	if !appendOnly {
+		// Notepad reads the Chinese text as UTF-8 with this mark.
+		if os.WriteFile(path, []byte("\xef\xbb\xbf"), 0o644) != nil {
+			return &startRecord{}
+		}
 	}
-	file, err := os.OpenFile(path, flags, 0o644)
+	// Always appending: the guard and the window process write the same
+	// record, and neither may overwrite the other's lines.
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return &startRecord{}
-	}
-	if !appendOnly {
-		_, _ = file.WriteString("\xef\xbb\xbf") // Notepad reads the Chinese text as UTF-8
 	}
 	return &startRecord{file: file, path: path}
 }
@@ -73,6 +74,18 @@ func (r *startRecord) crashOutput() {
 	if r != nil && r.file != nil {
 		_ = debug.SetCrashOutput(r.file, debug.CrashOptions{})
 	}
+}
+
+// size is the record's current length, so a later read can skip what came before.
+func (r *startRecord) size() int64 {
+	if r == nil || r.file == nil {
+		return 0
+	}
+	info, err := os.Stat(r.path)
+	if err != nil {
+		return 0
+	}
+	return info.Size()
 }
 
 func (r *startRecord) close() {

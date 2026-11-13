@@ -47,18 +47,23 @@ function Start-Helper([string]$Exe, [string[]]$Arguments = @()) {
   return Start-Process -FilePath $Exe -PassThru
 }
 
-function Wait-Window($Process, [int]$Seconds = 45) {
+# 1.1.14 起双击的进程是启动守护，窗口属于它启动的窗口进程（见 guard.go）；
+# 上一稳定版则是同一个进程。按窗口标题找出带窗口的助手进程。
+function Wait-Window($Launched, [int]$Seconds = 90) {
   $deadline = (Get-Date).AddSeconds($Seconds)
   while ((Get-Date) -lt $deadline) {
-    $Process.Refresh()
-    if ($Process.HasExited) { throw "进程 $($Process.Id) 提前退出，退出码 $($Process.ExitCode)" }
-    if ($Process.MainWindowHandle -ne [IntPtr]::Zero -and $Process.MainWindowTitle -eq $Product) {
-      Write-Host "进程 $($Process.Id) 出现窗口「$($Process.MainWindowTitle)」"
-      return
+    foreach ($candidate in Helper-Processes) {
+      $candidate.Refresh()
+      if ($candidate.MainWindowHandle -ne [IntPtr]::Zero -and $candidate.MainWindowTitle -eq $Product) {
+        Write-Host "打开的进程 $($Launched.Id)，窗口进程 $($candidate.Id)「$($candidate.MainWindowTitle)」"
+        return $candidate
+      }
     }
+    $Launched.Refresh()
+    if ($Launched.HasExited -and $Launched.ExitCode -ne 0) { throw "进程 $($Launched.Id) 提前退出，退出码 $($Launched.ExitCode)" }
     Start-Sleep -Milliseconds 250
   }
-  throw "进程 $($Process.Id) $Seconds 秒内没有出现窗口"
+  throw "打开的进程 $($Launched.Id) $Seconds 秒内没有出现窗口"
 }
 
 function Wait-Exit($Process, [int]$Seconds) {
@@ -110,12 +115,11 @@ try {
   Write-Host "版本 $actual"
 
   Step "第一次打开出现窗口，并且一直留着"
-  $a = Start-Helper $NewExe
-  Wait-Window $a
+  $a = Wait-Window (Start-Helper $NewExe)
   Assert-Stays $a
   Save-Screen "first-open"
   Step "启动记录：第一次打开走完全部阶段"
-  Assert-Record @('启动', '创建窗口', '窗口已建立', '页面就绪') @('已有实例')
+  Assert-Record @('启动', '窗口进程', '创建窗口', '窗口已建立', '页面就绪') @('已有实例', '窗口没有打开', '已结束卡住的助手')
 
   Step "再次打开：参数交给已开的窗口，后来的进程退出"
   $b = Start-Helper $NewExe
@@ -136,8 +140,7 @@ try {
   Stop-Process -Id $a.Id -Force
   Wait-Exit $a 15
   Start-Sleep -Seconds 2
-  $d = Start-Helper $NewExe @($FakeLink)
-  Wait-Window $d
+  $d = Wait-Window (Start-Helper $NewExe @($FakeLink))
   Assert-Stays $d 15
   Save-Screen "cold-link"
   Assert-Record @('带导入链接：是', '页面就绪') @('已有实例', 'usegoodai://', $FakeLink)
@@ -146,8 +149,7 @@ try {
   Stop-Process -Id $d.Id -Force
   Wait-Exit $d 15
   Start-Sleep -Seconds 2
-  $old = Start-Helper $OldExe
-  Wait-Window $old
+  $old = Wait-Window (Start-Helper $OldExe)
   $e = Start-Helper $NewExe @($FakeLink)
   Wait-Exit $e 20
   Assert-Stays $old

@@ -71,15 +71,19 @@ try {
     $KeyPath = Join-Path $Tool 'api-key'
     if ($KeyState -eq 'missing') { Remove-Item -LiteralPath $KeyPath }
     $Before = if (Test-Path -LiteralPath $KeyPath) { [IO.File]::ReadAllText($KeyPath) } else { $null }
-    $process = Start-Process -FilePath $ImageExe -PassThru
+    $launched = Start-Process -FilePath $ImageExe -PassThru
+    # 1.1.14 起双击的是启动守护，窗口在它启动的窗口进程里：按程序路径和窗口找。
+    $process = $null
     try {
-      $deadline = (Get-Date).AddSeconds(45)
+      $deadline = (Get-Date).AddSeconds(90)
       do {
         Start-Sleep -Milliseconds 250
-        $process.Refresh()
-        if ($process.HasExited) { throw '助手未打开窗口就退出' }
-      } until ($process.MainWindowHandle -ne [IntPtr]::Zero -or (Get-Date) -gt $deadline)
-      if ($process.MainWindowHandle -eq [IntPtr]::Zero) { throw '助手窗口超时' }
+        $process = Get-Process -ErrorAction SilentlyContinue |
+          Where-Object { $_.Path -ieq $ImageExe -and $_.MainWindowHandle -ne [IntPtr]::Zero } | Select-Object -First 1
+        $launched.Refresh()
+        if (-not $process -and $launched.HasExited -and $launched.ExitCode -ne 0) { throw '助手未打开窗口就退出' }
+      } until ($process -or (Get-Date) -gt $deadline)
+      if (-not $process) { throw '助手窗口超时' }
       $window = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
       Click (Wait-Text $window '生图工具（可更新）')
       $title = "V0.9.5 已安装，可更新到 V$Candidate"
@@ -98,7 +102,9 @@ try {
       Screen "after-$KeyState"
       $Results += @{ key=$KeyState; old_version_display='passed'; clicked_upgrade_button='passed'; actual_version=$version; key_preserved='passed' }
     } finally {
-      if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+      if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+      $launched.Refresh()
+      if (-not $launched.HasExited) { Stop-Process -Id $launched.Id -Force }
       Start-Sleep -Seconds 2
     }
   }

@@ -26,8 +26,8 @@ func windowsVersion() string {
 // "-sic"/"-siw", and a mutex named "wails-app-" + id + "sim". A later launch
 // hands its arguments to that process and exits, so this also tells whether
 // the running one has any visible window. pid is 0 when only the lock is
-// found.
-func existingInstance(id string) (pid uint32, visible bool, running bool) {
+// found; messageWindow is the window that later launches send to.
+func existingInstance(id string) (messageWindow uintptr, pid uint32, visible bool, running bool) {
 	id = "wails-app-" + id
 	class, _ := syscall.UTF16PtrFromString(id + "-sic")
 	title, _ := syscall.UTF16PtrFromString(id + "-siw")
@@ -37,10 +37,10 @@ func existingInstance(id string) (pid uint32, visible bool, running bool) {
 		const synchronize = 0x00100000
 		lock, err := windows.OpenMutex(synchronize, false, name)
 		if err != nil {
-			return 0, false, false
+			return 0, 0, false, false
 		}
 		_ = windows.CloseHandle(lock)
-		return 0, false, true
+		return 0, 0, false, true
 	}
 	_, _, _ = procGetWindowThreadProcessID.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
 	callback := syscall.NewCallback(func(window, _ uintptr) uintptr {
@@ -55,5 +55,5 @@ func existingInstance(id string) (pid uint32, visible bool, running bool) {
 		return 1
 	})
 	_, _, _ = procEnumWindows.Call(callback, 0)
-	return pid, visible, true
+	return hwnd, pid, visible, true
 }

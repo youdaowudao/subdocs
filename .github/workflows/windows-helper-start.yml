@@ -1,0 +1,43 @@
+# 助手“一打开就闪退”的复现与验证：在 GitHub 的 Windows 11 与 Windows Server 2025 上，
+# 按客户电脑的样子（家用默认 Defender、浏览器下载标记、WebView2 数据目录损坏、已开的助手不响应、
+# WebView2 起不来）打开线上版与仓库里的候选版并对比。脚本见 usegoodai-codex-installer/quick-connect/tools/windows_start_check.ps1。
+# 只做验证，不是必需检查；不使用任何密钥或 Secrets。windows-11-arm 上 x64 程序经系统转译运行。
+name: Windows 助手打开稳妥性测试
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [actions-test]
+    paths:
+      - docs/public/download/usegoodai-quick-connect-windows-x64.exe
+      - usegoodai-codex-installer/quick-connect/tools/windows_start_check.ps1
+      - .github/workflows/windows-helper-start.yml
+
+permissions:
+  contents: read
+
+jobs:
+  start:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-11-arm, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: 保留发布文件原始字节
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: 按客户电脑的样子打开线上版与候选版
+        shell: powershell
+        run: .\usegoodai-codex-installer\quick-connect\tools\windows_start_check.ps1 -Candidate docs\public\download\usegoodai-quick-connect-windows-x64.exe -Report "$env:RUNNER_TEMP\helper-start\report.json"
+      - name: 保留记录与截图
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: helper-start-${{ matrix.os }}
+          path: ${{ runner.temp }}/helper-start
+          if-no-files-found: error
+          retention-days: 30

@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
-	"unsafe"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
@@ -24,26 +23,34 @@ import (
 const singleInstanceID = "usegoodai-quick-connect-5c0f2a7e"
 
 func main() {
-	// 启动记录：见 startrecord.go。已有实例时追加，保留卡住那个实例的记录。
-	runningPID, runningVisible, running := existingInstance(singleInstanceID)
-	record := openStartRecord(filepath.Join(webviewDataPath(), "logs"), running)
+	// 双击或导入链接先进入启动守护（guard.go），由它启动带窗口变量的窗口进程。
+	eventName := os.Getenv(windowEnv)
+	if eventName == "" {
+		os.Exit(runGuard())
+	}
+	runWindow(eventName)
+}
+
+// runWindow is the window process the guard started.
+func runWindow(eventName string) {
+	// The guard started the record; append to it.
+	record := openStartRecord(filepath.Join(webviewDataPath(), "logs"), true)
 	defer record.close()
 	record.crashOutput()
 	log.SetOutput(record)
 	log.SetFlags(0)
-	launchLink := connect.FindImportLink(os.Args[1:])
-	record.stage("启动", startSummary(connect.Version, windowsVersion(), os.Getpid(), launchLink != ""))
-	if running {
-		window := "看不到"
-		if runningVisible {
-			window = "可见"
-		}
-		if runningPID == 0 {
-			record.stage("已有实例", "进程未知；本次把参数交给它后退出")
-		} else {
-			record.stage("已有实例", fmt.Sprintf("进程 %d，窗口%s；本次把参数交给它后退出", runningPID, window))
-		}
+	if record.file != nil {
+		// go-webview2 prints its errors with fmt.Printf before exiting; a
+		// window program has no console, so without this they are lost.
+		os.Stdout = record.file
+		os.Stderr = record.file
 	}
+	profile := os.Getenv(profileEnv)
+	if profile == "" {
+		profile = webviewDataPath()
+	}
+	record.stage("窗口进程", fmt.Sprintf("进程 %d，WebView2 数据目录 %s", os.Getpid(), filepath.Base(profile)))
+	launchLink := connect.FindImportLink(os.Args[1:])
 
 	// A link opened while the window exists starts a second process that only
 	// forwards the link. Let the running window take the foreground.
@@ -88,7 +95,10 @@ func main() {
 			record.stage("窗口已建立", "")
 			app.startup(ctx)
 		},
-		OnDomReady:         func(context.Context) { record.stage("页面就绪", "") },
+		OnDomReady: func(context.Context) {
+			record.stage("页面就绪", "")
+			signalReady(eventName)
+		},
 		OnShutdown:         func(context.Context) { record.stage("正常关闭", "") },
 		Bind:               []interface{}{app},
 		Logger:             recordLogger{record: record},
@@ -100,8 +110,13 @@ func main() {
 		},
 		Windows: &windows.Options{
 			Theme:               windows.Light,
-			WebviewUserDataPath: webviewDataPath(),
-			Messages:            chineseMessages(),
+			WebviewUserDataPath: profile,
+			// 稳妥优先，所有电脑一律：页面用 CPU 绘制，不用显卡（显卡驱动出错时 WebView2 会崩溃）；
+			// 关掉 WebView2 的渲染进程代码完整性检查：360、火绒、电脑管家等安全软件会往 WebView2
+			// 里注入未签名的 DLL，开着检查时 WebView2 进程会被自己结束。页面只显示本程序自带的内容。
+			WebviewGpuIsDisabled:                true,
+			WebviewDisableRendererCodeIntegrity: true,
+			Messages:                            chineseMessages(),
 		},
 	})
 	if err != nil {
@@ -110,18 +125,10 @@ func main() {
 		if record.path != "" {
 			message += "\n\n启动记录：" + record.path
 		}
-		showError(message)
-		os.Exit(1)
+		showMessage(connect.ProductName, message, mbOK|mbIconWarning)
+		// The user has been told; the guard stops without a second dialog.
+		os.Exit(exitShown)
 	}
-}
-
-// showError makes a failed start visible instead of a silent exit.
-func showError(message string) {
-	text, _ := syscall.UTF16PtrFromString(message)
-	title, _ := syscall.UTF16PtrFromString(connect.ProductName)
-	const mbIconWarning = 0x30
-	_, _, _ = syscall.NewLazyDLL("user32.dll").NewProc("MessageBoxW").Call(0,
-		uintptr(unsafe.Pointer(text)), uintptr(unsafe.Pointer(title)), mbIconWarning)
 }
 
 func webviewDataPath() string {
