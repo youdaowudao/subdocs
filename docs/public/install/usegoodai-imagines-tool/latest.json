@@ -1,26 +1,26 @@
 {
-  "version": "0.9.5",
-  "release": "V0.9.5",
+  "version": "0.9.6",
+  "release": "V0.9.6",
   "files": {
     "windows/amd64": {
-      "path": "releases/v0.9.5/usegoodai-imagines-tool-v0.9.5-windows-amd64.exe",
-      "sha256": "1c8312b4498ba71e7692d718aed14df98fbdd14958dda00c28e0d56260ab0e34",
-      "size": 6957568
+      "path": "releases/v0.9.6/usegoodai-imagines-tool-v0.9.6-windows-amd64.exe",
+      "sha256": "2bf839ad8c29d610505353bf1a7ee9ae44a2a58e8e97ffb95b4acb89b9efd855",
+      "size": 7016960
     },
     "darwin/arm64": {
-      "path": "releases/v0.9.5/usegoodai-imagines-tool-v0.9.5-darwin-arm64",
-      "sha256": "035950ec393d6679f3b95a19fad56637b136ab4f6c50a1c20f3635b706355e92",
-      "size": 6469778
+      "path": "releases/v0.9.6/usegoodai-imagines-tool-v0.9.6-darwin-arm64",
+      "sha256": "2226dee1dc542bdec4bfe3caf4adb072c7cd451f5f5c7f204ed8181f6912eae0",
+      "size": 6536978
     },
     "darwin/amd64": {
-      "path": "releases/v0.9.5/usegoodai-imagines-tool-v0.9.5-darwin-amd64",
-      "sha256": "7e5812068a193ef7e510651f0c9b6afc2da687acdb70f884d55f59c1165c908d",
-      "size": 6919440
+      "path": "releases/v0.9.6/usegoodai-imagines-tool-v0.9.6-darwin-amd64",
+      "sha256": "fdeae3edad4a86cc56fd44e6d085a01ea3b1606eb8e2b2d7bac527320e6dcfac",
+      "size": 6977936
     },
     "linux/amd64": {
-      "path": "releases/v0.9.5/usegoodai-imagines-tool-v0.9.5-linux-amd64",
-      "sha256": "bb7ea079c63490e71678eda4a4cf5b67b8395213047a61ee48dd60f384b513f0",
-      "size": 6799544
+      "path": "releases/v0.9.6/usegoodai-imagines-tool-v0.9.6-linux-amd64",
+      "sha256": "af08770a42208742a4defceacdf8182728eec45dabf62b6ff071505b661f4432",
+      "size": 6856888
     }
   }
 }

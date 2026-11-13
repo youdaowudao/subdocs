@@ -9,6 +9,7 @@ on:
     branches: [actions-test]
     paths:
       - docs/public/install/usegoodai-imagines-tool/releases/v0.9.6/**
+      - docs/public/install/usegoodai-imagines-tool/latest.json
       - tests/image-progress-codex.py
       - .github/workflows/image-progress.yml
 
