@@ -86,45 +86,9 @@ func TestProfileIsRememberedOnlyWhenValid(t *testing.T) {
 	}
 }
 
-func TestRecordProblemFindsTheLastExplanation(t *testing.T) {
-	path := filepath.Join(t.TempDir(), startRecordName)
-	before := "\xef\xbb\xbf2026-11-13 10:00:00  错误  上一次的旧错误\r\n"
-	text := before +
-		"2026-11-13 10:00:01  窗口进程  进程 9\r\n" +
-		"[WebView2 Error] failed to create WebView2 environment: Access is denied.\n" +
-		"2026-11-13 10:00:02  日志  1: github.com/wailsapp/go-webview2/pkg/edge.(*Chromium).Embed\r\n" +
-		"2026-11-13 10:00:03  窗口没有打开  窗口程序意外退出（代码 1）\r\n"
-	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// The stack lines after the error do not hide it.
-	if got := recordProblem(path, int64(len(before))); got != "[WebView2 Error] failed to create WebView2 environment: Access is denied." {
-		t.Fatalf("got %q", got)
-	}
-	if got := recordProblem(path, 0); got != "[WebView2 Error] failed to create WebView2 environment: Access is denied." {
-		t.Fatalf("from the start: %q", got)
-	}
-	quiet := before + "2026-11-13 10:00:01  窗口进程  进程 9\r\n"
-	if err := os.WriteFile(path, []byte(quiet), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if got := recordProblem(path, int64(len(before))); got != "" {
-		t.Fatalf("an earlier launch's error leaked in: %q", got)
-	}
-	if got := recordProblem(path, int64(len(quiet)+5)); got != "" {
-		t.Fatalf("offset past the end: %q", got)
-	}
-	if got := recordProblem(path, 0); got != "错误  上一次的旧错误" {
-		t.Fatalf("time stamp not removed: %q", got)
-	}
-	if got := recordProblem(filepath.Join(t.TempDir(), "missing"), 0); got != "" {
-		t.Fatalf("missing file: %q", got)
-	}
-}
-
 func TestFallbackMessage(t *testing.T) {
-	text := fallbackMessage("助手", "60 秒内窗口没有打开", "[WebView2 Error] x", `C:\r.txt`, fallbackPlan{key: "sk-x"})
-	for _, want := range []string{"助手 的窗口没能打开：60 秒内窗口没有打开。", "[WebView2 Error] x", "命令窗口连接 Codex", "Key 会自动填好", `启动记录：C:\r.txt`} {
+	text := fallbackMessage("助手", `C:\r.txt`, fallbackPlan{key: "sk-x"})
+	for _, want := range []string{"助手 的窗口打不开", "WebView2 组件出错", "已经自动重试过一次", "命令窗口连接 Codex", "Key 会自动填好", `出错记录：C:\r.txt`} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in\n%s", want, text)
 		}
@@ -132,10 +96,10 @@ func TestFallbackMessage(t *testing.T) {
 	if strings.Contains(text, "sk-x") {
 		t.Fatal("the key must not appear in the dialog")
 	}
-	if text := fallbackMessage("助手", "r", "", "", fallbackPlan{}); !strings.Contains(text, "按提示粘贴 Key") || strings.Contains(text, "启动记录") {
+	if text := fallbackMessage("助手", "", fallbackPlan{}); !strings.Contains(text, "按提示粘贴 Key") || strings.Contains(text, "出错记录") {
 		t.Errorf("plain fallback:\n%s", text)
 	}
-	if text := fallbackMessage("助手", "r", "", "", fallbackPlan{claude: true}); !strings.Contains(text, "教程网站") || strings.Contains(text, "Codex") {
+	if text := fallbackMessage("助手", "", fallbackPlan{claude: true}); !strings.Contains(text, "教程网站") || strings.Contains(text, "Codex") {
 		t.Errorf("Claude fallback:\n%s", text)
 	}
 }

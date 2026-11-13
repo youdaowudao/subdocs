@@ -45,7 +45,6 @@ func runGuard() int {
 			profile, name = freshProfile(base, time.Now())
 			record.stage("换新数据目录再试", name)
 		}
-		offset := record.size()
 		outcome, err := startWindow(profile, attempt)
 		if err != nil {
 			record.stage("启动窗口进程失败", err.Error())
@@ -65,7 +64,7 @@ func runGuard() int {
 		case stepGiveUp:
 			reason := outcomeReason(outcome)
 			record.stage("窗口没有打开", reason+"；提示改用命令窗口")
-			offerFallback(reason, recordProblem(record.path, offset), record.path, launchLink)
+			offerFallback(record.path, launchLink)
 			return 1
 		}
 	}
@@ -236,12 +235,12 @@ func showMessage(title, text string, flags uintptr) uintptr {
 
 // offerFallback explains the failure and, on OK, opens the command-window
 // installer (or the tutorial site for a Claude link).
-func offerFallback(reason, problem, recordPath, launchLink string) {
+func offerFallback(recordPath, launchLink string) {
 	var plan fallbackPlan
 	if link, linkProblem := connect.ParseImportLink(launchLink); linkProblem == connect.LinkOK {
 		plan = fallbackPlan{claude: link.App == connect.LinkAppClaude, key: link.Key}
 	}
-	message := fallbackMessage(connect.ProductName, reason, problem, recordPath, plan)
+	message := fallbackMessage(connect.ProductName, recordPath, plan)
 	if showMessage(connect.ProductName, message, mbOKCancel|mbIconWarning) != idOK {
 		return
 	}

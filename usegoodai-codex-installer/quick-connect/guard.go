@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 // 启动守护（1.1.14）：多台 Windows 11 电脑双击助手后一闪就退出，或者根本不出现。
@@ -137,50 +136,16 @@ func rememberProfile(base, name string) {
 	_ = os.WriteFile(filepath.Join(base, safeStartFile), []byte(name+"\r\n"), 0o644)
 }
 
-// problemWords mark record lines that explain a failure.
-var problemWords = []string{"WebView2", "错误", "致命", "panic", "fatal", "启动失败", "Exception"}
-
-// recordProblem is the last record line, after offset, that explains a
-// failure, without its time stamp.
-func recordProblem(path string, offset int64) string {
-	data, err := os.ReadFile(path)
-	if err != nil || offset > int64(len(data)) {
-		return ""
-	}
-	lines := strings.Split(strings.ReplaceAll(string(data[offset:]), "\r\n", "\n"), "\n")
-	for index := len(lines) - 1; index >= 0; index-- {
-		line := strings.TrimSpace(strings.TrimPrefix(lines[index], "\xef\xbb\xbf"))
-		for _, word := range problemWords {
-			if !strings.Contains(line, word) {
-				continue
-			}
-			if len(line) > 21 && line[4] == '-' && line[19] == ' ' {
-				line = strings.TrimSpace(line[19:])
-			}
-			return shorten(line, 160)
-		}
-	}
-	return ""
-}
-
-func shorten(text string, limit int) string {
-	if utf8.RuneCountInString(text) <= limit {
-		return text
-	}
-	return string([]rune(text)[:limit]) + "…"
-}
-
 // fallbackPlan is what the last dialog offers.
 type fallbackPlan struct {
 	claude bool   // the link was for Claude: open the tutorial site
 	key    string // passed to the command window as USEGOODAI_KEY
 }
 
-func fallbackMessage(product, reason, problem, recordPath string, plan fallbackPlan) string {
-	text := product + " 的窗口没能打开：" + reason + "。"
-	if problem != "" {
-		text += "\n\n" + problem
-	}
+// fallbackMessage is plain words for the customer; the record keeps the
+// technical details.
+func fallbackMessage(product, recordPath string, plan fallbackPlan) string {
+	text := product + " 的窗口打不开：这台电脑上用来显示页面的 WebView2 组件出错，已经自动重试过一次。"
 	switch {
 	case plan.claude:
 		text += "\n\n点「确定」打开教程网站，按教程接入 Claude。"
@@ -190,7 +155,7 @@ func fallbackMessage(product, reason, problem, recordPath string, plan fallbackP
 		text += "\n\n点「确定」改用命令窗口连接 Codex，按提示粘贴 Key 即可。"
 	}
 	if recordPath != "" {
-		text += "\n\n启动记录：" + recordPath
+		text += "\n\n出错记录：" + recordPath
 	}
 	return text
 }

@@ -279,7 +279,7 @@ try {
     & icacls $Data /remove:d $env:USERNAME | Out-Null
   }
   if (-not $scenario.candidate.dialog) { Problem "WebView2 起不来时候选版没有提示框" }
-  elseif (-not $scenario.candidate.dialog_text.Contains('窗口没能打开')) { Problem "提示框内容不对：$($scenario.candidate.dialog_text)" }
+  elseif (-not $scenario.candidate.dialog_text.Contains('窗口打不开')) { Problem "提示框内容不对：$($scenario.candidate.dialog_text)" }
   elseif (-not $scenario.candidate.fallback_started) { Problem "点「确定」后没有打开命令窗口" }
   $results.no_webview = $scenario
 } catch {

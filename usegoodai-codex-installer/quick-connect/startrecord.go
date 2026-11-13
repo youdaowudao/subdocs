@@ -76,18 +76,6 @@ func (r *startRecord) crashOutput() {
 	}
 }
 
-// size is the record's current length, so a later read can skip what came before.
-func (r *startRecord) size() int64 {
-	if r == nil || r.file == nil {
-		return 0
-	}
-	info, err := os.Stat(r.path)
-	if err != nil {
-		return 0
-	}
-	return info.Size()
-}
-
 func (r *startRecord) close() {
 	if r != nil && r.file != nil {
 		_ = r.file.Close()
