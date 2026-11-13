@@ -137,7 +137,13 @@ function Security-Events([datetime]$Since) {
         ForEach-Object { "{0} {1}：{2}" -f $_.LogName, $_.Id, (($_.Message -replace '\s+', ' ').Substring(0, [Math]::Min(300, ($_.Message -replace '\s+', ' ').Length))) })
     } catch {}
   }
-  try { $events += @(Get-MpThreatDetection -ErrorAction Stop | Where-Object { $_.InitialDetectionTime -ge $Since } | ForEach-Object { "Defender 检测：$($_.ThreatID) $($_.Resources -join ', ')" }) } catch {}
+  $job = Start-Job -ArgumentList $Since -ScriptBlock {
+    param($Since)
+    Get-MpThreatDetection -ErrorAction SilentlyContinue | Where-Object { $_.InitialDetectionTime -ge $Since } |
+      ForEach-Object { "Defender 检测：$($_.ThreatID) $($_.Resources -join ', ')" }
+  }
+  if (Wait-Job $job -Timeout 60) { $events += @(Receive-Job $job) } else { Stop-Job $job; $events += "Defender 检测记录 60 秒没有读出" }
+  Remove-Job $job -Force
   return $events
 }
 
@@ -156,14 +162,24 @@ try {
   Write-Host "线上版 $($results.live_version)，候选版 $($results.candidate_version)"
 
   Step "1. 家用默认的 Defender，双击打开"
-  try {
-    Set-MpPreference -DisableRealtimeMonitoring $false -DisableBehaviorMonitoring $false -DisableIOAVProtection $false `
-      -MAPSReporting Advanced -SubmitSamplesConsent SendSafeSamples -CloudBlockLevel Default -PUAProtection Enabled -ErrorAction Stop
-  } catch { Write-Host "设置 Defender 失败：$($_.Exception.Message)" }
-  $status = Get-MpComputerStatus
-  $preference = Get-MpPreference
-  $results.defender = "实时保护 $($status.RealTimeProtectionEnabled)，行为监控 $($status.BehaviorMonitorEnabled)，下载扫描 $($status.IoavProtectionEnabled)，" +
-    "云保护 $($preference.MAPSReporting)，自动提交样本 $($preference.SubmitSamplesConsent)，拦截不需要的应用 $($preference.PUAProtection)，病毒库 $($status.AntivirusSignatureVersion)"
+  # Windows Server 2025 运行器上 Defender 命令曾卡住 45 分钟：放进后台作业，最多等 2 分钟。
+  $job = Start-Job -ScriptBlock {
+    try {
+      Set-MpPreference -DisableRealtimeMonitoring $false -DisableBehaviorMonitoring $false -DisableIOAVProtection $false `
+        -MAPSReporting Advanced -SubmitSamplesConsent SendSafeSamples -CloudBlockLevel Default -PUAProtection Enabled -ErrorAction Stop
+    } catch { "设置失败：$($_.Exception.Message)" }
+    $status = Get-MpComputerStatus
+    $preference = Get-MpPreference
+    "实时保护 $($status.RealTimeProtectionEnabled)，行为监控 $($status.BehaviorMonitorEnabled)，下载扫描 $($status.IoavProtectionEnabled)，" +
+      "云保护 $($preference.MAPSReporting)，自动提交样本 $($preference.SubmitSamplesConsent)，拦截不需要的应用 $($preference.PUAProtection)，病毒库 $($status.AntivirusSignatureVersion)"
+  }
+  if (Wait-Job $job -Timeout 120) {
+    $results.defender = (@(Receive-Job $job) -join "；")
+  } else {
+    Stop-Job $job
+    $results.defender = "Defender 设置 2 分钟没有完成，按运行器原有设置测试"
+  }
+  Remove-Job $job -Force
   Write-Host $results.defender
   $scenario = [ordered]@{}
   foreach ($item in @(@{ Name = 'live'; Exe = $LiveExe }, @{ Name = 'candidate'; Exe = $NewExe })) {
