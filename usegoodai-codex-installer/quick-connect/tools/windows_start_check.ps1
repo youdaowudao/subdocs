@@ -137,13 +137,7 @@ function Security-Events([datetime]$Since) {
         ForEach-Object { "{0} {1}：{2}" -f $_.LogName, $_.Id, (($_.Message -replace '\s+', ' ').Substring(0, [Math]::Min(300, ($_.Message -replace '\s+', ' ').Length))) })
     } catch {}
   }
-  $job = Start-Job -ArgumentList $Since -ScriptBlock {
-    param($Since)
-    Get-MpThreatDetection -ErrorAction SilentlyContinue | Where-Object { $_.InitialDetectionTime -ge $Since } |
-      ForEach-Object { "Defender 检测：$($_.ThreatID) $($_.Resources -join ', ')" }
-  }
-  if (Wait-Job $job -Timeout 60) { $events += @(Receive-Job $job) } else { Stop-Job $job; $events += "Defender 检测记录 60 秒没有读出" }
-  Remove-Job $job -Force
+  # Defender 的检测只看上面的事件日志（1116/1117）：Get-MpThreatDetection 在 Windows Server 2025 运行器上会卡住。
   return $events
 }
 
