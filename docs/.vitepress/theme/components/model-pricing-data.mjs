@@ -17,6 +17,9 @@ const GPT_MODEL_IDS = [
 ]
 
 const GEMINI_MODEL_IDS = [
+  'gemini-4-hydrogen',
+  'gemini-4-carbon',
+  'gemini-4-argon',
   'gemini-4-barium',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
@@ -159,16 +162,9 @@ export const TEXT_GROUPS = [
   {
     id: 'gemini-antigravity',
     name: 'Gemini 分组（反重力 Antigravity 反代）',
-    multiplier: 0.35,
+    multiplier: 0.55,
     description: '适合 Antigravity、代理式编程和 Gemini 模型测试',
     modelIds: GEMINI_MODEL_IDS,
-  },
-  {
-    id: 'gemini-4-argon',
-    name: 'gemini-4-argon',
-    multiplier: 0.5,
-    description: 'Gemini 4 Argon 专用分组',
-    modelIds: ['gemini-4-argon'],
   },
   {
     id: 'deepseek',
@@ -256,7 +252,7 @@ export const MODEL_CATEGORIES = [
     name: 'Gemini',
     iconSvg: GEMINI_ICON,
     kind: 'text',
-    groupIds: ['gemini-antigravity', 'gemini-4-argon'],
+    groupIds: ['gemini-antigravity'],
   },
   {
     id: 'deepseek',
@@ -484,9 +480,27 @@ export const TEXT_MODELS = [
     officialUsd: { input: 2, output: 6, cachedInput: 0.2 },
   },
   {
+    id: 'gemini-4-hydrogen',
+    name: 'Gemini 4 Hydrogen',
+    description: '2026-11-12 发布，适合日常编程、快速执行和多步代理任务，支持百万 tokens 上下文',
+    // 2026-11-14 核实：https://aistudio.google.com/docs/pricing#gemini-4-hydrogen
+    // 标准实时调用价格，缓存读取按隐式缓存命中价计算。
+    officialUsd: { input: 1.5, output: 7.5, cachedInput: 0.075 },
+  },
+  {
+    id: 'gemini-4-carbon',
+    name: 'Gemini 4 Carbon',
+    description: '适合复杂软件开发、数学与科学推理、长程代理任务；首发价到 2026-11-30',
+    // 2026-11-14 核实：https://aistudio.google.com/docs/pricing#gemini-4-carbon
+    // 标准实时调用首发价；2026-12-01 起输入 $4、输出 $20、缓存读取 $0.20。
+    officialUsd: { input: 2, output: 10, cachedInput: 0.1 },
+  },
+  {
     id: 'gemini-4-argon',
     name: 'Gemini 4 Argon',
-    description: '2026-09 发布，适合复杂软件开发、长任务推理和企业知识工作；按官方首发价展示',
+    description: '2026-09 发布，适合复杂软件开发、长任务推理和企业知识工作；首发价到 2026-11-30',
+    // 2026-11-14 核实：https://aistudio.google.com/docs/pricing#gemini-4-argon
+    // 标准实时调用首发价；2026-12-01 起输入 $4、输出 $20、缓存读取 $0.20。
     officialUsd: { input: 2, output: 10, cachedInput: 0.1 },
   },
   {
