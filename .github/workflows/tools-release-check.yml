@@ -4,8 +4,50 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [main]
+    paths:
+      - 'usegoodai-codex-installer/**'
+      - 'docs/public/install/**'
+      - 'docs/public/download/**'
+      - 'docs/public/_headers'
+      - '.github/workflows/**'
+      - 'scripts/require-release-checks.mjs'
+      - 'tests/release-gate.test.mjs'
+      - 'tests/install-*.test.mjs'
+      - 'tests/quick-connect-download.test.mjs'
+      - 'tests/image-tool-release.test.mjs'
+      - '!**/*.md'
+      - '!**/*.txt'
+      - '!**/*.png'
+      - '!**/*.jpg'
+      - '!**/*.jpeg'
+      - '!**/*.svg'
+      - '!**/*.gif'
+      - '!**/*.webp'
+      - '!**/*.ico'
+      - '!**/*.avif'
   push:
     branches: [main, actions-test]
+    paths:
+      - 'usegoodai-codex-installer/**'
+      - 'docs/public/install/**'
+      - 'docs/public/download/**'
+      - 'docs/public/_headers'
+      - '.github/workflows/**'
+      - 'scripts/require-release-checks.mjs'
+      - 'tests/release-gate.test.mjs'
+      - 'tests/install-*.test.mjs'
+      - 'tests/quick-connect-download.test.mjs'
+      - 'tests/image-tool-release.test.mjs'
+      - '!**/*.md'
+      - '!**/*.txt'
+      - '!**/*.png'
+      - '!**/*.jpg'
+      - '!**/*.jpeg'
+      - '!**/*.svg'
+      - '!**/*.gif'
+      - '!**/*.webp'
+      - '!**/*.ico'
+      - '!**/*.avif'
 
 permissions:
   contents: read
