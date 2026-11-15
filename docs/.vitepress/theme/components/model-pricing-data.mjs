@@ -810,7 +810,7 @@ export const IMAGE_MODELS = [
     description: '快速图片生成，适合日常出图和成本平衡',
     route: '/v1/responses',
     spec: '1K / 2K / 4K',
-    groupCnyPerImage: 0.14,
+    groupCnyPerImage: 0.16,
   },
   {
     id: 'nano-banana-2.1',
@@ -818,7 +818,7 @@ export const IMAGE_MODELS = [
     description: '图片生成，按张计费',
     route: '接口待核实',
     spec: '规格待核实',
-    groupCnyPerImage: 0.14,
+    groupCnyPerImage: 0.16,
   },
 ]
 

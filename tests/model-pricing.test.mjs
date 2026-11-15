@@ -1135,8 +1135,8 @@ test('publishes the requested Nano Banana models and RMB prices', () => {
       .map(({ id, groupCnyPerImage }) => ({ id, groupCnyPerImage })),
     [
       { id: 'nano-banana-pro', groupCnyPerImage: 0.25 },
-      { id: 'nano-banana-2', groupCnyPerImage: 0.14 },
-      { id: 'nano-banana-2.1', groupCnyPerImage: 0.14 },
+      { id: 'nano-banana-2', groupCnyPerImage: 0.16 },
+      { id: 'nano-banana-2.1', groupCnyPerImage: 0.16 },
     ],
   )
 })
