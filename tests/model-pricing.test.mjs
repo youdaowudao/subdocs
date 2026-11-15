@@ -1128,14 +1128,15 @@ test('removes nonexistent GPT Image size aliases and the YS model from the prici
   }
 })
 
-test('publishes only the two requested Nano Banana models and RMB prices', () => {
+test('publishes the requested Nano Banana models and RMB prices', () => {
   assert.deepEqual(
     IMAGE_MODELS
       .filter((model) => model.id.startsWith('nano-banana'))
       .map(({ id, groupCnyPerImage }) => ({ id, groupCnyPerImage })),
     [
       { id: 'nano-banana-pro', groupCnyPerImage: 0.25 },
-      { id: 'nano-banana-2', groupCnyPerImage: 0.12 },
+      { id: 'nano-banana-2', groupCnyPerImage: 0.14 },
+      { id: 'nano-banana-2.1', groupCnyPerImage: 0.14 },
     ],
   )
 })
