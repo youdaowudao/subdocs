@@ -29,7 +29,7 @@ import (
 
 // The unmodified release program still uses the production URL. In this test
 // its HTTPS traffic goes to a local CONNECT proxy and a temporary test CA in
-// this disposable runner's CurrentUser root store. Cleanup removes that CA.
+// this disposable runner's LocalMachine root store. Cleanup removes that CA.
 // No real key, model request, account or upstream service is involved.
 func claudeReleaseProxy(t *testing.T) string {
 	t.Helper()
@@ -63,7 +63,10 @@ func claudeReleaseProxy(t *testing.T) string {
 	}
 	thumbprint := fmt.Sprintf("%X", sha1.Sum(der))
 	certificateAction := func(script string) error {
-		command := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "$ErrorActionPreference='Stop'; "+script)
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		command := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "$ErrorActionPreference='Stop'; "+script)
+		command.WaitDelay = 5 * time.Second
 		command.Env = append(os.Environ(), "TEST_ROOT_CERT="+path, "TEST_ROOT_THUMB="+thumbprint)
 		output, err := command.CombinedOutput()
 		if err != nil {
@@ -71,7 +74,9 @@ func claudeReleaseProxy(t *testing.T) string {
 		}
 		return nil
 	}
-	storeOpen := "$store=New-Object Security.Cryptography.X509Certificates.X509Store('Root','CurrentUser'); $store.Open('ReadWrite'); "
+	// CurrentUser Root can open an interactive Windows trust dialog. The
+	// disposable hosted runner permits its machine store without that dialog.
+	storeOpen := "$store=New-Object Security.Cryptography.X509Certificates.X509Store('Root','LocalMachine'); $store.Open('ReadWrite'); "
 	if err := certificateAction(storeOpen + "try { $cert=New-Object Security.Cryptography.X509Certificates.X509Certificate2($env:TEST_ROOT_CERT); $store.Add($cert) } finally { $store.Close() }"); err != nil {
 		t.Fatal(err)
 	}

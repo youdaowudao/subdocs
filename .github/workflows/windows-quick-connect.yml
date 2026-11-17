@@ -41,7 +41,7 @@ jobs:
         working-directory: usegoodai-codex-installer/quick-connect
         env:
           QUICK_CONNECT_EXE: ${{ github.workspace }}\docs\public\download\usegoodai-quick-connect-windows-x64.exe
-        run: go test -count=1 ./...
+        run: go test -count=1 -timeout=4m -v ./...
 
       # 用户用 irm | iex 时多数是系统自带的 Windows PowerShell 5.1，上一步只用了 pwsh 7。
       - name: 写入 config.toml 与 Windows PowerShell 5.1 一致

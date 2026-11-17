@@ -15,7 +15,7 @@
 
 - 本地：接入核心测试通过，覆盖只装桌面版、同时安装 CLI、CLI 配置失败时保留桌面版并重试、配置保留、重复执行、拒绝无效请求和密钥不出现在命令输出。助手 Go 全量通过；137 项站点测试全部通过（0 跳过），桌面打包 7 项通过，文档站构建通过；Windows 测试程序交叉编译通过。
 - Windows Actions：待执行真实发布 EXE 的管道入口、PowerShell 5.1/7 的 HTTP 下载管道、中文空格路径与临时文件清理。
-- Windows 成功写入测试使用原发布 EXE、临时用户目录、假 Key、本地 HTTPS 模拟接口。原程序仍使用正式 API URL；测试通过本地 CONNECT 代理定向到模拟服务，将临时 CA 加入一次性运行器的 CurrentUser 根证书库，测试后删除。此配置仅属于测试，不进入发布程序。
+- Windows 成功写入测试使用原发布 EXE、临时用户目录、假 Key、本地 HTTPS 模拟接口。原程序仍使用正式 API URL；测试通过本地 CONNECT 代理定向到模拟服务，将临时 CA 加入一次性运行器的 LocalMachine 根证书库，测试后删除。此配置仅属于测试，不进入发布程序。
 - 三项既有发布门禁、Windows 窗口回归：待 Actions 执行，发布前核对对应提交。
 - 未验证：真实中转鉴权、计费、上游连通性、Claude 桌面版实际新建对话、真实 Claude CLI 发模型请求，以及客户真实 Windows 环境。配置目录夹具和 Go 单元测试不记为真实 Claude 客户端端到端验收。
 
@@ -44,3 +44,5 @@ Mac 下载包哈希与 1.1.14 原版一致；合集内 Mac 所有文件逐项比
 - `usegoodai-tools.zip`：`a368c3802cef8c934010d0a459650c25f198b0558e7fa923c8f4848717303332`。
 - `usegoodai-quick-connect-windows-x64.exe`：`55057bf907441fc228884abea5d954a6d8e51a8ce2136681eeb52d1f37809a49`。
 - `usegoodai-quick-connect-mac-arm64.zip`：`1b313bbb599a4c28f660e09422ba9595d2ee83efb27864f793cf13a9af1b44b9`。
+
+测试夹具修正：CurrentUser Root 在托管 Windows 上触发交互式证书确认，导致成功写入用例等待；改为一次性管理员运行器的 LocalMachine Root，并为证书操作增加 20 秒超时，Go 全量测试增加 4 分钟超时和详细日志。证书准备需要的运行器权限不记为客户普通账户权限已验证。发布程序和安装命令不执行证书操作，1.1.16 EXE 与脚本哈希保持不变。
