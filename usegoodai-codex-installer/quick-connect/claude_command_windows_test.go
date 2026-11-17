@@ -65,9 +65,11 @@ func TestClaudePowerShellCommand(t *testing.T) {
 			if !bytes.Contains(output, []byte("没检测到 Claude 桌面版")) || bytes.Contains(output, []byte(key)) {
 				t.Fatalf("unexpected response: %s", output)
 			}
-			entries, err := os.ReadDir(directory)
-			if err != nil || len(entries) != 0 {
-				t.Fatalf("command left files or started window guard: %v %v", entries, err)
+			leftovers, _ := filepath.Glob(filepath.Join(directory, "usegoodai-claude-*"))
+			_, guardError := os.Stat(filepath.Join(directory, "UseGoodAI", "QuickConnect", "logs"))
+			_, cliError := os.Stat(filepath.Join(directory, ".claude", "settings.json"))
+			if len(leftovers) != 0 || !os.IsNotExist(guardError) || !os.IsNotExist(cliError) {
+				t.Fatalf("command left downloads, started window guard or touched CLI: %v %v %v", leftovers, guardError, cliError)
 			}
 		})
 	}

@@ -1,13 +1,13 @@
 # Windows Claude 一键接入命令
 
-版本：Windows 快速接入助手及命令 1.1.15。日期：2026-11-17。
+版本：Windows 快速接入助手及命令 1.1.16。日期：2026-11-17。
 
 ## 本次增量
 
 - 原有能力：Windows 助手接入 Claude 桌面版，并可在确认后配置默认位置安装的 Claude Code CLI；已有密钥检查、模型筛选、备份、配置合并与恢复。
 - 修改已有行为：桌面版接入成功后，自动配置已安装的 CLI；没有 CLI 时不提示、不创建 CLI 配置。
 - 新增入口：`install/claude.ps1` 下载同一个助手，调用 `--claude-connect`，经私有标准输入传 Key，经 UTF-8 JSON 标准输出接收结果，无需窗口或 WebView2。复用 `Service.ConnectClaude`，不重写接入业务逻辑、不新增服务端接口。
-- 版本核对：Windows 源码、EXE 资源、窗口、命令结果、安装脚本均为 1.1.15；Mac 专用 `MacVersion` 保留 1.1.14，Mac 下载包及合集内三个 App 原文件保持一致；生图 0.9.6、国产模型 1.0.2 不变。
+- 版本核对：Windows 源码、EXE 资源、窗口、命令结果、安装脚本均为 1.1.16；Mac 专用 `MacVersion` 保留 1.1.14，Mac 下载包及合集内三个 App 原文件保持一致；生图 0.9.6、国产模型 1.0.2 不变。
 - 仅 Windows，以已安装 Claude 桌面版为前提；不增加 CLI 独立模式、客户端选择菜单、Mac 或 Linux Claude 接入功能。CLI 检测范围沿用默认原生安装位置和 npm 默认安装位置。
 - 教程增加一条命令；CLI 教程引用同一入口。无数据库迁移、后台配置或活动启用步骤；发布后由固定脚本地址直接提供。
 
@@ -21,7 +21,7 @@
 
 候选提交、Actions 链接及成品哈希将在验证后补充。
 
-## 候选成品
+## 候选 1.1.15 成品
 
 合集文件名：`中转站快速导入工具_20261117-1334.zip`。
 
@@ -30,3 +30,17 @@
 - `usegoodai-quick-connect-mac-arm64.zip`：`1b313bbb599a4c28f660e09422ba9595d2ee83efb27864f793cf13a9af1b44b9`。
 
 Mac 下载包哈希与 1.1.14 原版一致；合集内 Mac 所有文件逐项比较一致。
+
+## 候选 1.1.15 的失败与修正
+
+[第一次 Windows 测试](https://github.com/youdaowudao/subdocs/actions/runs/44018451149) 在 Windows Server 2022、2025 上发现：PowerShell 5.1 标准输入带 UTF-8 BOM，命令未解析请求；PowerShell 7 已到达正确业务分支，但测试误把 PowerShell 自身缓存目录当成命令残留；成功写入测试依赖的证书 PSDrive 未加载。
+
+1.1.15 未推送 main、未发布。1.1.16 的命令入口兼容 BOM，脚本使用标准 StreamWriter 写请求；证书夹具改用 .NET 证书库，临时文件检查只核对本工具文件。改动后重新执行本次相关测试。
+
+## 1.1.16 成品
+
+合集文件名：`中转站快速导入工具_20261117-1344.zip`。
+
+- `usegoodai-tools.zip`：`a368c3802cef8c934010d0a459650c25f198b0558e7fa923c8f4848717303332`。
+- `usegoodai-quick-connect-windows-x64.exe`：`55057bf907441fc228884abea5d954a6d8e51a8ce2136681eeb52d1f37809a49`。
+- `usegoodai-quick-connect-mac-arm64.zip`：`1b313bbb599a4c28f660e09422ba9595d2ee83efb27864f793cf13a9af1b44b9`。

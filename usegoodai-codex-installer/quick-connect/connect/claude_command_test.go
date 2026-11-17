@@ -94,3 +94,15 @@ func TestClaudeCommandRefusals(t *testing.T) {
 		t.Fatalf("missing Desktop %d: %s", code, output.String())
 	}
 }
+
+func TestClaudeCommandPowerShellBOM(t *testing.T) {
+	service, _ := newClaudeService(t, `{"isValid":true}`, claudeModelsAnswer)
+	request := "\xef\xbb\xbf" + `{"key":"` + fixtureKey + `"}` + "\r\n"
+	var output bytes.Buffer
+	if code := RunClaudeCommand(strings.NewReader(request), &output, service); code != 0 {
+		t.Fatalf("PowerShell BOM request exit %d: %s", code, output.String())
+	}
+	if ReadClaudeStatus(service.Claude).State != ClaudeUseGoodAI {
+		t.Fatal("Desktop not connected")
+	}
+}

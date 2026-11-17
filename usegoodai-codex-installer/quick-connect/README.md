@@ -7,7 +7,7 @@
 
 技术选型：Go 1.25 + Wails v2（WebView2）。不需要管理员权限；系统缺少 WebView2 时弹出中文提示并打开微软下载页。
 
-## Windows 1.1.15（2026-11-17）
+## Windows 1.1.16（2026-11-17）
 
 - 新增 `irm https://docs.usegoodai.com/install/claude.ps1 | iex`：下载同一个 Windows 助手，以 `--claude-connect` 运行，无需窗口或 WebView2。Key 经标准输入传入，结果以 UTF-8 JSON 经标准输出返回；脚本显示中文结果并清理下载的临时程序。
 - 命令与窗口共用 `Service.ConnectClaude`：先接入桌面版，再自动接入已安装的 Claude Code CLI。去掉原来的询问；没安装 CLI 时不提示、不创建 CLI 配置。桌面版成功而 CLI 配置失败时保留桌面版结果，明确报告 CLI 失败，重新运行可重试。

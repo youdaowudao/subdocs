@@ -1,4 +1,4 @@
-# UseGoodAI Claude 接入命令 1.1.15（Windows）。复用接入助手，不打开窗口。
+# UseGoodAI Claude 接入命令 1.1.16（Windows）。复用接入助手，不打开窗口。
 function Start-UseGoodAIClaudeConnect {
   $ErrorActionPreference = "Stop"
   $temporaryDirectory = $null
@@ -48,7 +48,7 @@ function Start-UseGoodAIClaudeConnect {
     $size = (Get-Item -LiteralPath $program).Length
     if ($size -lt 1MB -or $size -gt 25MB) { throw "下载的文件不是完整的接入助手，请重新运行命令。" }
     $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($program)
-    if ($info.ProductName -ne "UseGoodAI中转快速接入助手" -or [version]$info.FileVersion -lt [version]"1.1.15") {
+    if ($info.ProductName -ne "UseGoodAI中转快速接入助手" -or [version]$info.FileVersion -lt [version]"1.1.16") {
       throw "下载的助手版本不支持 Claude 接入命令，请稍后重新运行。"
     }
     Write-Host "正在检查密钥并配置 Claude，请先保存桌面版中进行的任务……"
@@ -68,8 +68,7 @@ function Start-UseGoodAIClaudeConnect {
     $outputTask = $process.StandardOutput.ReadToEndAsync()
     $errorTask = $process.StandardError.ReadToEndAsync()
     $request = @{key = $apiKey} | ConvertTo-Json -Compress
-    $bytes = [Text.Encoding]::UTF8.GetBytes($request)
-    $process.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
+    $process.StandardInput.WriteLine($request)
     $process.StandardInput.Close()
     if (-not $process.WaitForExit(90000)) {
       $process.Kill()

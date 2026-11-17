@@ -71,11 +71,12 @@ func claudeReleaseProxy(t *testing.T) string {
 		}
 		return nil
 	}
-	if err := certificateAction("Import-Certificate -FilePath $env:TEST_ROOT_CERT -CertStoreLocation Cert:\\CurrentUser\\Root | Out-Null"); err != nil {
+	storeOpen := "$store=New-Object Security.Cryptography.X509Certificates.X509Store('Root','CurrentUser'); $store.Open('ReadWrite'); "
+	if err := certificateAction(storeOpen + "try { $cert=New-Object Security.Cryptography.X509Certificates.X509Certificate2($env:TEST_ROOT_CERT); $store.Add($cert) } finally { $store.Close() }"); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := certificateAction("Remove-Item -LiteralPath ('Cert:\\CurrentUser\\Root\\' + $env:TEST_ROOT_THUMB)"); err != nil {
+		if err := certificateAction(storeOpen + "try { foreach ($cert in $store.Certificates.Find('FindByThumbprint',$env:TEST_ROOT_THUMB,$false)) { $store.Remove($cert) } } finally { $store.Close() }"); err != nil {
 			t.Error(err)
 		}
 	})
