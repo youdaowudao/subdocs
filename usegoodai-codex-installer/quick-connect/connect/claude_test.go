@@ -501,23 +501,20 @@ func TestConnectClaude(t *testing.T) {
 	if result.Tone != ToneSuccess || result.Message != want {
 		t.Fatalf("got %s %q", result.Tone, result.Message)
 	}
-	if *stops != 1 || result.Claude.State != ClaudeUseGoodAI || result.Claude.Models != 2 || result.OfferCLI {
+	if *stops != 1 || result.Claude.State != ClaudeUseGoodAI || result.Claude.Models != 2 {
 		t.Fatalf("result: %+v stops %d", result, *stops)
 	}
 	if got := readJSON(t, service.Claude.profilePath())["inferenceModels"]; !reflect.DeepEqual(got, []any{"claude-fable-5-1", "claude-opus-5-5"}) {
 		t.Fatalf("models: %v", got)
 	}
 
-	// The CLI is offered when installed and not on this key yet.
+	// An installed CLI is connected automatically, without a second action.
 	writeFile(t, filepath.Join(service.ClaudeCLI.Home, ".local", "bin", "claude.exe"), "MZ")
-	if result := service.ConnectClaude(context.Background(), fixtureKey, ""); !result.OfferCLI {
-		t.Fatal("CLI not offered")
-	}
-	if result := service.ConnectClaudeCode(fixtureKey); result.Tone != ToneSuccess || result.Message != MessageClaudeCodeConnected {
+	if result := service.ConnectClaude(context.Background(), fixtureKey, ""); result.Tone != ToneSuccess || !strings.Contains(result.Message, MessageClaudeCodeConnected) || !service.ClaudeCLI.ConnectedWith(fixtureKey) {
 		t.Fatalf("CLI: %+v", result)
 	}
-	if result := service.ConnectClaude(context.Background(), fixtureKey, ""); result.OfferCLI {
-		t.Fatal("CLI offered again for the same key")
+	if result := service.ConnectClaude(context.Background(), fixtureKey, ""); strings.Contains(result.Message, MessageClaudeCodeConnected) {
+		t.Fatal("unchanged CLI rewritten")
 	}
 
 	result = service.RestoreClaude()

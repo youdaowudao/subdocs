@@ -46,8 +46,8 @@ func (s *Service) ClaudeStatus() ClaudeStatus {
 // ConnectClaude checks the key, takes the Claude models its group may use,
 // writes Claude Desktop's third-party profile and closes Claude Desktop.
 // Nothing is written unless the server confirms the key and lists at least
-// one Claude model. OfferCLI asks the window whether to connect the Claude
-// Code CLI too.
+// one Claude model. An installed Claude Code CLI is connected automatically
+// with the same checked key after Desktop succeeds.
 func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -131,24 +131,15 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 		message += MessageClaudeOpen
 	}
 	result := s.result(tone, message)
-	result.OfferCLI = s.ClaudeCLI.Installed() && !s.ClaudeCLI.ConnectedWith(key)
+	if s.ClaudeCLI.Installed() && !s.ClaudeCLI.ConnectedWith(key) {
+		if err := WriteClaudeCode(s.ClaudeCLI, key, s.Now()); err != nil {
+			result.Tone = ToneWarning
+			result.Message += "\n" + fmt.Sprintf(MessageClaudeCodeFailed, reason(err))
+		} else {
+			result.Message += "\n" + MessageClaudeCodeConnected
+		}
+	}
 	return result
-}
-
-// ConnectClaudeCode writes the key into the Claude Code CLI's settings. The
-// window calls it only after ConnectClaude succeeded with the same key and
-// the user agreed, so the key is not checked again.
-func (s *Service) ConnectClaudeCode(raw string) Result {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	key, ok := NormalizeKey(raw)
-	if !ok {
-		return s.result(ToneError, MessageBadFormat)
-	}
-	if err := WriteClaudeCode(s.ClaudeCLI, key, s.Now()); err != nil {
-		return s.result(ToneError, fmt.Sprintf(MessageClaudeCodeFailed, reason(err)))
-	}
-	return s.result(ToneSuccess, MessageClaudeCodeConnected)
 }
 
 // RestoreClaude switches Claude Desktop back to the official login and

@@ -4,7 +4,11 @@ sidebarTitle: Claude Code
 
 # Claude Code 接入
 
-Claude Code 是 Anthropic 的终端编程助手。用 CC Switch 把 UseGoodAI 导入 Claude Code 后，Claude Code 的请求走 UseGoodAI。还没装 CC Switch 时，先按 [CC Switch 安装](/codex-cc-switch#_1-安装-cc-switch) 装好。
+Claude Code 是 Anthropic 的终端编程助手。用 CC Switch 把 UseGoodAI 导入 Claude Code 后，Claude Code 的请求走 UseGoodAI，配置保存在本机的 `.claude/settings.json`。
+
+Windows 同时安装了 Claude 桌面版时，直接用 [Claude 一键接入命令](/claude/desktop#claude-powershell)，一条命令自动接入桌面版和已安装的 CLI，无需 CC Switch。只装 CLI 时继续按本文操作。
+
+还没装 CC Switch 时，先按 [CC Switch 安装](/codex-cc-switch#_1-安装-cc-switch) 装好。
 
 ## 安装 Claude Code
 

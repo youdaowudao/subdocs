@@ -6,6 +6,8 @@ sidebarTitle: Claude Desktop
 
 Claude Desktop 是 Anthropic 的桌面应用，包含 Chat、Cowork 和 Code 等功能。Windows 用 UseGoodAI 接入助手一键连接；Mac 在 CC Switch 里手动添加一次（后台的 **导入到 CCS** 不能直接导入 Desktop）；两样都不用时，在应用内配置 Gateway。
 
+接入后，Claude 的模型请求走 UseGoodAI；本文会修改本机的 `claude_desktop_config.json` 和第三方接入配置。
+
 <a id="claude-desktop-helper"></a>
 
 ## Windows 推荐：用接入助手一键连接
@@ -16,7 +18,23 @@ Claude Desktop 是 Anthropic 的桌面应用，包含 Chat、Cowork 和 Code 等
 2. 后台 **API 密钥** 页复制一把 Claude 分组的密钥，粘贴到助手输入框，点 **一键连接 Claude**。助手会先关闭 Claude，再写入这把密钥能用的全部 Claude 模型（Fable、Opus、Sonnet、Haiku）。
 3. 重新打开 Claude Desktop，新建对话，发送 `测试`。能回复就接入完成了。
 
-电脑装了 Claude Code CLI 时，助手会问要不要一起接入，点 **是** 即可。余额为 0 时助手会提示先充值。要改回官方账号，在助手 Claude 页点右下角 **恢复官方登录**。
+电脑装了 Claude Code CLI 时，助手会用同一个 Key 自动一起接入；没装 CLI 就跳过，不提示。余额为 0 时助手会提示先充值。要改回官方账号，在助手 Claude 页点右下角 **恢复官方登录**。
+
+<a id="claude-powershell"></a>
+
+### Windows：用 PowerShell 命令接入
+
+先装好 Claude 桌面版，再按 `Win + X` 打开 **终端**，粘贴下面的命令回车：
+
+```powershell
+irm https://docs.usegoodai.com/install/claude.ps1 | iex
+```
+
+按提示粘贴 UseGoodAI API Key，回车。命令会下载并运行接入助手的命令入口，先接入桌面版；已安装 Claude Code CLI 时，用同一个 Key 自动一起接入，不需要选择，也不需要另外执行命令。
+
+完成后重新打开 Claude 桌面版，新建对话发送 `测试`。CLI 也已接入时，新开终端运行 `claude`，在新对话里发送 `测试`。
+
+配置会保存在本机，旧配置先备份。桌面版使用 `C:\Users\你的用户名\AppData\Local\Claude-3p\` 等 Claude 配置目录；CLI 使用 `C:\Users\你的用户名\.claude\settings.json`。其他设置保留，配置完成后可关闭 PowerShell。
 
 <a id="claude-desktop-ccswitch"></a>
 

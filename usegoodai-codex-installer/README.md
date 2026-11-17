@@ -24,6 +24,16 @@ irm https://docs.usegoodai.com/install/helper.ps1 | iex
 
 原有在线命令继续使用下面的入口。
 
+## Windows：一条命令接入 Claude
+
+先安装 Claude 桌面版，在 PowerShell 运行：
+
+```powershell
+irm https://docs.usegoodai.com/install/claude.ps1 | iex
+```
+
+粘贴 Key 后先接入桌面版；已安装 Claude Code CLI 时，用同一个 Key 自动一起接入，未安装时安静跳过。命令下载同一个 Windows 助手，运行无需窗口的入口，与窗口共用密钥检查、模型筛选、备份及配置写入逻辑；不要求 WebView2。临时程序运行后清理。Windows 助手和脚本版本 1.1.15，Mac 成品保留 1.1.14；不提供 Mac 或 Linux 的 Claude 接入脚本。
+
 ## Windows
 
 打开 PowerShell，运行：

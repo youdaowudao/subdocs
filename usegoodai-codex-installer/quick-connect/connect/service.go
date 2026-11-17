@@ -51,8 +51,6 @@ type Result struct {
 	Models  ModelsStatus `json:"models"`
 	Claude  ClaudeStatus `json:"claude"`
 	Action  string       `json:"action,omitempty"`
-	// OfferCLI asks the window whether to connect the Claude Code CLI too.
-	OfferCLI bool `json:"offerCli,omitempty"`
 }
 
 // Service runs one action at a time; a link that arrives during a

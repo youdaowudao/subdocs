@@ -23,6 +23,9 @@ import (
 const singleInstanceID = "usegoodai-quick-connect-5c0f2a7e"
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--claude-connect" {
+		os.Exit(runClaudeCommand(os.Stdin, os.Stdout))
+	}
 	// 双击或导入链接先进入启动守护（guard.go），由它启动带窗口变量的窗口进程。
 	eventName := os.Getenv(windowEnv)
 	if eventName == "" {

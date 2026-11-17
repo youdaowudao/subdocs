@@ -7,6 +7,12 @@
 
 技术选型：Go 1.25 + Wails v2（WebView2）。不需要管理员权限；系统缺少 WebView2 时弹出中文提示并打开微软下载页。
 
+## Windows 1.1.15（2026-11-17）
+
+- 新增 `irm https://docs.usegoodai.com/install/claude.ps1 | iex`：下载同一个 Windows 助手，以 `--claude-connect` 运行，无需窗口或 WebView2。Key 经标准输入传入，结果以 UTF-8 JSON 经标准输出返回；脚本显示中文结果并清理下载的临时程序。
+- 命令与窗口共用 `Service.ConnectClaude`：先接入桌面版，再自动接入已安装的 Claude Code CLI。去掉原来的询问；没安装 CLI 时不提示、不创建 CLI 配置。桌面版成功而 CLI 配置失败时保留桌面版结果，明确报告 CLI 失败，重新运行可重试。
+- 仅支持 Windows。Mac 助手及其成品保留 1.1.14，生图与国产模型版本不变。测试记录见 [Windows Claude 一键接入命令](../test-records/20261117-claude-command.md)。
+
 ## 1.1.14（2026-11-13）
 
 - 修复多台 Windows 11 电脑“一打开就闪退”：WebView2 数据目录出问题时旧版卡在后台不出窗口，之后每次双击都把参数交给它后立即退出；WebView2 创建失败时直接退出、没有任何提示。Win11 上已复现。
@@ -73,7 +79,7 @@
   - `%LOCALAPPDATA%\Claude-3p\configLibrary\00000000-0000-4000-8000-00000000600d.json`：网关地址、Bearer、密钥、`modelDiscoveryEnabled: false`、`inferenceModels`。
   - `_meta.json`：登记 `UseGoodAI` 条目，`appliedId` 指向它；CC Switch 等其它条目保留不动。
 - **关闭 Claude**：只结束从 `WindowsApps\Claude_*` 运行的 `claude.exe`，Claude Code CLI（同名 `claude.exe`）不受影响。
-- **Claude Code CLI**：只查 `%USERPROFILE%\.local\bin\claude.exe` 和 `%APPDATA%\npm\claude.cmd`。找到且还没用这个密钥时，连接成功后弹窗「检测到 Claude Code CLI，是否同时接入？」，点「是」写 `~/.claude/settings.json` 的 `env`（`ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN`，并去掉 `ANTHROPIC_API_KEY` 和模型覆盖变量），其它设置保留；没找到不提示。
+- **Claude Code CLI**：只查 `%USERPROFILE%\.local\bin\claude.exe` 和 `%APPDATA%\npm\claude.cmd`。找到且还没用这个密钥时，桌面版连接成功后自动写 `~/.claude/settings.json` 的 `env`（`ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN`，并去掉 `ANTHROPIC_API_KEY` 和模型覆盖变量），其它设置保留；没找到不提示。
 - **恢复官方登录**：UseGoodAI 是当前生效的配置时，三份配置改回 `1p`；生效的是别家（如 CC Switch）时不动模式。然后从 `_meta.json` 去掉 UseGoodAI 条目（`appliedId` 交给下一条，没有就删除），删除含密钥的 UseGoodAI 配置文件，关闭 Claude。Claude Code CLI 指向 UseGoodAI 时，同时去掉 `env` 里的 `ANTHROPIC_BASE_URL` 和 `ANTHROPIC_AUTH_TOKEN`（先备份），指向别家的不动。
 
 Codex 页没检测到 ChatGPT/Codex（没有 `Packages\OpenAI.*`，也没有 `.codex` 文件夹）时，同样显示下载按钮，官网下载打开 `https://chatgpt.com/download/`。QQ 卡片写明群文件有两个软件的安装包，点「群文件下载」会高亮 QQ 卡片并提示进群下载。
@@ -131,7 +137,7 @@ cd ../desktop && python3 build.py --mac-launcher <Actions 产物里的 Contents/
 
 只构建 exe：`python3 build.py [输出路径]`。Go 模块、缓存和临时文件都放在本目录 `.work/`（不进 Git）；`rsrc_windows_amd64.syso`（图标、清单、文件属性）每次构建重新生成。
 
-版本号在 `connect/product.go` 的 `Version`，同时写入 exe 文件属性和窗口底部；`../desktop/build.py` 的 Mac 版本号必须与它一致。每次给用户的新版本都要加版本号（1.0.0 首发；1.1.0 加入 Codex 完全访问和 Claude 桌面版接入；之后每个测试版只加最后一位：1.1.1、1.1.2……），Bundle 标识沿用 `com.usegoodai.codex-config`，让 Mac 的终端控制权限延续。
+版本号在 `connect/product.go`：Windows 用 `Version`，同时写入 exe 文件属性和窗口底部；Mac 用 `MacVersion`，`../desktop/build.py` 的 Mac 版本号必须与它一致。只改一个系统时保留另一系统的原版本和成品。每次给用户的新版本都要加版本号，Bundle 标识沿用 `com.usegoodai.codex-config`，让 Mac 的终端控制权限延续。
 
 ## 测试
 

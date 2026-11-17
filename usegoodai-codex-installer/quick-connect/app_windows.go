@@ -137,28 +137,9 @@ func (a *App) ConnectClaude(key string) connect.Result { return a.connectClaude(
 // ImportClaude connects Claude Desktop with a key from an app=claude link.
 func (a *App) ImportClaude(key, name string) connect.Result { return a.connectClaude(key, name) }
 
-// connectClaude connects Claude Desktop, then, when the Claude Code CLI is
-// installed and not yet on this key, asks whether to connect it too.
+// connectClaude uses the same automatic Desktop/CLI flow as the command.
 func (a *App) connectClaude(key, name string) connect.Result {
-	result := a.service.ConnectClaude(a.ctx, key, name)
-	if !result.OfferCLI {
-		return result
-	}
-	result.OfferCLI = false
-	answer, err := runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-		Type:    runtime.QuestionDialog,
-		Title:   "检测到 Claude Code CLI",
-		Message: "检测到 Claude Code CLI，是否同时接入 UseGoodAI？\n\n会把同一个密钥写入 Claude Code CLI 的设置（用户文件夹下的 .claude\\settings.json），其它设置保留。",
-	})
-	if err != nil || (answer != "Yes" && answer != "是") {
-		return result
-	}
-	cli := a.service.ConnectClaudeCode(key)
-	cli.Message = result.Message + "\n" + cli.Message
-	if result.Tone != connect.ToneSuccess && cli.Tone == connect.ToneSuccess {
-		cli.Tone = result.Tone
-	}
-	return cli
+	return a.service.ConnectClaude(a.ctx, key, name)
 }
 
 func (a *App) RestoreClaude() connect.Result { return a.service.RestoreClaude() }

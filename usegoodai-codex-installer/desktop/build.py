@@ -88,7 +88,7 @@ def main() -> None:
     options = parser.parse_args()
 
     quick_connect = load_quick_connect()
-    if f'Version     = "{ASSISTANT_VERSION}"' not in (PROJECT_ROOT / "quick-connect/connect/product.go").read_text():
+    if f'MacVersion  = "{ASSISTANT_VERSION}"' not in (PROJECT_ROOT / "quick-connect/connect/product.go").read_text():
         raise SystemExit("Mac 版本号与 quick-connect/connect/product.go 不一致。")
     if options.mac_launcher:
         # Copied aside first: the given file may sit inside OUTPUT_ROOT.
