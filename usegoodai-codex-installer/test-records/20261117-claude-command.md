@@ -14,12 +14,12 @@
 ## 验证范围与结果
 
 - 本地：接入核心测试通过，覆盖只装桌面版、同时安装 CLI、CLI 配置失败时保留桌面版并重试、配置保留、重复执行、拒绝无效请求和密钥不出现在命令输出。助手 Go 全量通过；137 项站点测试全部通过（0 跳过），桌面打包 7 项通过，文档站构建通过；Windows 测试程序交叉编译通过。
-- Windows Actions：待执行真实发布 EXE 的管道入口、PowerShell 5.1/7 的 HTTP 下载管道、中文空格路径与临时文件清理。
+- Windows Actions：Windows Server 2022、2025 上，真实发布 EXE 的管道入口、PowerShell 5.1/7 的 HTTP 下载管道、中文空格路径、临时文件清理均通过；成功写入用例验证桌面版配置、CLI 自动接入、旧设置保留和备份；没有 CLI 时不创建其配置、不在结果中提示 CLI。
 - Windows 成功写入测试使用原发布 EXE、临时用户目录、假 Key、本地 HTTPS 模拟接口。原程序仍使用正式 API URL；测试通过本地 CONNECT 代理定向到模拟服务，将临时 CA 加入一次性运行器的 LocalMachine 根证书库，测试后删除。此配置仅属于测试，不进入发布程序。
-- 三项既有发布门禁、Windows 窗口回归：待 Actions 执行，发布前核对对应提交。
+- 三项既有发布门禁、Windows 窗口回归：工具提交 `9cece4e47bd3ae22177e8f3d1a4f4afbee152ccc` 全部通过。
 - 未验证：真实中转鉴权、计费、上游连通性、Claude 桌面版实际新建对话、真实 Claude CLI 发模型请求，以及客户真实 Windows 环境。配置目录夹具和 Go 单元测试不记为真实 Claude 客户端端到端验收。
 
-候选提交、Actions 链接及成品哈希将在验证后补充。
+工具提交：`9cece4e47bd3ae22177e8f3d1a4f4afbee152ccc`。成品哈希见下方；后续仅补记测试结果的文档提交复用相同完整工具文件的检查。
 
 ## 候选 1.1.15 成品
 
@@ -35,7 +35,7 @@ Mac 下载包哈希与 1.1.14 原版一致；合集内 Mac 所有文件逐项比
 
 [第一次 Windows 测试](https://github.com/youdaowudao/subdocs/actions/runs/44018451149) 在 Windows Server 2022、2025 上发现：PowerShell 5.1 标准输入带 UTF-8 BOM，命令未解析请求；PowerShell 7 已到达正确业务分支，但测试误把 PowerShell 自身缓存目录当成命令残留；成功写入测试依赖的证书 PSDrive 未加载。
 
-1.1.15 未推送 main、未发布。1.1.16 的命令入口兼容 BOM，脚本使用标准 StreamWriter 写请求；证书夹具改用 .NET 证书库，临时文件检查只核对本工具文件。改动后重新执行本次相关测试。
+1.1.15 没有作为主线下载版本发布，后续修正合并到 1.1.16。1.1.16 的命令入口兼容 BOM，脚本使用标准 StreamWriter 写请求；证书夹具改用 .NET 证书库，临时文件检查只核对本工具文件。改动后重新执行本次相关测试。
 
 ## 1.1.16 成品
 
@@ -45,4 +45,14 @@ Mac 下载包哈希与 1.1.14 原版一致；合集内 Mac 所有文件逐项比
 - `usegoodai-quick-connect-windows-x64.exe`：`55057bf907441fc228884abea5d954a6d8e51a8ce2136681eeb52d1f37809a49`。
 - `usegoodai-quick-connect-mac-arm64.zip`：`1b313bbb599a4c28f660e09422ba9595d2ee83efb27864f793cf13a9af1b44b9`。
 
-测试夹具修正：CurrentUser Root 在托管 Windows 上触发交互式证书确认，导致成功写入用例等待；改为一次性管理员运行器的 LocalMachine Root，并为证书操作增加 20 秒超时，Go 全量测试增加 4 分钟超时和详细日志。证书准备需要的运行器权限不记为客户普通账户权限已验证。发布程序和安装命令不执行证书操作，1.1.16 EXE 与脚本哈希保持不变。
+测试夹具修正：CurrentUser Root 的证书操作在托管 Windows 上等待未返回（具体系统对话框未核实）；改为一次性管理员运行器的 LocalMachine Root，并为证书操作增加 20 秒超时，Go 全量测试增加 4 分钟超时和详细日志。证书准备需要的运行器权限不记为客户普通账户权限已验证。发布程序和安装命令不执行证书操作，1.1.16 EXE 与脚本哈希保持不变。
+
+## 通过的 Actions 记录
+
+- [Windows Server 2022 / 2025 原生 Go、PowerShell 5.1 / 7、窗口与升级回归](https://github.com/youdaowudao/subdocs/actions/runs/44020451557)：通过，工具提交 `9cece4e`，发布 EXE SHA-256 与本记录 1.1.16 成品一致。
+- [同一提交三项既有发布门禁](https://github.com/youdaowudao/subdocs/actions/runs/44020451428)：Mac 国产模型导入门禁、国产模型导入回归、发布文件检查全部通过。没有新增必需检查或分支保护。
+- [Windows 11 ARM 打开稳妥性](https://github.com/youdaowudao/subdocs/actions/runs/44019407137)：通过，测试同一 1.1.16 EXE；记录为 ARM 系统下运行 x64 成品，不记为 Windows 11 x64 原生 CLI 端到端测试。
+- [Mac 原签名成品打开](https://github.com/youdaowudao/subdocs/actions/runs/44019407187)：通过，Mac 发布文件未改动。
+- [Mac 构建流程](https://github.com/youdaowudao/subdocs/actions/runs/44019407376)：通过；只用于核对保留 Mac 1.1.14 后构建流程仍有效，没有用该产物替换正式 Mac 下载。
+
+主线工具提交 `9cece4e` 的[三项发布检查](https://github.com/youdaowudao/subdocs/actions/runs/44020910813)再次全部成功。测试记录补记只修改 Markdown，完整工具文件的路径、类型、权限和内容与该工具提交一致；正式站按既有规则复用该提交检查。

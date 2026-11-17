@@ -5,7 +5,7 @@
 - Windows 快速接入助手升级为 1.1.16，新增 `irm https://docs.usegoodai.com/install/claude.ps1 | iex`。一条命令先接入 Claude 桌面版，检测到默认位置安装的 Claude Code CLI 时用同一个 Key 自动一起接入；没有 CLI 时安静跳过，不让用户选择。助手窗口也去掉原来的 CLI 询问，使用同一套流程。
 - 新命令运行同一个助手的无窗口入口，沿用原有密钥检查、模型筛选、配置合并、备份及恢复逻辑；Key 经标准输入传入，不放进进程参数。新增 PowerShell 下载启动脚本及对应发布副本，教程使用同一入口。服务端与数据库无改动，无迁移或额外后台启用步骤。
 - 仅 Windows；Mac 助手保留 1.1.14，原 Mac 下载包及合集内三个 App 保持原文件，生图 0.9.6、国产模型 1.0.2 不变。源码中分别记录 Windows 和 Mac 版本，Windows 成品、脚本、窗口和命令结果同步为 1.1.16。
-- 测试：本地助手 Go 全量、137 项站点测试和文档构建通过；Windows 原生管道与既有发布门禁待 Actions 完成。详细范围及未验证项见 `usegoodai-codex-installer/test-records/20261117-claude-command.md`，真实中转鉴权、计费及真实 Claude 客户端新对话未验证。
+- 测试：本地助手 Go 全量、137 项站点测试、桌面打包 7 项和文档构建通过；Windows Server 2022/2025 上 PowerShell 5.1/7 管道、发布 EXE 配置写入和窗口回归通过，同一工具提交 `9cece4e` 三项发布门禁全部通过；同一 EXE 的 Windows 11 ARM 打开稳妥性测试通过。详细范围及未验证项见 `usegoodai-codex-installer/test-records/20261117-claude-command.md`，真实中转鉴权、计费及真实 Claude 客户端新对话未验证。
 
 ## 0.1.18（2026-11-15）
 
