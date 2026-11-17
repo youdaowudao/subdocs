@@ -56,3 +56,9 @@ Mac 下载包哈希与 1.1.14 原版一致；合集内 Mac 所有文件逐项比
 - [Mac 构建流程](https://github.com/youdaowudao/subdocs/actions/runs/44019407376)：通过；只用于核对保留 Mac 1.1.14 后构建流程仍有效，没有用该产物替换正式 Mac 下载。
 
 主线工具提交 `9cece4e` 的[三项发布检查](https://github.com/youdaowudao/subdocs/actions/runs/44020910813)再次全部成功。测试记录补记只修改 Markdown，完整工具文件的路径、类型、权限和内容与该工具提交一致；正式站按既有规则复用该提交检查。
+
+## 正式域名核对
+
+2026-11-17 从固定正式地址读取并逐字节比较通过：`https://docs.usegoodai.com/install/claude.ps1`、`https://docs.usegoodai.com/download/usegoodai-quick-connect-windows-x64.exe`、`https://docs.usegoodai.com/download/usegoodai-tools.zip`。脚本响应为 UTF-8 文本，EXE 和 ZIP 的 SHA-256 与上方 1.1.16 成品一致；ZIP 实际解包校验通过，Windows 仅一个助手 EXE 及使用说明，中文下载文件名为 `中转站快速导入工具_20261117-1344.zip`。
+
+脚本 SHA-256：`1860c99b2672dd516f04a753eddcff6e973e9293614f708ece1b4985a28ce3eb`。主线同一工具提交的 [Windows 原生与窗口回归](https://github.com/youdaowudao/subdocs/actions/runs/44020910926)也全部通过。后续 Markdown 补记的 180 个工具文件（路径、类型、权限、内容）与 `9cece4e` 一致，复用该工具提交检查；没有用测试分支预览代替正式域名核对。
