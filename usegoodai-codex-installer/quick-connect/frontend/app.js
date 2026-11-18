@@ -61,6 +61,7 @@ let confirming = null; // 'import' or 'remove' while waiting for a second click
 let confirmTimer = 0;
 const queuedLinks = [];
 let activeLink = null;
+let assistantUpdateDownloaded = false;
 
 function bridge() {
   return window.go && window.go.main && window.go.main.App;
@@ -274,7 +275,7 @@ function showResult(result) {
 function setBusy(on, label) {
   busy = on;
   for (const button of [connectButton, restoreButton, removeButton, $('go-codex'), $('go-image'), $('go-models'),
-    $('tab-codex'), $('tab-claude'), $('get-official'), $('get-group')]) {
+    $('tab-codex'), $('tab-claude'), $('get-official'), $('get-group'), $('assistant-update-button')]) {
     button.disabled = on;
   }
   connectButton.classList.toggle('busy', on);
@@ -529,6 +530,51 @@ $('join-qq').addEventListener('click', () => bridge().JoinGroup());
 $('open-site').addEventListener('click', () => bridge().OpenSite());
 $('open-api-keys').addEventListener('click', () => bridge().OpenAPIKeys());
 
+async function checkAssistantUpdate(app) {
+  try {
+    const version = await app.CheckAssistantUpdate();
+    if (!version) return;
+    $('assistant-update-message').textContent = `Windows 助手可更新到 ${version}`;
+    $('assistant-update').hidden = false;
+  } catch {
+    // A missing or unreachable release must never interrupt setup.
+  }
+}
+
+$('assistant-update-button').addEventListener('click', async () => {
+  if (busy) return;
+  const message = $('assistant-update-message');
+  const button = $('assistant-update-button');
+  let restarting = false;
+  setBusy(true, '正在更新助手…');
+  try {
+    if (!assistantUpdateDownloaded) {
+      message.textContent = '正在下载并校验 Windows 助手…';
+      const error = await bridge().DownloadAssistantUpdate();
+      if (error) throw new Error(error);
+      assistantUpdateDownloaded = true;
+    }
+    if (queuedLinks.length) {
+      message.textContent = '新版已下载。导入完成后可以重启更新。';
+      button.textContent = '重启更新';
+      return;
+    }
+    message.textContent = '正在重启 Windows 助手…';
+    const error = await bridge().RestartAssistantUpdate();
+    if (error) throw new Error(error);
+    restarting = true;
+  } catch (error) {
+    assistantUpdateDownloaded = false;
+    message.textContent = error.message || '助手更新失败，可以稍后重试。';
+    button.textContent = '重试更新';
+  } finally {
+    if (!restarting) {
+      setBusy(false);
+      nextLink();
+    }
+  }
+});
+
 window.addEventListener('focus', fillFromClipboard);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') fillFromClipboard();
@@ -558,4 +604,5 @@ document.addEventListener('visibilitychange', () => {
   } else {
     fillFromClipboard();
   }
+  void checkAssistantUpdate(app);
 })();

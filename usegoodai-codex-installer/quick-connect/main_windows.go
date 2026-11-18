@@ -29,9 +29,15 @@ func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--claude-connect" {
 		os.Exit(runClaudeCommand(os.Stdin, os.Stdout))
 	}
+	if len(os.Args) == 3 && os.Args[1] == assistantRestartArgument {
+		os.Exit(runAfterAssistantUpdate(os.Args[2]))
+	}
 	// 双击或导入链接先进入启动守护（guard.go），由它启动带窗口变量的窗口进程。
 	eventName := os.Getenv(windowEnv)
 	if eventName == "" {
+		if launchActiveAssistant() {
+			os.Exit(0)
+		}
 		os.Exit(runGuard())
 	}
 	runWindow(eventName)
@@ -102,6 +108,10 @@ func runWindow(eventName string) {
 			app.startup(ctx)
 		},
 		OnDomReady: func(context.Context) {
+			if exe, err := os.Executable(); err == nil {
+				recordActiveAssistant(record, exe)
+				_ = connect.RegisterProtocol(exe)
+			}
 			record.stage("页面就绪", "")
 			signalReady(eventName)
 		},

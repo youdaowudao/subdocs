@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -17,9 +16,10 @@ type App struct {
 	ctx     context.Context
 	service *connect.Service
 
-	mu           sync.Mutex
-	pendingLinks []string
-	pageReady    bool
+	mu              sync.Mutex
+	pendingLinks    []string
+	pageReady       bool
+	assistantUpdate assistantRelease
 }
 
 func newApp(service *connect.Service, launchLink string) *App {
@@ -34,9 +34,6 @@ func (a *App) startup(ctx context.Context) {
 	a.mu.Lock()
 	a.ctx = ctx
 	a.mu.Unlock()
-	if exe, err := os.Executable(); err == nil {
-		_ = connect.RegisterProtocol(exe)
-	}
 }
 
 // secondInstance receives the arguments of a later launch, normally a link
@@ -166,3 +163,46 @@ func (a *App) JoinGroup() { runtime.BrowserOpenURL(a.ctx, connect.QQGroupURL) }
 func (a *App) OpenSite() { runtime.BrowserOpenURL(a.ctx, connect.OfficialSite) }
 
 func (a *App) OpenAPIKeys() { runtime.BrowserOpenURL(a.ctx, connect.OfficialSite+"/keys") }
+
+func (a *App) CheckAssistantUpdate() string {
+	if assistantUpdateDirectory() == "" {
+		return ""
+	}
+	release, err := newAssistantUpdater().check(a.ctx, connect.Version)
+	if err != nil || release.Version == "" {
+		return ""
+	}
+	a.mu.Lock()
+	a.assistantUpdate = release
+	a.mu.Unlock()
+	return release.Version
+}
+
+func (a *App) DownloadAssistantUpdate() string {
+	a.mu.Lock()
+	release := a.assistantUpdate
+	a.mu.Unlock()
+	if err := newAssistantUpdater().stage(a.ctx, release, connect.Version, assistantUpdateDirectory()); err != nil {
+		return "更新未完成：" + err.Error()
+	}
+	return ""
+}
+
+func (a *App) RestartAssistantUpdate() string {
+	a.mu.Lock()
+	release := a.assistantUpdate
+	a.mu.Unlock()
+	directory := assistantUpdateDirectory()
+	if directory == "" || !release.newerThan(connect.Version) {
+		return "没有已下载的新版助手。"
+	}
+	path := release.file(directory)
+	if err := verifyAssistantProgram(path, release); err != nil {
+		return "无法打开新版助手：" + err.Error()
+	}
+	if err := startUpdatedAssistant(path); err != nil {
+		return "无法打开新版助手：" + err.Error()
+	}
+	runtime.Quit(a.ctx)
+	return ""
+}

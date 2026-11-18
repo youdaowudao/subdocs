@@ -10,7 +10,10 @@ mac-quick-connect GitHub Actions workflow does that.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -62,8 +65,6 @@ def bundle_image_tool(platform: str) -> None:
     The checksum comes from the release's SHA256SUMS and is checked twice:
     here, and by the window before it runs the program.
     """
-    import hashlib
-
     release = IMAGE_TOOL_RELEASES / f"v{IMAGE_TOOL_RELEASE}"
     name = f"usegoodai-imagines-tool-v{IMAGE_TOOL_RELEASE}-{platform}"
     sums = {}
@@ -117,6 +118,16 @@ def build_windows(output: Path) -> Path:
     return output
 
 
+def write_windows_release_manifest(program: Path, output: Path) -> None:
+    source = (ROOT / "connect" / "product.go").read_text(encoding="utf-8")
+    version = re.search(r'^\s*Version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"', source, re.MULTILINE)
+    if version is None:
+        raise SystemExit("无法读取 Windows 助手版本。")
+    data = program.read_bytes()
+    manifest = {"version": version[1], "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
+    output.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
 def build_mac(output: Path) -> Path:
     """Write the arm64 launcher; needs macOS with the Xcode command line tools."""
     if sys.platform != "darwin":
@@ -131,4 +142,6 @@ def build_mac(output: Path) -> Path:
 
 if __name__ == "__main__":
     target = Path(sys.argv[1]) if len(sys.argv) > 1 else WORK / "usegoodai-quick-connect-windows-x64.exe"
-    print(build_windows(target.resolve()))
+    program = build_windows(target.resolve())
+    write_windows_release_manifest(program, program.with_suffix(".json"))
+    print(program)

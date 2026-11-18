@@ -11,7 +11,8 @@ function imagePanel(image, key = '') {
     if (!elements.has(id)) elements.set(id, {
       textContent: '', value: '', dataset: {}, style: {}, hidden: false, disabled: false,
       classList: { add() {}, remove() {}, toggle() {} },
-      addEventListener() {}, setAttribute() {}, focus() {}, prepend() {},
+      handlers: {}, addEventListener(name, handler) { this.handlers[name] = handler },
+      setAttribute() {}, focus() {}, prepend() {},
     })
     return elements.get(id)
   }
@@ -78,6 +79,35 @@ test('Codex and Claude show the website import guide above the manual fallback',
 
   run("setTool('image')");
   assert.equal(panel.element('page-intro').hidden, true);
+})
+
+test('the assistant checks silently and asks before downloading a new Windows version', async () => {
+  const panel = imagePanel({ state: 'none' })
+  const run = (code) => vm.runInContext(code, panel.context)
+  const app = panel.context.window.go.main.App
+  const banner = panel.element('assistant-update')
+  const message = panel.element('assistant-update-message')
+  const button = panel.element('assistant-update-button')
+  banner.hidden = true
+  app.CheckAssistantUpdate = async () => { throw new Error('offline') }
+  await run('checkAssistantUpdate(bridge())')
+  assert.equal(banner.hidden, true)
+
+  app.CheckAssistantUpdate = async () => '1.1.23'
+  app.DownloadAssistantUpdate = async () => { panel.calls.push('download'); return '校验失败' }
+  app.RestartAssistantUpdate = async () => { panel.calls.push('restart'); return '' }
+  await run('checkAssistantUpdate(bridge())')
+  assert.equal(banner.hidden, false)
+  assert.match(message.textContent, /1\.1\.23/)
+  assert.deepEqual(panel.calls, [])
+  await button.handlers.click()
+  assert.deepEqual(panel.calls, ['download'])
+  assert.equal(button.textContent, '重试更新')
+  assert.equal(button.disabled, false)
+
+  app.DownloadAssistantUpdate = async () => { panel.calls.push('download'); return '' }
+  await button.handlers.click()
+  assert.deepEqual(panel.calls, ['download', 'download', 'restart'])
 })
 
 test('website image import stays on the image page and merges clicks in progress', async () => {

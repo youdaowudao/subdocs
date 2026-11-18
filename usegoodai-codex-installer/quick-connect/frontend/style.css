@@ -42,6 +42,10 @@ svg{flex:none}
 .page-intro p{color:var(--muted);font-size:13px;line-height:1.45}
 .site-entry{margin-top:2px;padding:0;border:0;background:none;color:var(--primary-ink);font-size:13px;font-weight:700;text-align:left}
 .site-entry:hover{text-decoration:underline;text-underline-offset:3px}
+.assistant-update{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding:8px 10px;border:1px solid #bce1dd;border-radius:11px;background:#eef8f7;color:#125f59;font-size:12.5px}
+.assistant-update[hidden]{display:none}
+.assistant-update .pill{flex:none;color:inherit}
+.assistant-update .pill:disabled{opacity:.6}
 
 /* Codex 状态 */
 .status{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}

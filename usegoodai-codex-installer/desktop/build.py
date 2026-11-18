@@ -120,6 +120,8 @@ def main() -> None:
 
     quick_connect.build_windows(WINDOWS / f"{ASSISTANT_TOOL}.exe")
     shutil.copyfile(WINDOWS / f"{ASSISTANT_TOOL}.exe", DOWNLOAD / WINDOWS_DOWNLOAD)
+    windows_download = DOWNLOAD / WINDOWS_DOWNLOAD
+    quick_connect.write_windows_release_manifest(windows_download, windows_download.with_suffix(".json"))
 
     for title, script, identifier in TERMINAL_TOOLS:
         powershell = (PROJECT_ROOT / "install" / f"{script}.ps1").read_bytes()

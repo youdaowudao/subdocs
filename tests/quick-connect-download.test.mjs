@@ -120,6 +120,19 @@ test('Mac download is the zipped app with the published codex.sh', async () => {
   }
 })
 
+test('Windows update manifest matches the current standalone download', async () => {
+  const manifestName = exeName.replace(/\.exe$/, '.json')
+  const rules = await headerRules()
+  const headers = rules.get('/download/' + manifestName)
+  assert.ok(headers.includes('Cache-Control: no-store'))
+  assert.ok(headers.includes('Content-Type: application/json; charset=utf-8'))
+  const manifest = JSON.parse(await readFile(new URL('docs/public/download/' + manifestName, root), 'utf8'))
+  const source = await readFile(new URL('usegoodai-codex-installer/quick-connect/connect/product.go', root), 'utf8')
+  const version = source.match(/^\s*Version\s+=\s+"([\d.]+)"/m)[1]
+  const program = await readFile(new URL('docs/public/download/' + exeName, root))
+  assert.deepEqual(manifest, { version, size: program.length, sha256: createHash('sha256').update(program).digest('hex') })
+})
+
 test('tool-set download keeps Windows in one GUI and bundles the current image tool', async () => {
   const rules = await headerRules()
   const headers = rules.get('/download/usegoodai-tools.zip')
