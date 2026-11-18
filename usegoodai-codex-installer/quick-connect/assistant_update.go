@@ -29,8 +29,9 @@ const (
 )
 
 var (
-	assistantVersionPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$`)
-	assistantDigestPattern  = regexp.MustCompile(`^[a-f0-9]{64}$`)
+	assistantUpdateDownloadURL = docsURL + "/download/"
+	assistantVersionPattern    = regexp.MustCompile(`^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$`)
+	assistantDigestPattern     = regexp.MustCompile(`^[a-f0-9]{64}$`)
 )
 
 type assistantRelease struct {
@@ -77,7 +78,7 @@ type assistantUpdater struct {
 func newAssistantUpdater() assistantUpdater {
 	client := connect.NewHTTPClient()
 	client.Timeout = 2 * time.Minute
-	return assistantUpdater{client: client, download: docsURL + "/download/"}
+	return assistantUpdater{client: client, download: assistantUpdateDownloadURL}
 }
 
 func (updater assistantUpdater) check(ctx context.Context, current string) (assistantRelease, error) {
