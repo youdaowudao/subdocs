@@ -842,18 +842,20 @@ console.log(core.formatError(error));'''
 
     def test_shell_processes(self):
         functions=build.parent_shell_process_functions()
+        # Keep synthetic PIDs outside the real range. A hosted runner's
+        # parent PID can otherwise collide with one of the fake clients.
         fixture='''
 id() { printf '1001\\n'; }
 ps() {
   if [ "$1" = -axo ]; then
     cat <<EOF
-$$ $PPID 1001 S /Applications/Codex.app/Contents/MacOS/Codex
-$PPID 1 1001 S codex
-7001 1 1001 S /Applications/ChatGPT.app/Contents/MacOS/ChatGPT
-7002 1 1002 S codex
-7003 1 1001 Z codex
-7004 1 1001 S codex-helper
-7005 1 1001 S /Applications/Codex.app/Contents/Resources/codex
+$$ 700000000 1001 S /Applications/Codex.app/Contents/MacOS/Codex
+700000000 1 1001 S codex
+700000001 1 1001 S /Applications/ChatGPT.app/Contents/MacOS/ChatGPT
+700000002 1 1002 S codex
+700000003 1 1001 Z codex
+700000004 1 1001 S codex-helper
+700000005 1 1001 S /Applications/Codex.app/Contents/Resources/codex
 1 0 0 S launchd
 EOF
   else
@@ -865,14 +867,14 @@ sleep() { :; }
 kill() { printf '%s\\n' "$*" >> "$process_log"; }
 selection="$(list_running_clients)"
 case "$selection" in *"$$ codex skip"*) ;; *) exit 11 ;; esac
-case "$selection" in *"$PPID codex skip"*) ;; *) exit 12 ;; esac
-case "$selection" in *"7001 chatgpt stop"*) ;; *) exit 13 ;; esac
-case "$selection" in *"7005 codex stop"*) ;; *) exit 14 ;; esac
-case "$selection" in *7002*|*7003*|*7004*) exit 15 ;; esac
+case "$selection" in *"700000000 codex skip"*) ;; *) exit 12 ;; esac
+case "$selection" in *"700000001 chatgpt stop"*) ;; *) exit 13 ;; esac
+case "$selection" in *"700000005 codex stop"*) ;; *) exit 14 ;; esac
+case "$selection" in *700000002*|*700000003*|*700000004*) exit 15 ;; esac
 stop_running_clients
 [ "$codex_running" = true ] && [ "$chatgpt_running" = true ] && [ "$clients_left" = true ] || exit 16
 report_running_clients
-list_running_clients() { printf '7001 codex stop\\n'; }
+list_running_clients() { printf '700000001 codex stop\\n'; }
 stop_running_clients
 [ "$clients_left" = false ] || exit 17
 report_running_clients
@@ -880,7 +882,7 @@ list_running_clients() { :; }
 stop_running_clients
 [ "$codex_running" = false ] && [ "$chatgpt_running" = false ] || exit 18
 report_running_clients
-list_running_clients() { printf '7001 codex stop\\n'; }
+list_running_clients() { printf '700000001 codex stop\\n'; }
 client_is_alive() { return 0; }
 stop_running_clients
 [ "$clients_left" = true ] || exit 19
@@ -903,7 +905,7 @@ report_running_clients
                 calls=process_log.read_text().splitlines()
                 self.assertTrue(any('-KILL' in call for call in calls))
                 for call in calls:
-                    self.assertTrue(set(call.split()[1:]).issubset({'7001','7005'}))
+                    self.assertTrue(set(call.split()[1:]).issubset({'700000001','700000005'}))
 
 
 def tomlish(text):
