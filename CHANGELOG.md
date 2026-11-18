@@ -6,6 +6,7 @@
 - Windows 接入助手 1.1.21 与合集第二个 Mac App 更新内置生图工具，四个平台的在线安装入口同步更新。复用原有链接、Key 校验和写入流程，无服务端配置或数据库迁移。
 - Windows 助手的 Codex 和 Claude 页面说明接入用途、对应分组与一键导入步骤，并直达中转站的 API 密钥页。生图和国产模型入口各显示用途与完整状态。
 - 回归覆盖旧版只剩官方 Skill、新版恢复后重复导入、同名自定义内容保护、编程 Key 隔离和正常升级。
+- 候选成品与平台验收见 [生图恢复与 Windows 窗口改版](usegoodai-codex-installer/test-records/20261118-image-skill-recovery.md)。
 
 ## 0.1.23（2026-11-18）
 

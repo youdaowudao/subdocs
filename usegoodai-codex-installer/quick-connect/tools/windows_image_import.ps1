@@ -78,12 +78,12 @@ try {
 
   Start-Process -FilePath $exePath -ArgumentList 'usegoodai://import?v=2&app=codex&key=sk-unaccepted-codex-fixture'
   Wait-For { @(Window-Names) -contains 'Codex 状态' } '从生图页切到 Codex'
-  Wait-For { @(Window-Names) -contains '在中转站「API 密钥」页选择编程分组的密钥，点「一键导入 Codex」。' } 'Codex 接入步骤'
+  Wait-For { @(Window-Names) -contains '选编程分组的密钥，点「一键导入 Codex」。' } 'Codex 接入步骤'
   Start-Process -FilePath $exePath -ArgumentList $link
   Verify-Result 4 '从 Codex 切回生图'
   Start-Process -FilePath $exePath -ArgumentList 'usegoodai://import?v=1&app=claude&key=sk-unaccepted-claude-fixture'
   Wait-For { @(Window-Names) -contains 'Claude 桌面版' } '从生图页切到 Claude'
-  Wait-For { @(Window-Names) -contains '在中转站「API 密钥」页选择 Claude 分组的密钥，点「一键导入 Claude」。连接后重新打开 Claude。' } 'Claude 接入步骤'
+  Wait-For { @(Window-Names) -contains '选 Claude 分组的密钥，点「一键导入 Claude」。' } 'Claude 接入步骤'
   if ((Get-FileHash -LiteralPath $authPath).Hash -ne $authHash) { throw '拒绝的链接改写了 Codex 凭据' }
   if ([IO.File]::ReadAllText($keyPath).Trim() -cne 'sk-picture-test-fixture') { throw '切换工具改写了画图凭据' }
   if (-not (Test-Path -LiteralPath $skillPath)) { throw '首轮安装没有写入 Skill' }

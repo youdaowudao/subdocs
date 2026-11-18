@@ -14,7 +14,7 @@ const TOOLS = {
   codex: {
     label: 'Codex 状态',
     title: '将 Codex 接入 UseGoodAI',
-    steps: '在中转站「API 密钥」页选择编程分组的密钥，点「一键导入 Codex」。',
+    steps: '选编程分组的密钥，点「一键导入 Codex」。',
     button: '一键连接 Codex',
     placeholder: '也可以粘贴编程分组的 API Key',
     restoreTip: '取消中转站连接：Codex 改回用 OpenAI 官方账号登录，并关闭正在运行的 Codex。',
@@ -29,7 +29,7 @@ const TOOLS = {
   claude: {
     label: 'Claude 桌面版',
     title: '将 Claude 桌面版接入 UseGoodAI',
-    steps: '在中转站「API 密钥」页选择 Claude 分组的密钥，点「一键导入 Claude」。连接后重新打开 Claude。',
+    steps: '选 Claude 分组的密钥，点「一键导入 Claude」。',
     button: '一键连接 Claude',
     placeholder: '也可以粘贴 Claude 分组的 API Key',
     restoreTip: '取消中转站连接：Claude 改回用 Anthropic 官方账号登录，并关闭正在运行的 Claude。',

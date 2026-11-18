@@ -87,9 +87,7 @@ try {
       $window = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
       Wait-Text $window '将 Codex 接入 UseGoodAI' | Out-Null
       Wait-Text $window '前往中转站的 API 密钥页' | Out-Null
-      Wait-Text $window '用画图分组的密钥，在 Codex 里生成图片。' | Out-Null
-      Wait-Text $window '把国产模型加入 Codex 的模型菜单，无需额外密钥。' | Out-Null
-      Wait-Text $window '可更新' | Out-Null
+      Wait-Text $window '导入国产模型' | Out-Null
       Screen "codex-$KeyState"
       Click (Wait-Text $window 'Codex 生图工具')
       $title = "V0.9.6 已安装，可更新到 V$Candidate"

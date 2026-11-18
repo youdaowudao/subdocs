@@ -22,7 +22,8 @@ func TestFrontendContent(t *testing.T) {
 		"粘贴 API Key", "一键连接 Codex",
 		"QQ 交流群", "1020015031", "复制群号", "加入群聊", "新人进群领 2 元",
 		"打开官网", "恢复官方登录", `id="version"`,
-		"安装生图工具", "导入国产模型", "返回 Codex 接入", "移除国产模型",
+		"将 Codex 接入 UseGoodAI", "前往中转站的 API 密钥页",
+		"Codex 生图工具", "导入国产模型", "返回 Codex 接入", "移除国产模型",
 	} {
 		if !strings.Contains(page, text) {
 			t.Errorf("index.html lacks %q", text)
@@ -67,7 +68,7 @@ func TestFrontendCallsExistingMethods(t *testing.T) {
 			t.Errorf("app.js calls missing method %s", call[1])
 		}
 	}
-	for _, open := range []string{"JoinGroup()", "OpenSite()"} {
+	for _, open := range []string{"JoinGroup()", "OpenSite()", "OpenAPIKeys()"} {
 		if !strings.Contains(script, open) {
 			t.Errorf("app.js should call %s without arguments", open)
 		}
