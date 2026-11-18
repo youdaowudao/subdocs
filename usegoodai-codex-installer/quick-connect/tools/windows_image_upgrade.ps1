@@ -23,8 +23,8 @@ $ImageExe = (Resolve-Path $Exe).Path
 $Results = @()
 
 function Find-Text($Root, [string]$Text) {
-  $condition = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), $Text
-  return $Root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+  $Root.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition) |
+    Where-Object { ([string]$_.Current.Name).Trim() -ceq $Text } | Select-Object -First 1
 }
 function Wait-Text($Root, [string]$Text) {
   $deadline = (Get-Date).AddSeconds(45)

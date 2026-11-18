@@ -79,6 +79,7 @@ jobs:
         run: ./usegoodai-codex-installer/quick-connect/tools/windows_models_import.ps1 -Exe docs/public/download/usegoodai-quick-connect-windows-x64.exe
 
       - name: 在 Windows 窗口安装并重启到正式候选版本
+        if: ${{ !cancelled() }}
         shell: powershell
         working-directory: usegoodai-codex-installer/quick-connect
         env:
