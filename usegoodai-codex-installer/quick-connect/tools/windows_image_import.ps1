@@ -73,7 +73,16 @@ try {
 
   Start-Process -FilePath $exePath -ArgumentList $link
   Verify-Result 3 '完成后再点击'
-  @{cases=3; image_writes=3; codex_auth_unchanged=$true; network='loopback mock'} |
+
+  Start-Process -FilePath $exePath -ArgumentList 'usegoodai://import?v=2&app=codex&key=sk-unaccepted-codex-fixture'
+  Wait-For { @(Window-Names) -contains 'Codex 状态' } '从生图页切到 Codex'
+  Start-Process -FilePath $exePath -ArgumentList $link
+  Verify-Result 4 '从 Codex 切回生图'
+  Start-Process -FilePath $exePath -ArgumentList 'usegoodai://import?v=1&app=claude&key=sk-unaccepted-claude-fixture'
+  Wait-For { @(Window-Names) -contains 'Claude 桌面版' } '从生图页切到 Claude'
+  if ((Get-FileHash -LiteralPath $authPath).Hash -ne $authHash) { throw '拒绝的链接改写了 Codex 凭据' }
+  if ([IO.File]::ReadAllText($keyPath).Trim() -cne 'sk-picture-test-fixture') { throw '切换工具改写了画图凭据' }
+  @{cases=6; image_imports=4; switched_to=@('codex','claude'); codex_auth_unchanged=$true; network='loopback mock'} |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $work 'report.json') -Encoding UTF8
 } finally {
   if ($gateway -and -not $gateway.HasExited) { Stop-Process -Id $gateway.Id -Force }

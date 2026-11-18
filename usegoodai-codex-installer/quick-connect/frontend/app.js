@@ -387,13 +387,13 @@ async function importLink({ raw, imageWasOpen }) {
       break;
     }
     case 'claude': {
-      if (tool !== 'image') setTool('claude');
+      setTool('claude');
       const notice = name ? `正在把「${name}」接入 Claude…` : '正在把密钥接入 Claude…';
       await run('正在连接…', notice, () => bridge().ImportClaude(parsed.key, name));
       break;
     }
     case 'codex': {
-      if (tool !== 'image') setTool('codex');
+      setTool('codex');
       const notice = name ? `正在把「${name}」接入 Codex…` : '正在把密钥接入 Codex…';
       await run('正在连接…', notice, () => bridge().Import(parsed.key, name));
       break;

@@ -134,17 +134,26 @@ test('legacy imports choose before writing unless received on the image page', a
   assert.equal(run('tool'), 'image')
 })
 
-test('an explicit Codex link received on the image page uses the Codex importer', async () => {
-  const panel = imagePanel({ state: 'ready', version: '0.9.6', key: 'masked' })
-  const app = panel.context.window.go.main.App
-  app.ParseLink = async () => ({ ok: true, app: 'codex', key: 'sk-codex-fixture' })
-  app.Import = async (key) => {
-    panel.calls.push(['codex', key])
-    return { tone: 'success', message: 'Codex 已连接' }
-  }
-  app.ImportImage = async () => { panel.calls.push('image') }
-  vm.runInContext("enqueueLink('explicit-codex')", panel.context)
-  await new Promise((resolve) => setImmediate(resolve))
-  assert.deepEqual(panel.calls, [['codex', 'sk-codex-fixture']])
-  assert.equal(vm.runInContext('tool', panel.context), 'image')
-})
+for (const [target, method] of [['codex', 'Import'], ['claude', 'ImportClaude']]) {
+  test(`an explicit ${target} link switches from the image page before starting its import`, async () => {
+    const panel = imagePanel({ state: 'ready', version: '0.9.6', key: 'masked' })
+    const app = panel.context.window.go.main.App
+    const key = `sk-${target}-fixture`
+    const result = { tone: 'success', message: '密钥已导入' }
+    let finish
+    app.ParseLink = async () => ({ ok: true, app: target, key })
+    app[method] = async (input) => {
+      panel.calls.push([target, input, vm.runInContext('tool', panel.context)])
+      return new Promise((resolve) => { finish = resolve })
+    }
+    app.ImportImage = async () => { panel.calls.push('image') }
+
+    vm.runInContext("enqueueLink('explicit-target')", panel.context)
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.deepEqual(panel.calls, [[target, key, target]])
+    finish(result)
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(vm.runInContext('tool', panel.context), target)
+    assert.equal(panel.element('notice-text').textContent, result.message)
+  })
+}
