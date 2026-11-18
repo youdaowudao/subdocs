@@ -135,6 +135,8 @@ test('keeps the GPT family models in the expected order', () => {
     assert.deepEqual(
       getTextModelsForGroup(groupId).map((model) => model.id),
       [
+        'gpt-6.2-astra',
+        'gpt-6.2-sol',
         'gpt-6-astra',
         'gpt-6.1-sol',
         'gpt-6.1-terra',

@@ -16,6 +16,8 @@ test('renders the 0.35 GPT VIP group with all model prices and the Astra cache o
   try {
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
     const expected = [
+      ['gpt-6.2-astra', ['¥2.80', '¥14.00', '¥0.14', '¥16.80']],
+      ['gpt-6.2-sol', ['¥0.70', '¥3.50', '¥0.035', '¥4.20']],
       ['gpt-6-astra', ['¥3.50', '¥17.50', '¥0.70', '¥21.00']],
       ['gpt-6.1-sol', ['¥0.70', '¥3.50', '¥0.035', '¥4.20']],
       ['gpt-6.1-terra', ['¥0.35', '¥1.75', '¥0.0175', '¥2.10']],
@@ -25,6 +27,11 @@ test('renders the 0.35 GPT VIP group with all model prices and the Astra cache o
       ['gpt-5.6-terra', ['¥0.70', '¥5.25', '¥0.0875', '¥5.95']],
       ['gpt-5.6-luna', ['¥0.35', '¥2.10', '¥0.035', '¥2.45']],
     ]
+    const officialPrices = new Map([
+      ['gpt-6.2-astra', ['¥56.00', '¥280.00', '¥2.80', '¥336.00']],
+      ['gpt-6.2-sol', ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
+      ['gpt-6-astra', ['¥70.00', '¥350.00', '¥7.00', '¥420.00']],
+    ])
 
     for (const priceMode of ['group', 'official']) {
       const component = {
@@ -52,15 +59,19 @@ test('renders the 0.35 GPT VIP group with all model prices and the Astra cache o
           assert.deepEqual(actual, amounts, id)
         }
       }
+      const legacyAstraIndex = expected.findIndex(([id]) => id === 'gpt-6-astra')
       if (priceMode === 'group') {
         const activeCard = html.match(/<button\b[^>]*class="[^"]*pricing-group-card[^"]*"[^>]*aria-pressed="true"[^>]*>[\s\S]*?<\/button>/)[0]
         assert.match(activeCard, /GPT VIP 分组/)
         assert.match(activeCard, /0\.35 倍率/)
-        assert.match(rows[0], /实测基准 \$2 × 0\.35/)
+        assert.match(rows[legacyAstraIndex], /实测基准 \$2 × 0\.35/)
       } else {
-        const astraPrices = [...rows[0].matchAll(/<strong class="official-price">([^<]+)</g)]
-          .map((match) => match[1])
-        assert.deepEqual(astraPrices, ['¥70.00', '¥350.00', '¥7.00', '¥420.00'])
+        for (const [id, amounts] of officialPrices) {
+          const row = rows.find((item) => item.includes('<strong>' + id + '</strong>'))
+          const actual = [...row.matchAll(/<strong class="official-price">([^<]+)</g)]
+            .map((match) => match[1])
+          assert.deepEqual(actual, amounts, id)
+        }
       }
     }
   } finally {
@@ -500,7 +511,7 @@ test('labels every GPT price cell so phone cards show input, output, cache and t
           .map(([row]) => row)
           .filter((row) => row.includes('class="model-id-cell"'))
 
-        assert.equal(rows.length, 8, `${groupId}/${priceMode}`)
+        assert.equal(rows.length, 10, `${groupId}/${priceMode}`)
         for (const row of rows) {
           const cells = [...row.matchAll(/<td class="pricing-cell-price" data-label="([^"]+)">([\s\S]*?)<\/td>/g)]
           assert.deepEqual(cells.map((match) => match[1]), labels, `${groupId}/${priceMode}`)

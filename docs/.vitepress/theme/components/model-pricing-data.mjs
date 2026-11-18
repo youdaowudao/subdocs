@@ -6,6 +6,8 @@ export const DEEPSEEK_PRICE_PERIODS = {
 }
 
 const GPT_MODEL_IDS = [
+  'gpt-6.2-astra',
+  'gpt-6.2-sol',
   'gpt-6-astra',
   'gpt-6.1-sol',
   'gpt-6.1-terra',
@@ -316,6 +318,20 @@ export const MODEL_CATEGORIES = [
 ]
 
 export const TEXT_MODELS = [
+  {
+    id: 'gpt-6.2-astra',
+    name: 'GPT-6.2 Astra',
+    description: '适合复杂推理、长程编程和专业文档任务',
+    // https://developers.openai.com/api/docs/models/gpt-6.2-astra
+    officialUsd: { input: 8, output: 40, cachedInput: 0.4 },
+  },
+  {
+    id: 'gpt-6.2-sol',
+    name: 'GPT-6.2 Sol',
+    description: '适合日常编程、写作和多步骤任务',
+    // https://developers.openai.com/api/docs/models/gpt-6.2-sol
+    officialUsd: { input: 2, output: 10, cachedInput: 0.1 },
+  },
   {
     id: 'gpt-6.1-sol',
     name: 'GPT-6.1 Sol',
