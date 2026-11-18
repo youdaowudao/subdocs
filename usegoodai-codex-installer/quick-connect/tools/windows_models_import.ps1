@@ -1,15 +1,6 @@
 ﻿param([Parameter(Mandatory=$true)][string]$Exe)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms, System.Drawing
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public static class ModelImportMouse {
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
-  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
-  [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
-}
-'@
 
 $exePath = (Resolve-Path -LiteralPath $Exe).Path
 $source = Join-Path $PSScriptRoot '../../install/codex-models.ps1'
@@ -25,27 +16,22 @@ $config = "model = `"gpt-6.1-sol`"`r`napproval_policy = `"never`"`r`n"
 $process = $null
 $launched = $null
 
-function Click-Text([string]$Text) {
+function Wait-Text([string]$Text) {
   $condition = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::NameProperty), $Text
   $deadline = (Get-Date).AddSeconds(25)
   do {
     $element = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
-    if ($null -ne $element) {
-      $bounds = $element.Current.BoundingRectangle
-      if (-not $bounds.IsEmpty) {
-        [ModelImportMouse]::SetForegroundWindow($process.MainWindowHandle) | Out-Null
-        [ModelImportMouse]::SetCursorPos([int]($bounds.X+$bounds.Width/2), [int]($bounds.Y+$bounds.Height/2)) | Out-Null
-        Start-Sleep -Milliseconds 100
-        [ModelImportMouse]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
-        [ModelImportMouse]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
-        Write-Host "已点击 $Text"
-        Start-Sleep -Milliseconds 250
-        return
-      }
-    }
+    if ($null -ne $element) { return $element }
     Start-Sleep -Milliseconds 200
   } until ((Get-Date) -gt $deadline)
   throw "窗口没有显示：$Text"
+}
+
+function Click-Text([string]$Text) {
+  $element = Wait-Text $Text
+  $pattern = $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+  $pattern.Invoke()
+  Write-Host "调用实际窗口按钮：$Text"
 }
 
 try {
@@ -62,6 +48,7 @@ try {
   if (-not $process) { throw '助手窗口没有启动' }
   $window = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
   Click-Text '导入国产模型'
+  Wait-Text '国产模型' | Out-Null
   Click-Text '导入国产模型'
   Click-Text '确认导入（会关闭 Codex）'
 

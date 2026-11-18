@@ -2,15 +2,6 @@
 param([Parameter(Mandatory=$true)][string]$Exe)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms, System.Drawing
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public static class ImageUpgradeMouse {
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
-  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
-  [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
-}
-'@
 $Repo = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 $Work = Join-Path $env:RUNNER_TEMP 'image-upgrade-window'
 New-Item -ItemType Directory -Force $Work | Out-Null
@@ -39,18 +30,9 @@ function Wait-Text($Root, [string]$Text) {
   throw "窗口未显示：$Text"
 }
 function Click($Element) {
-  # Bring the real window forward before pointer input. A WebView text
-  # provider's Invoke action can merely focus the parent on Server 2025.
-  [ImageUpgradeMouse]::SetForegroundWindow($process.MainWindowHandle) | Out-Null
-  Start-Sleep -Milliseconds 250
-  $bounds = $Element.Current.BoundingRectangle
-  if ($bounds.IsEmpty) { throw '控件无可点击位置' }
-  Write-Host "点击实际窗口：$($Element.Current.Name)"
-  [ImageUpgradeMouse]::SetCursorPos([int]($bounds.X+$bounds.Width/2), [int]($bounds.Y+$bounds.Height/2)) | Out-Null
-  Start-Sleep -Milliseconds 100
-  [ImageUpgradeMouse]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
-  Start-Sleep -Milliseconds 100
-  [ImageUpgradeMouse]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
+  $pattern = $Element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+  Write-Host "调用实际窗口按钮：$($Element.Current.Name)"
+  $pattern.Invoke()
 }
 function Screen([string]$Name) {
   $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
