@@ -78,12 +78,33 @@ jobs:
         shell: powershell
         run: ./usegoodai-codex-installer/quick-connect/tools/windows_models_import.ps1 -Exe docs/public/download/usegoodai-quick-connect-windows-x64.exe
 
+      - name: 在原生窗口验证画图链接、连点和凭据隔离
+        shell: powershell
+        working-directory: usegoodai-codex-installer/quick-connect
+        run: |
+          python -c "import build; build.bundle_image_tool('windows-amd64.exe'); build.bundle_models_script()"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:CGO_ENABLED = '0'
+          $testExe = Join-Path $env:RUNNER_TEMP 'test-image-import.exe'
+          go build -tags desktop,production,wv2runtime.browser -ldflags '-H windowsgui -X main.serviceBaseURL=http://127.0.0.1:19471' -o $testExe .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/windows_image_import.ps1 -Exe $testExe
+
       - name: 保存国产模型导入窗口记录
         if: always()
         uses: actions/upload-artifact@v5
         with:
           name: models-import-window-${{ matrix.os }}
           path: ${{ runner.temp }}/models-import-window/*.*
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: 保存画图导入窗口记录
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: image-import-window-${{ matrix.os }}
+          path: ${{ runner.temp }}/image-import-window/report.json
           if-no-files-found: ignore
           retention-days: 30
 

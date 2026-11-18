@@ -22,6 +22,9 @@ import (
 // link to it.
 const singleInstanceID = "usegoodai-quick-connect-5c0f2a7e"
 
+// Native UI tests set this at link time in their isolated test build.
+var serviceBaseURL = connect.BaseURL
+
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--claude-connect" {
 		os.Exit(runClaudeCommand(os.Stdin, os.Stdout))
@@ -63,7 +66,7 @@ func runWindow(eventName string) {
 	imageHome, _ := connect.ImageCodexHome()
 	service := &connect.Service{
 		CodexHome:   codexHome,
-		BaseURL:     connect.BaseURL,
+		BaseURL:     serviceBaseURL,
 		Client:      connect.NewHTTPClient(),
 		Now:         time.Now,
 		StopClients: connect.StopClients,
