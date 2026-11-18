@@ -95,7 +95,15 @@ function Start-UseGoodAIClaudeConnect {
       $process.Dispose()
     }
     if ($temporaryDirectory -and (Test-Path -LiteralPath $temporaryDirectory)) {
-      Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force -ErrorAction SilentlyContinue
+      for ($attempt = 0; $attempt -lt 5; $attempt++) {
+        try {
+          Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force -ErrorAction Stop
+          break
+        } catch {
+          if (-not (Test-Path -LiteralPath $temporaryDirectory)) { break }
+          if ($attempt -lt 4) { Start-Sleep -Milliseconds 250 }
+        }
+      }
     }
   }
 }

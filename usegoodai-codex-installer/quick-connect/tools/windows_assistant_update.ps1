@@ -6,6 +6,7 @@ Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class UpdateWindowMouse {
+    [DllImport("user32.dll")] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern void mouse_event(int flags, int x, int y, int data, UIntPtr extra);
@@ -56,7 +57,19 @@ function Find-Text($Process, [string]$Name) {
 
 function Click-Text($Process, [string]$Name) {
   $button = Find-Text $Process $Name
-  if (-not $button -or $button.Current.BoundingRectangle.IsEmpty) { throw "未找到按钮：$Name" }
+  if (-not $button) { throw "未找到按钮：$Name" }
+  $pattern = $null
+  if ($button.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$pattern)) {
+    try { $pattern.Invoke() } catch {}
+    for ($attempt = 0; $attempt -lt 10; $attempt++) {
+      Start-Sleep -Milliseconds 200
+      $stillIdle = Find-Text (Window-Process $Process.Path) $Name
+      if (-not $stillIdle -or -not $stillIdle.Current.IsEnabled) { return }
+    }
+    $button = $stillIdle
+  }
+  if ($button.Current.BoundingRectangle.IsEmpty) { throw "按钮没有可点击位置：$Name" }
+  [UpdateWindowMouse]::SetThreadDpiAwarenessContext([IntPtr](-4)) | Out-Null
   [UpdateWindowMouse]::SetForegroundWindow($Process.MainWindowHandle) | Out-Null
   Start-Sleep -Milliseconds 200
   $bounds = $button.Current.BoundingRectangle
@@ -85,7 +98,7 @@ try {
   $bytes = [IO.File]::ReadAllBytes($program)
   $bytes[0] = $bytes[0] -bxor 1
   [IO.File]::WriteAllBytes($download, $bytes)
-  $server = Start-Process -FilePath 'python' -ArgumentList @('-m','http.server','19473','--bind','127.0.0.1','--directory',"`"$serve`"") -PassThru
+  $server = Start-Process -FilePath 'python' -ArgumentList @('-m','http.server','19473','--bind','127.0.0.1','--directory',"`"$serve`"") -RedirectStandardError (Join-Path $work 'download-server.log') -PassThru
   Wait-For {
     try {
       (Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 -Uri "http://127.0.0.1:19473/$([IO.Path]::GetFileName($manifestPath))").StatusCode -eq 200
