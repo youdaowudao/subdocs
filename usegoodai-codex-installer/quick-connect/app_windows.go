@@ -164,3 +164,5 @@ func (a *App) CopyGroupNumber() bool {
 func (a *App) JoinGroup() { runtime.BrowserOpenURL(a.ctx, connect.QQGroupURL) }
 
 func (a *App) OpenSite() { runtime.BrowserOpenURL(a.ctx, connect.OfficialSite) }
+
+func (a *App) OpenAPIKeys() { runtime.BrowserOpenURL(a.ctx, connect.OfficialSite+"/keys") }

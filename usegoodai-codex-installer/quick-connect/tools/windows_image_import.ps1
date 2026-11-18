@@ -8,6 +8,8 @@ New-Item -ItemType Directory -Force $homePath | Out-Null
 $originalHome = $env:CODEX_HOME
 $originalArguments = $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
 $authPath = Join-Path $homePath 'auth.json'
+$toolDir = Join-Path $homePath 'tools/usegoodai-imagines-tool'
+$skillPath = Join-Path $homePath 'skills/usegoodai-image-generation/SKILL.md'
 $keyPath = Join-Path $homePath 'tools/usegoodai-imagines-tool/api-key'
 $log = Join-Path $work 'imports.txt'
 $hold = Join-Path $work 'hold'
@@ -44,7 +46,7 @@ function Verify-Result([int]$Count, [string]$Case) {
   Wait-For {
     $names = @(Window-Names)
     @($names | Where-Object { $_ -like '画图密钥已导入*' }).Count -gt 0 -and
-      @($names | Where-Object { $_ -like 'V0.9.6 已安装*' }).Count -gt 0
+      @($names | Where-Object { $_ -like 'V0.9.7 已安装*' }).Count -gt 0
   } "显示画图成功和工具状态 $Case"
   if ((Get-FileHash -LiteralPath $authPath).Hash -ne $authHash) { throw "Codex 凭据被改写 $Case" }
   if ([IO.File]::ReadAllText($keyPath).Trim() -cne 'sk-picture-test-fixture') { throw "画图凭据错误 $Case" }
@@ -76,13 +78,20 @@ try {
 
   Start-Process -FilePath $exePath -ArgumentList 'usegoodai://import?v=2&app=codex&key=sk-unaccepted-codex-fixture'
   Wait-For { @(Window-Names) -contains 'Codex 状态' } '从生图页切到 Codex'
+  Wait-For { @(Window-Names) -contains '在中转站「API 密钥」页选择编程分组的密钥，点「一键导入 Codex」。' } 'Codex 接入步骤'
   Start-Process -FilePath $exePath -ArgumentList $link
   Verify-Result 4 '从 Codex 切回生图'
   Start-Process -FilePath $exePath -ArgumentList 'usegoodai://import?v=1&app=claude&key=sk-unaccepted-claude-fixture'
   Wait-For { @(Window-Names) -contains 'Claude 桌面版' } '从生图页切到 Claude'
+  Wait-For { @(Window-Names) -contains '在中转站「API 密钥」页选择 Claude 分组的密钥，点「一键导入 Claude」。连接后重新打开 Claude。' } 'Claude 接入步骤'
   if ((Get-FileHash -LiteralPath $authPath).Hash -ne $authHash) { throw '拒绝的链接改写了 Codex 凭据' }
   if ([IO.File]::ReadAllText($keyPath).Trim() -cne 'sk-picture-test-fixture') { throw '切换工具改写了画图凭据' }
-  @{cases=6; image_imports=4; switched_to=@('codex','claude'); codex_auth_unchanged=$true; network='loopback mock'} |
+  if (-not (Test-Path -LiteralPath $skillPath)) { throw '首轮安装没有写入 Skill' }
+  Move-Item -LiteralPath $toolDir -Destination (Join-Path $work 'removed-tool')
+  Start-Process -FilePath $exePath -ArgumentList $link
+  Verify-Result 5 '删掉工具目录后保留 Skill 并重新导入'
+  if (-not (Test-Path -LiteralPath (Join-Path $toolDir 'install-manifest.json'))) { throw '安装记录未恢复' }
+  @{cases=7; image_imports=5; switched_to=@('codex','claude'); codex_auth_unchanged=$true; repaired_skill_only=$true; network='loopback mock'} |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $work 'report.json') -Encoding UTF8
 } finally {
   if ($gateway -and -not $gateway.HasExited) { Stop-Process -Id $gateway.Id -Force }

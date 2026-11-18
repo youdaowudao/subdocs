@@ -21,7 +21,7 @@ import threading
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "docs/public/install/usegoodai-imagines-tool"
 CURRENT = json.loads((PUBLIC / "latest.json").read_text())['version']
-PREVIOUS = "0.9.5"
+PREVIOUS = "0.9.6"
 SYSTEM = {"Windows": "windows", "Darwin": "darwin", "Linux": "linux"}[platform.system()]
 ARCH = "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "amd64"
 SUFFIX = ".exe" if SYSTEM == "windows" else ""
@@ -154,6 +154,31 @@ def main():
                                              "corrupt_download_rollback_and_retry": "passed",
                                              "upgrade_without_input": "passed", "cached_repeat": "passed",
                                              "key_and_unrelated_config_preserved": "passed"})
+
+            # Reproduce a user deleting the tool directory while keeping the
+            # official Skill installed by the previous released program.
+            home = work / "删掉工具 保留 Skill"
+            env["CODEX_HOME"] = str(home)
+            home.mkdir()
+            auth = home / "auth.json"
+            auth.write_bytes(b'{"OPENAI_API_KEY":"synthetic-programming-key"}\n')
+            run([str(previous), "install", "--key-stdin"], env, input="old-image-key\n")
+            skill = home / "skills/usegoodai-image-generation/SKILL.md"
+            assert skill.is_file()
+            tool = home / "tools/usegoodai-imagines-tool"
+            tool.rename(work / "removed-previous-tool")
+            original = snapshot(home)
+            failed = run([str(previous), "install", "--key-stdin"], env, input="new-image-key\n", success=False)
+            assert "目标目录无法确认由本工具管理" in failed, failed
+            assert snapshot(home) == original
+            for _ in range(2):
+                run([str(candidate), "install", "--key-stdin"], env, input="new-image-key\n")
+                assert skill.is_file() and not skill.read_bytes().count(b"{{USEGOODAI_IMAGE_TOOL}}")
+                assert json.loads((tool / "install-manifest.json").read_text())["version"] == CURRENT
+                assert digest(tool / f"usegoodai-imagines-tool{SUFFIX}") == digest(candidate)
+                assert (tool / "api-key").read_text() == "new-image-key"
+                assert auth.read_bytes() == original["auth.json"]
+            report["recover_leftover_skill"] = "passed: prior release reproduced the failure, current release repaired and re-imported"
 
             # First install asks at most once. Empty input never loops or fails.
             env["CODEX_HOME"] = str(work / "首次 空输入")

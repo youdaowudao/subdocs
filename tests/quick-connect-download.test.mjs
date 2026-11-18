@@ -135,8 +135,9 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
   assert.deepEqual(windowsFiles.sort(), [`Windows-x64/1.${product}.exe`, 'Windows-x64/使用说明.txt'].sort())
   const window = entries.get(`Windows-x64/1.${product}.exe`).body
   assert.deepEqual(window, await readFile(new URL(`docs/public/download/${exeName}`, root)))
-  const release = 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.6/'
-  const nativeWindows = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.6-windows-amd64.exe`, root))
+  const imageVersion = JSON.parse(await readFile(new URL('docs/public/install/usegoodai-imagines-tool/latest.json', root), 'utf8')).version
+  const release = `docs/public/install/usegoodai-imagines-tool/releases/v${imageVersion}/usegoodai-imagines-tool-v${imageVersion}`
+  const nativeWindows = await readFile(new URL(`${release}-windows-amd64.exe`, root))
   assert.ok(window.includes(nativeWindows), 'the single Windows GUI embeds the current native image tool')
 
   const macApps = [...new Set([...entries.keys()].flatMap((name) => {
@@ -149,11 +150,10 @@ test('tool-set download keeps Windows in one GUI and bundles the current image t
     await readFile(new URL('docs/public/install/codex.sh', root)),
     'the bundled Mac assistant runs the published installer',
   )
-  const nativeMac = await readFile(new URL(`${release}usegoodai-imagines-tool-v0.9.6-darwin-arm64`, root))
+  const nativeMac = await readFile(new URL(`${release}-darwin-arm64`, root))
   assert.deepEqual(entries.get('Mac-Apple芯片/2.UseGoodAI生图工具.app/Contents/Resources/tool').body, nativeMac)
   const helperSource = await readFile(new URL('usegoodai-codex-installer/quick-connect/connect/product.go', root), 'utf8')
   const helperVersion = helperSource.match(/MacVersion\s+=\s+"([\d.]+)"/)[1]
-  const imageVersion = JSON.parse(await readFile(new URL('docs/public/install/usegoodai-imagines-tool/latest.json', root), 'utf8')).version
   for (const [app, version] of [[`1.${product}.app`, helperVersion], ['2.UseGoodAI生图工具.app', imageVersion]]) {
     const plist = entries.get(`Mac-Apple芯片/${app}/Contents/Info.plist`).body.toString('utf8')
     for (const field of ['CFBundleShortVersionString', 'CFBundleVersion']) {

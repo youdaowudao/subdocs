@@ -25,7 +25,8 @@ svg{flex:none}
 
 .flow{position:fixed;top:0;right:0;width:100%;height:220px;pointer-events:none;opacity:.5}
 
-.shell{position:relative;height:100%;display:flex;flex-direction:column;padding:20px 18px 12px}
+.shell{position:relative;height:100%;display:flex;flex-direction:column;padding:20px 18px 12px;overflow-y:auto}
+.shell > *{flex-shrink:0}
 
 /* 品牌 */
 .brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}
@@ -33,6 +34,14 @@ svg{flex:none}
 .brand h1{font-size:23px;line-height:1.1;font-weight:800;letter-spacing:-.02em}
 .good{background:var(--brand);-webkit-background-clip:text;background-clip:text;color:transparent}
 .brand p{margin-top:3px;font-size:13px;color:var(--muted);letter-spacing:.04em}
+
+/* 接入用途和网站入口 */
+.page-intro{margin-bottom:12px;padding:10px 13px 11px;border:1px solid var(--accent-line,#bce1dd);border-radius:13px;background:rgba(255,255,255,.66)}
+.page-intro[hidden]{display:none}
+.page-intro h2{font-size:16px;line-height:1.4}
+.page-intro p{margin-top:4px;color:var(--muted);font-size:13px;line-height:1.5}
+.site-entry{margin-top:7px;padding:3px 0;border:0;background:none;color:var(--primary-ink);font-size:13px;font-weight:700;text-align:left}
+.site-entry:hover{text-decoration:underline;text-underline-offset:3px}
 
 /* Codex 状态 */
 .status{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
@@ -120,17 +129,21 @@ footer{margin-top:12px}
 .status{padding:10px 14px}
 .text[hidden],.tip-anchor[hidden]{display:none}
 
-/* 其他工具入口：安静的小按钮，放在中下部，不抢主按钮 */
+/* 其他工具入口 */
 .tools{margin-top:auto;display:flex;gap:8px;padding-top:12px}
-.tool-entry{flex:1;min-width:0;height:34px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.55);display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap;transition:border-color .2s,background .2s,color .2s}
-.tool-entry span:not(.tool-dot){overflow:hidden;text-overflow:ellipsis}
+.tool-entry{flex:1;min-width:0;padding:9px 10px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.72);display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;color:var(--fg);transition:border-color .2s,background .2s}
 .tool-entry[hidden]{display:none}
-.tool-entry:hover:not(:disabled){background:rgba(255,255,255,.9);color:var(--fg)}
+.tool-entry:hover:not(:disabled){background:#fff}
 .tool-entry:disabled{opacity:.5}
 .tool-entry svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.tool-dot{width:7px;height:7px;border-radius:50%;background:#cbd2dc;flex:none}
-.tool-entry[data-state="done"] .tool-dot{background:#10b981}
-.tool-entry[data-state="attention"] .tool-dot{background:#f59e0b}
+.tool-heading{display:flex;align-items:center;gap:6px;font-size:13.5px;line-height:1.4}
+.tool-description{color:var(--muted);font-size:12px;line-height:1.45}
+.tool-state{margin-top:auto;padding:1px 6px;border-radius:5px;background:#edf1f5;color:#4b596d;font-size:11.5px;font-weight:650;line-height:1.5}
+.tool-entry[data-state="done"] .tool-state{background:#e6f7ef;color:#087151}
+.tool-entry[data-state="attention"] .tool-state{background:#fff2dd;color:#8b4a10}
+.tool-back{flex-direction:row;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted)}
+#go-image svg{color:#7c3aed}
+#go-models svg{color:#b45309}
 #go-image:hover:not(:disabled){border-color:#a78bfa}
 #go-models:hover:not(:disabled){border-color:#fbbf24}
 #go-codex:hover:not(:disabled){border-color:#14b8a6}
@@ -201,6 +214,5 @@ footer{margin-top:12px}
 .shell[data-tool="claude"] .status[data-state="ok"] .status-icon{background:rgba(217,119,87,.14);color:#c2643f}
 .shell[data-tool="claude"] .status[data-state="other"] .status-icon{background:rgba(245,158,11,.15);color:#d97706}
 .shell[data-tool="claude"] .status-name{color:#a34e2d}
-.notice[data-tone="claude"]{background:linear-gradient(135deg,rgba(217,119,87,.10),rgba(232,161,122,.06));border-color:rgba(194,100,63,.32);color:#8a3f22;--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22Zm-1 5h2v2h-2Zm0 4h2v8h-2Z'/%3E%3C/svg%3E")}
 #go-claude:hover:not(:disabled){border-color:#d97757}
 .status-text code.hint{font:12px/1.4 "Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif}

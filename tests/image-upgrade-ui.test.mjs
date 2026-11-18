@@ -61,6 +61,25 @@ test('an installed newer version is shown as preserved instead of offered a down
   assert.equal(vm.runInContext('imageGuide()', panel.context).includes('不降级'), true)
 })
 
+test('Codex and Claude show the website import guide above the manual fallback', () => {
+  const panel = imagePanel({ state: 'outdated', updateAvailable: true });
+  const run = (code) => vm.runInContext(code, panel.context);
+  run("state.models = { state: 'inactive' }; setTool('codex')");
+  assert.equal(panel.element('page-title').textContent, '将 Codex 接入 UseGoodAI');
+  assert.match(panel.element('page-steps').textContent, /编程分组.*一键导入 Codex/);
+  assert.equal(panel.element('go-image-state').textContent, '可更新');
+  assert.equal(panel.element('go-models-state').textContent, '需重新导入');
+  assert.equal(panel.element('tools').hidden, false);
+
+  run("setTool('claude')");
+  assert.equal(panel.element('page-title').textContent, '将 Claude 桌面版接入 UseGoodAI');
+  assert.match(panel.element('page-steps').textContent, /Claude 分组.*一键导入 Claude/);
+  assert.equal(panel.element('tools').hidden, true);
+
+  run("setTool('image')");
+  assert.equal(panel.element('page-intro').hidden, true);
+})
+
 test('website image import stays on the image page and merges clicks in progress', async () => {
   const panel = imagePanel({ state: 'none' })
   const run = (code) => vm.runInContext(code, panel.context)

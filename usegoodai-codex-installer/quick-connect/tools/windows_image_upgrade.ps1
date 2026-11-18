@@ -15,7 +15,7 @@ $Repo = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 $Work = Join-Path $env:RUNNER_TEMP 'image-upgrade-window'
 New-Item -ItemType Directory -Force $Work | Out-Null
 $Candidate = (Get-Content -LiteralPath (Join-Path $Repo 'docs/public/install/usegoodai-imagines-tool/latest.json') -Raw | ConvertFrom-Json).version
-$Previous = Join-Path $Repo 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.5/usegoodai-imagines-tool-v0.9.5-windows-amd64.exe'
+$Previous = Join-Path $Repo 'docs/public/install/usegoodai-imagines-tool/releases/v0.9.6/usegoodai-imagines-tool-v0.9.6-windows-amd64.exe'
 $OriginalHome = $env:CODEX_HOME
 $OriginalBrowserArguments = $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--force-renderer-accessibility'
@@ -85,8 +85,14 @@ try {
       } until ($process -or (Get-Date) -gt $deadline)
       if (-not $process) { throw '助手窗口超时' }
       $window = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
-      Click (Wait-Text $window '生图工具（可更新）')
-      $title = "V0.9.5 已安装，可更新到 V$Candidate"
+      Wait-Text $window '将 Codex 接入 UseGoodAI' | Out-Null
+      Wait-Text $window '前往中转站的 API 密钥页' | Out-Null
+      Wait-Text $window '用画图分组的密钥，在 Codex 里生成图片。' | Out-Null
+      Wait-Text $window '把国产模型加入 Codex 的模型菜单，无需额外密钥。' | Out-Null
+      Wait-Text $window '可更新' | Out-Null
+      Screen "codex-$KeyState"
+      Click (Wait-Text $window 'Codex 生图工具')
+      $title = "V0.9.6 已安装，可更新到 V$Candidate"
       if ($KeyState -eq 'missing') { $title += '，尚未配置 Key' }
       Wait-Text $window $title | Out-Null
       Screen "before-$KeyState"

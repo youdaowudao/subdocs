@@ -8,7 +8,7 @@ on:
   push:
     branches: [actions-test]
     paths:
-      - docs/public/install/usegoodai-imagines-tool/releases/v0.9.6/**
+      - docs/public/install/usegoodai-imagines-tool/releases/v0.9.7/**
       - docs/public/install/usegoodai-imagines-tool/latest.json
       - tests/image-progress-codex.py
       - .github/workflows/image-progress.yml
@@ -50,7 +50,7 @@ jobs:
         shell: cmd
         env:
           PYTHONUTF8: '1'
-        run: python tests/image-progress-codex.py --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.6/usegoodai-imagines-tool-v0.9.6-windows-amd64.exe ${{ matrix.args }}
+        run: python tests/image-progress-codex.py --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.7/usegoodai-imagines-tool-v0.9.7-windows-amd64.exe ${{ matrix.args }}
       - name: 保留验证记录
         if: always()
         uses: actions/upload-artifact@v5
@@ -74,7 +74,7 @@ jobs:
       - name: 安装测试证书依赖
         run: python3 -m pip install cryptography==44.0.0
       - name: 官方 App 后端按 Skill 运行生图工具（四种返回情况）
-        run: python3 tests/image-progress-codex.py --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.6/usegoodai-imagines-tool-v0.9.6-darwin-arm64
+        run: python3 tests/image-progress-codex.py --tool docs/public/install/usegoodai-imagines-tool/releases/v0.9.7/usegoodai-imagines-tool-v0.9.7-darwin-arm64
       - name: 保留验证记录
         if: always()
         uses: actions/upload-artifact@v5

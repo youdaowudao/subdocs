@@ -8,14 +8,15 @@ const removeButton = $('remove-models');
 const shell = $('shell');
 
 // One panel, four tools. Codex and Claude are the two main ones, picked by
-// the tabs at the top; Codex is the default. The image tool and the domestic
-// model import are reached from small entries lower down. All of them reuse
-// the same card, field and button.
+// the tabs at the top; Codex is the default. The image tool and domestic
+// model import share the same status card, form and primary button.
 const TOOLS = {
   codex: {
     label: 'Codex 状态',
+    title: '将 Codex 接入 UseGoodAI',
+    steps: '在中转站「API 密钥」页选择编程分组的密钥，点「一键导入 Codex」。',
     button: '一键连接 Codex',
-    placeholder: '粘贴 API Key，或在网站点「一键导入」',
+    placeholder: '也可以粘贴编程分组的 API Key',
     restoreTip: '取消中转站连接：Codex 改回用 OpenAI 官方账号登录，并关闭正在运行的 Codex。',
   },
   image: {
@@ -27,10 +28,10 @@ const TOOLS = {
   },
   claude: {
     label: 'Claude 桌面版',
+    title: '将 Claude 桌面版接入 UseGoodAI',
+    steps: '在中转站「API 密钥」页选择 Claude 分组的密钥，点「一键导入 Claude」。连接后重新打开 Claude。',
     button: '一键连接 Claude',
-    placeholder: '粘贴 API Key，或在网站点「一键导入 Claude」',
-    tag: '现在连接的是：Claude 桌面版',
-    guide: '写入这把密钥能用的全部 Claude 模型（Fable、Opus、Sonnet、Haiku），连接时会先关闭 Claude。',
+    placeholder: '也可以粘贴 Claude 分组的 API Key',
     restoreTip: '取消中转站连接：Claude 改回用 Anthropic 官方账号登录，并关闭正在运行的 Claude。',
   },
   models: {
@@ -145,22 +146,21 @@ function renderCard() {
   $('status-key').classList.toggle('hint', Boolean(card.download));
 }
 
-// The entries say what is already done, so nobody installs twice by mistake.
+// Keep the name and purpose stable while the status changes.
 function renderEntries() {
   const image = state.image || { state: 'none' };
-  const imageLabels = {
-    ready: '生图工具（已安装）',
-    outdated: '生图工具（可更新）',
-    nokey: '生图工具（缺少 Key）',
+  const imageStates = {
+    ready: '已安装',
+    outdated: '可更新',
+    nokey: '缺少画图密钥',
+    unmanaged: '版本待确认',
   };
-  $('go-image-label').textContent = image.updateAvailable ? '生图工具（可更新）' : imageLabels[image.state] || '安装生图工具';
-  $('go-image').dataset.state = image.state === 'ready' ? 'done' : image.state === 'none' ? '' : 'attention';
+  $('go-image-state').textContent = image.updateAvailable ? '可更新' : imageStates[image.state] || '未安装';
+  $('go-image').dataset.state = image.state === 'ready' && !image.updateAvailable ? 'done' : image.state === 'none' ? '' : 'attention';
 
   const models = state.models || { state: 'none' };
-  let modelsLabel = '导入国产模型';
-  if (models.state === 'active') modelsLabel = '国产模型（已导入）';
-  else if (models.state === 'inactive') modelsLabel = '国产模型（需重新导入）';
-  $('go-models-label').textContent = modelsLabel;
+  const modelsStates = { active: '已导入', inactive: '需重新导入' };
+  $('go-models-state').textContent = modelsStates[models.state] || '未导入';
   $('go-models').dataset.state = models.state === 'active' ? 'done' : models.state === 'inactive' ? 'attention' : '';
 
   // The image tool and the domestic models belong to Codex, so the Claude
@@ -228,6 +228,12 @@ function idleLabel() {
 function render() {
   renderCard();
   renderEntries();
+  const page = TOOLS[tool];
+  $('page-intro').hidden = !page.title;
+  if (page.title) {
+    $('page-title').textContent = page.title;
+    $('page-steps').textContent = page.steps;
+  }
   if (!busy) $('connect-label').textContent = idleLabel();
   keyInput.placeholder = tool === 'image' && savedImageKey() ? '已有密钥；要换密钥才粘贴新的' : TOOLS[tool].placeholder || '';
   connectButton.classList.toggle('confirm', confirming === 'import');
@@ -301,7 +307,7 @@ function setTool(next) {
   shell.classList.add('activating');
   setTimeout(() => shell.classList.remove('activating'), 950);
   render();
-  if (tool === 'codex') {
+  if (tool === 'codex' || tool === 'claude') {
     $('notice').hidden = true;
   } else {
     const openSite = tool === 'image' && !savedImageKey() ? 'open-site' : '';
@@ -521,6 +527,7 @@ $('copy-qq').addEventListener('click', async (event) => {
 $('notice-action').addEventListener('click', () => bridge().OpenSite());
 $('join-qq').addEventListener('click', () => bridge().JoinGroup());
 $('open-site').addEventListener('click', () => bridge().OpenSite());
+$('open-api-keys').addEventListener('click', () => bridge().OpenAPIKeys());
 
 window.addEventListener('focus', fillFromClipboard);
 document.addEventListener('visibilitychange', () => {
