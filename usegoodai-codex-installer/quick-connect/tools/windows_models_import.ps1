@@ -24,7 +24,7 @@ function Evaluate-WebView([string]$Expression) {
   $timeout = [Threading.CancellationTokenSource]::new(10000)
   $message = [IO.MemoryStream]::new()
   try {
-    $webview.SendAsync([ArraySegment[byte]]::new($request), [Net.WebSockets.WebSocketMessageType]::Text, $true, $timeout.Token).GetAwaiter().GetResult()
+    $webview.SendAsync([ArraySegment[byte]]::new($request), [Net.WebSockets.WebSocketMessageType]::Text, $true, $timeout.Token).GetAwaiter().GetResult() | Out-Null
     $buffer = [byte[]]::new(4096)
     do {
       $chunk = $webview.ReceiveAsync([ArraySegment[byte]]::new($buffer), $timeout.Token).GetAwaiter().GetResult()
@@ -67,14 +67,14 @@ try {
   $desktopPage = $null
   Wait-For {
     try {
-      $script:desktopPage = Invoke-RestMethod -Uri 'http://127.0.0.1:19478/json/list' -TimeoutSec 2 |
+      $script:desktopPage = (Invoke-RestMethod -Uri 'http://127.0.0.1:19478/json/list' -TimeoutSec 2) |
         Where-Object { $_.type -eq 'page' -and $_.webSocketDebuggerUrl } | Select-Object -First 1
       $null -ne $desktopPage
     } catch { $false }
   } '实际助手窗口的 WebView2'
   $webview = New-Object Net.WebSockets.ClientWebSocket
   $connectTimeout = [Threading.CancellationTokenSource]::new(10000)
-  try { $webview.ConnectAsync([Uri]$desktopPage.webSocketDebuggerUrl, $connectTimeout.Token).GetAwaiter().GetResult() }
+  try { $webview.ConnectAsync([Uri]$desktopPage.webSocketDebuggerUrl, $connectTimeout.Token).GetAwaiter().GetResult() | Out-Null }
   finally { $connectTimeout.Dispose() }
   Wait-For { Evaluate-WebView 'document.querySelector("#status")?.dataset.state !== "loading" && Boolean(document.querySelector("#go-models")?.offsetWidth)' } 'Codex 工具入口显示'
   Evaluate-WebView 'document.querySelector("#go-models").click()' | Out-Null
