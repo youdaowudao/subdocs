@@ -97,13 +97,30 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$RUNNER_TEMP/codex-test-backend"
-          curl -fSL --retry 2 https://github.com/openai/codex/releases/download/rust-v0.165.0/codex-x86_64-unknown-linux-musl.tar.gz -o "$RUNNER_TEMP/codex-test-backend/codex.tar.gz"
+          curl -fSL --retry 2 https://github.com/openai/codex/releases/download/rust-v0.170.0/codex-x86_64-unknown-linux-musl.tar.gz -o "$RUNNER_TEMP/codex-test-backend/codex.tar.gz"
           tar -xzf "$RUNNER_TEMP/codex-test-backend/codex.tar.gz" -C "$RUNNER_TEMP/codex-test-backend"
           echo "TEST_CODEX=$RUNNER_TEMP/codex-test-backend/codex-x86_64-unknown-linux-musl" >> "$GITHUB_ENV"
           echo "TEST_NODE=$(command -v node)" >> "$GITHUB_ENV"
           echo "TEST_PWSH=$(command -v pwsh)" >> "$GITHUB_ENV"
       - name: Linux、PowerShell、备份恢复、重复导入与卸载
         run: python3 usegoodai-codex-installer/codex-domestic-models/tests/test_models.py
+      - name: 旧版 Codex 模型选择器
+        shell: bash
+        run: |
+          for version in 0.162.1 0.165.0; do
+            dir="$RUNNER_TEMP/codex-$version"
+            mkdir -p "$dir"
+            curl -fSL --retry 2 "https://github.com/openai/codex/releases/download/rust-v$version/codex-x86_64-unknown-linux-musl.tar.gz" | tar -xz -C "$dir"
+          done
+          mkdir -p "$RUNNER_TEMP/previous-models"
+          for ext in sh ps1; do
+            curl -fSL --retry 2 "https://raw.githubusercontent.com/youdaowudao/subdocs/b75b86296102cf6930c3900fe0c1154778e5c4a6/usegoodai-codex-installer/codex-domestic-models/install/codex-models.$ext" -o "$RUNNER_TEMP/previous-models/codex-models.$ext"
+          done
+          python3 usegoodai-codex-installer/codex-domestic-models/tests/test_legacy_picker.py \
+            --codex "$RUNNER_TEMP/codex-0.162.1/codex-x86_64-unknown-linux-musl" \
+            --codex "$RUNNER_TEMP/codex-0.165.0/codex-x86_64-unknown-linux-musl" \
+            --old-script "$RUNNER_TEMP/previous-models/codex-models.sh" \
+            --old-script "$RUNNER_TEMP/previous-models/codex-models.ps1"
 
   published-files:
     name: 发布文件检查

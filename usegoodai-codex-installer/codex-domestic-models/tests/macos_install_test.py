@@ -16,6 +16,8 @@ import tomllib
 import xml.etree.ElementTree as ET
 import zipfile
 
+from test_legacy_picker import NEW_MODELS, picker
+
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parents[1]
@@ -259,6 +261,10 @@ def main():
         result = execute('shipped-app-runner', ['/bin/bash', str(runner)], env=environment(home), input='\n')
         require(result.returncode == 0, 'Shipped app terminal runner failed')
         verify_import(home, backend)
+        visible = [row['id'] for row in picker(backend, home)]
+        managed = json.loads((home / 'usegoodai-models.managed.json').read_text())
+        require(all(visible.count(slug) == 1 for slug in [*NEW_MODELS, *managed]),
+                'The official App backend picker is missing or duplicating GPT-6.2 or a domestic model')
     check('delivered third app runs the candidate installer', shipped_app)
 
     (REPORT / 'checks.json').write_text(json.dumps(CHECKS, ensure_ascii=False, indent=2))

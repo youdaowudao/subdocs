@@ -74,6 +74,19 @@ jobs:
         shell: powershell
         run: ./usegoodai-codex-installer/quick-connect/tools/windows_image_upgrade.ps1 -Exe docs/public/download/usegoodai-quick-connect-windows-x64.exe
 
+      - name: 实际点击国产模型导入并核对内置脚本
+        shell: powershell
+        run: ./usegoodai-codex-installer/quick-connect/tools/windows_models_import.ps1 -Exe docs/public/download/usegoodai-quick-connect-windows-x64.exe
+
+      - name: 保存国产模型导入窗口记录
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: models-import-window-${{ matrix.os }}
+          path: ${{ runner.temp }}/models-import-window/*.*
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: 保存生图升级窗口记录
         if: always()
         uses: actions/upload-artifact@v5

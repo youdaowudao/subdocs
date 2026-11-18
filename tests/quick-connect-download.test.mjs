@@ -79,6 +79,16 @@ test('Windows download is the x64 GUI helper under 25 MiB', async () => {
   assert.equal(data.readUInt16LE(pe + 4), 0x8664)
   assert.equal(data.readUInt16LE(pe + 24 + 68), 2)
   assert.ok(data.includes(Buffer.from(product, 'utf16le')), 'version resource names the product')
+  const helper = await readFile(new URL('usegoodai-codex-installer/quick-connect/connect/product.go', root), 'utf8')
+  const version = helper.match(/\bVersion\s+=\s+"([\d.]+)"/)[1]
+  assert.ok(data.includes(Buffer.from(version + '\0', 'utf16le')), 'version resource agrees with helper source')
+  const upstream = await readFile(new URL('usegoodai-codex-installer/install/codex-models.ps1', root))
+  const source = await readFile(new URL('usegoodai-codex-installer/codex-domestic-models/install/codex-models.ps1', root))
+  const published = await readFile(new URL('docs/public/install/codex-models.ps1', root))
+  assert.deepEqual(upstream, source)
+  assert.deepEqual(upstream.subarray(0, 3), Buffer.from([0xef, 0xbb, 0xbf]))
+  assert.deepEqual(published, upstream.subarray(3))
+  assert.ok(data.includes(upstream), 'Windows assistant embeds the exact PowerShell installer')
 })
 
 test('Mac download is the zipped app with the published codex.sh', async () => {
