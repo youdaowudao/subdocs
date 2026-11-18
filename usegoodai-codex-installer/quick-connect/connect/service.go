@@ -164,11 +164,12 @@ func (s *Service) Connect(ctx context.Context, raw, name string) Result {
 
 // LinkResult is a parsed link, or the message to show when it is rejected.
 type LinkResult struct {
-	OK     bool   `json:"ok"`
-	App    string `json:"app"`
-	Key    string `json:"key"`
-	Name   string `json:"name"`
-	Result Result `json:"result"`
+	OK          bool   `json:"ok"`
+	App         string `json:"app"`
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	NeedsTarget bool   `json:"needsTarget"`
+	Result      Result `json:"result"`
 }
 
 // ParseLink checks an import link before the window starts the connection.
@@ -176,7 +177,7 @@ func (s *Service) ParseLink(raw string) LinkResult {
 	link, problem := ParseImportLink(raw)
 	switch problem {
 	case LinkOK:
-		return LinkResult{OK: true, App: link.App, Key: link.Key, Name: link.Name}
+		return LinkResult{OK: true, App: link.App, Key: link.Key, Name: link.Name, NeedsTarget: link.NeedsTarget}
 	case LinkUnsupported:
 		return LinkResult{Result: s.result(ToneError, MessageLinkUnsupported)}
 	default:

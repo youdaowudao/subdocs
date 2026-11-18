@@ -106,6 +106,10 @@ footer{margin-top:12px}
 .notice-action{margin-top:6px;height:28px;padding:0 11px;border-radius:8px;border:1px solid currentColor;background:#fff;color:inherit;font-size:12px;font-weight:600}
 .notice-action:hover{background:rgba(255,255,255,.6)}
 .notice-action[hidden]{display:none}
+#import-target{max-width:calc(100% - 32px);padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--card-strong);color:var(--fg)}
+#import-target::backdrop{background:rgba(15,23,42,.42)}
+#import-target-title{margin:0 0 6px;font-weight:650}
+.import-target-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:14px}
 .tip-anchor{position:relative;display:inline-flex}
 .tip{position:absolute;right:0;bottom:calc(100% + 8px);width:220px;padding:8px 10px;border-radius:9px;background:#1f2937;color:#fff;font-size:12px;line-height:1.5;box-shadow:0 6px 18px rgba(15,23,42,.18);opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .15s,transform .15s,visibility 0s .15s;pointer-events:none;z-index:5}
 .tip::after{content:"";position:absolute;right:22px;top:100%;border:6px solid transparent;border-top-color:#1f2937}
@@ -134,6 +138,8 @@ footer{margin-top:12px}
 
 /* 每个工具一种主题色，面板位置不变 */
 .shell[data-tool="image"]{--primary:#7c3aed;--primary-ink:#6d28d9;--accent-soft:rgba(168,85,247,.24);--accent-line:#d8c8fb}
+.shell[data-tool="image"] .brand{order:-2}
+.shell[data-tool="image"] .notice{order:-1;margin:0 0 12px}
 .shell[data-tool="models"]{--primary:#d97706;--primary-ink:#b45309;--accent-soft:rgba(245,158,11,.26);--accent-line:#fcd9a0}
 .shell[data-tool="image"] .primary{background:linear-gradient(135deg,#7c3aed 0%,#a855f7 50%,#ec4899 115%);box-shadow:0 12px 26px -12px rgba(124,58,237,.85)}
 .shell[data-tool="models"] .primary{background:linear-gradient(135deg,#d97706 0%,#f59e0b 55%,#ef4444 125%);box-shadow:0 12px 26px -12px rgba(217,119,6,.85)}

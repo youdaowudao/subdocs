@@ -48,11 +48,7 @@ const (
 )
 
 // The Mac image tool's window (2.UseGoodAI生图工具, "install --from-app")
-// reads stateDirName/image-key/key.fifo while it waits for a key. An
-// app=codex link then goes to it instead of Codex, the way the Windows
-// window sends the link to the image tool while that page is open. The
-// image tool (usegoodai-imagines-tool/appkey.go) offers 「一键导入」 only
-// when this assistant is 1.1.6 or newer.
+// reads stateDirName/image-key/key.fifo while it waits for a key.
 const (
 	imageHandoffDirName = "image-key"
 	imageHandoffFIFO    = "key.fifo"
@@ -61,6 +57,7 @@ const (
 // MessageImageHandoffFailed prefixes why the key did not reach the image
 // tool's window.
 const MessageImageHandoffFailed = "没能把密钥交给「2.UseGoodAI生图工具」的窗口："
+const MessageOpenImageTool = "请打开「2.UseGoodAI生图工具」，等它提示可以导入密钥后，再点网站的「一键导入」。"
 
 // Assistant reacts to a double click (Open) and to import links (OpenLink).
 type Assistant struct {
@@ -73,15 +70,19 @@ type Assistant struct {
 	// Alert shows a message without waiting for it to be dismissed.
 	Alert func(message string)
 	// ShowTerminal brings Terminal to the front.
-	ShowTerminal func()
+	ShowTerminal  func()
+	OpenImageTool func() error
+	ChooseTarget  func() string
 
 	// HandoffTimeout bounds how long the key waits for run.command, which
 	// includes the first-run "control Terminal" permission prompt.
 	HandoffTimeout time.Duration
 
-	mu       sync.Mutex
-	handoffs int // keys not yet collected by run.command
-	working  int // calls in progress, for Idle
+	mu           sync.Mutex
+	handoffs     int // keys not yet collected by run.command
+	working      int // calls in progress, for Idle
+	imageMu      sync.Mutex
+	activeImages map[connect.ImportLink]bool
 }
 
 // Idle reports whether nothing is in progress, so the launcher may quit.
@@ -126,7 +127,21 @@ func (a *Assistant) OpenLink(raw string) {
 		a.Alert(connect.MessageLinkIncomplete)
 		return
 	}
-	if a.handToImageTool(link) {
+	if link.NeedsTarget {
+		if a.handToImageTool(link) {
+			return
+		}
+		if a.ChooseTarget == nil {
+			return
+		}
+		link.App = a.ChooseTarget()
+	}
+	switch link.App {
+	case connect.LinkAppImage:
+		a.importImage(link)
+		return
+	case connect.LinkAppCodex:
+	default:
 		return
 	}
 
@@ -161,10 +176,42 @@ func (a *Assistant) OpenLink(raw string) {
 	_ = deliver(fifo, []byte(link.Key+"\n"+shown+"\n"), a.HandoffTimeout)
 }
 
+func (a *Assistant) importImage(link connect.ImportLink) {
+	link.NeedsTarget = false
+	a.mu.Lock()
+	if a.activeImages[link] {
+		a.mu.Unlock()
+		return
+	}
+	if a.activeImages == nil {
+		a.activeImages = make(map[connect.ImportLink]bool)
+	}
+	a.activeImages[link] = true
+	a.mu.Unlock()
+	defer func() {
+		a.mu.Lock()
+		delete(a.activeImages, link)
+		a.mu.Unlock()
+	}()
+	a.imageMu.Lock()
+	defer a.imageMu.Unlock()
+	if a.handToImageTool(link) {
+		return
+	}
+	if a.OpenImageTool != nil && a.OpenImageTool() == nil {
+		deadline := time.Now().Add(30 * time.Second)
+		for time.Now().Before(deadline) {
+			time.Sleep(100 * time.Millisecond)
+			if a.handToImageTool(link) {
+				return
+			}
+		}
+	}
+	a.Alert(MessageOpenImageTool)
+}
+
 // handToImageTool gives the key to a waiting image tool window and reports
-// whether one was waiting. Nobody reading the FIFO (the window was closed
-// or killed) or anything but the user's own FIFO there means no window, and
-// the link connects Codex as before.
+// whether the window took ownership of the import.
 func (a *Assistant) handToImageTool(link connect.ImportLink) bool {
 	fifo := filepath.Join(a.StateDir, imageHandoffDirName, imageHandoffFIFO)
 	info, err := os.Lstat(fifo)

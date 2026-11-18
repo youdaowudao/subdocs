@@ -128,6 +128,17 @@
     <p class="version">版本 <span id="version"></span></p>
   </footer>
 </main>
+<dialog id="import-target" aria-labelledby="import-target-title">
+  <form method="dialog">
+    <p id="import-target-title">选择要导入密钥的工具</p>
+    <p>从旧版网站收到的密钥需要先选择用途。</p>
+    <div class="import-target-actions">
+      <button class="pill" type="submit" value="" autofocus>取消</button>
+      <button class="pill" type="submit" value="codex">Codex</button>
+      <button class="pill solid" type="submit" value="image">生图工具</button>
+    </div>
+  </form>
+</dialog>
 <script src="app.js"></script>
 </body>
 </html>

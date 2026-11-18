@@ -57,9 +57,9 @@ open_link() {
   pkill -f 'display alert' 2>/dev/null || true
 }
 
-open_link "缺少密钥" "usegoodai://import?v=1&app=codex&name=ci" "导入链接不完整，请回网站重新点「一键导入」。"
-open_link "带地址参数" "usegoodai://import?v=1&app=codex&key=$key&base_url=https%3A%2F%2Fexample.com" "导入链接不完整，请回网站重新点「一键导入」。"
-open_link "版本过高" "usegoodai://import?v=2&app=codex&key=$key" "当前助手不支持这个导入，请下载新版助手。"
+open_link "缺少密钥" "usegoodai://import?v=2&app=codex&name=ci" "导入链接不完整，请回网站重新点「一键导入」。"
+open_link "带地址参数" "usegoodai://import?v=2&app=codex&key=$key&base_url=https%3A%2F%2Fexample.com" "导入链接不完整，请回网站重新点「一键导入」。"
+open_link "版本过高" "usegoodai://import?v=3&app=codex&key=$key" "当前助手不支持这个导入，请下载新版助手。"
 open_link "其他应用" "usegoodai://import?v=1&app=gemini&key=$key" "当前助手不支持这个导入，请下载新版助手。"
 open_link "Claude 链接" "usegoodai://import?v=1&app=claude&key=$key" "Mac 版助手只能接入 Codex，一键导入 Claude 只有 Windows 版支持。Mac 上请按教程「Claude Desktop 接入」手动配置。"
 
@@ -71,7 +71,7 @@ printf 'sleep 120\n' > "$work/run.command"
 holder=$!
 mkdir -p "$state/run.lock"
 printf '%s\n' "$holder" > "$state/run.lock/pid"
-open_link "已有窗口在配置" "usegoodai://import?v=1&app=codex&key=$key&name=ci" "另一个快速接入助手窗口正在配置 Codex。请先在那个终端窗口完成或关闭它，再点一次「一键导入」。"
+open_link "已有窗口在配置" "usegoodai://import?v=2&app=codex&key=$key&name=ci" "另一个快速接入助手窗口正在配置 Codex。请先在那个终端窗口完成或关闭它，再点一次「一键导入」。"
 if ls "$state" | grep -q '^import-'; then
   fail "已有窗口在配置时仍创建了密钥交接文件"
 else
@@ -105,13 +105,13 @@ else
 fi
 
 # While that window waits for a key it reads $state/image-key/key.fifo: an
-# app=codex link goes there, not to Codex.
+# the explicit image link goes there.
 image_dir="$state/image-key"
 mkdir -p "$image_dir"
 chmod 700 "$state" "$image_dir"
 mkfifo -m 600 "$image_dir/key.fifo"
 exec 3<>"$image_dir/key.fifo"
-open "usegoodai://import?v=1&app=codex&key=$key&name=ci"
+open "usegoodai://import?v=2&app=image&key=$key&name=ci"
 handed=""
 IFS= read -r -t 15 -u 3 handed || true
 if [ "$handed" = "{\"key\":\"$key\",\"name\":\"ci\"}" ]; then

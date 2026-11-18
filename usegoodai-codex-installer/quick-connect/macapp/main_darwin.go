@@ -30,6 +30,9 @@ const alertScript = `on run argv
     display alert "UseGoodAI中转快速接入助手" message (item 1 of argv) as critical
 end run`
 
+const chooseTargetScript = `display dialog "从旧版网站收到的密钥需要先选择用途。" with title "选择要导入密钥的工具" buttons {"取消", "Codex", "生图工具"} default button "取消" cancel button "取消"
+return button returned of result`
+
 // Cocoa needs the main thread.
 func init() { runtime.LockOSThread() }
 
@@ -50,11 +53,16 @@ func main() {
 		os.Exit(1)
 	}
 	assistant = &Assistant{
-		Runner:         filepath.Join(filepath.Dir(executable), "..", "Resources", "run.command"),
-		StateDir:       filepath.Join(home, stateDirName),
-		OpenTerminal:   openTerminal,
-		Alert:          showAlert,
-		ShowTerminal:   func() { _ = exec.Command("/usr/bin/open", "-a", "Terminal").Run() },
+		Runner:       filepath.Join(filepath.Dir(executable), "..", "Resources", "run.command"),
+		StateDir:     filepath.Join(home, stateDirName),
+		OpenTerminal: openTerminal,
+		Alert:        showAlert,
+		ShowTerminal: func() { _ = exec.Command("/usr/bin/open", "-a", "Terminal").Run() },
+		OpenImageTool: func() error {
+			app := filepath.Join(filepath.Dir(executable), "..", "..", "..", "2.UseGoodAI生图工具.app")
+			return exec.Command("/usr/bin/open", app).Run()
+		},
+		ChooseTarget:   chooseTarget,
 		HandoffTimeout: 5 * time.Minute,
 	}
 	clock.Lock()
@@ -62,6 +70,21 @@ func main() {
 	clock.Unlock()
 	go quitWhenIdle()
 	C.runApplication()
+}
+
+func chooseTarget() string {
+	output, err := exec.Command("/usr/bin/osascript", "-e", chooseTargetScript).Output()
+	if err != nil {
+		return ""
+	}
+	switch string(output) {
+	case "Codex\n":
+		return "codex"
+	case "生图工具\n":
+		return "image"
+	default:
+		return ""
+	}
 }
 
 // quitWhenIdle ends the launcher a moment after the last event once nothing

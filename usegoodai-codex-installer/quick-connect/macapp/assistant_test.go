@@ -255,7 +255,7 @@ func TestDoubleClickStillReadsTheClipboard(t *testing.T) {
 func TestInstallerExitCodeIsShown(t *testing.T) {
 	t.Setenv("EXIT_CODE", "3")
 	r := newRig(t)
-	r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + fixtureKey)
+	r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=" + fixtureKey)
 	if output := r.output(); !strings.Contains(output, "退出码：3") || !strings.Contains(output, "按回车结束") {
 		t.Fatalf("output: %s", mask(output))
 	}
@@ -268,10 +268,10 @@ func TestSecondWindowIsRefusedWhileOneIsRunning(t *testing.T) {
 	r := newRig(t)
 	release := filepath.Join(r.record, "release")
 	t.Setenv("HOLD", release)
-	r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + fixtureKey)
+	r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=" + fixtureKey)
 	waitFor(t, func() bool { _, ok := r.recorded("args"); return ok })
 
-	r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=sk-second-0123456789")
+	r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=sk-second-0123456789")
 	r.assistant.Open()
 	r.mu.Lock()
 	alerts, commands, shown := append([]string(nil), r.alerts...), len(r.commands), r.shown
@@ -288,7 +288,7 @@ func TestSecondWindowIsRefusedWhileOneIsRunning(t *testing.T) {
 	// Once the first window is done the next link imports again.
 	_ = os.Remove(filepath.Join(r.record, "args"))
 	t.Setenv("HOLD", "")
-	r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=sk-second-0123456789")
+	r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=sk-second-0123456789")
 	r.output()
 	if key, _ := r.recorded("key"); key != "sk-second-0123456789" {
 		t.Fatalf("second import: %s", mask(key))
@@ -307,9 +307,9 @@ func TestQuickSecondLinkIsRefused(t *testing.T) {
 		return nil
 	}
 	done := make(chan struct{})
-	go func() { r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + fixtureKey); close(done) }()
+	go func() { r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=" + fixtureKey); close(done) }()
 	waitFor(t, func() bool { r.assistant.mu.Lock(); defer r.assistant.mu.Unlock(); return r.assistant.handoffs == 1 })
-	r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=sk-second-0123456789")
+	r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=sk-second-0123456789")
 	r.mu.Lock()
 	alerts := append([]string(nil), r.alerts...)
 	r.mu.Unlock()
@@ -381,7 +381,7 @@ func TestLockLeftByAClosedWindowIsIgnored(t *testing.T) {
 	if lockHeld(r.assistant.StateDir) {
 		t.Fatal("unrelated process counted as running")
 	}
-	r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + fixtureKey)
+	r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=" + fixtureKey)
 	r.output()
 	if key, _ := r.recorded("key"); key != fixtureKey || len(r.alerts) != 0 {
 		t.Fatalf("key %s, alerts %q", mask(key), r.alerts)
@@ -396,7 +396,7 @@ func TestKeyNotCollected(t *testing.T) {
 	r.assistant.HandoffTimeout = 300 * time.Millisecond
 	var command string
 	r.assistant.OpenTerminal = func(line string) error { command = line; return nil }
-	r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + fixtureKey)
+	r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=" + fixtureKey)
 	r.assertClean()
 	if err := r.openTerminal(command); err != nil {
 		t.Fatal(err)
@@ -412,7 +412,7 @@ func TestKeyNotCollected(t *testing.T) {
 func TestTerminalCannotBeOpened(t *testing.T) {
 	r := newRig(t)
 	r.assistant.OpenTerminal = func(string) error { return fmt.Errorf("不允许控制终端") }
-	r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + fixtureKey)
+	r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=" + fixtureKey)
 	r.assistant.Open()
 	if len(r.alerts) != 2 || r.alerts[0] != MessageOpenFailed+"不允许控制终端" || r.alerts[1] != r.alerts[0] {
 		t.Fatalf("alerts %q", r.alerts)
@@ -462,15 +462,15 @@ func (r *rig) imageWindow() (fifo string, reader *bufio.Reader, closeWindow func
 	return fifo, bufio.NewReader(file), func() { file.Close(); os.RemoveAll(directory) }
 }
 
-func TestCodexLinkGoesToTheWaitingImageWindow(t *testing.T) {
-	for _, name := range []string{"", "画图 Key & 测试"} {
+func TestLegacyAndImageLinksGoToTheWaitingImageWindow(t *testing.T) {
+	for target, name := range map[string]string{"v=1&app=codex": "", "v=2&app=image": "画图 Key & 测试"} {
 		r := newRig(t)
 		_, reader, closeWindow := r.imageWindow()
 		nameParameter := ""
 		if name != "" {
 			nameParameter = "&name=" + encodeURIComponent(name)
 		}
-		r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + encodeURIComponent(fixtureKey) + nameParameter)
+		r.assistant.OpenLink("usegoodai://import?" + target + "&key=" + encodeURIComponent(fixtureKey) + nameParameter)
 		line := make(chan string, 1)
 		go func() { text, _ := reader.ReadString('\n'); line <- text }()
 		var message struct{ Key, Name string }
@@ -505,6 +505,61 @@ func TestClaudeLinkIsNotHandedToTheImageWindow(t *testing.T) {
 	r.expectRejected(MessageNoClaude)
 }
 
+func TestImageLinkNeverFallsThroughToCodex(t *testing.T) {
+	r := newRig(t)
+	r.assistant.OpenLink("usegoodai://import?v=2&app=image&key=" + fixtureKey)
+	r.expectRejected(MessageOpenImageTool)
+	r.assertClean()
+}
+
+func TestImageLinkOpensTheImageToolOnceWhileWaiting(t *testing.T) {
+	r := newRig(t)
+	const raw = "usegoodai://import?v=2&app=image&key=" + fixtureKey
+	started := make(chan struct{})
+	ready := make(chan struct{})
+	opened := 0
+	r.assistant.OpenImageTool = func() error {
+		opened++
+		close(started)
+		<-ready
+		return nil
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		r.assistant.OpenLink(raw)
+	}()
+	<-started
+	r.assistant.OpenLink(raw)
+	_, reader, closeWindow := r.imageWindow()
+	defer closeWindow()
+	close(ready)
+	<-done
+	if opened != 1 || len(r.commands) != 0 || len(r.alerts) != 0 || r.shown != 1 {
+		t.Fatalf("image launches=%d codex launches=%d alerts=%q handed off=%d", opened, len(r.commands), r.alerts, r.shown)
+	}
+	line, err := reader.ReadString('\n')
+	var message struct{ Key string }
+	if err != nil || json.Unmarshal([]byte(line), &message) != nil || message.Key != fixtureKey {
+		t.Fatal("the image app did not receive the fixture key")
+	}
+}
+
+func TestLegacyLinkWithoutAWaitingImageWindowRequiresAChoice(t *testing.T) {
+	r := newRig(t)
+	raw := "usegoodai://import?v=1&app=codex&key=" + fixtureKey
+	asked := 0
+	r.assistant.ChooseTarget = func() string { asked++; return "" }
+	r.assistant.OpenLink(raw)
+	if asked != 1 || len(r.commands) != 0 {
+		t.Fatalf("asked=%d commands=%d", asked, len(r.commands))
+	}
+	r.assistant.ChooseTarget = func() string { return connect.LinkAppCodex }
+	r.assistant.OpenLink(raw)
+	r.expectImported(r.output(), "")
+	r.assertClean()
+}
+
 // A FIFO nobody reads is left by a closed or killed image window, and a
 // file that is not the user's FIFO was not made by it: the link connects
 // Codex as before and nothing is written there.
@@ -531,7 +586,7 @@ func TestNoWaitingImageWindowConnectsCodex(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			r.assistant.OpenLink("usegoodai://import?v=1&app=codex&key=" + encodeURIComponent(fixtureKey))
+			r.assistant.OpenLink("usegoodai://import?v=2&app=codex&key=" + encodeURIComponent(fixtureKey))
 			r.expectImported(r.output(), "")
 			if planted != "stale fifo" {
 				for _, path := range []string{fifo, target} {

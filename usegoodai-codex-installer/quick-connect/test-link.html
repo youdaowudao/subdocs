@@ -34,13 +34,13 @@
 </main>
 <script>
   const cases = [
-    ['main', '一键导入（正常链接）', (k, n) => `usegoodai://import?v=1&app=codex&key=${k}${n}`],
-    ['', '多一个斜杠', (k, n) => `usegoodai://import/?v=1&app=codex&key=${k}${n}`],
-    ['', '缺少密钥 → 导入链接不完整', (k, n) => `usegoodai://import?v=1&app=codex${n}`],
-    ['', '版本过高 v=2 → 请下载新版助手', (k, n) => `usegoodai://import?v=2&app=codex&key=${k}${n}`],
+    ['main', '一键导入（正常链接）', (k, n) => `usegoodai://import?v=2&app=codex&key=${k}${n}`],
+    ['', '多一个斜杠', (k, n) => `usegoodai://import/?v=2&app=codex&key=${k}${n}`],
+    ['', '缺少密钥 → 导入链接不完整', (k, n) => `usegoodai://import?v=2&app=codex${n}`],
+    ['', '版本过高 v=3 → 请下载新版助手', (k, n) => `usegoodai://import?v=3&app=codex&key=${k}${n}`],
     ['main', '一键导入 Claude（Windows 连接 Claude 桌面版；Mac 版提示只有 Windows 支持）', (k, n) => `usegoodai://import?v=1&app=claude&key=${k}${n}`],
     ['', '其他应用 app=gemini → 请下载新版助手', (k, n) => `usegoodai://import?v=1&app=gemini&key=${k}${n}`],
-    ['', '带地址参数 → 导入链接不完整', (k, n) => `usegoodai://import?v=1&app=codex&key=${k}${n}&base_url=${encodeURIComponent('https://example.com')}`],
+    ['', '带地址参数 → 导入链接不完整', (k, n) => `usegoodai://import?v=2&app=codex&key=${k}${n}&base_url=${encodeURIComponent('https://example.com')}`],
   ];
   function render() {
     const key = encodeURIComponent(document.getElementById('key').value.trim());

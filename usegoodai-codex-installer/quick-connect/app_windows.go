@@ -17,17 +17,23 @@ type App struct {
 	ctx     context.Context
 	service *connect.Service
 
-	mu          sync.Mutex
-	pendingLink string
-	pageReady   bool
+	mu           sync.Mutex
+	pendingLinks []string
+	pageReady    bool
 }
 
 func newApp(service *connect.Service, launchLink string) *App {
-	return &App{service: service, pendingLink: launchLink}
+	app := &App{service: service}
+	if launchLink != "" {
+		app.pendingLinks = append(app.pendingLinks, launchLink)
+	}
+	return app
 }
 
 func (a *App) startup(ctx context.Context) {
+	a.mu.Lock()
 	a.ctx = ctx
+	a.mu.Unlock()
 	if exe, err := os.Executable(); err == nil {
 		_ = connect.RegisterProtocol(exe)
 	}
@@ -36,25 +42,23 @@ func (a *App) startup(ctx context.Context) {
 // secondInstance receives the arguments of a later launch, normally a link
 // opened from the website, and brings this window to the front.
 func (a *App) secondInstance(data options.SecondInstanceData) {
-	if a.ctx == nil {
-		return
-	}
-	runtime.WindowUnminimise(a.ctx)
-	runtime.WindowShow(a.ctx)
-	runtime.WindowSetAlwaysOnTop(a.ctx, true)
-	runtime.WindowSetAlwaysOnTop(a.ctx, false)
 	link := connect.FindImportLink(data.Args)
-	if link == "" {
-		return
-	}
 	a.mu.Lock()
+	ctx := a.ctx
 	ready := a.pageReady
-	if !ready {
-		a.pendingLink = link
+	if link != "" && !ready {
+		a.pendingLinks = append(a.pendingLinks, link)
 	}
 	a.mu.Unlock()
-	if ready {
-		runtime.EventsEmit(a.ctx, "import-link", link)
+	if ctx == nil {
+		return
+	}
+	runtime.WindowUnminimise(ctx)
+	runtime.WindowShow(ctx)
+	runtime.WindowSetAlwaysOnTop(ctx, true)
+	runtime.WindowSetAlwaysOnTop(ctx, false)
+	if link != "" && ready {
+		runtime.EventsEmit(ctx, "import-link", link)
 	}
 }
 
@@ -70,15 +74,14 @@ func (a *App) Info() Info {
 	return Info{Name: connect.ProductName, Version: connect.Version, QQ: connect.QQGroupNumber, QQName: connect.QQGroupName}
 }
 
-// TakeLaunchLink returns the link this window was started with, once, and
-// marks the page ready for links from later launches.
-func (a *App) TakeLaunchLink() string {
+// TakeLaunchLinks returns any links queued before the page subscribed.
+func (a *App) TakeLaunchLinks() []string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.pageReady = true
-	link := a.pendingLink
-	a.pendingLink = ""
-	return link
+	links := a.pendingLinks
+	a.pendingLinks = nil
+	return links
 }
 
 func (a *App) Status() connect.Status { return a.service.Status() }
@@ -111,8 +114,7 @@ func (a *App) InstallImage(key string) connect.Result {
 // UpdateImage reinstalls the image tool with the key it already holds.
 func (a *App) UpdateImage() connect.Result { return a.service.UpdateImage(a.ctx) }
 
-// ImportImage installs the image tool with a key from an import link that
-// arrived while the window was in image mode.
+// ImportImage installs the image tool with a key from a website import.
 func (a *App) ImportImage(key, name string) connect.Result {
 	return a.service.InstallImage(a.ctx, key, name)
 }

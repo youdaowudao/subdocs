@@ -236,15 +236,12 @@ func showMessage(title, text string, flags uintptr) uintptr {
 // offerFallback explains the failure and, on OK, opens the command-window
 // installer (or the tutorial site for a Claude link).
 func offerFallback(recordPath, launchLink string) {
-	var plan fallbackPlan
-	if link, linkProblem := connect.ParseImportLink(launchLink); linkProblem == connect.LinkOK {
-		plan = fallbackPlan{claude: link.App == connect.LinkAppClaude, key: link.Key}
-	}
+	plan := planFallback(launchLink)
 	message := fallbackMessage(connect.ProductName, recordPath, plan)
 	if showMessage(connect.ProductName, message, mbOKCancel|mbIconWarning) != idOK {
 		return
 	}
-	if plan.claude {
+	if plan.tutorial != "" {
 		_ = exec.Command(filepath.Join(os.Getenv("SystemRoot"), "System32", "rundll32.exe"), "url.dll,FileProtocolHandler", docsURL).Start()
 		return
 	}

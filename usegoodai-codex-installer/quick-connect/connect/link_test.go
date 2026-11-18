@@ -42,7 +42,7 @@ func TestParseImportLink(t *testing.T) {
 		{"bad escape", "usegoodai://import?v=1&app=codex&key=%zz", LinkIncomplete, "", ""},
 		{"empty", "", LinkIncomplete, "", ""},
 
-		{"version too new", "usegoodai://import?v=2&app=codex&key=" + fixtureKey, LinkUnsupported, "", ""},
+		{"version too new", "usegoodai://import?v=3&app=codex&key=" + fixtureKey, LinkUnsupported, "", ""},
 		{"version too new with new fields", "usegoodai://import?v=3&app=claude&token=x", LinkUnsupported, "", ""},
 		{"claude", "usegoodai://import?v=1&app=claude&key=" + fixtureKey + "&name=work", LinkOK, fixtureKey, "work"},
 		{"other app", "usegoodai://import?v=1&app=gemini&key=" + fixtureKey, LinkUnsupported, "", ""},
@@ -61,6 +61,27 @@ func TestParseImportLink(t *testing.T) {
 			}
 			if problem != c.problem || link.Key != c.key || link.Name != c.display || link.App != wantApp {
 				t.Fatalf("ParseImportLink(%q) = %+v, %v; want key %q name %q problem %v", c.link, link, problem, c.key, c.display, c.problem)
+			}
+		})
+	}
+}
+
+func TestImportLinkTargets(t *testing.T) {
+	for _, tc := range []struct {
+		query, app  string
+		needsTarget bool
+		problem     LinkProblem
+	}{
+		{"v=1&app=codex", LinkAppCodex, true, LinkOK},
+		{"v=2&app=codex", LinkAppCodex, false, LinkOK},
+		{"v=2&app=image", LinkAppImage, false, LinkOK},
+		{"v=1&app=image", "", false, LinkUnsupported},
+		{"v=1&app=claude", LinkAppClaude, false, LinkOK},
+	} {
+		t.Run(tc.query, func(t *testing.T) {
+			got, problem := ParseImportLink("usegoodai://import?" + tc.query + "&key=" + fixtureKey)
+			if got.App != tc.app || got.NeedsTarget != tc.needsTarget || problem != tc.problem {
+				t.Errorf("app=%q needsTarget=%t problem=%v", got.App, got.NeedsTarget, problem)
 			}
 		})
 	}

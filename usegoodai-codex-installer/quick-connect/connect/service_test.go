@@ -225,7 +225,7 @@ func TestParseLinkMessages(t *testing.T) {
 	service, _ := newTestService(t, 200, `{}`, StopResult{})
 	for link, want := range map[string]string{
 		"usegoodai://import?v=1&app=codex":                                          MessageLinkIncomplete,
-		"usegoodai://import?v=2&app=codex&key=" + fixtureKey:                        MessageLinkUnsupported,
+		"usegoodai://import?v=3&app=codex&key=" + fixtureKey:                        MessageLinkUnsupported,
 		"usegoodai://import?v=1&app=gemini&key=" + fixtureKey:                       MessageLinkUnsupported,
 		"usegoodai://import?v=1&app=codex&key=" + fixtureKey + "&base_url=http://x": MessageLinkIncomplete,
 	} {
@@ -235,7 +235,7 @@ func TestParseLinkMessages(t *testing.T) {
 		}
 	}
 	ok := service.ParseLink("usegoodai://import/?v=1&app=codex&key=" + fixtureKey + "&name=%E5%B7%A5%E4%BD%9C")
-	if !ok.OK || ok.Key != fixtureKey || ok.Name != "工作" {
+	if !ok.OK || ok.Key != fixtureKey || ok.Name != "工作" || !ok.NeedsTarget {
 		t.Fatalf("%+v", ok)
 	}
 }

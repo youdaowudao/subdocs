@@ -98,9 +98,9 @@ func TestInstallImageMessages(t *testing.T) {
 		installed    bool
 	}{
 		{"image group", 200, `{"isValid":true,"remaining":5}`, 200, imageModels, fixtureKey, ToneSuccess,
-			"生图工具 V0.8.2 已装好 ✓ 重新打开 Codex 或新建任务，说“画一张白底红苹果”试试。", true},
+			"画图密钥已导入。生图工具 V0.8.2 已装好，重新打开 Codex 或新建任务，说“画一张白底红苹果”试试。", true},
 		{"coding group that also lists image models counts", 200, `{"isValid":true}`, 200, codingModels, fixtureKey, ToneSuccess,
-			"生图工具 V0.8.2 已装好 ✓ 重新打开 Codex 或新建任务，说“画一张白底红苹果”试试。", true},
+			"画图密钥已导入。生图工具 V0.8.2 已装好，重新打开 Codex 或新建任务，说“画一张白底红苹果”试试。", true},
 		{"no gpt-image model", 200, `{"isValid":true}`, 200, textModels, fixtureKey, ToneError, MessageImageNoModel, false},
 		{"empty model list", 200, `{"isValid":true}`, 200, `{"data":[]}`, fixtureKey, ToneError, MessageImageNoModel, false},
 		{"zero balance still installs", 200, `{"isValid":true,"remaining":0}`, 200, imageModels, fixtureKey, ToneWarning, MessageImageNoBalance, true},
@@ -132,12 +132,23 @@ func TestInstallImageMessages(t *testing.T) {
 				NamesFile:   filepath.Join(home, "names.json"),
 				Image:       tool,
 			}
+			authPath := filepath.Join(service.CodexHome, "auth.json")
+			const codexAuth = "{\"OPENAI_API_KEY\":\"sk-codex-fixture\"}\n"
+			if err := os.MkdirAll(service.CodexHome, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(authPath, []byte(codexAuth), 0o600); err != nil {
+				t.Fatal(err)
+			}
 			result := service.InstallImage(context.Background(), c.key, "画图")
 			if result.Tone != c.tone || result.Message != c.message {
 				t.Fatalf("got %s %q\nwant %s %q", result.Tone, result.Message, c.tone, c.message)
 			}
 			if stops != 0 {
 				t.Fatal("installing the image tool must not close Codex")
+			}
+			if got, err := os.ReadFile(authPath); err != nil || string(got) != codexAuth {
+				t.Fatal("installing the image tool changed auth.json")
 			}
 			if _, err := os.Stat(filepath.Join(service.CodexHome, "config.toml")); err == nil {
 				t.Fatal("installing the image tool must not write Codex files")

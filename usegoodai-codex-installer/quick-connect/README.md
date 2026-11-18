@@ -104,16 +104,25 @@ Codex 页没检测到 ChatGPT/Codex（没有 `Packages\OpenAI.*`，也没有 `.c
 - **状态**：数 `usegoodai-models.managed.json` 里非 `gpt-` 的条目，再看 `config.toml` 的 `model_catalog_json` 是否指向 `usegoodai-models.json`。重新连接 Codex 会重写 `config.toml`（只保留 `[windows]` 沙箱设置），导入的模型随之失效，状态显示「需重新导入」。
 - **升级**：国产模型脚本只在 `codex-domestic-models/` 维护，按那边流程同步到 `install/` 和发布目录后重新运行 `build.py`；打包时核对内附脚本与发布副本除 BOM 外逐字节一致。
 
-Mac 版仍是终端 `.app`、没有窗口（不做 Apple 签名，未签名的窗口版首次打开同样要去系统设置放行），生图和国产模型仍用各自的 `.app`。
+Mac 版助手通过终端接入 Codex，生图和国产模型各用独立的 `.app`。
 
-## 导入链接格式（与网站约定，不要改）
+## 网站一键导入
 
 ```text
-usegoodai://import?v=1&app=codex&key=<URL 编码>&name=<URL 编码，可选>
+usegoodai://import?v=2&app=image&key=<URL 编码>&name=<URL 编码，可选>
+usegoodai://import?v=2&app=codex&key=<URL 编码>&name=<URL 编码，可选>
 usegoodai://import?v=1&app=claude&key=<URL 编码>&name=<URL 编码，可选>
 ```
 
-也接受 `usegoodai://import/?…`。认 `app=codex` 和 `app=claude`（Windows 版切到 Claude 页连接 Claude 桌面版；Mac 版提示一键导入 Claude 只有 Windows 版支持）；`v` 大于 1 或其它 `app` 提示下载新版助手。API 地址写死在代码里，链接带地址或其它未知参数一律拒绝；`name` 只用于显示。Windows 和 Mac 共用 `connect/link.go` 的 `ParseImportLink`，规则和提示文字完全一致。以后支持别的工具时，在 `connect/link.go` 放开对应 `app`，再增加该工具的写入函数。
+新版助手从 Windows 1.1.19、Mac 1.1.15 起支持明确的画图和编程目标。Windows 的画图链接会进入生图工具页，显示导入结果和当前状态，连点时合并排队中或正在处理的相同链接。Mac 将画图链接交给独立的「2.UseGoodAI生图工具」。如果接收窗口尚未打开，会尝试打开同目录中的第二个 App。仅下载助手时，请从合集打开生图 App 后再点导入。
+
+旧网站的 `v=1&app=codex` 同时用于画图和编程。Windows 收到时若已在生图页，按生图处理，其余情况先选目标。Mac 在生图窗口等待密钥时直接交接，否则先选目标。取消时不写入密钥。
+
+网站改动在 Sub2API 完成。修改 `frontend/src/features/brand/config.ts` 的 `ImportApp`、`importAppForGroup`、`canQuickImport` 和 `buildQuickConnectLink`。以正式环境配置的专用画图分组 ID 判定画图用途，编程分组走 Codex，Anthropic 继续走 Claude。允许生图的编程分组仍走 Codex。沿用已有的分组 ID 和 API，正式切换链接前要核对并配置实际分组 ID。
+
+「API 密钥」页和首页「快速开始」共用以上规则，保留原有分组可见性约束并让已配置的画图分组可导入。`CodexImportButton.vue` 的两种按钮和首页提示跟随目标显示。首页自动创建编程测试 Key 时，只选规则判为 Codex 的分组。用 `URLSearchParams` 编码每个参数，`name` 可省略。链接允许路径末尾多一个斜杠，重复参数、地址参数和未知参数会被拒绝。
+
+先发布新版助手，再切网站链接。旧助手会提示下载新版，Claude 沿用已有链接。上线前用两个入口分别验证单击、快速连点、完成后再点，检查生图工具的 Key 已更新且 Codex 的 `auth.json` 字节一致。
 
 ## Mac 版
 

@@ -60,3 +60,91 @@ test('an installed newer version is shown as preserved instead of offered a down
   assert.equal(panel.element('connect-label').textContent, '保留已安装的 V0.10.0')
   assert.equal(vm.runInContext('imageGuide()', panel.context).includes('不降级'), true)
 })
+
+test('website image import stays on the image page and merges clicks in progress', async () => {
+  const panel = imagePanel({ state: 'none' })
+  const run = (code) => vm.runInContext(code, panel.context)
+  const app = panel.context.window.go.main.App
+  const wait = () => new Promise((resolve) => setImmediate(resolve))
+  let release
+  const codexAuth = { key: 'sk-codex-fixture' }
+  let imageKey
+  app.ParseLink = async () => ({ ok: true, app: 'image', key: 'sk-image-fixture' })
+  app.Import = async (key) => { codexAuth.key = key }
+  app.ImportImage = async (key) => {
+    panel.calls.push('image')
+    await new Promise((resolve) => { release = resolve })
+    imageKey = key
+    return { tone: 'success', message: '画图密钥已导入', image: { state: 'ready', version: '0.9.6', key: 'masked' } }
+  }
+  run("setTool('codex'); enqueueLink('image-link'); enqueueLink('image-link')")
+  await wait()
+  assert.deepEqual(panel.calls, ['image'])
+  run("enqueueLink('image-link')")
+  release()
+  await wait()
+  assert.deepEqual(panel.calls, ['image'])
+  assert.equal(run('tool'), 'image')
+  assert.equal(panel.element('notice-text').textContent, '画图密钥已导入')
+  assert.equal(panel.element('status-title').textContent, 'V0.9.6 已安装')
+  assert.equal(imageKey, 'sk-image-fixture')
+  assert.equal(codexAuth.key, 'sk-codex-fixture')
+
+  run("enqueueLink('image-link')")
+  await wait()
+  release()
+  await wait()
+  assert.deepEqual(panel.calls, ['image', 'image'])
+  assert.equal(run('tool'), 'image')
+  assert.equal(codexAuth.key, 'sk-codex-fixture')
+})
+
+test('legacy imports choose before writing unless received on the image page', async () => {
+  const panel = imagePanel({ state: 'none' })
+  const run = (code) => vm.runInContext(code, panel.context)
+  const app = panel.context.window.go.main.App
+  const wait = () => new Promise((resolve) => setImmediate(resolve))
+  let choose
+  panel.context.selectLegacyTarget = () => new Promise((resolve) => { choose = resolve })
+  run('chooseImportTarget = selectLegacyTarget')
+  app.ParseLink = async () => ({ ok: true, app: 'codex', needsTarget: true, key: 'sk-image-fixture' })
+  app.Import = async () => { panel.calls.push('codex') }
+  app.ImportImage = async () => {
+    panel.calls.push('image')
+    return { tone: 'error', message: '这把密钥不能画图。' }
+  }
+  run("setTool('codex'); enqueueLink('old-link')")
+  await wait()
+  assert.deepEqual(panel.calls, [])
+  choose('')
+  await wait()
+  assert.deepEqual(panel.calls, [])
+
+  run("enqueueLink('old-link')")
+  await wait()
+  choose('image')
+  await wait()
+  assert.deepEqual(panel.calls, ['image'])
+  assert.equal(panel.element('notice-text').textContent, '这把密钥不能画图。')
+  assert.equal(run('tool'), 'image')
+
+  run("setBusy(true, '正在更新…'); enqueueLink('old-link'); setTool('codex'); setBusy(false); nextLink()")
+  await wait()
+  assert.deepEqual(panel.calls, ['image', 'image'])
+  assert.equal(run('tool'), 'image')
+})
+
+test('an explicit Codex link received on the image page uses the Codex importer', async () => {
+  const panel = imagePanel({ state: 'ready', version: '0.9.6', key: 'masked' })
+  const app = panel.context.window.go.main.App
+  app.ParseLink = async () => ({ ok: true, app: 'codex', key: 'sk-codex-fixture' })
+  app.Import = async (key) => {
+    panel.calls.push(['codex', key])
+    return { tone: 'success', message: 'Codex 已连接' }
+  }
+  app.ImportImage = async () => { panel.calls.push('image') }
+  vm.runInContext("enqueueLink('explicit-codex')", panel.context)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(panel.calls, [['codex', 'sk-codex-fixture']])
+  assert.equal(vm.runInContext('tool', panel.context), 'image')
+})

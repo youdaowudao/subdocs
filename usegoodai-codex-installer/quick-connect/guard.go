@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"usegoodai-quick-connect/connect"
 )
 
 // 启动守护（1.1.14）：多台 Windows 11 电脑双击助手后一闪就退出，或者根本不出现。
@@ -138,8 +140,25 @@ func rememberProfile(base, name string) {
 
 // fallbackPlan is what the last dialog offers.
 type fallbackPlan struct {
-	claude bool   // the link was for Claude: open the tutorial site
-	key    string // passed to the command window as USEGOODAI_KEY
+	tutorial string
+	key      string // passed to the command window as USEGOODAI_KEY
+}
+
+func planFallback(raw string) fallbackPlan {
+	if raw == "" {
+		return fallbackPlan{}
+	}
+	link, problem := connect.ParseImportLink(raw)
+	switch {
+	case problem != connect.LinkOK || link.NeedsTarget:
+		return fallbackPlan{tutorial: "无法确认这条链接的导入目标。点「确定」打开教程网站，按对应工具的步骤操作。"}
+	case link.App == connect.LinkAppImage:
+		return fallbackPlan{tutorial: "点「确定」打开教程网站，按生图工具的步骤导入画图密钥。"}
+	case link.App == connect.LinkAppClaude:
+		return fallbackPlan{tutorial: "点「确定」打开教程网站，按教程接入 Claude。"}
+	default:
+		return fallbackPlan{key: link.Key}
+	}
 }
 
 // fallbackMessage is plain words for the customer; the record keeps the
@@ -147,8 +166,8 @@ type fallbackPlan struct {
 func fallbackMessage(product, recordPath string, plan fallbackPlan) string {
 	text := product + " 的窗口打不开：这台电脑上用来显示页面的 WebView2 组件出错，已经自动重试过一次。"
 	switch {
-	case plan.claude:
-		text += "\n\n点「确定」打开教程网站，按教程接入 Claude。"
+	case plan.tutorial != "":
+		text += "\n\n" + plan.tutorial
 	case plan.key != "":
 		text += "\n\n点「确定」改用命令窗口连接 Codex，网站带来的 Key 会自动填好。"
 	default:

@@ -21,28 +21,25 @@ const (
 // ImportLink is a parsed usegoodai://import link. App is the tool it is for
 // (see linkApps); Name is only for display.
 type ImportLink struct {
-	App  string
-	Key  string
-	Name string
+	App         string
+	Key         string
+	Name        string
+	NeedsTarget bool // v1 used app=codex for both Codex and image keys
 }
 
-// Link apps: "codex" connects Codex, "claude" connects Claude Desktop.
 const (
 	LinkAppCodex  = "codex"
 	LinkAppClaude = "claude"
+	LinkAppImage  = "image"
 )
-
-var linkApps = map[string]bool{LinkAppCodex: true, LinkAppClaude: true}
 
 const maxLinkLength = 4096
 
-// The v=1 contract with the website. Any other parameter, an address in
+// The contract with the website. Any other parameter, an address in
 // particular, makes the link unrecognised.
 var linkParameters = map[string]bool{"v": true, "app": true, "key": true, "name": true}
 
-// ParseImportLink accepts usegoodai://import?v=1&app=codex&key=...&name=...
-// (app=claude too) and the same link with an extra slash before the query.
-// A tool that handles only some apps checks ImportLink.App itself.
+// ParseImportLink accepts legacy v1 links and v2 links with explicit targets.
 func ParseImportLink(raw string) (ImportLink, LinkProblem) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || len(raw) > maxLinkLength {
@@ -67,14 +64,16 @@ func ParseImportLink(raw string) (ImportLink, LinkProblem) {
 	if err != nil || version < 1 {
 		return ImportLink{}, LinkIncomplete
 	}
-	if version > 1 {
+	if version > 2 {
 		return ImportLink{}, LinkUnsupported
 	}
 	app := values.Get("app")
 	switch {
 	case app == "":
 		return ImportLink{}, LinkIncomplete
-	case !linkApps[app]:
+	case app == LinkAppImage && version == 1:
+		return ImportLink{}, LinkUnsupported
+	case app != LinkAppCodex && app != LinkAppClaude && app != LinkAppImage:
 		return ImportLink{}, LinkUnsupported
 	}
 	for name := range values {
@@ -86,7 +85,10 @@ func ParseImportLink(raw string) (ImportLink, LinkProblem) {
 	if !ok {
 		return ImportLink{}, LinkIncomplete
 	}
-	return ImportLink{App: app, Key: key, Name: displayName(values.Get("name"))}, LinkOK
+	return ImportLink{
+		App: app, Key: key, Name: displayName(values.Get("name")),
+		NeedsTarget: version == 1 && app == LinkAppCodex,
+	}, LinkOK
 }
 
 // FindImportLink returns the first command-line argument that is an import

@@ -59,6 +59,7 @@ let state = { status: null, image: null, models: null, claude: null };
 let confirming = null; // 'import' or 'remove' while waiting for a second click
 let confirmTimer = 0;
 const queuedLinks = [];
+let activeLink = null;
 
 function bridge() {
   return window.go && window.go.main && window.go.main.App;
@@ -228,6 +229,7 @@ function render() {
   renderCard();
   renderEntries();
   if (!busy) $('connect-label').textContent = idleLabel();
+  keyInput.placeholder = tool === 'image' && savedImageKey() ? '已有密钥；要换密钥才粘贴新的' : TOOLS[tool].placeholder || '';
   connectButton.classList.toggle('confirm', confirming === 'import');
   removeButton.hidden = tool !== 'models' || !state.models || state.models.state === 'none';
   removeButton.textContent = confirming === 'remove' ? '确认移除（会关闭 Codex）' : '移除国产模型';
@@ -294,7 +296,6 @@ function setTool(next) {
   tool = next;
   shell.dataset.tool = tool;
   keyInput.value = '';
-  keyInput.placeholder = tool === 'image' && savedImageKey() ? '已有密钥；要换密钥才粘贴新的' : TOOLS[tool].placeholder || '';
   shell.classList.remove('activating');
   void shell.offsetWidth; // restart the sweep
   shell.classList.add('activating');
@@ -315,15 +316,15 @@ async function run(label, notice, action) {
   showNotice('info', notice);
   try {
     const result = await action();
-    // A finished image install or model import goes back to Codex; the
-    // result stays on screen. Claude stays on its own tab.
-    if ((tool === 'image' || tool === 'models') && result.tone !== 'error') setTool('codex');
+    if (tool === 'models' && result.tone !== 'error') setTool('codex');
     showResult(result);
   } catch (error) {
     showNotice('error', '操作没有完成，请再试一次。');
   } finally {
-    setBusy(false);
-    nextLink();
+    if (!activeLink) {
+      setBusy(false);
+      nextLink();
+    }
   }
 }
 
@@ -353,53 +354,73 @@ function submit() {
   run('正在连接…', '正在检查密钥…', () => bridge().Connect(key));
 }
 
-// Links import straight away. An app=claude link connects Claude Desktop.
-// An app=codex link goes to the image tool while it is open; anywhere else it
-// connects Codex, as it always has.
-async function importLink(raw) {
-  setBusy(true, '正在连接…');
-  let parsed = null;
+function chooseImportTarget() {
+  const dialog = $('import-target');
+  return new Promise((resolve) => {
+    dialog.returnValue = '';
+    dialog.addEventListener('close', () => resolve(dialog.returnValue), { once: true });
+    dialog.showModal();
+  });
+}
+
+async function importLink({ raw, imageWasOpen }) {
+  let parsed;
   try {
     parsed = await bridge().ParseLink(raw);
   } catch (error) {
-    parsed = null;
-  }
-  if (!parsed || !parsed.ok) {
-    setBusy(false);
-    if (parsed) showResult(parsed.result);
-    else showNotice('error', '操作没有完成，请再试一次。');
-    nextLink();
+    showNotice('error', '操作没有完成，请再试一次。');
     return;
   }
+  if (!parsed.ok) {
+    showResult(parsed.result);
+    return;
+  }
+  const target = parsed.needsTarget
+    ? (imageWasOpen ? 'image' : await chooseImportTarget())
+    : parsed.app;
   const name = parsed.name || '';
-  if (parsed.app === 'claude') {
-    if (tool !== 'claude') setTool('claude');
-    keyInput.value = parsed.key;
-    const notice = name ? `正在把「${name}」接入 Claude…` : '正在把密钥接入 Claude…';
-    await run('正在连接…', notice, () => bridge().ImportClaude(parsed.key, name));
-    return;
+  switch (target) {
+    case 'image': {
+      setTool('image');
+      const notice = name ? `正在把「${name}」导入生图工具…` : '正在把密钥导入生图工具…';
+      await run('正在导入…', notice, () => bridge().ImportImage(parsed.key, name));
+      break;
+    }
+    case 'claude': {
+      if (tool !== 'image') setTool('claude');
+      const notice = name ? `正在把「${name}」接入 Claude…` : '正在把密钥接入 Claude…';
+      await run('正在连接…', notice, () => bridge().ImportClaude(parsed.key, name));
+      break;
+    }
+    case 'codex': {
+      if (tool !== 'image') setTool('codex');
+      const notice = name ? `正在把「${name}」接入 Codex…` : '正在把密钥接入 Codex…';
+      await run('正在连接…', notice, () => bridge().Import(parsed.key, name));
+      break;
+    }
+    default:
+      showNotice('info', '已取消导入密钥。');
   }
-  if (tool === 'image') {
-    keyInput.value = parsed.key;
-    const notice = name ? `正在把「${name}」导入生图工具…` : '正在把密钥导入生图工具…';
-    await run('正在安装…', notice, () => bridge().ImportImage(parsed.key, name));
-    return;
-  }
-  if (tool !== 'codex') setTool('codex');
-  keyInput.value = parsed.key;
-  const notice = name ? `正在导入「${name}」…` : '正在导入密钥…';
-  await run('正在连接…', notice, () => bridge().Import(parsed.key, name));
 }
 
 function enqueueLink(raw) {
-  if (!raw) return;
-  queuedLinks.push(raw);
+  raw = raw.trim();
+  if (!raw || activeLink?.raw === raw || queuedLinks.some((link) => link.raw === raw)) return;
+  queuedLinks.push({ raw, imageWasOpen: tool === 'image' });
   nextLink();
 }
 
-function nextLink() {
-  if (busy || queuedLinks.length === 0) return;
-  importLink(queuedLinks.shift());
+async function nextLink() {
+  if (busy || activeLink || queuedLinks.length === 0) return;
+  activeLink = queuedLinks.shift();
+  setBusy(true, '正在读取导入链接…');
+  try {
+    await importLink(activeLink);
+  } finally {
+    activeLink = null;
+    setBusy(false);
+    nextLink();
+  }
 }
 
 async function fillFromClipboard() {
@@ -518,10 +539,15 @@ document.addEventListener('visibilitychange', () => {
   state.claude = await app.ClaudeStatus();
   render();
   for (const [name, delay] of TAB_HINTS) setTimeout(() => hintTab(name), delay);
-  window.runtime.EventsOn('import-link', enqueueLink);
-  const link = await app.TakeLaunchLink();
-  if (link) {
-    enqueueLink(link);
+  let earlyEvents = [];
+  window.runtime.EventsOn('import-link', (raw) => {
+    if (earlyEvents) earlyEvents.push(raw);
+    else enqueueLink(raw);
+  });
+  const links = [...(await app.TakeLaunchLinks() || []), ...earlyEvents];
+  earlyEvents = null;
+  if (links.length > 0) {
+    links.forEach(enqueueLink);
   } else {
     fillFromClipboard();
   }

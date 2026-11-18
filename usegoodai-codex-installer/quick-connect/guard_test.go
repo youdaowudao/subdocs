@@ -8,6 +8,20 @@ import (
 	"time"
 )
 
+func TestFallbackPassesOnlyAnExplicitCodexKey(t *testing.T) {
+	const key = "sk-fallback-fixture"
+	for _, query := range []string{"v=2&app=image", "v=1&app=codex", "v=1&app=claude", "v=3&app=codex"} {
+		plan := planFallback("usegoodai://import?" + query + "&key=" + key)
+		if plan.key != "" || plan.tutorial == "" {
+			t.Errorf("%s: expected only a tutorial", query)
+		}
+	}
+	plan := planFallback("usegoodai://import?v=2&app=codex&key=" + key)
+	if plan.key != key || plan.tutorial != "" {
+		t.Fatal("an explicit Codex link should keep its key at startup fallback")
+	}
+}
+
 func TestJudgeInstance(t *testing.T) {
 	for _, item := range []struct {
 		name  string
@@ -99,7 +113,7 @@ func TestFallbackMessage(t *testing.T) {
 	if text := fallbackMessage("助手", "", fallbackPlan{}); !strings.Contains(text, "按提示粘贴 Key") || strings.Contains(text, "出错记录") {
 		t.Errorf("plain fallback:\n%s", text)
 	}
-	if text := fallbackMessage("助手", "", fallbackPlan{claude: true}); !strings.Contains(text, "教程网站") || strings.Contains(text, "Codex") {
+	if text := fallbackMessage("助手", "", fallbackPlan{tutorial: "点「确定」打开教程网站，按教程接入 Claude。"}); !strings.Contains(text, "教程网站") || strings.Contains(text, "Codex") {
 		t.Errorf("Claude fallback:\n%s", text)
 	}
 }
