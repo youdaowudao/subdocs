@@ -1,6 +1,16 @@
 ﻿param([Parameter(Mandatory=$true)][string]$Exe)
 $ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms, System.Drawing
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class ModelWindowInput {
+    [DllImport("user32.dll")] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern void mouse_event(int flags, int x, int y, int data, UIntPtr extra);
+}
+'@
 
 $exePath = (Resolve-Path -LiteralPath $Exe).Path
 $source = Join-Path $PSScriptRoot '../../install/codex-models.ps1'
@@ -8,7 +18,6 @@ $work = Join-Path $env:RUNNER_TEMP 'models-import-window'
 $homePath = Join-Path $work '用户 目录'
 New-Item -ItemType Directory -Force $homePath | Out-Null
 $originalHome = $env:CODEX_HOME
-$originalLocalAppData = $env:LOCALAPPDATA
 $originalArguments = $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
 $auth = '{"OPENAI_API_KEY":"sk-models-test-fixture"}'
 $config = "model = `"gpt-6.1-sol`"`r`napproval_policy = `"never`"`r`n"
@@ -16,45 +25,60 @@ $config = "model = `"gpt-6.1-sol`"`r`napproval_policy = `"never`"`r`n"
 [IO.File]::WriteAllText((Join-Path $homePath 'auth.json'), $auth)
 $process = $null
 $launched = $null
-$webview = $null
 
-function Evaluate-WebView([string]$Expression) {
-  $command = @{id=1; method='Runtime.evaluate'; params=@{expression=$Expression; returnByValue=$true}} | ConvertTo-Json -Compress
-  $request = [Text.Encoding]::UTF8.GetBytes($command)
-  $timeout = [Threading.CancellationTokenSource]::new(10000)
-  $message = [IO.MemoryStream]::new()
-  try {
-    $webview.SendAsync([ArraySegment[byte]]::new($request), [Net.WebSockets.WebSocketMessageType]::Text, $true, $timeout.Token).GetAwaiter().GetResult() | Out-Null
-    $buffer = [byte[]]::new(4096)
-    do {
-      $chunk = $webview.ReceiveAsync([ArraySegment[byte]]::new($buffer), $timeout.Token).GetAwaiter().GetResult()
-      if ($chunk.MessageType -eq [Net.WebSockets.WebSocketMessageType]::Close) { throw '助手窗口连接已断开' }
-      $message.Write($buffer, 0, $chunk.Count)
-    } until ($chunk.EndOfMessage)
-    $response = [Text.Encoding]::UTF8.GetString($message.ToArray()) | ConvertFrom-Json
-    if ($response.error -or $response.result.exceptionDetails) { throw "助手窗口操作失败：$($response | ConvertTo-Json -Compress -Depth 6)" }
-    return $response.result.result.value
-  } finally {
-    $message.Dispose()
-    $timeout.Dispose()
-  }
+function Find-Text([string]$Text) {
+  $window.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition) |
+    Where-Object { ([string]$_.Current.Name).Trim() -ceq $Text } | Select-Object -First 1
+}
+function Wait-Text([string]$Text) {
+  $deadline = (Get-Date).AddSeconds(25)
+  do {
+    $element = Find-Text $Text
+    if ($null -ne $element) { return $element }
+    Start-Sleep -Milliseconds 200
+  } until ((Get-Date) -gt $deadline)
+  throw "窗口没有显示：$Text"
 }
 
-function Wait-For([scriptblock]$Condition, [string]$Description) {
-  $deadline = (Get-Date).AddSeconds(90)
-  do {
-    if (& $Condition) { return }
-    Start-Sleep -Milliseconds 250
-  } until ((Get-Date) -gt $deadline)
-  throw "测试超时：$Description"
+function Click-Text([string]$Text, [string]$Next) {
+  foreach ($inputMethod in @('Invoke', 'Keyboard', 'Pointer')) {
+    $button = Wait-Text $Text
+    [ModelWindowInput]::SetForegroundWindow($process.MainWindowHandle) | Out-Null
+    switch ($inputMethod) {
+      'Invoke' {
+        try { $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke() } catch {}
+      }
+      'Keyboard' {
+        try {
+          $button.SetFocus()
+          [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+        } catch {}
+      }
+      'Pointer' {
+        [ModelWindowInput]::SetThreadDpiAwarenessContext([IntPtr](-4)) | Out-Null
+        $bounds = $button.Current.BoundingRectangle
+        if ($bounds.IsEmpty) { throw "没有可点击位置：$Text" }
+        [ModelWindowInput]::SetCursorPos([int]($bounds.X+$bounds.Width/2), [int]($bounds.Y+$bounds.Height/2)) | Out-Null
+        [ModelWindowInput]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
+        [ModelWindowInput]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
+      }
+    }
+    for ($attempt = 0; $attempt -lt 12; $attempt++) {
+      if (($Next -and (Find-Text $Next)) -or (-not $Next -and -not (Find-Text $Text))) {
+        Write-Host "$inputMethod 操作窗口按钮：$Text"
+        return
+      }
+      Start-Sleep -Milliseconds 100
+    }
+  }
+  $window.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition) |
+    ForEach-Object { $_.Current.Name } | Set-Content -LiteralPath (Join-Path $work 'failed-ui-names.txt') -Encoding UTF8
+  throw "窗口未响应操作：$Text"
 }
 
 try {
   $env:CODEX_HOME = $homePath
-  $env:LOCALAPPDATA = Join-Path $work 'AppData'
-  New-Item -ItemType Directory -Force $env:LOCALAPPDATA | Out-Null
-  # Drive the actual WebView2 controls without depending on the desktop's DPI.
-  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=19478 --remote-debugging-address=127.0.0.1'
+  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--force-renderer-accessibility'
   $launched = Start-Process -FilePath $exePath -PassThru
   $deadline = (Get-Date).AddSeconds(90)
   do {
@@ -64,24 +88,11 @@ try {
       Select-Object -First 1
   } until ($process -or (Get-Date) -gt $deadline)
   if (-not $process) { throw '助手窗口没有启动' }
-  $desktopPage = $null
-  Wait-For {
-    try {
-      $script:desktopPage = (Invoke-RestMethod -Uri 'http://127.0.0.1:19478/json/list' -TimeoutSec 2) |
-        Where-Object { $_.type -eq 'page' -and $_.webSocketDebuggerUrl } | Select-Object -First 1
-      $null -ne $desktopPage
-    } catch { $false }
-  } '实际助手窗口的 WebView2'
-  $webview = New-Object Net.WebSockets.ClientWebSocket
-  $connectTimeout = [Threading.CancellationTokenSource]::new(10000)
-  try { $webview.ConnectAsync([Uri]$desktopPage.webSocketDebuggerUrl, $connectTimeout.Token).GetAwaiter().GetResult() | Out-Null }
-  finally { $connectTimeout.Dispose() }
-  Wait-For { Evaluate-WebView 'document.querySelector("#status")?.dataset.state !== "loading" && Boolean(document.querySelector("#go-models")?.offsetWidth)' } 'Codex 工具入口显示'
-  Evaluate-WebView 'document.querySelector("#go-models").click()' | Out-Null
-  Wait-For { Evaluate-WebView 'document.querySelector("#shell")?.dataset.tool === "models"' } '打开国产模型页'
-  Evaluate-WebView 'document.querySelector("#connect").click()' | Out-Null
-  Wait-For { Evaluate-WebView 'document.querySelector("#connect-label")?.textContent === "确认导入（会关闭 Codex）"' } '显示导入确认按钮'
-  Evaluate-WebView 'document.querySelector("#connect").click()' | Out-Null
+  $window = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
+  Wait-Text ((Get-Item -LiteralPath $exePath).VersionInfo.ProductVersion) | Out-Null
+  Click-Text '导入国产模型' '返回 Codex 接入'
+  Click-Text '导入国产模型' '确认导入（会关闭 Codex）'
+  Click-Text '确认导入（会关闭 Codex）'
 
   $catalogPath = Join-Path $homePath 'usegoodai-models.json'
   $manifestPath = Join-Path $homePath 'usegoodai-models.managed.json'
@@ -121,10 +132,8 @@ try {
     result = '原生窗口双击确认，执行内置脚本并写入 10 个国产模型和两个 GPT-6.2，原默认模型和 Key 保留'
   } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $work 'report.json') -Encoding UTF8
 } finally {
-  if ($webview) { $webview.Dispose() }
   if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force }
   if ($launched -and -not $launched.HasExited) { Stop-Process -Id $launched.Id -Force }
   $env:CODEX_HOME = $originalHome
-  $env:LOCALAPPDATA = $originalLocalAppData
   $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = $originalArguments
 }
