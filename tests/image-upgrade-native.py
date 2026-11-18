@@ -23,7 +23,10 @@ PUBLIC = ROOT / "docs/public/install/usegoodai-imagines-tool"
 CURRENT = json.loads((PUBLIC / "latest.json").read_text())['version']
 PREVIOUS = "0.9.6"
 SYSTEM = {"Windows": "windows", "Darwin": "darwin", "Linux": "linux"}[platform.system()]
-ARCH = "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "amd64"
+HOST_ARCH = os.environ.get("PROCESSOR_ARCHITEW6432") or platform.machine()
+# Windows ships an x64 program, including for the Windows 11 ARM test runner.
+ARCH = "arm64" if SYSTEM != "windows" and HOST_ARCH.lower() in ("arm64", "aarch64") else "amd64"
+WINDOWS_ARM = SYSTEM == "windows" and HOST_ARCH.lower() in ("arm64", "aarch64")
 SUFFIX = ".exe" if SYSTEM == "windows" else ""
 
 
@@ -62,7 +65,7 @@ def main():
     assert candidate.is_file() and previous.is_file()
     candidate.chmod(0o755)
     previous.chmod(0o755)
-    report = {"version": 1, "platform": f"{SYSTEM}/{ARCH}", "candidate": CURRENT,
+    report = {"version": 1, "platform": f"{SYSTEM}/{ARCH}", "host_architecture": HOST_ARCH, "candidate": CURRENT,
               "candidate_sha256": digest(candidate), "previous": PREVIOUS,
               "previous_sha256": digest(previous), "scenarios": [],
               "scope": "实际原生程序和公开安装入口；仅下载替换为本地模拟，不使用真实 Key",
@@ -92,6 +95,15 @@ def main():
                 shell_version = run([shell, "-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"], env).strip()
                 assert shell_version.startswith("5.1"), shell_version
                 entry_command = [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(entry)]
+                if WINDOWS_ARM:
+                    # The public PowerShell installer is x64-only. The Windows
+                    # 11 ARM runner can exercise the native EXE through emulation.
+                    env["CODEX_HOME"] = str(work / "arm-installer-check")
+                    rejected = run(entry_command, env, success=False)
+                    assert "仅支持 64 位 x64 Windows" in rejected, rejected
+                    report["public_installer"] = "correctly rejects the Windows ARM host"
+                    report["scope"] = "Windows 11 ARM：通过 x64 转译测试真实原生程序"
+                    entry_command = [str(candidate), "install", "--keep-key"]
             else:
                 shell = "/bin/bash"
                 shell_version = run([shell, "--version"], env).splitlines()[0]
@@ -126,12 +138,13 @@ def main():
                 before = key.read_bytes() if key.exists() else None
 
                 # A corrupted download must leave the old installation intact.
-                original = snapshot(home)
-                payload.write_bytes(b"corrupt-download")
-                failed = run(entry_command, env, success=False)
-                assert "SHA-256" in failed, failed
-                assert snapshot(home) == original, "failed download changed installed files"
-                shutil.copyfile(candidate, payload)
+                if not WINDOWS_ARM:
+                    original = snapshot(home)
+                    payload.write_bytes(b"corrupt-download")
+                    failed = run(entry_command, env, success=False)
+                    assert "SHA-256" in failed, failed
+                    assert snapshot(home) == original, "failed download changed installed files"
+                    shutil.copyfile(candidate, payload)
 
                 output = run(entry_command, env)
                 assert f"V{PREVIOUS}" in output and f"V{CURRENT}" in output, output
@@ -145,14 +158,19 @@ def main():
                     assert (home / name).read_bytes() == contents, f"{name} changed"
 
                 # Same-version entry uses the cached verified native program.
-                payload.unlink()
+                if not WINDOWS_ARM:
+                    payload.unlink()
                 repeated = run(entry_command, env)
-                assert "无需下载" in repeated and "请输入专门画图分组 Key" not in repeated, repeated
+                assert "请输入专门画图分组 Key" not in repeated, repeated
+                if not WINDOWS_ARM:
+                    assert "无需下载" in repeated, repeated
+                    shutil.copyfile(candidate, payload)
                 check_key(key, before)
-                shutil.copyfile(candidate, payload)
+                installer_check = "not run on Windows ARM" if WINDOWS_ARM else "passed"
                 report["scenarios"].append({"key": state, "old_version_display": "passed",
-                                             "corrupt_download_rollback_and_retry": "passed",
-                                             "upgrade_without_input": "passed", "cached_repeat": "passed",
+                                             "corrupt_download_rollback_and_retry": installer_check,
+                                             "upgrade_without_input": "passed", "cached_repeat": installer_check,
+                                             "repeat_preserves_key": "passed",
                                              "key_and_unrelated_config_preserved": "passed"})
 
             # Reproduce a user deleting the tool directory while keeping the

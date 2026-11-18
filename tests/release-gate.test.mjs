@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import test from 'node:test'
 import { isToolReleasePath, releaseState, requireReleaseChecks, requiredChecks, toolCheckCommit, toolReleaseFilters, toolReleaseTree } from '../scripts/require-release-checks.mjs'
 
@@ -78,6 +78,15 @@ test('push and pull-request filters match the production tool scope', async () =
   assert.equal(blocks.length, 2)
   for (const [, block] of blocks) {
     assert.deepEqual([...block.matchAll(/'([^']+)'/g)].map(([, path]) => path), toolReleaseFilters)
+  }
+})
+
+test('Windows workflows use desktop runners and prohibit Server runner labels', async () => {
+  const directory = new URL('../.github/workflows/', import.meta.url)
+  for (const name of await readdir(directory)) {
+    if (!/\.ya?ml$/.test(name)) continue
+    const workflow = await readFile(new URL(name, directory), 'utf8')
+    assert.doesNotMatch(workflow, /\bwindows-(?:latest|20\d{2})(?:-[\w-]+)?\b/i, name)
   }
 })
 
