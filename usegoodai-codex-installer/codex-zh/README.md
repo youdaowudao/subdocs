@@ -2,13 +2,13 @@
 
 这个工具给 Windows 微软商店版 Codex 启用内置的界面语言功能，并在当前 Windows 用户的 `config.toml` 中把桌面语言设成简体中文。适用于已经安装 Codex、选了中文但窗口仍显示英文的用户。
 
-保存 Codex 中的工作，在 Codex 外部打开 PowerShell，进入本文件夹，运行：
+保存 Codex 中的工作并结束正在运行的任务。在 Codex 外部打开 PowerShell，进入本文件夹，运行：
 
 ```powershell
 .\chinese.ps1
 ```
 
-命令会先让 Codex 退出，保存简体中文偏好，再临时启动一次以写入并验证本机语言开关缓存。然后正常打开 Codex。重开后查看菜单是否是中文。平时从开始菜单打开 Codex 即可。
+命令会先强制关闭已经打开的官方 Codex 桌面版，保存简体中文偏好，再临时启动一次以写入并验证本机语言开关缓存。然后正常打开 Codex。重开后查看菜单是否是中文。平时从开始菜单打开 Codex 即可。
 
 如果命令提示 Codex 仍在运行，从系统托盘彻底退出 Codex。CC Switch 会自动打开 Codex 时，先退出 CC Switch 再运行一次。
 

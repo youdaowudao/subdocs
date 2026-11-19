@@ -98,20 +98,61 @@ function Get-CodexDesktopProcesses($Desktop) {
         }
 }
 
+# Process ancestry, forced stop, and exit polling follow install/codex.ps1.
+function Get-OwnProcessIds {
+  $ids = @()
+  $current = $PID
+  while ($current -and ($ids -notcontains $current)) {
+    $ids += $current
+    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $current" -ErrorAction Stop
+    if ($process) {
+      $current = $process.ParentProcessId
+    } else {
+      $current = 0
+    }
+  }
+  return $ids
+}
+
+function Test-ProcessExited($Process) {
+  try {
+    return $Process.HasExited
+  } catch {
+    return $false
+  }
+}
+
 function Close-ExistingCodexDesktop($Desktop) {
     $running = @(Get-CodexDesktopProcesses $Desktop)
     if ($running.Count -eq 0) { return }
-    Write-Host '正在请求 Codex 正常退出。请先保存工作。'
-    foreach ($item in $running) {
-        $process = Get-Process -Id $item.ProcessId -ErrorAction SilentlyContinue
-        if ($process -and -not $process.HasExited) { $null = $process.CloseMainWindow() }
+
+    $sessionId = (Get-Process -Id $PID).SessionId
+    $ownIds = @(Get-OwnProcessIds)
+    if (@($running | Where-Object { $_.ProcessId -in $ownIds }).Count) {
+        throw '请在 Codex 外部打开 PowerShell 后重新运行。'
     }
-    $timer = [Diagnostics.Stopwatch]::StartNew()
-    do {
-        if (@(Get-CodexDesktopProcesses $Desktop).Count -eq 0) { return }
-        Start-Sleep -Milliseconds 300
-    } while ($timer.Elapsed.TotalSeconds -lt 8)
-    throw 'Codex 仍在运行。请在托盘彻底退出 Codex，若 CC Switch 自动打开它，先退出 CC Switch 再重试。'
+
+    $targets = @(
+        foreach ($item in $running) {
+            $process = Get-Process -Id $item.ProcessId -ErrorAction SilentlyContinue
+            if ($process -and $process.SessionId -eq $sessionId -and
+                $process.Path -eq $Desktop.Executable -and -not (Test-ProcessExited $process)) {
+                $process
+            }
+        }
+    )
+    if ($targets.Count) {
+        Write-Host '正在强制关闭 Codex 桌面版。'
+        $targets | Stop-Process -Force -ErrorAction SilentlyContinue
+        for ($attempt = 0; $attempt -le 10; $attempt++) {
+            if ($attempt -gt 0) { Start-Sleep -Milliseconds 500 }
+            $remaining = @($targets | Where-Object { -not (Test-ProcessExited $_) })
+            if ($remaining.Count -eq 0) { break }
+        }
+    }
+    if (@(Get-CodexDesktopProcesses $Desktop).Count) {
+        throw 'Codex 仍在运行。请在托盘彻底退出 Codex，若 CC Switch 自动打开它，先退出 CC Switch 再重试。'
+    }
 }
 
 function Start-OfficialCodexDesktop($Desktop, [string]$Arguments = '') {
