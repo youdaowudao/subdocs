@@ -1,4 +1,4 @@
-﻿# UseGoodAI Codex 中文化 1.0.2
+﻿# UseGoodAI Codex 中文化 1.0.3
 # 由 codex-zh/build.py 生成。
 # MIT License
 #
@@ -178,15 +178,13 @@ function Close-ExistingCodexDesktop($Desktop) {
     if ($targets.Count) {
         Write-Host '正在强制关闭 Codex 桌面版。'
         $targets | Stop-Process -Force -ErrorAction SilentlyContinue
-        for ($attempt = 0; $attempt -le 10; $attempt++) {
-            if ($attempt -gt 0) { Start-Sleep -Milliseconds 500 }
-            $remaining = @($targets | Where-Object { -not (Test-ProcessExited $_) })
-            if ($remaining.Count -eq 0) { break }
-        }
     }
-    if (@(Get-CodexDesktopProcesses $Desktop).Count) {
-        throw 'Codex 仍在运行。请在托盘彻底退出 Codex，若 CC Switch 自动打开它，先退出 CC Switch 再重试。'
+    for ($attempt = 0; $attempt -le 10; $attempt++) {
+        if ($attempt -gt 0) { Start-Sleep -Milliseconds 500 }
+        $remaining = @($targets | Where-Object { -not (Test-ProcessExited $_) })
+        if ($remaining.Count -eq 0 -and @(Get-CodexDesktopProcesses $Desktop).Count -eq 0) { return }
     }
+    throw 'Codex 仍在运行。请在托盘彻底退出 Codex，若 CC Switch 自动打开它，先退出 CC Switch 再重试。'
 }
 
 function Start-OfficialCodexDesktop($Desktop, [string]$Arguments = '') {
