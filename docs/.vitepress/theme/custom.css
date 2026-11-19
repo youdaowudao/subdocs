@@ -123,14 +123,16 @@ body {
 .VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/quick-start.html']),
 .VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-cc-switch.html']),
 .VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/image-video-group-image.html']),
-.VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-models.html']) {
+.VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-models.html']),
+.VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-chinese.html']) {
   margin: 0 0 8px;
 }
 
 .VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/quick-start.html']) > .item,
 .VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-cc-switch.html']) > .item,
 .VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/image-video-group-image.html']) > .item,
-.VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-models.html']) > .item {
+.VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-models.html']) > .item,
+.VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-chinese.html']) > .item {
   min-height: 54px;
   padding: 0;
 }
@@ -138,14 +140,16 @@ body {
 .VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/quick-start.html']) .indicator,
 .VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-cc-switch.html']) .indicator,
 .VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/image-video-group-image.html']) .indicator,
-.VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-models.html']) .indicator {
+.VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-models.html']) .indicator,
+.VPSidebar .VPSidebarItem.level-1:has(> .item > .link[href='/codex-chinese.html']) .indicator {
   display: none;
 }
 
 .VPSidebar .link[href='/quick-start.html'],
 .VPSidebar .link[href='/codex-cc-switch.html'],
 .VPSidebar .link[href='/image-video-group-image.html'],
-.VPSidebar .link[href='/codex-models.html'] {
+.VPSidebar .link[href='/codex-models.html'],
+.VPSidebar .link[href='/codex-chinese.html'] {
   display: grid;
   width: 100%;
   min-height: 54px;
@@ -163,7 +167,8 @@ body {
 .VPSidebar .link[href='/quick-start.html']::before,
 .VPSidebar .link[href='/codex-cc-switch.html']::before,
 .VPSidebar .link[href='/image-video-group-image.html']::before,
-.VPSidebar .link[href='/codex-models.html']::before {
+.VPSidebar .link[href='/codex-models.html']::before,
+.VPSidebar .link[href='/codex-chinese.html']::before {
   display: inline-flex;
   width: 30px;
   height: 30px;
@@ -178,7 +183,8 @@ body {
 .VPSidebar .link[href='/quick-start.html'] .text,
 .VPSidebar .link[href='/codex-cc-switch.html'] .text,
 .VPSidebar .link[href='/image-video-group-image.html'] .text,
-.VPSidebar .link[href='/codex-models.html'] .text {
+.VPSidebar .link[href='/codex-models.html'] .text,
+.VPSidebar .link[href='/codex-chinese.html'] .text {
   margin: 0;
   font-size: 17px;
   font-weight: 780;
@@ -251,6 +257,22 @@ body {
   color: #304b70;
 }
 
+.VPSidebar .link[href='/codex-chinese.html'] {
+  border-color: rgba(112, 78, 140, 0.3);
+  background: #f6f1fb;
+  box-shadow: 0 4px 12px rgba(112, 78, 140, 0.07);
+}
+
+.VPSidebar .link[href='/codex-chinese.html']::before {
+  content: '5.';
+  background: #704e8c;
+  color: #fff;
+}
+
+.VPSidebar .link[href='/codex-chinese.html'] .text {
+  color: #563a6e;
+}
+
 .VPSidebar .link[href='/quick-start.html']:hover {
   border-color: #71360e;
   background: #7a3f13;
@@ -275,10 +297,17 @@ body {
   transform: translateX(2px);
 }
 
+.VPSidebar .link[href='/codex-chinese.html']:hover {
+  border-color: rgba(112, 78, 140, 0.56);
+  background: #ede3f7;
+  transform: translateX(2px);
+}
+
 .VPSidebar .link[href='/quick-start.html']:focus-visible,
 .VPSidebar .link[href='/codex-cc-switch.html']:focus-visible,
 .VPSidebar .link[href='/image-video-group-image.html']:focus-visible,
-.VPSidebar .link[href='/codex-models.html']:focus-visible {
+.VPSidebar .link[href='/codex-models.html']:focus-visible,
+.VPSidebar .link[href='/codex-chinese.html']:focus-visible {
   outline: 3px solid rgba(154, 79, 22, 0.22);
   outline-offset: 3px;
 }
@@ -318,6 +347,15 @@ body {
   color: #304b70 !important;
 }
 
+.VPSidebar .VPSidebarItem.is-active > .item > .link[href='/codex-chinese.html'] {
+  border-color: #704e8c;
+  box-shadow: 0 0 0 2px rgba(112, 78, 140, 0.13);
+}
+
+.VPSidebar .VPSidebarItem.is-active > .item > .link[href='/codex-chinese.html'] .text {
+  color: #563a6e !important;
+}
+
 .dark .VPSidebar .link[href='/quick-start.html'] {
   border-color: #d68c49;
   background: #a95e24;
@@ -349,6 +387,16 @@ body {
 .dark .VPSidebar .link[href='/codex-models.html'] .text,
 .dark .VPSidebar .VPSidebarItem.is-active > .item > .link[href='/codex-models.html'] .text {
   color: #d6e4f7 !important;
+}
+
+.dark .VPSidebar .link[href='/codex-chinese.html'] {
+  border-color: rgba(184, 156, 214, 0.4);
+  background: rgba(52, 40, 66, 0.92);
+}
+
+.dark .VPSidebar .link[href='/codex-chinese.html'] .text,
+.dark .VPSidebar .VPSidebarItem.is-active > .item > .link[href='/codex-chinese.html'] .text {
+  color: #eadff6 !important;
 }
 
 .VPDoc {

@@ -59,10 +59,10 @@ test('documents the verified Nano Banana Responses request contract on the param
   assert.match(paramsSource, /只在 `output` 里找/)
 })
 
-test('keeps the four primary sidebar paths in the requested order and visually numbered', () => {
+test('keeps the five primary sidebar paths in the requested order and visually numbered', () => {
   assert.match(
     configSource,
-    /'quick-start\.md',\s*'codex-cc-switch\.md',\s*'image-video-group-image\.md',\s*'codex-models\.md',[\s\S]*?'clients'/,
+    /'quick-start\.md',\s*'codex-cc-switch\.md',\s*'image-video-group-image\.md',\s*'codex-models\.md',\s*'codex-chinese\.md',[\s\S]*?'clients'/,
   )
   assert.match(configSource, /frontmatterTitleFieldName:\s*'sidebarTitle'/)
   assert.match(ccSwitchSource, /^sidebarTitle:\s*CC Switch 接入$/m)
@@ -70,6 +70,7 @@ test('keeps the four primary sidebar paths in the requested order and visually n
   assert.match(customCssSource, /\.link\[href='\/codex-cc-switch\.html'\]::before\s*\{[\s\S]*?content:\s*'2\.'/)
   assert.match(customCssSource, /\.link\[href='\/image-video-group-image\.html'\]::before\s*\{[\s\S]*?content:\s*'3\.'/)
   assert.match(customCssSource, /\.link\[href='\/codex-models\.html'\]::before\s*\{[\s\S]*?content:\s*'4\.'/)
+  assert.match(customCssSource, /\.link\[href='\/codex-chinese\.html'\]::before\s*\{[\s\S]*?content:\s*'5\.'/)
   assert.match(customCssSource, /\.VPSidebar \.link\[href='\/codex-cc-switch\.html'\] \.text/)
   assert.match(customCssSource, /white-space:\s*nowrap/)
   assert.match(quickStartSource, /\[安装生图工具\]\(\/image-video-group-image\)/)
