@@ -4,8 +4,9 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 
-SOURCE = Path(__file__).resolve().parent
-INSTALLER = SOURCE.parent
+PROJECT = Path(__file__).resolve().parent
+SOURCE = PROJECT / "windows"
+INSTALLER = PROJECT.parent
 REPOSITORY = INSTALLER.parent
 DESTINATIONS = (
     INSTALLER / "install/chinese.ps1",
@@ -25,8 +26,8 @@ def build():
     )
     parts = [source_text("desktop.ps1"), source_text("config.ps1")]
     core = source_text("core.ps1")
-    cache_reader = "    $expressionSource = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'language-cache.js'))"
-    cache_js = source_text("language-cache.js")
+    cache_reader = "    $expressionSource = [IO.File]::ReadAllText((Join-Path (Split-Path -Parent $PSScriptRoot) 'language-cache.js'))"
+    cache_js = (PROJECT / "language-cache.js").read_text(encoding="utf-8").rstrip()
     if entry.count(imports) != 1 or core.count(cache_reader) != 1 or "\n'@" in cache_js:
         raise SystemExit("入口或缓存源码结构已变化，无法生成独立脚本。")
     parts.append(core.replace(cache_reader, "    $expressionSource = @'\n" + cache_js + "\n'@", 1))

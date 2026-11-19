@@ -87,7 +87,7 @@ function Invoke-CodexDebug($Desktop, [uint32]$ProcessId, [int]$Port, [string]$Me
 }
 
 function Get-CodexCacheResult($Desktop, [uint32]$ProcessId, [int]$Port, [bool]$Write, [int]$ReadyTimeoutMs = 40000) {
-    $expressionSource = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'language-cache.js'))
+    $expressionSource = [IO.File]::ReadAllText((Join-Path (Split-Path -Parent $PSScriptRoot) 'language-cache.js'))
     $mode = if ($Write) { 'true' } else { 'false' }
     $result = Invoke-CodexDebug $Desktop $ProcessId $Port 'Runtime.evaluate' @{
         expression = '(' + $expressionSource + "`n)($mode, $ReadyTimeoutMs)"
