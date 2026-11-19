@@ -133,6 +133,7 @@ def write_language(backend):
     configuration = config_home / "config.toml"
     if not config_home.is_absolute() or configuration.is_symlink():
         raise RuntimeError("无法安全确认 Codex 配置路径。")
+    config_home.mkdir(parents=True, exist_ok=True)
     old = configuration.read_bytes() if configuration.is_file() else None
     backup = None
     if old is not None:
