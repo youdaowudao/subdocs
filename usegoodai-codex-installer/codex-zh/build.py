@@ -34,7 +34,8 @@ def build():
     version = source_text("VERSION")
     license_comment = "\n".join(f"# {line}" if line else "#" for line in source_text("LICENSE").splitlines())
     banner = f"# UseGoodAI Codex 中文化 {version}\n# 由 codex-zh/build.py 生成。\n{license_comment}\n"
-    return (banner + effect + "\n").encode("utf-8-sig")
+    # The HTTP response declares UTF-8. Invoke-RestMethod retains any BOM.
+    return (banner + effect + "\n").encode("utf-8")
 
 
 def main():

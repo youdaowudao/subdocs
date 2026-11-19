@@ -1,4 +1,4 @@
-﻿# UseGoodAI Codex 中文化 1.0.3
+# UseGoodAI Codex 中文化 1.0.4
 # 由 codex-zh/build.py 生成。
 # MIT License
 #
