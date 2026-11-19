@@ -3,7 +3,8 @@
 ## 1.0.3 · 2026-11-19
 
 - 保留项目已有的强制关闭方式，在原有等待时间内同时确认进程已退出和系统查询结果已更新。
-- 正式发布待确认。Windows 原始发布文件的复测待记录。
+- Windows 11 ARM64 原生 PowerShell 5.1 通过单文件 HTTP 下载与执行复测。已打开的官方 Codex 退出，中文化后正常重启，临时端口释放，安装文件与签名哈希一致。发布文件 SHA-256 为 `9f1a9d1cd643a29f36d7313d214d57c1e364601a62667d2d513f6e41d6dccc26`。 [Windows 实测](https://github.com/youdaowudao/subdocs/actions/runs/44508459203)
+- 测试提交的三项现有发布检查通过。正式站发布待确认。 [发布检查](https://github.com/youdaowudao/subdocs/actions/runs/44508461762)
 
 ## 1.0.2 · 2026-11-19
 
