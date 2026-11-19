@@ -3,7 +3,7 @@
 ## 1.0.4 · 2026-11-19
 
 - 网站发布脚本改用无 BOM 的 UTF-8，公开命令恢复为 `irm … | iex`。本地源码入口和中文化逻辑保持原样。
-- Windows PowerShell 5.1 发布入口复测待记录。
+- Windows PowerShell 5.1 的短命令与原始文件哈希验证记录。 [复测记录](https://github.com/youdaowudao/subdocs/actions/runs/44515630170)
 
 ## 1.0.3 · 2026-11-19
 
