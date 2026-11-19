@@ -322,57 +322,15 @@ def cache_call(target, port, write):
     return result.get("result", {}).get("value", {})
 
 
-def repair():
-    app, executable, backend = find_app()
-    rows = process_snapshot()
-    original = matching(rows, executable)
-    if original.intersection(own_ancestors(rows)):
-        raise RuntimeError("请在 Codex 外部的终端运行。")
-    if original:
-        print("正在关闭 Codex 桌面应用……", flush=True)
-
-    port = None
-    owned_debug = set()
+def restore_desktop(app, executable, port, pending_stop):
+    # Defer terminal interrupts until the temporary process is closed and the app is back.
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGHUP, signal.SIGTERM})
     try:
-        try:
-            stop(executable, original)
-        except KeyboardInterrupt:
-            # Finish the requested shutdown before attempting to reopen normally.
-            stop(executable, original)
-            raise
-        if running(executable):
-            raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
-        write_language(backend)
-        if running(executable):
-            raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
-        with socket.socket() as listener:
-            listener.bind((LOOPBACK, 0))
-            port = listener.getsockname()[1]
-        open_app(app, f"--remote-debugging-port={port}",
-                 f"--remote-allow-origins=http://{LOOPBACK}:{port}")
-        target = wait_until(lambda: debug_target(executable, port), 30)
-        owned_debug = debug_pids(executable, port)
-        if not target:
-            raise RuntimeError("等待官方 Codex 调试窗口超时。")
-        if not cache_call(target, port, True).get("enabled"):
-            raise RuntimeError("未写入 Codex 的语言缓存。")
-        evaluate(target, port, "Page.reload", {})
-
-        def verify():
-            try:
-                url = debug_target(executable, port)
-                result = cache_call(url, port, False) if url else {}
-                return result.get("enabled") and result.get("liveEnabled")
-            except (OSError, RuntimeError):
-                return False
-
-        if not wait_until(verify, 15):
-            raise RuntimeError("刷新后未能确认 Codex 读取了语言缓存。")
-    finally:
         if port is not None:
-            if not owned_debug:
-                owned_debug = wait_until(lambda: debug_pids(executable, port), 3) or set()
-            stop(executable, owned_debug | debug_pids(executable, port))
+            if not pending_stop:
+                pending_stop = wait_until(lambda: debug_pids(executable, port), 3) or set()
+            pending_stop = pending_stop | debug_pids(executable, port)
+        stop(executable, pending_stop)
         if not running(executable):
             open_app(app)
 
@@ -390,6 +348,57 @@ def repair():
 
         if not wait_until(normal_running, 20):
             raise RuntimeError("未能确认 Codex 正常重新打开。")
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
+
+
+def repair():
+    app, executable, backend = find_app()
+    rows = process_snapshot()
+    original = matching(rows, executable)
+    if original.intersection(own_ancestors(rows)):
+        raise RuntimeError("请在 Codex 外部的终端运行。")
+    if original:
+        print("正在关闭 Codex 桌面应用……", flush=True)
+
+    port = None
+    pending_stop = set()
+    try:
+        try:
+            stop(executable, original)
+        except KeyboardInterrupt:
+            pending_stop = original
+            raise
+        if running(executable):
+            raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
+        write_language(backend)
+        if running(executable):
+            raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
+        with socket.socket() as listener:
+            listener.bind((LOOPBACK, 0))
+            port = listener.getsockname()[1]
+        open_app(app, f"--remote-debugging-port={port}",
+                 f"--remote-allow-origins=http://{LOOPBACK}:{port}")
+        target = wait_until(lambda: debug_target(executable, port), 30)
+        pending_stop = debug_pids(executable, port)
+        if not target:
+            raise RuntimeError("等待官方 Codex 调试窗口超时。")
+        if not cache_call(target, port, True).get("enabled"):
+            raise RuntimeError("未写入 Codex 的语言缓存。")
+        evaluate(target, port, "Page.reload", {})
+
+        def verify():
+            try:
+                url = debug_target(executable, port)
+                result = cache_call(url, port, False) if url else {}
+                return result.get("enabled") and result.get("liveEnabled")
+            except (OSError, RuntimeError):
+                return False
+
+        if not wait_until(verify, 15):
+            raise RuntimeError("刷新后未能确认 Codex 读取了语言缓存。")
+    finally:
+        restore_desktop(app, executable, port, pending_stop)
     print("已启用语言开关并设置简体中文。请查看重新打开的 Codex 菜单。")
 
 
