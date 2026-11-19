@@ -1,5 +1,5 @@
 #!/bin/sh
-# UseGoodAI Codex 中文化 Mac 1.0.0
+# UseGoodAI Codex 中文化 Mac 1.0.1
 # MIT License
 #
 # Copyright (c) 2026 zhenglei410
@@ -315,10 +315,12 @@ def evaluate(url, port, method, params):
     raise RuntimeError("等待 Codex 调试响应超时。")
 
 
-def debug_pids(executable, port):
+def debug_pids(executable, port, pids=None):
     flag = f"--remote-debugging-port={port}"
+    if pids is None:
+        pids = running(executable)
     return {
-        pid for pid in running(executable)
+        pid for pid in pids
         if flag in run("/bin/ps", "-ww", "-p", str(pid), "-o", "command=").stdout.split()
     }
 
@@ -366,13 +368,18 @@ def repair():
         raise RuntimeError("请在 Codex 外部的终端运行。")
     if original:
         print("正在关闭 Codex 桌面应用……", flush=True)
-    stop(executable, original)
-    if running(executable):
-        raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
 
     port = None
     owned_debug = set()
     try:
+        try:
+            stop(executable, original)
+        except KeyboardInterrupt:
+            # Finish the requested shutdown before attempting to reopen normally.
+            stop(executable, original)
+            raise
+        if running(executable):
+            raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
         write_language(backend)
         if running(executable):
             raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
@@ -404,14 +411,23 @@ def repair():
             if not owned_debug:
                 owned_debug = wait_until(lambda: debug_pids(executable, port), 3) or set()
             stop(executable, owned_debug | debug_pids(executable, port))
-            if not wait_until(lambda: not debug_pids(executable, port), 3):
-                raise RuntimeError("临时调试实例仍在运行，请退出 Codex 后正常重新打开。")
         if not running(executable):
             open_app(app)
-        if not wait_until(lambda: running(executable), 20):
+
+        def normal_running():
+            pids = running(executable)
+            if not pids:
+                return False
+            late_debug = debug_pids(executable, port, pids) if port is not None else set()
+            if not late_debug:
+                return True
+            stop(executable, late_debug)
+            if not running(executable):
+                open_app(app)
+            return False
+
+        if not wait_until(normal_running, 20):
             raise RuntimeError("未能确认 Codex 正常重新打开。")
-        if port is not None and debug_pids(executable, port):
-            raise RuntimeError("Codex 仍以调试模式运行，请退出后正常重新打开。")
     print("已启用语言开关并设置简体中文。请查看重新打开的 Codex 菜单。")
 
 
