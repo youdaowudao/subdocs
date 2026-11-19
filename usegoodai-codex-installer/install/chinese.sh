@@ -336,15 +336,15 @@ def debug_target(executable, port):
             owner = int(field[1:])
         elif field.startswith("n") and (owner not in expected or field[1:] not in (f"{LOOPBACK}:{port}", f"[::1]:{port}")):
             raise RuntimeError("调试端口的进程或监听地址不符合预期。")
-    http = http.client.HTTPConnection(LOOPBACK, port, timeout=2)
+    connection = http.client.HTTPConnection(LOOPBACK, port, timeout=2)
     try:
-        http.request("GET", "/json/list")
-        reply = http.getresponse()
+        connection.request("GET", "/json/list")
+        reply = connection.getresponse()
         targets = json.loads(reply.read(1024 * 1024)) if reply.status == 200 else []
     except (OSError, http.client.HTTPException, ValueError):
         return None
     finally:
-        http.close()
+        connection.close()
     return next((page["webSocketDebuggerUrl"] for page in targets
                  if page.get("url") == "app://-/index.html" and page.get("type") == "page"
                  and page.get("webSocketDebuggerUrl")), None)
