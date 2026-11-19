@@ -58,7 +58,7 @@ def find_app():
 
 
 def process_snapshot():
-    result = run("/bin/ps", "-axo", "pid=,ppid=,uid=,stat=,comm=")
+    result = run("/bin/ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,comm=")
     result.check_returncode()
     return {
         int(pid): (int(parent), int(uid), state, name)
@@ -330,6 +330,7 @@ def repair():
         raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
 
     port = None
+    owned_debug = set()
     try:
         write_language(backend)
         if running(executable):
@@ -340,6 +341,7 @@ def repair():
         open_app(app, f"--remote-debugging-port={port}",
                  f"--remote-allow-origins=http://{LOOPBACK}:{port}")
         target = wait_until(lambda: debug_target(executable, port), 30)
+        owned_debug = debug_pids(executable, port)
         if not target:
             raise RuntimeError("等待官方 Codex 调试窗口超时。")
         if not cache_call(target, port, True).get("enabled"):
@@ -358,11 +360,17 @@ def repair():
             raise RuntimeError("刷新后未能确认 Codex 读取了语言缓存。")
     finally:
         if port is not None:
-            stop(executable, debug_pids(executable, port))
+            if not owned_debug:
+                owned_debug = wait_until(lambda: debug_pids(executable, port), 3) or set()
+            stop(executable, owned_debug | debug_pids(executable, port))
+            if not wait_until(lambda: not debug_pids(executable, port), 3):
+                raise RuntimeError("临时调试实例仍在运行，请退出 Codex 后正常重新打开。")
         if not running(executable):
             open_app(app)
         if not wait_until(lambda: running(executable), 20):
             raise RuntimeError("未能确认 Codex 正常重新打开。")
+        if port is not None and debug_pids(executable, port):
+            raise RuntimeError("Codex 仍以调试模式运行，请退出后正常重新打开。")
     print("已启用语言开关并设置简体中文。请查看重新打开的 Codex 菜单。")
 
 
