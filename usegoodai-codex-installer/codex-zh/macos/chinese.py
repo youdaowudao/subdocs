@@ -24,8 +24,8 @@ TEAM_ID = "2DC432GLL2"
 LOOPBACK = "127.0.0.1"
 
 
-def run(*arguments):
-    return subprocess.run(arguments, capture_output=True, text=True, timeout=20)
+def run(*arguments, timeout=20):
+    return subprocess.run(arguments, capture_output=True, text=True, timeout=timeout)
 
 
 def find_app():
@@ -43,8 +43,10 @@ def find_app():
             if name not in ("ChatGPT", "Codex"):
                 raise RuntimeError("官方应用的启动入口无法识别。")
             requirement = f'anchor apple generic and identifier "{BUNDLE_ID}" and certificate leaf[subject.OU] = "{TEAM_ID}"'
-            if run("/usr/bin/codesign", "--verify", "--strict", "-R", requirement, str(app)).returncode:
-                raise RuntimeError("无法验证已安装 Codex 的官方签名。")
+            verification = run("/usr/bin/codesign", "--verify", "--deep", "--strict",
+                               "-R=" + requirement, str(app), timeout=90)
+            if verification.returncode:
+                raise RuntimeError("无法验证已安装 Codex 的官方签名。" + verification.stderr.strip())
             executable = app / "Contents/MacOS" / name
             backends = (
                 app / "Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
