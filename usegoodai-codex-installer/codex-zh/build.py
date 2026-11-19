@@ -12,6 +12,11 @@ DESTINATIONS = (
     INSTALLER / "install/chinese.ps1",
     REPOSITORY / "docs/public/install/chinese.ps1",
 )
+# The wrapper reads the core from disk when run locally; the release embeds it instead.
+CORE_READER = (
+    "$coreScript = [scriptblock]::Create([IO.File]::ReadAllText("
+    "(Join-Path $PSScriptRoot 'Enable-CodexI18nCurrentCache.ps1')))"
+)
 
 
 def source_text(name):
@@ -19,24 +24,16 @@ def source_text(name):
 
 
 def build():
-    entry = source_text("chinese.ps1")
-    imports = "\n".join(
-        f". (Join-Path $PSScriptRoot '{name}')"
-        for name in ("desktop.ps1", "config.ps1", "core.ps1")
-    )
-    parts = [source_text("desktop.ps1"), source_text("config.ps1")]
-    core = source_text("core.ps1")
-    cache_reader = "    $expressionSource = [IO.File]::ReadAllText((Join-Path (Split-Path -Parent $PSScriptRoot) 'language-cache.js'))"
-    cache_js = (PROJECT / "language-cache.js").read_text(encoding="utf-8").rstrip()
-    if entry.count(imports) != 1 or core.count(cache_reader) != 1 or "\n'@" in cache_js:
-        raise SystemExit("入口或缓存源码结构已变化，无法生成独立脚本。")
-    parts.append(core.replace(cache_reader, "    $expressionSource = @'\n" + cache_js + "\n'@", 1))
-    effect = entry.replace(imports, "\n\n".join(parts), 1)
+    wrapper = source_text("Reset-And-Enable-CodexI18nCurrentCache.ps1")
+    core = source_text("Enable-CodexI18nCurrentCache.ps1")
+    if wrapper.count(CORE_READER) != 1 or "$PSScriptRoot" in core:
+        raise SystemExit("入口或核心脚本结构已变化，无法生成独立脚本。")
+    body = wrapper.replace(CORE_READER, "$coreScript = {\n" + core + "\n}", 1)
     version = source_text("VERSION")
     license_comment = "\n".join(f"# {line}" if line else "#" for line in source_text("LICENSE").splitlines())
     banner = f"# UseGoodAI Codex 中文化 {version}\n# 由 codex-zh/build.py 生成。\n{license_comment}\n"
     # The HTTP response declares UTF-8. Invoke-RestMethod retains any BOM.
-    return (banner + effect + "\n").encode("utf-8")
+    return (banner + "& {\n" + body + "\n}\n").encode("utf-8")
 
 
 def main():

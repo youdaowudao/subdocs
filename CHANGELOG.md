@@ -1,5 +1,10 @@
 # 文档版本记录
 
+## 0.1.27（2026-11-20）
+
+- Windows Codex 中文化 1.1.0：修复没有梯子时报错且界面仍是英文的问题。流程改为照搬上游脚本，只改关闭进程、取消自动重启、嵌入核心脚本、关闭前让缓存写入磁盘四处。同步更新 `docs/public/install/chinese.ps1` 与 `usegoodai-codex-installer/install/chinese.ps1`，命令不变。
+- Windows 11 ARM64 实测 9 组 55 次运行全部成功，覆盖被墙、断网、联网和 API Key 接入状态。Windows x64 实机与大陆真实网络未验证。详见 `usegoodai-codex-installer/codex-zh/windows/CHANGELOG.md`。
+
 ## 0.1.26（2026-11-19）
 
 - 文档站新增「Codex 改中文版」，排在左侧导航第 5 位，沿用前四项的编号卡片样式，浅色和深色模式各配一套颜色。
