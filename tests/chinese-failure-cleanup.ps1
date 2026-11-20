@@ -55,5 +55,19 @@ try {
     Stop-Codex
 }
 if (@(Get-NetTCPConnection -LocalPort 9240 -State Listen -ErrorAction SilentlyContinue).Count) { Add-Failure 'Fixture port remained open after cleanup.' }
+# Verify the successful path too, before any test-controlled normal reopen.
+$success = Invoke-OneLine 'success-cleanup'
+if (-not $success.success) { Add-Failure 'The successful cleanup control did not complete.' }
+$lateSuccess = @()
+$latePorts = @()
+$watch = [Diagnostics.Stopwatch]::StartNew()
+while ($watch.Elapsed.TotalSeconds -lt 10) {
+    $lateSuccess += @(Get-CodexProcesses | ForEach-Object ProcessId)
+    $latePorts += @(Get-NetTCPConnection -LocalPort 9240 -State Listen -ErrorAction SilentlyContinue | ForEach-Object OwningProcess)
+    Start-Sleep -Milliseconds 300
+}
+$report.successLateProcesses = @($lateSuccess | Select-Object -Unique)
+$report.successLateListeners = @($latePorts | Select-Object -Unique)
+if ($lateSuccess.Count -or $latePorts.Count) { Add-Failure 'The successful command reopened the application or debug listener.' }
 Save-Report
 if ($report.failures.Count) { throw ($report.failures -join ' | ') }
