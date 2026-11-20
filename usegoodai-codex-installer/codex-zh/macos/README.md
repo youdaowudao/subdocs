@@ -10,7 +10,7 @@ curl -fsSL https://docs.usegoodai.com/install/chinese.sh | /bin/bash
 
 命令先关闭应用，再临时打开 ChatGPT 写入缓存。窗口出现属于上游原有流程，终端会显示中文阶段提示，等待超过 5 秒时继续报告进度。完成后关闭临时窗口，请自己重新打开 ChatGPT；失败和中断也执行关闭收尾。
 
-1.1.3 候选保留上游 Mac 提供的 `--app`、`--port` 和 `--timeout` 参数；单文件封装通过 `bash -s -- 参数` 传入。正式发布状态以版本记录为准。
+1.1.3 保留上游 Mac 提供的 `--app`、`--port` 和 `--timeout` 参数；单文件封装通过 `bash -s -- 参数` 传入。正式发布状态以版本记录为准。
 
 ## 来源与本次修改
 
