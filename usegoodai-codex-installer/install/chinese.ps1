@@ -1,4 +1,4 @@
-# UseGoodAI Codex 中文化 1.1.4
+# UseGoodAI Codex 中文化 1.1.5
 # 由 codex-zh/build.py 生成。
 # MIT License
 #
@@ -689,41 +689,17 @@ function Invoke-CdpExpression {
 }
 
 function Save-CodexStorage {
-    param([int]$DebugPort)
-    # UseGoodAI：先正常关闭临时页面，使存储连接退出；随后仍复用项目原有的进程清理。
-    # 不再直接强杀 renderer，避免页面自动重建时抢在存储收尾前结束整个应用。
-    $listUrl = "http://127.0.0.1:$DebugPort/json/list"
-    try { $targets = [object[]](Invoke-RestMethod -Uri $listUrl -TimeoutSec 2) }
-    catch { throw '保存语言缓存前未能连接 ChatGPT 页面。' }
-    $pages = @($targets | Where-Object { $_.type -eq 'page' -and $_.url -eq 'app://-/index.html' })
-    if (-not $pages.Count) { throw '保存语言缓存前未找到 ChatGPT 页面。' }
-    foreach ($page in $pages) {
-        Write-Host '正在正常关闭 ChatGPT 页面，保存语言缓存……'
-        $id = [Uri]::EscapeDataString([string]$page.id)
-        try {
-            $null = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$DebugPort/json/close/$id" -TimeoutSec 3
-        } catch {
-            # 页面关闭可能同时断开请求；下面必须确认页面确实已关闭。
-        }
+    # UseGoodAI：强制结束前先结束 Codex 的页面进程（renderer）。页面进程全部断开后，
+    # Chromium 立即把本地存储写入磁盘；直接结束整个 Codex 会丢失尚未落盘的中文缓存（Windows 实测）。
+    $renderers = @(
+        Get-CimInstance Win32_Process -Filter "Name='ChatGPT.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -match '--type=renderer' }
+    )
+
+    foreach ($process in $renderers) {
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
     }
-    $watch = [Diagnostics.Stopwatch]::StartNew()
-    $nextProgress = 5
-    do {
-        try {
-            $targets = [object[]](Invoke-RestMethod -Uri $listUrl -TimeoutSec 2)
-            $left = @($targets | Where-Object { $_.type -eq 'page' -and $_.url -eq 'app://-/index.html' })
-        } catch {
-            if (@(Get-CodexMainProcesses).Count) { throw '未能确认 ChatGPT 页面已正常关闭。' }
-            $left = @()
-        }
-        if (-not $left.Count) { break }
-        if ($watch.Elapsed.TotalSeconds -ge $nextProgress) {
-            Write-Host "正在等待 ChatGPT 页面关闭，已等待 $([int]$watch.Elapsed.TotalSeconds) 秒……"
-            $nextProgress += 5
-        }
-        Start-Sleep -Milliseconds 250
-    } while ($watch.Elapsed.TotalSeconds -lt 10)
-    if ($left.Count) { throw 'ChatGPT 页面未能正常关闭，语言缓存尚未确认保存。' }
+
     Start-Sleep -Seconds 2
 }
 
@@ -1442,9 +1418,9 @@ if ($RestartAfterSuccess -or $DiagnoseAfterRestart) {
             -ForegroundColor Yellow
     }
     else {
-        # UseGoodAI：取消自动重启。先正常关闭页面保存缓存，再关闭调试实例。
+        # UseGoodAI：取消自动重启。先结束页面进程让缓存落盘，再关闭调试实例。
         Write-Host '正在保存语言缓存……'
-        Save-CodexStorage -DebugPort $debugPort
+        Save-CodexStorage
         Write-Host '正在关闭 ChatGPT……'
         Stop-CodexRuntimeProcesses
     }

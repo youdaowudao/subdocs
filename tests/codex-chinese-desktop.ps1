@@ -568,6 +568,18 @@ Save-Report
 if ($report.failures.Count) { throw ('Failures: ' + ($report.failures -join ' | ')) }
 
 } finally {
+    # Preserve the actual failed matrix's WAL after all attempts, without adding I/O
+    # between repair and ordinary reopen. No browser evaluation or SDK mutation here.
+    $packageRoot = Join-Path $env:LOCALAPPDATA 'Packages/OpenAI.Codex_2p2nqsd0c76g0'
+    $databaseIndex = 0
+    foreach ($directory in Get-ChildItem $packageRoot -Recurse -Directory -Filter leveldb -ErrorAction SilentlyContinue | Where-Object FullName -Match 'Local Storage') {
+        $databaseIndex++
+        $destination = Join-Path $ReportDir "complete-final-db$databaseIndex"
+        $null = New-Item -ItemType Directory -Force $destination
+        Get-ChildItem $directory.FullName -File | Where-Object Name -NE 'LOCK' | Copy-Item -Destination $destination -ErrorAction Continue
+    }
+    if (Test-Path $config) { Copy-Item $config (Join-Path $ReportDir 'complete-final-config.toml') -ErrorAction Continue }
+    @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'ChatGPT|Codex|chrome' } | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine) | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $ReportDir 'complete-final-processes.json') -Encoding UTF8
     [IO.File]::WriteAllBytes($hostsPath, $originalHosts)
     foreach ($dns in $originalDns) {
         if (@($dns.ServerAddresses).Count) {
