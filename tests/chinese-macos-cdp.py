@@ -27,13 +27,17 @@ for name, mode, reload, success in [
     ('reload-page-change', 'always-race', True, False),
 ]:
     ready = report / (name + '-' + uuid.uuid4().hex + '.ready')
-    fixture = subprocess.Popen([sys.executable, str(repo / 'tests/codex-chinese-network.py'), '--mode', mode, '--ready', str(ready)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    fixture_errors = (report / (name + '-fixture-stderr.txt')).open('w')
+    fixture = subprocess.Popen([sys.executable, str(repo / 'tests/codex-chinese-network.py'), '--mode', mode, '--ready', str(ready)], stdout=subprocess.DEVNULL, stderr=fixture_errors)
     output = io.StringIO()
+    stage = 'fixture-startup'
     try:
         deadline = time.monotonic() + 10
-        while not ready.exists() and time.monotonic() < deadline:
+        while not ready.exists() and fixture.poll() is None and time.monotonic() < deadline:
             time.sleep(.1)
+        assert ready.exists(), (name, 'Fixture did not start', fixture.poll(), sys.executable)
         port = int(ready.read_text())
+        stage = 'evaluate'
         expression = 'location.reload(); "reload-requested"' if reload else ('"' + 'x' * (16*1024*1024) + '"' if mode == 'send-hang' else 'JSON.stringify({ok:true})')
         started = time.monotonic()
         error = None
@@ -57,8 +61,13 @@ for name, mode, reload, success in [
             assert attempts == 2, (name, attempts)
         results.append(dict(name=name, passed=True, seconds=round(seconds,2), attempts=attempts, error=error))
         print(name, 'PASS', round(seconds,2), flush=True)
+    except Exception as exc:
+        results.append(dict(name=name, passed=False, stage=stage, error=str(exc), fixtureExit=fixture.poll(), python=sys.version, executable=sys.executable))
+        raise
     finally:
-        fixture.terminate()
+        if fixture.poll() is None:
+            fixture.terminate()
         fixture.wait(10)
+        fixture_errors.close()
         (report / (name + '.txt')).write_text(output.getvalue())
         (report / 'report.json').write_text(json.dumps(results, indent=2))

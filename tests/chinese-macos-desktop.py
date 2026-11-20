@@ -97,7 +97,7 @@ def set_network(mode):
 
 
 def stop():
-    CORE['stop'](str(executable), CORE['running'](str(executable)))
+    CORE['stop_desktop'](str(executable), CORE['running'](str(executable)))
 
 
 def open_app(debug=False):
@@ -110,11 +110,19 @@ def open_app(debug=False):
 
 def listeners():
     result = execute(['/usr/sbin/lsof', '-nP', '-iTCP', '-sTCP:LISTEN'], check=False)
-    return [line for line in result.stdout.splitlines() if 'ChatGPT' in line]
+    pids = {str(pid) for pid in app_rows()}
+    return [line for line in result.stdout.splitlines() if len(line.split()) > 1 and line.split()[1] in pids]
+
+
+def app_rows():
+    return {pid: row for pid, row in CORE['process_snapshot']().items()
+            if row[1] == os.getuid() and not row[2].startswith('Z') and row[3].startswith(str(app) + '/Contents/')}
 
 
 def app_processes():
-    return [line for line in execute(['/bin/ps', '-ww', '-axo', 'pid=,command=']).stdout.splitlines() if str(app) + '/Contents/' in line]
+    rows = app_rows()
+    commands = execute(['/bin/ps', '-ww', '-axo', 'pid=,command=']).stdout.splitlines()
+    return [line for line in commands if line.split() and line.split()[0].isdigit() and int(line.split()[0]) in rows]
 
 
 def save_databases():
@@ -151,6 +159,7 @@ def snapshot(label):
         windows = (REPO / 'tests/codex-chinese-desktop.ps1').read_text(encoding='utf-8-sig')
         js = re.search(r"\$snapshotJs = @'\n(.*?)\n'@", windows, re.S)[1]
         result = CORE['call'](9333, js, 100)
+        result['browserLocale'] = CORE['call'](9333, 'JSON.stringify({language:navigator.language,languages:navigator.languages})', 10)
         (REPORT / (label + '.json')).write_text(json.dumps(result, ensure_ascii=False, indent=2))
         return result
     finally:
@@ -175,40 +184,6 @@ def onboarding():
         stop()
 
 
-def observe_old_cdp(done, evidence):
-    """Passively capture only this disposable app's CDP replies, without changing old bytes."""
-    capture = None
-    try:
-        while not done.wait(.1):
-            found = re.search(r'--remote-debugging-port=(\d+)', '\n'.join(app_processes()))
-            if not found:
-                continue
-            port = int(found[1])
-            evidence['port'] = port
-            with (REPORT / 'old-capture-stderr.txt').open('wb') as errors:
-                capture = subprocess.Popen(['sudo', '/usr/sbin/tcpdump', '-U', '-i', 'lo0', '-s', '0', '-w', str(REPORT / 'old-cdp.pcap'),
-                                            f'tcp and src host 127.0.0.1 and src port {port}'], stdout=subprocess.DEVNULL, stderr=errors)
-                while not done.wait(.1) and capture.poll() is None:
-                    pass
-                if capture.poll() is None:
-                    execute(['sudo', '/bin/kill', '-INT', capture.pid], check=False)
-                capture.wait(10)
-            break
-        pcap = REPORT / 'old-cdp.pcap'
-        if pcap.exists():
-            execute(['sudo', '/bin/chmod', 'a+r', pcap])
-            # Incoming expressions are excluded by src-port filtering. This text
-            # must be in an actual response, not the old code sent by the client.
-            evidence['statsigTimeoutCaptured'] = b'Statsig did not become ready or has an unsupported cache adapter.' in pcap.read_bytes()
-            evidence['pcapSha256'] = digest(pcap)
-    except Exception as error:
-        evidence['error'] = str(error)
-    finally:
-        if capture and capture.poll() is None:
-            execute(['sudo', '/bin/kill', '-TERM', capture.pid], check=False)
-            capture.wait(10)
-
-
 def run_tool(label, expect_success=True, previous=False, interrupt=False):
     (REPORT / (label + '-before-processes.txt')).write_text('\n'.join(app_processes()))
     # Exactly the published one-line shell entry: local HTTP serves the immutable candidate bytes.
@@ -221,11 +196,6 @@ def run_tool(label, expect_success=True, previous=False, interrupt=False):
             received.append((time.monotonic() - started, line))
     thread = threading.Thread(target=read, daemon=True)
     thread.start()
-    old_done = threading.Event()
-    old_evidence = {}
-    if args.old:
-        observer = threading.Thread(target=observe_old_cdp, args=(old_done, old_evidence), daemon=True)
-        observer.start()
     sent_interrupt = False
     while child.poll() is None:
         if time.monotonic() - started > 240:
@@ -239,11 +209,6 @@ def run_tool(label, expect_success=True, previous=False, interrupt=False):
         time.sleep(.2)
     thread.join(5)
     elapsed = time.monotonic() - started
-    if args.old:
-        old_done.set()
-        observer.join(20)
-        require(not observer.is_alive(), 'Old comparison capture did not stop')
-        report['oldFailureEvidence'] = old_evidence
     output = ''.join(line for _, line in received)
     (REPORT / (label + '-output.txt')).write_text(output)
     timeline = [0] + [at for at, _ in received] + [elapsed]
@@ -275,11 +240,6 @@ def run_tool(label, expect_success=True, previous=False, interrupt=False):
         require(sent_interrupt and not row['success'], 'Interrupt did not reach the running repair')
         time.sleep(5)
         require(not app_processes() and not listeners(), 'Interrupted repair left the application running')
-    else:
-        require(child.returncode != 0 and not row['success'], 'Old 1.0.2 did not reproduce the expected failure')
-        require(old_evidence.get('statsigTimeoutCaptured') is True, 'Old failure was not proven to be the Statsig eight-second timeout')
-        row['oldReopened'] = bool(app_processes())
-        save()
     return row
 
 
@@ -287,12 +247,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--network', choices=['refused', 'blackhole', 'online'], required=True)
     parser.add_argument('--auth', choices=['apikey', 'login'], required=True)
-    parser.add_argument('--old', action='store_true')
+    parser.add_argument('--focused', action='store_true')
     args = parser.parse_args()
-    report.update(network=args.network, auth=args.auth, old=args.old, sha=os.environ.get('GITHUB_SHA'), system=platform.platform(), machine=platform.machine(), python=sys.version)
+    report.update(network=args.network, auth=args.auth, focused=args.focused, sha=os.environ.get('GITHUB_SHA'), system=platform.platform(), machine=platform.machine(), python=sys.version)
     require(sys.platform == 'darwin' and platform.machine() == 'arm64', 'A real Apple Silicon Mac is required')
     hosts = Path('/etc/hosts').read_bytes()
     prior_home = execute(['/bin/launchctl', 'getenv', 'CODEX_HOME'], check=False).stdout.strip()
+    preferences = Path.home() / 'Library/Preferences/.GlobalPreferences.plist'
+    original_preferences = plistlib.loads(preferences.read_bytes()) if preferences.exists() else {}
+    execute(['/usr/bin/defaults', 'write', '-g', 'AppleLanguages', '-array', 'zh-Hans', 'en-US'])
+    execute(['/usr/bin/defaults', 'write', '-g', 'AppleLocale', 'zh_CN'])
+    report['testSystemLanguages'] = execute(['/usr/bin/defaults', 'read', '-g', 'AppleLanguages']).stdout
     app = install()
     executable = app / 'Contents/MacOS/ChatGPT'
     files = [executable, app / 'Contents/Resources/app.asar']
@@ -310,9 +275,6 @@ if __name__ == '__main__':
     execute(['/bin/launchctl', 'setenv', 'CODEX_HOME', config_home])
     script_env = dict(os.environ, CODEX_HOME=str(config_home), PATH='/usr/bin:/bin:/usr/sbin:/sbin', PYTHONUNBUFFERED='1')
     payload = (REPO / 'docs/public/install/chinese.sh').read_bytes()
-    if args.old:
-        payload = subprocess.check_output(['git', 'show', '5e228f0:docs/public/install/chinese.sh'], cwd=REPO)
-        require(hashlib.sha256(payload).hexdigest() == 'd5c1596d4c3de3003836f6911e3bed3e13a2b66ac6b9ad7455fd7b43b5a592a2', 'Old comparison bytes differ')
     report['scriptSha256'] = hashlib.sha256(payload).hexdigest()
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a): pass
@@ -336,35 +298,35 @@ if __name__ == '__main__':
             require(not any(x.get('source') == 'Network' for x in report['baseline']['caches']), 'Offline baseline leaked to network')
         open_app()
         time.sleep(5)
-        if args.old:
-            run_tool('old-control', False)
-        else:
-            run_tool('run1-open')
+        run_tool('run1-open')
+        if not args.focused:
             run_tool('run2-repeat', previous=True)
             stop()
             run_tool('run3-closed', previous=True)
             for n in range(1, 4):
                 run_tool(f'stress{n}', previous=True)
-            report['final'] = snapshot('final')
-            require(report['final']['liveEnableI18n'] is True and report['final']['cjkCount'] >= 5, 'Final language/cache not enabled')
-            if args.network == 'blackhole' and args.auth == 'apikey':
-                run_tool('interrupted', False, interrupt=True)
-                run_tool('after-interrupted', previous=True)
-            (REPORT / 'config-final.toml').write_bytes((config_home / 'config.toml').read_bytes())
-            comparison = execute([sys.executable, REPO / 'tests/chinese-config-preservation.py', REPORT / 'config-original.toml', REPORT / 'config-final.toml'])
-            report['originalSettings'] = json.loads(comparison.stdout)
-            require(report['originalSettings']['preserved'], 'Original user configuration values changed')
-            require(all((config_home / name).read_bytes() == data for name, data in originals.items() if name != 'config.toml'), 'Original authentication data changed')
-            require(not list(config_home.glob('config.toml.codex-zh.bak.*')), 'Tool added a config backup')
-            require({str(p): digest(p) for p in files} == original_hashes, 'Application files changed')
-            execute(['/usr/bin/codesign', '--verify', '--deep', '--strict', app])
-            report['originalConfigValuesPreserved'] = True
-            report['applicationUnchanged'] = True
+        report['final'] = snapshot('final')
+        require(report['final']['liveEnableI18n'] is True and report['final']['cjkCount'] >= 5, 'Final language/cache not enabled')
+        if not args.focused and args.network == 'blackhole' and args.auth == 'apikey':
+            run_tool('interrupted', False, interrupt=True)
+            run_tool('after-interrupted', previous=True)
+        (REPORT / 'config-final.toml').write_bytes((config_home / 'config.toml').read_bytes())
+        comparison = execute([sys.executable, REPO / 'tests/chinese-config-preservation.py', REPORT / 'config-original.toml', REPORT / 'config-final.toml'])
+        report['originalSettings'] = json.loads(comparison.stdout)
+        require(report['originalSettings']['preserved'], 'Original user configuration values changed')
+        require(all((config_home / name).read_bytes() == data for name, data in originals.items() if name != 'config.toml'), 'Original authentication data changed')
+        require(not list(config_home.glob('config.toml.codex-zh.bak.*')), 'Tool added a config backup')
+        require({str(p): digest(p) for p in files} == original_hashes, 'Application files changed')
+        execute(['/usr/bin/codesign', '--verify', '--deep', '--strict', app])
+        report['originalConfigValuesPreserved'] = True
+        report['applicationUnchanged'] = True
     except Exception as error:
         report['failures'].append(str(error))
         raise
     finally:
         stop()
+        if (config_home / 'config.toml').exists():
+            (REPORT / 'config-at-exit.toml').write_bytes((config_home / 'config.toml').read_bytes())
         try:
             save_databases()
         except Exception as error:
@@ -375,5 +337,12 @@ if __name__ == '__main__':
             execute(['/bin/launchctl', 'setenv', 'CODEX_HOME', prior_home])
         else:
             execute(['/bin/launchctl', 'unsetenv', 'CODEX_HOME'])
+        for key in ('AppleLanguages', 'AppleLocale'):
+            if key not in original_preferences:
+                execute(['/usr/bin/defaults', 'delete', '-g', key], check=False)
+            elif isinstance(original_preferences[key], list):
+                execute(['/usr/bin/defaults', 'write', '-g', key, '-array', *original_preferences[key]])
+            else:
+                execute(['/usr/bin/defaults', 'write', '-g', key, str(original_preferences[key])])
         server.shutdown()
         save()

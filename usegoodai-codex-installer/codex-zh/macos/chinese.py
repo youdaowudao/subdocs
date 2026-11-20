@@ -161,6 +161,47 @@ def stop(executable, pids):
     if not wait_until(lambda: not (running(executable) & pids), 2):
         raise RuntimeError("ChatGPT 未能退出，请从应用菜单彻底退出后重试。")
 
+
+# UseGoodAI：主程序退出后，复用同一 TERM/KILL 顺序收尾已确认属于该应用的后台进程。
+# 以当前用户、真实可执行文件及父子关系限定范围，不按 codex 名称结束终端程序。
+def stop_desktop(executable, pids):
+    prefix = os.path.dirname(os.path.dirname(str(executable))) + os.sep
+    owned = {}
+
+    def remaining_owned():
+        rows = process_snapshot()
+        parents = set(pids) | set(owned)
+        changed = True
+        while changed:
+            changed = False
+            for pid, (parent, uid, state, path) in rows.items():
+                if uid != os.getuid() or state.startswith('Z') or not path.startswith(prefix):
+                    continue
+                # Crashpad detaches from its parent. This exact bundled diagnostic
+                # executable belongs to the App; it is not an interactive CLI.
+                diagnostic = os.path.basename(path) == 'browser_crashpad_handler'
+                if pid not in parents and parent not in parents and not diagnostic:
+                    continue
+                if pid in owned and owned[pid] != path:
+                    continue
+                owned[pid] = path
+                if pid not in parents:
+                    parents.add(pid)
+                    changed = True
+        return {pid: path for pid, path in owned.items()
+                if pid in rows and rows[pid][1] == os.getuid()
+                and not rows[pid][2].startswith('Z') and rows[pid][3] == path}
+
+    remaining_owned()
+    stop(executable, pids)
+    if wait_until(lambda: not remaining_owned(), 2):
+        return
+    leftovers = remaining_owned()
+    for path in sorted(set(leftovers.values())):
+        stop(path, {pid for pid, owner in leftovers.items() if owner == path})
+    if remaining_owned():
+        raise RuntimeError('ChatGPT 的后台进程尚未退出，请退出后重试。')
+
 def debug_pids(executable, port, pids=None):
     flag = f"--remote-debugging-port={port}"
     if pids is None:
@@ -231,7 +272,7 @@ def main():
     if original.intersection(own_ancestors(rows)):
         raise RuntimeError('请在 ChatGPT 外部的终端运行。')
     with progress('正在关闭 ChatGPT'):
-        stop(exe,original)
+        stop_desktop(exe,original)
     if running(exe): raise RuntimeError('ChatGPT 被其他程序重新打开，请退出后再运行。')
     if args.port: port=args.port
     else:
@@ -269,7 +310,7 @@ def main():
         try:
             with progress('正在保存语言缓存并关闭 ChatGPT'):
                 wait_until(lambda: debug_pids(exe,port),3)
-                stop(exe,running(exe))
+                stop_desktop(exe,running(exe))
         finally: signal.pthread_sigmask(signal.SIG_SETMASK,prior_mask)
     print('[成功] 中文缓存已写入，ChatGPT 已关闭。请自己重新打开 ChatGPT。',flush=True)
 

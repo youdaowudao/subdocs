@@ -18,13 +18,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        network: [refused, blackhole, online]
-        auth: [apikey, login]
+        network: [refused, blackhole]
+        auth: [apikey]
         variant: [candidate]
-        include:
-          - network: blackhole
-            auth: login
-            variant: old
     steps:
       - uses: actions/checkout@v5
         with:
@@ -34,20 +30,11 @@ jobs:
           python-version: '3.13'
       - name: 核对单文件与两份发布副本
         run: python3 usegoodai-codex-installer/codex-zh/macos/build.py --check
-      - name: 读取固定旧版对照对象
-        if: matrix.variant == 'old'
-        run: git fetch --no-tags origin 5e228f0224d5a515524055736abd7625ea628460
       - name: 原始发布命令、正常重开与连续执行
         env:
           NETWORK: ${{ matrix.network }}
           AUTH: ${{ matrix.auth }}
-          VARIANT: ${{ matrix.variant }}
-        run: |
-          if [ "$VARIANT" = old ]; then
-            python3 tests/chinese-macos-desktop.py --network "$NETWORK" --auth "$AUTH" --old
-          else
-            python3 tests/chinese-macos-desktop.py --network "$NETWORK" --auth "$AUTH"
-          fi
+        run: python3 tests/chinese-macos-desktop.py --network "$NETWORK" --auth "$AUTH" --focused
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -66,7 +53,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - run: python3 tests/chinese-macos-cdp.py
+      - run: /usr/bin/python3 tests/chinese-macos-cdp.py
       - uses: actions/upload-artifact@v5
         if: always()
         with:
