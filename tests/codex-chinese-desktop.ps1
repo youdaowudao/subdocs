@@ -315,13 +315,7 @@ function Get-StorageEvidence([string]$Label) {
     $dirs = @(Get-ChildItem -LiteralPath $root -Recurse -Directory -Filter leveldb -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match 'Local Storage' })
     $latin1 = [Text.Encoding]::GetEncoding(28591)
     $evidence = [ordered]@{ dirs = @() }
-    $databaseIndex = 0
     foreach ($dir in $dirs) {
-        $databaseIndex++
-        # Read-only snapshots after the application exits: retain deletion/write records, not just byte counts.
-        $destination = Join-Path $ReportDir "storage-$Label-db$databaseIndex"
-        $null = New-Item -ItemType Directory -Force -Path $destination
-        Get-ChildItem -LiteralPath $dir.FullName -File | Where-Object Name -NE 'LOCK' | Copy-Item -Destination $destination -ErrorAction Continue
         $files = foreach ($file in Get-ChildItem -LiteralPath $dir.FullName -File -ErrorAction SilentlyContinue) {
             $row = [ordered]@{ name = $file.Name; size = $file.Length; written = $file.LastWriteTimeUtc.ToString('HH:mm:ss.fff') }
             if ($file.Extension -in @('.log', '.ldb')) {

@@ -1,12 +1,9 @@
 ﻿param([Parameter(Mandatory)][string]$ReportDir)
 $ErrorActionPreference = 'Stop'
-$script:HarnessTestsRoot = $PSScriptRoot
-$harness = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'codex-chinese-desktop.ps1'))
-$harness = $harness.Replace('$PSScriptRoot', '$script:HarnessTestsRoot')
 $failure = $null
 try {
-    # Run the full failed scenario without startup observers or database reads.
-    . ([scriptblock]::Create($harness)) -Script docs/public/install/chinese.ps1 -Network block -Expect pass -Auth login -Locale override -Stress 5 -ReportDir $ReportDir
+    # Run the full failed scenario with its normal file entry and no extra mid-run database copies.
+    & (Join-Path $PSScriptRoot 'codex-chinese-desktop.ps1') -Script docs/public/install/chinese.ps1 -Network block -Expect pass -Auth login -Locale override -Stress 5 -ReportDir $ReportDir
 } catch { $failure = $_.Exception.Message }
 finally {
     # Collect diagnostics only after all eight attempts have ended.

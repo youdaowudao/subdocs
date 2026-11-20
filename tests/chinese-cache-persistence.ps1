@@ -58,7 +58,7 @@ Save-Database 'after-original-inspection'
 Save-Report
 
 # Diagnostic control only. Keep the page algorithm identical; replace the final
-# renderer kill with the browser's documented graceful-close command in a temp file.
+# renderer kill with the debugger's page-close endpoint in a temp file.
 # This modified file is not a candidate or a release acceptance result.
 $raw = [IO.File]::ReadAllText($scriptPath)
 $parseTokens = $null; $parseErrors = $null
@@ -67,29 +67,33 @@ $function = $tree.Find({ param($node) $node -is [Management.Automation.Language.
 if (-not $function) { throw 'Cannot locate the shutdown control point.' }
 $control = @'
 function Save-CodexStorage {
-    $version = Invoke-RestMethod 'http://127.0.0.1:9240/json/version' -TimeoutSec 3
-    $socket = [Net.WebSockets.ClientWebSocket]::new()
-    $socket.Options.Proxy = $null
-    $cancel = [Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds(10))
-    try {
-        $task = $socket.ConnectAsync([Uri]$version.webSocketDebuggerUrl, $cancel.Token)
-        if (-not $task.Wait(10000)) { throw 'Browser-close connection timed out' }
-        [void]$task.GetAwaiter().GetResult()
-        $bytes = [Text.Encoding]::UTF8.GetBytes('{"id":1,"method":"Browser.close"}')
-        $task = $socket.SendAsync([ArraySegment[byte]]::new($bytes), [Net.WebSockets.WebSocketMessageType]::Text, $true, $cancel.Token)
-        if (-not $task.Wait(10000)) { throw 'Browser-close send timed out' }
-        [void]$task.GetAwaiter().GetResult()
-        $watch = [Diagnostics.Stopwatch]::StartNew()
-        while (@(Get-CodexMainProcesses).Count -and $watch.Elapsed.TotalSeconds -lt 10) { Start-Sleep -Milliseconds 200 }
-        if (@(Get-CodexMainProcesses).Count) { throw 'Browser.close did not exit the main application' }
-    } finally { $socket.Abort(); $socket.Dispose(); $cancel.Dispose() }
+    $targets = [object[]](Invoke-RestMethod 'http://127.0.0.1:9240/json/list' -TimeoutSec 3)
+    $pages = @($targets | Where-Object { $_.type -eq 'page' -and $_.url -eq 'app://-/index.html' })
+    if (-not $pages.Count) { throw 'No application page to close' }
+    foreach ($page in $pages) {
+        $null = Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:9240/json/close/" + $page.id) -TimeoutSec 3
+    }
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        Start-Sleep -Milliseconds 250
+        try {
+            $left = [object[]](Invoke-RestMethod 'http://127.0.0.1:9240/json/list' -TimeoutSec 2)
+            $leftPages = @($left | Where-Object { $_.type -eq 'page' -and $_.url -eq 'app://-/index.html' })
+        } catch {
+            if (-not @(Get-CodexMainProcesses).Count) { $leftPages = @() }
+            else { throw }
+        }
+    } while ($leftPages.Count -and $watch.Elapsed.TotalSeconds -lt 5)
+    if ($leftPages.Count) { throw 'Application page refused normal close' }
+    Start-Sleep -Seconds 2
 }
+
 '@
 $raw = $raw.Remove($function.Extent.StartOffset, $function.Extent.EndOffset - $function.Extent.StartOffset).Insert($function.Extent.StartOffset, $control)
-$scriptPath = Join-Path $temp 'graceful-close-control.ps1'
+$scriptPath = Join-Path $temp 'page-close-control.ps1'
 [IO.File]::WriteAllText($scriptPath, $raw, [Text.UTF8Encoding]::new($false))
 $report.controlSha256 = (Get-FileHash $scriptPath).Hash
-$report.controlPurpose = 'Diagnostic temporary script; only final shutdown differs. Not a candidate acceptance.'
+$report.controlPurpose = 'Diagnostic temporary script; page-close endpoint replaces renderer kill. Not a candidate acceptance.'
 $null = Invoke-OneLine 'graceful-control'
 Save-Database 'after-graceful-command'
 $null = Start-Codex
