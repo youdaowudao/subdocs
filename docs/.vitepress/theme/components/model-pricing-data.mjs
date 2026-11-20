@@ -19,6 +19,7 @@ const GPT_MODEL_IDS = [
 ]
 
 const GEMINI_MODEL_IDS = [
+  'gemini-4-neon',
   'gemini-4-hydrogen',
   'gemini-4-carbon',
   'gemini-4-argon',
@@ -164,7 +165,7 @@ export const TEXT_GROUPS = [
   {
     id: 'gemini-antigravity',
     name: 'Gemini 分组（反重力 Antigravity 反代）',
-    multiplier: 0.55,
+    multiplier: 0.8,
     description: '适合 Antigravity、代理式编程和 Gemini 模型测试',
     modelIds: GEMINI_MODEL_IDS,
   },
@@ -494,6 +495,14 @@ export const TEXT_MODELS = [
     name: 'Grok 4.5',
     description: '速度比 GPT 日常分组更快，风控相对低，支持实时搜索和工具调用',
     officialUsd: { input: 2, output: 6, cachedInput: 0.2 },
+  },
+  {
+    id: 'gemini-4-neon',
+    name: 'Gemini 4 Neon',
+    description: '适合复杂编程、知识工作和科学任务，支持百万 tokens 上下文；待启用',
+    // 2026-11-20 核实：https://aistudio.google.com/docs/pricing#gemini-4-neon
+    // 标准实时调用价格，输出包含思考 tokens，缓存读取按隐式缓存命中价计算。
+    officialUsd: { input: 3, output: 15, cachedInput: 0.15 },
   },
   {
     id: 'gemini-4-hydrogen',

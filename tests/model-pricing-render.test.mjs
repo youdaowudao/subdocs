@@ -79,7 +79,7 @@ test('renders the 0.35 GPT VIP group with all model prices and the Astra cache o
   }
 })
 
-test('renders all Gemini models in one 0.55 group with Hydrogen, Carbon and Argon first', async () => {
+test('renders all Gemini models in one 0.8 group with Neon first', async () => {
   const server = await createServer({
     configFile: false,
     plugins: [vue()],
@@ -91,10 +91,11 @@ test('renders all Gemini models in one 0.55 group with Hydrogen, Carbon and Argo
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
 
     const expected = [
-      ['gemini-4-hydrogen', ['¥0.83', '¥4.13', '¥0.0413', '¥4.95'], ['¥10.50', '¥52.50', '¥0.53', '¥63.00']],
-      ['gemini-4-carbon', ['¥1.10', '¥5.50', '¥0.055', '¥6.60'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
-      ['gemini-4-argon', ['¥1.10', '¥5.50', '¥0.055', '¥6.60'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
-      ['gemini-4-barium', ['¥1.10', '¥5.50', '¥0.055', '¥6.60'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
+      ['gemini-4-neon', ['¥2.40', '¥12.00', '¥0.12', '¥14.40'], ['¥21.00', '¥105.00', '¥1.05', '¥126.00']],
+      ['gemini-4-hydrogen', ['¥1.20', '¥6.00', '¥0.06', '¥7.20'], ['¥10.50', '¥52.50', '¥0.53', '¥63.00']],
+      ['gemini-4-carbon', ['¥1.60', '¥8.00', '¥0.08', '¥9.60'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
+      ['gemini-4-argon', ['¥1.60', '¥8.00', '¥0.08', '¥9.60'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
+      ['gemini-4-barium', ['¥1.60', '¥8.00', '¥0.08', '¥9.60'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
     ]
 
     for (const priceMode of ['group', 'official']) {
@@ -113,12 +114,13 @@ test('renders all Gemini models in one 0.55 group with Hydrogen, Carbon and Argo
         .filter((row) => row.includes('class="model-id-cell"'))
       const ids = rows.map((row) => row.match(/<strong>(gemini-[^<]+)<\/strong>/)[1])
 
-      assert.equal(ids.length, 16)
-      assert.equal(new Set(ids).size, 16)
+      assert.equal(ids.length, 17)
+      assert.equal(new Set(ids).size, 17)
       assert.deepEqual(ids.slice(0, expected.length), expected.map(([id]) => id))
-      assert.doesNotMatch(html, /价格待确认|NaN|Argon 专用分组|0\.35 倍率|0\.5 倍率/)
-      assert.match(rows[3], /渠道基准/)
-      assert.doesNotMatch(rows[3], /官方/)
+      assert.doesNotMatch(html, /价格待确认|NaN|Argon 专用分组|0\.35 倍率|0\.5 倍率|0\.55 倍率/)
+      assert.match(rows[0], /待启用/)
+      assert.match(rows[4], /渠道基准/)
+      assert.doesNotMatch(rows[4], /官方/)
       assert.match(html, /pricing-groups--single/)
 
       const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'
@@ -138,7 +140,7 @@ test('renders all Gemini models in one 0.55 group with Hydrogen, Carbon and Argo
         const cards = [...html.matchAll(/<button\b[^>]*class="[^"]*pricing-group-card[^"]*"[^>]*>[\s\S]*?<\/button>/g)]
         assert.equal(cards.length, 1)
         assert.match(cards[0][0], /aria-pressed="true"/)
-        assert.match(cards[0][0], /0\.55 倍率/)
+        assert.match(cards[0][0], /0\.8 倍率/)
       }
     }
   } finally {

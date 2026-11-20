@@ -20,7 +20,7 @@ npm install -g @google/gemini-cli
 
 Key 的分组选 **Gemini 分组（反重力 Antigravity 反代）**（创建方法看 [快速开始](/quick-start)）。
 
-Gemini 分组统一为 0.55 倍率，包含 `gemini-4-hydrogen`、`gemini-4-carbon`、`gemini-4-argon` 和下表中的模型。Gemini CLI 后台的提示补全、分类等请求使用的 `gemini-2.5-flash-lite` 也在这个分组里。
+Gemini 分组统一为 0.8 倍率，包含 `gemini-4-hydrogen`、`gemini-4-carbon`、`gemini-4-argon` 和下表中的模型。Gemini CLI 后台的提示补全、分类等请求使用的 `gemini-2.5-flash-lite` 也在这个分组里。
 
 | 用途 | 模型 ID |
 | --- | --- |

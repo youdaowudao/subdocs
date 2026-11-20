@@ -39,7 +39,7 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.5 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.3 },
-      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.55 },
+      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 0.8 },
       { id: 'deepseek', name: 'DeepSeek 分组', multiplier: 0.45 },
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },
       { id: 'qwen', name: 'Qwen 千问分组', multiplier: 0.45 },
@@ -556,6 +556,7 @@ test('puts the new Gemini 4 models first and preserves the remaining models in t
   assert.deepEqual(
     getTextModelsForGroup('gemini-antigravity').map((model) => model.id),
     [
+      'gemini-4-neon',
       'gemini-4-hydrogen',
       'gemini-4-carbon',
       'gemini-4-argon',
@@ -576,17 +577,18 @@ test('puts the new Gemini 4 models first and preserves the remaining models in t
   )
 })
 
-test('uses one Gemini group and calculates Hydrogen, Carbon and Argon prices at 0.55x', () => {
+test('uses one Gemini group and calculates Neon, Hydrogen, Carbon and Argon prices at 0.8x', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'gemini-antigravity')
   const models = getTextModelsForGroup(group.id)
 
-  assert.equal(group.multiplier, 0.55)
+  assert.equal(group.multiplier, 0.8)
   assert.ok(!TEXT_GROUPS.some((item) => item.id === 'gemini-4-argon'))
   assert.deepEqual(getTextModelsForGroup('gemini-4-argon'), [])
   for (const [id, expected] of [
-    ['gemini-4-hydrogen', { input: 0.825, output: 4.125, cachedInput: 0.04125, total: 4.95 }],
-    ['gemini-4-carbon', { input: 1.1, output: 5.5, cachedInput: 0.055, total: 6.6 }],
-    ['gemini-4-argon', { input: 1.1, output: 5.5, cachedInput: 0.055, total: 6.6 }],
+    ['gemini-4-neon', { input: 2.4, output: 12, cachedInput: 0.12, total: 14.4 }],
+    ['gemini-4-hydrogen', { input: 1.2, output: 6, cachedInput: 0.06, total: 7.2 }],
+    ['gemini-4-carbon', { input: 1.6, output: 8, cachedInput: 0.08, total: 9.6 }],
+    ['gemini-4-argon', { input: 1.6, output: 8, cachedInput: 0.08, total: 9.6 }],
   ]) {
     const model = models.find((item) => item.id === id)
     const price = calculateTextPrice(model.officialUsd, group.multiplier)
@@ -863,6 +865,7 @@ test('includes verified Gemini 4 price baselines and preserves the published Bar
     getTextModelsForGroup('gemini-antigravity')
       .map(({ id, officialUsd }) => ({ id, officialUsd })),
     [
+      { id: 'gemini-4-neon', officialUsd: { input: 3, output: 15, cachedInput: 0.15 } },
       { id: 'gemini-4-hydrogen', officialUsd: { input: 1.5, output: 7.5, cachedInput: 0.075 } },
       { id: 'gemini-4-carbon', officialUsd: { input: 2, output: 10, cachedInput: 0.1 } },
       { id: 'gemini-4-argon', officialUsd: { input: 2, output: 10, cachedInput: 0.1 } },
@@ -883,17 +886,17 @@ test('includes verified Gemini 4 price baselines and preserves the published Bar
   )
 })
 
-test('calculates the existing Gemini 3.8 Flash model with the updated 0.55 multiplier', () => {
+test('calculates the existing Gemini 3.8 Flash model with the updated 0.8 multiplier', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'gemini-antigravity')
   const model = getTextModelsForGroup(group.id).find((item) => item.id === 'gemini-3.8-flash')
 
-  assert.equal(group.multiplier, 0.55)
+  assert.equal(group.multiplier, 0.8)
   assert.ok(model, 'Gemini 3.8 Flash should be available in the Gemini group')
   const price = calculateTextPrice(model.officialUsd, group.multiplier)
-  assert.ok(isClose(price.group.input, 0.4125))
-  assert.ok(isClose(price.group.output, 2.0625))
-  assert.ok(isClose(price.group.cachedInput, 0.04125))
-  assert.ok(isClose(price.group.total, 2.475))
+  assert.ok(isClose(price.group.input, 0.6))
+  assert.ok(isClose(price.group.output, 3))
+  assert.ok(isClose(price.group.cachedInput, 0.06))
+  assert.ok(isClose(price.group.total, 3.6))
 })
 
 test('keeps Gemini descriptions customer-facing with dates or concrete use cases', () => {
@@ -998,7 +1001,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['anthropic-max-external', 52.5],
     ['grok-free', 3.5],
     ['grok-4.5', 10.5],
-    ['gemini-antigravity', 19.25],
+    ['gemini-antigravity', 28],
   ])
 
   for (const [groupId, expectedTotal] of expectedTotals) {
