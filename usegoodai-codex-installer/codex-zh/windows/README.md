@@ -23,7 +23,7 @@ irm https://docs.usegoodai.com/install/chinese.ps1 | iex
 
 修改 `windows/` 下两个脚本后运行 `python3 codex-zh/build.py` 生成两份发布副本，`--check` 核对字节一致。
 
-## 1.1.1 候选增量（尚未发布）
+## 1.1.2 候选增量（尚未发布）
 
 - 输出改为简短中文，删除风险提醒和英文诊断表。
 - 等待页面、配置服务及刷新检查时显示进度。WebSocket 连接、发送、接收均有超时，持续收到无关事件也不会延长上限。

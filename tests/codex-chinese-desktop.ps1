@@ -309,12 +309,12 @@ function Set-NetworkCondition {
             $report.networkSetup = @{ note = 'DNS polluted to loopback, connection refused' }
         }
         'dns-fail' {
-            $interfaces = @(Get-NetAdapter | Where-Object Status -EQ 'Up')
+            $interfaces = @(Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object { @($_.ServerAddresses).Count -gt 0 })
             foreach ($adapter in $interfaces) {
-                Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses @('127.0.0.1')
+                $adapter | Set-DnsClientServerAddress -ServerAddresses @('127.0.0.1')
             }
             ipconfig /flushdns | Out-Null
-            $report.networkSetup = @{ note = 'Local DNS responds NXDOMAIN'; adapters = @($interfaces | ForEach-Object Name) }
+            $report.networkSetup = @{ note = 'Local DNS responds NXDOMAIN'; adapters = @($interfaces | ForEach-Object InterfaceAlias) }
         }
         'online' { $report.networkSetup = @{ note = 'runner network unchanged' } }
     }

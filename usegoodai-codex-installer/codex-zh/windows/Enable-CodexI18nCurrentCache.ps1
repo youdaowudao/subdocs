@@ -613,7 +613,8 @@ function Confirm-CurrentCacheAfterReload {
 function Get-CurrentCacheSnapshot {
     param(
         [int]$DebugPort,
-        [int]$TimeoutSeconds
+        [int]$TimeoutSeconds,
+        [string]$Stage = '正在等待 ChatGPT 刷新后加载'
     )
 
     $target = Wait-CdpTarget -DebugPort $DebugPort -WaitSeconds $TimeoutSeconds
@@ -700,7 +701,7 @@ function Get-CurrentCacheSnapshot {
     $rawSnapshot = Invoke-CdpExpression `
         -WebSocketUrl $webSocketUrl `
         -Expression $snapshotExpression `
-        -Stage '正在等待 ChatGPT 刷新后加载' `
+        -Stage $Stage `
         -WaitSeconds $TimeoutSeconds
     $cleanSnapshot = @($rawSnapshot) |
         Where-Object { $_ -is [string] } |
@@ -1082,10 +1083,12 @@ $effectiveExpression = $pageExpression.Replace(
 $debugPort = Resolve-DebugPort
 Write-Host "正在连接 ChatGPT 页面……"
 $target = Wait-CdpTarget -DebugPort $debugPort -WaitSeconds $TimeoutSeconds
+Write-Host '正在等待 ChatGPT 配置服务加载……'
 $webSocketUrl = Get-WebSocketUrl -Target $target
 $rawResult = Invoke-CdpExpression `
     -WebSocketUrl $webSocketUrl `
     -Expression $effectiveExpression `
+    -Stage '正在等待 ChatGPT 配置服务加载' `
     -WaitSeconds $TimeoutSeconds
 
 $cleanResult = @($rawResult) |
@@ -1145,12 +1148,15 @@ if ($RestartAfterSuccess -or $DiagnoseAfterRestart) {
         )
         Start-Sleep -Seconds 3
 
+        Write-Host "第 $check/2 次复查：正在读取语言缓存……"
         $beforeRestart = Get-CurrentCacheSnapshot `
             -DebugPort $debugPort `
-            -TimeoutSeconds $TimeoutSeconds
+            -TimeoutSeconds $TimeoutSeconds `
+            -Stage "第 $check/2 次复查：正在等待 ChatGPT 加载"
 
-        Write-Host "第 $check/2 次复查完成。" -ForegroundColor Cyan
-        Write-Host ('语言缓存：' + $(if ($beforeRestart.currentCacheKeyExists) { '已保留' } else { '未找到' }))
+        if (-not $beforeRestart.ok) { throw "第 $check/2 次复查未完成，ChatGPT 配置服务尚未就绪。" }
+        if (-not $beforeRestart.currentCacheKeyExists) { throw "第 $check/2 次复查未找到语言缓存。" }
+        Write-Host "第 $check/2 次复查通过，语言缓存已保留。" -ForegroundColor Cyan
     }
 
     if ($DiagnoseAfterRestart) {
