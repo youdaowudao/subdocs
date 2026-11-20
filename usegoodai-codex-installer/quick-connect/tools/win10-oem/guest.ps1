@@ -22,7 +22,9 @@ try {
     $setup = Start-Process -FilePath $webview -ArgumentList '/silent /install' -Wait -PassThru
     if ($setup.ExitCode -ne 0) { throw "WebView2 setup failed: $($setup.ExitCode)" }
     $phase = 'ui'
-    & 'C:\OEM\repo\usegoodai-codex-installer\quick-connect\tools\windows_chinese_ui.ps1' -Exe 'C:\OEM\candidate.exe' -ReportDir $out -WindowsVersion $windowsVersion
+    $testOptions = @{ Exe = 'C:\OEM\candidate.exe'; ReportDir = $out; WindowsVersion = $windowsVersion }
+    if (Test-Path 'C:\OEM\layout-only.txt') { $testOptions.LayoutOnly = $true }
+    & 'C:\OEM\repo\usegoodai-codex-installer\quick-connect\tools\windows_chinese_ui.ps1' @testOptions
     @{ passed = $true; phase = 'complete' } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $out 'completion.json') -Encoding UTF8
 } catch {
     @{ passed = $false; phase = $phase; error = $_.Exception.Message } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $out 'completion.json') -Encoding UTF8

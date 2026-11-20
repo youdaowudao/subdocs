@@ -1,7 +1,8 @@
 ﻿param(
     [Parameter(Mandatory)][string]$Exe,
     [Parameter(Mandatory)][string]$ReportDir,
-    [ValidateSet('10', '11')][string]$WindowsVersion = '11'
+    [ValidateSet('10', '11')][string]$WindowsVersion = '11',
+    [switch]$LayoutOnly
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms, System.Drawing
@@ -9,6 +10,7 @@ Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class ChineseUIInput {
+    [DllImport("user32.dll")] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] public static extern void keybd_event(byte key,byte scan,int flags,UIntPtr extra);
@@ -60,10 +62,32 @@ function Console-Window {
     [Windows.Automation.AutomationElement]::RootElement.FindAll([Windows.Automation.TreeScope]::Children, [Windows.Automation.Condition]::TrueCondition) |
         Where-Object { $_.Current.Name -like '*UseGoodAI 一键中文化*' -and -not $_.Current.IsOffscreen } | Select-Object -First 1
 }
+function Focus-TestWindow([IntPtr]$Handle) {
+    # Windows 11 opens Start at first logon. Dismiss it before foregrounding
+    # the real target; otherwise a native click can land on the Start overlay.
+    [ChineseUIInput]::keybd_event(27,0,0,[UIntPtr]::Zero)
+    [ChineseUIInput]::keybd_event(27,0,2,[UIntPtr]::Zero)
+    [ChineseUIInput]::SetThreadDpiAwarenessContext([IntPtr](-4)) | Out-Null
+    $null = Wait-Until { [ChineseUIInput]::SetForegroundWindow($Handle) | Out-Null; [ChineseUIInput]::GetForegroundWindow() -eq $Handle } 30
+    Start-Sleep -Milliseconds 300
+}
+function Check-Layout {
+    Focus-TestWindow $assistant.MainWindowHandle
+    $elements = $window.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition)
+    foreach ($element in $elements) {
+        $pattern = $null
+        if ($element.TryGetCurrentPattern([Windows.Automation.ScrollPattern]::Pattern, [ref]$pattern)) {
+            Require (-not $pattern.Current.HorizontallyScrollable) 'Long record path causes horizontal scrolling.'
+        }
+    }
+    $report.layout = 'No horizontal scroll after the actual long record path.'
+    Save-Screen 'layout-long-record'
+    Save-Report
+}
 function Click-Chinese {
     $button = Wait-Until { Chinese-Button } 15
     Require $button.Current.IsEnabled 'Chinese button is disabled before a run.'
-    [ChineseUIInput]::SetForegroundWindow($assistant.MainWindowHandle) | Out-Null
+    Focus-TestWindow $assistant.MainWindowHandle
     $button.SetFocus()
     $bounds = $button.Current.BoundingRectangle
     Require (-not $button.Current.IsOffscreen -and $bounds.Width -gt 0) 'Chinese button has no visible clickable area.'
@@ -149,7 +173,7 @@ function Run-Case([string]$Name, [bool]$Success, [bool]$CloseEarly = $false) {
         Require ((Read-Record $log.FullName) -notmatch '已完成，5 秒后') 'Failure was treated as success.'
         $script:stage = $Name + ': close retained console'
         $consoleHandle = [IntPtr]$console.Current.NativeWindowHandle
-        [ChineseUIInput]::SetForegroundWindow($consoleHandle) | Out-Null
+        Focus-TestWindow $consoleHandle
         # Native title-bar click focuses the target before sending Enter.
         # SendKeys immediately after SetForegroundWindow can hit the driver.
         $bounds = $console.Current.BoundingRectangle
@@ -190,8 +214,11 @@ try {
     $button = Wait-Until { Chinese-Button } 25
     $models = Find-Text '导入国产模型'
     Require ($models -and $button.Current.BoundingRectangle.Top -ge $models.Current.BoundingRectangle.Bottom) 'Chinese entry is not below the two tools.'
+    Focus-TestWindow $assistant.MainWindowHandle
     Save-Screen 'entry'
     if (-not (Get-AppxPackage -Name OpenAI.Codex)) { Run-Case 'missing-app' $false }
+    Check-Layout
+    if ($LayoutOnly) { $report.layoutOnly = $true; return }
     Install-OfficialApp
     $null = Start-Codex
     Start-Sleep -Seconds 5
@@ -201,6 +228,7 @@ try {
     Run-Case 'manual-console-close' $true $true
     $unpacked = Join-Path $env:LOCALAPPDATA 'UseGoodAI/QuickConnect/chinese-tool/chinese.ps1'
     Require ((Get-FileHash $unpacked).Hash -eq (Get-FileHash (Join-Path $repo 'docs/public/install/chinese.ps1')).Hash) 'Bundled core bytes changed.'
+    Check-Layout
     Save-Screen 'finished'
 } catch {
     $report.failedStage = $script:stage

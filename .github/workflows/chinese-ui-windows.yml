@@ -6,81 +6,33 @@ on:
         description: 只补测尚未通过的系统
         type: choice
         default: both
-        options: [both, windows10, windows11, windows11-arm, failed-regressions, failed-models, baseline-command, failed-command]
+        options: [both, windows10, windows11]
+      mode:
+        description: 功能完整验收或仅补显示变更
+        type: choice
+        default: full
+        options: [full, layout]
 permissions:
   contents: read
 jobs:
-  windows11:
-    if: inputs.system == 'windows11-arm'
-    name: Windows 11 ARM 实际点击中文化
-    runs-on: windows-11-arm
-    timeout-minutes: 25
-    steps:
-      - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-      - name: 候选EXE、可见PowerShell与自动关闭
-        shell: powershell
-        run: ./usegoodai-codex-installer/quick-connect/tools/windows_chinese_ui.ps1 -Exe docs/public/download/usegoodai-quick-connect-windows-x64.exe -ReportDir "$env:RUNNER_TEMP/chinese-ui" -WindowsVersion 11
-      - uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: chinese-ui-windows11
-          path: ${{ runner.temp }}/chinese-ui
-          if-no-files-found: error
   windows10:
-    if: inputs.system == 'both' || inputs.system == 'windows10'
     name: Windows 10 x64 桌面实际点击中文化
+    if: inputs.system == 'both' || inputs.system == 'windows10'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - name: 官方Windows10评估系统交互式桌面验收
-        run: python3 usegoodai-codex-installer/quick-connect/tools/windows10_chinese_vm.py
+      - name: 官方Windows10系统交互式桌面验收
+        run: python3 usegoodai-codex-installer/quick-connect/tools/windows10_chinese_vm.py ${{ inputs.mode == 'layout' && '--layout-only' || '' }}
       - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: chinese-ui-windows10
           path: ${{ runner.temp }}/chinese-win10/shared/report
           if-no-files-found: error
-  failed-regressions:
-    name: 仅补测未通过的既有回归
-    if: inputs.system == 'failed-regressions'
-    runs-on: windows-11-arm
-    timeout-minutes: 15
-    env:
-      GOARCH: amd64
-      QUICK_CONNECT_EXE: ${{ github.workspace }}\docs\public\download\usegoodai-quick-connect-windows-x64.exe
-    steps:
-      - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: usegoodai-codex-installer/quick-connect/go.mod
-          cache: false
-      - name: 仅补测 Windows PowerShell 5.1 命令入口
-        working-directory: usegoodai-codex-installer/quick-connect
-        run: go test -count=1 -timeout=3m -v -run '^TestClaudePowerShellCommand$/^powershell.exe$' .
-      - name: 仅补测 Claude 双配置写入
-        if: ${{ !cancelled() }}
-        working-directory: usegoodai-codex-installer/quick-connect
-        run: go test -count=1 -timeout=3m -v -run '^TestClaudeReleaseWritesBothConfigurations$' .
-      - name: 仅补测国产模型按钮完成状态
-        if: ${{ !cancelled() }}
-        shell: powershell
-        run: ./usegoodai-codex-installer/quick-connect/tools/windows_models_import.ps1 -Exe docs/public/download/usegoodai-quick-connect-windows-x64.exe
-      - uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: chinese-ui-failed-regressions
-          path: ${{ runner.temp }}/models-import-window/*.*
-          if-no-files-found: ignore
-  windows11-x64:
+  windows11:
     name: Windows 11 x64 桌面实际点击中文化
     if: inputs.system == 'both' || inputs.system == 'windows11'
     runs-on: ubuntu-24.04
@@ -90,54 +42,10 @@ jobs:
         with:
           persist-credentials: false
       - name: 官方Windows11系统交互式桌面验收
-        run: python3 usegoodai-codex-installer/quick-connect/tools/windows10_chinese_vm.py --version 11
+        run: python3 usegoodai-codex-installer/quick-connect/tools/windows10_chinese_vm.py --version 11 ${{ inputs.mode == 'layout' && '--layout-only' || '' }}
       - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: chinese-ui-windows11-x64
           path: ${{ runner.temp }}/chinese-win11/shared/report
           if-no-files-found: error
-  failed-models:
-    name: 仅补测国产模型按钮文件事务
-    if: inputs.system == 'failed-models'
-    runs-on: windows-11-arm
-    timeout-minutes: 10
-    steps:
-      - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-      - shell: powershell
-        run: ./usegoodai-codex-installer/quick-connect/tools/windows_models_import.ps1 -Exe docs/public/download/usegoodai-quick-connect-windows-x64.exe
-      - uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: chinese-ui-models-regression
-          path: ${{ runner.temp }}/models-import-window/*.*
-          if-no-files-found: ignore
-  baseline-command:
-    name: PS5.1命令对照或失败补测
-    if: inputs.system == 'baseline-command' || inputs.system == 'failed-command'
-    runs-on: windows-11-arm
-    timeout-minutes: 10
-    env:
-      GOARCH: amd64
-      QUICK_CONNECT_EXE: ${{ github.workspace }}\${{ inputs.system == 'baseline-command' && '.baseline\' || '' }}docs\public\download\usegoodai-quick-connect-windows-x64.exe
-    steps:
-      - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-      - uses: actions/checkout@v5
-        if: inputs.system == 'baseline-command'
-        with:
-          persist-credentials: false
-          ref: 207ef7f02473ce2e6ae10568c8225ca86957607f
-          path: .baseline
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: usegoodai-codex-installer/quick-connect/go.mod
-          cache: false
-      - name: 只运行PS5.1失败用例并记录阶段
-        working-directory: usegoodai-codex-installer/quick-connect
-        run: go test -count=1 -timeout=3m -v -run '^TestClaudePowerShellCommand$/^powershell.exe$' .

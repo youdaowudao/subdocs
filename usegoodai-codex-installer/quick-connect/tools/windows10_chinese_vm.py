@@ -1,4 +1,4 @@
-"""Run the candidate in an interactive Windows 10 Enterprise evaluation VM.
+"""Run the candidate in an interactive Windows 10/11 Enterprise evaluation VM.
 
 Only a disposable Actions Linux runner may provision it. Product checks run
 inside Windows after interactive logon, never in Windows Server or Session 0.
@@ -29,7 +29,9 @@ def run(args, timeout=600, check=True):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--version', choices=['10', '11'], default='10')
-    version = parser.parse_args().version
+    parser.add_argument('--layout-only', action='store_true')
+    options = parser.parse_args()
+    version = options.version
     if os.environ.get('GITHUB_ACTIONS') != 'true' or os.environ.get('RUNNER_OS') != 'Linux':
         raise SystemExit('This provisioner only runs in an isolated GitHub Linux VM.')
     root = Path(os.environ['RUNNER_TEMP']) / ('chinese-win' + version)
@@ -48,6 +50,8 @@ def main():
     oem = root / 'oem'
     shutil.copytree(Path(__file__).parent / 'win10-oem', oem)
     (oem / 'windows-version.txt').write_text(version)
+    if options.layout_only:
+        (oem / 'layout-only.txt').touch()
     for name in ['tests/codex-chinese-desktop.ps1', 'docs/public/install/chinese.ps1',
                  'usegoodai-codex-installer/quick-connect/tools/windows_chinese_ui.ps1']:
         target = oem / 'repo' / name
