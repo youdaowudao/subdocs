@@ -215,7 +215,7 @@ $snapshotJs = @'
 })()
 '@
 
-function Invoke-Cdp([int]$Port, [string]$Expression = '', [string]$Method = 'Runtime.evaluate', [object]$Parameters = $null) {
+function Invoke-Cdp([int]$Port, [string]$Expression) {
     $handler = [Net.Http.HttpClientHandler]::new(); $handler.UseProxy = $false
     $http = [Net.Http.HttpClient]::new($handler); $http.Timeout = [TimeSpan]::FromSeconds(3)
     try {
@@ -231,8 +231,7 @@ function Invoke-Cdp([int]$Port, [string]$Expression = '', [string]$Method = 'Run
     $cancel = [Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds(90))
     try {
         $socket.ConnectAsync([Uri]$socketUrl, $cancel.Token).GetAwaiter().GetResult()
-        if ($null -eq $Parameters) { $Parameters = @{ expression = $Expression; awaitPromise = $true; returnByValue = $true } }
-        $body = @{ id = 1; method = $Method; params = $Parameters } | ConvertTo-Json -Depth 6 -Compress
+        $body = @{ id = 1; method = 'Runtime.evaluate'; params = @{ expression = $Expression; awaitPromise = $true; returnByValue = $true } } | ConvertTo-Json -Depth 6 -Compress
         $bytes = [Text.Encoding]::UTF8.GetBytes($body)
         $socket.SendAsync([ArraySegment[byte]]::new($bytes), 'Text', $true, $cancel.Token).GetAwaiter().GetResult()
         $buffer = [byte[]]::new(65536)
@@ -247,7 +246,6 @@ function Invoke-Cdp([int]$Port, [string]$Expression = '', [string]$Method = 'Run
         }
         if ($message.PSObject.Properties['error']) { throw ('CDP error: ' + $message.error.message) }
         if ($message.result.PSObject.Properties['exceptionDetails']) { throw ('Page error: ' + ($message.result.exceptionDetails | ConvertTo-Json -Compress -Depth 5)) }
-        if ($Method -ne 'Runtime.evaluate') { return $message.result }
         return ConvertFrom-Json $message.result.result.value
     } finally { $socket.Dispose(); $cancel.Dispose() }
 }
