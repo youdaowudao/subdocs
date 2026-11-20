@@ -37,6 +37,15 @@ function Save-Database([string]$Label) {
     }
 }
 Save-Database 'after-command'
+# Match the failed desktop scenario exactly: normal reopen for 50 seconds,
+# then close and inspect. A direct debug reopen alone has preserved the cache.
+$null = Start-Codex
+Start-Sleep -Seconds 50
+$report.normalReopenScreen = Save-Screen 'normal-reopen'
+$report.processesNormalReopen = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'ChatGPT|codex' } | Select-Object ProcessId, ParentProcessId, Name, CommandLine)
+Stop-Codex
+Save-Database 'after-normal-reopen'
+Save-Report
 $diagnostic = @'
 (() => {
     const root = window.__STATSIG__ || globalThis.__STATSIG__;
@@ -61,7 +70,7 @@ $null = Start-Codex '--remote-debugging-port=9333 --remote-allow-origins=http://
 $report.processesReopen = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'ChatGPT|codex|msedge|webview|crashpad' } | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine)
 $samples = @()
 try {
-    for ($i = 0; $i -lt 20; $i++) {
+    for ($i = 0; $i -lt 120; $i++) {
         try { $samples += @(Invoke-Cdp 9333 $diagnostic)[-1] }
         catch { $samples += @{ error = $_.Exception.Message } }
         $report.startupSamples = $samples
