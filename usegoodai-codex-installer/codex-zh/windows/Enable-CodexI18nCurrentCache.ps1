@@ -473,7 +473,8 @@ function Invoke-CdpExpression {
             return Invoke-CdpOnce -WebSocketUrl $WebSocketUrl -Expression $Expression -WaitSeconds $remaining -Stage $Stage
         }
         catch {
-            if (-not $_.Exception.Data.Contains('CodexPageChanged')) { throw }
+            # 原版主动刷新后允许旧连接失效；这里不能反复执行刷新。
+            if (-not $_.Exception.Data.Contains('CodexPageChanged') -or $Expression -eq 'location.reload(); "reload-requested"') { throw }
             Write-Host "ChatGPT 页面正在切换，正在重新连接（已等待 $([int]$watch.Elapsed.TotalSeconds) 秒）……"
             $remaining = [int][Math]::Floor($WaitSeconds - $watch.Elapsed.TotalSeconds)
             if ($remaining -le 0) { break }

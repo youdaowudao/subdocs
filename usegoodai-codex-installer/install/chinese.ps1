@@ -1,4 +1,4 @@
-# UseGoodAI Codex 中文化 1.1.2
+# UseGoodAI Codex 中文化 1.1.3
 # 由 codex-zh/build.py 生成。
 # MIT License
 #
@@ -137,6 +137,9 @@ function Stop-RunningClients {
 
 # UseGoodAI：关闭用复用的 Stop-RunningClients；之后按上游做法等进程列表清空（最多 10 秒）。
 function Stop-CodexClients {
+    # UseGoodAI：退出确认耗时较长时同样显示中文进度，原关闭顺序不变。
+    $stopWatch = [Diagnostics.Stopwatch]::StartNew()
+    $nextStopProgress = 5
     $stopResult = Stop-RunningClients
     $sessionId = (Get-Process -Id $PID).SessionId
     $deadline = [DateTime]::UtcNow.AddSeconds(10)
@@ -145,6 +148,10 @@ function Stop-CodexClients {
             Get-CimInstance Win32_Process |
                 Where-Object { $_.SessionId -eq $sessionId -and $_.Name -match '^(ChatGPT|Codex)(\.exe)?$' }
         )
+        if ($stopWatch.Elapsed.TotalSeconds -ge $nextStopProgress) {
+            Write-Host "正在确认 ChatGPT 已关闭，已等待 $([int]$stopWatch.Elapsed.TotalSeconds) 秒……"
+            $nextStopProgress += 5
+        }
         if ($remaining.Count -eq 0) {
             break
         }
@@ -668,7 +675,8 @@ function Invoke-CdpExpression {
             return Invoke-CdpOnce -WebSocketUrl $WebSocketUrl -Expression $Expression -WaitSeconds $remaining -Stage $Stage
         }
         catch {
-            if (-not $_.Exception.Data.Contains('CodexPageChanged')) { throw }
+            # 原版主动刷新后允许旧连接失效；这里不能反复执行刷新。
+            if (-not $_.Exception.Data.Contains('CodexPageChanged') -or $Expression -eq 'location.reload(); "reload-requested"') { throw }
             Write-Host "ChatGPT 页面正在切换，正在重新连接（已等待 $([int]$watch.Elapsed.TotalSeconds) 秒）……"
             $remaining = [int][Math]::Floor($WaitSeconds - $watch.Elapsed.TotalSeconds)
             if ($remaining -le 0) { break }

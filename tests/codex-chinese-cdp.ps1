@@ -12,9 +12,10 @@ foreach ($statement in $ast.EndBlock.Statements) {
     }
 }
 $results = @()
-foreach ($mode in @('receive-hang', 'handshake-hang', 'send-hang', 'events', 'race', 'always-race', 'other-error', 'fragmented')) {
+foreach ($mode in @('receive-hang', 'handshake-hang', 'send-hang', 'events', 'race', 'always-race', 'other-error', 'fragmented', 'reload-race')) {
     $ready = Join-Path $ReportDir "$mode-port"
-    $server = Start-Process -FilePath (Get-Command python).Source -ArgumentList @("`"$PSScriptRoot/codex-chinese-network.py`"", '--mode', $mode, '--ready', "`"$ready`"") -PassThru -WindowStyle Hidden
+    $serverMode = if ($mode -eq 'reload-race') { 'race' } else { $mode }
+    $server = Start-Process -FilePath (Get-Command python).Source -ArgumentList @("`"$PSScriptRoot/codex-chinese-network.py`"", '--mode', $serverMode, '--ready', "`"$ready`"") -PassThru -WindowStyle Hidden
     try {
         $until = [DateTime]::UtcNow.AddSeconds(15)
         while (-not (Test-Path $ready) -and [DateTime]::UtcNow -lt $until) { Start-Sleep -Milliseconds 100 }
@@ -23,6 +24,7 @@ foreach ($mode in @('receive-hang', 'handshake-hang', 'send-hang', 'events', 'ra
         $watch = [Diagnostics.Stopwatch]::StartNew()
         $didFail = $false; $value = $null; $errorText = ''
         $expression = 'JSON.stringify({ok:true})'
+        if ($mode -eq 'reload-race') { $expression = 'location.reload(); "reload-requested"' }
         if ($mode -eq 'send-hang') { $expression = 'x' * (16MB) }
         $messages = @(& {
             try { $script:fixtureValue = Invoke-CdpExpression "ws://127.0.0.1:$port/devtools/page/current" $expression 12 }
@@ -43,7 +45,7 @@ foreach ($mode in @('receive-hang', 'handshake-hang', 'send-hang', 'events', 'ra
         if ($seconds -gt 16) { throw "$mode exceeded deadline: $seconds" }
         if ($mode -in @('receive-hang', 'events') -and ($text -notmatch '已等待 5 秒' -or $text -notmatch '已等待 10 秒')) { throw "$mode missing progress" }
         if ($mode -eq 'race' -and $attempts -ne 2) { throw "Race was not retried exactly once: $attempts" }
-        if ($mode -eq 'other-error' -and $attempts -ne 1) { throw "Unrelated error was retried: $attempts" }
+        if ($mode -in @('other-error', 'reload-race') -and $attempts -ne 1) { throw "Unrelated error was retried: $attempts" }
         $results += @{ mode = $mode; seconds = [Math]::Round($seconds, 2); attempts = $attempts; error = $errorText; passed = $true }
     } finally { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
 }

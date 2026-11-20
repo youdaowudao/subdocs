@@ -113,6 +113,9 @@ function Stop-RunningClients {
 
 # UseGoodAI：关闭用复用的 Stop-RunningClients；之后按上游做法等进程列表清空（最多 10 秒）。
 function Stop-CodexClients {
+    # UseGoodAI：退出确认耗时较长时同样显示中文进度，原关闭顺序不变。
+    $stopWatch = [Diagnostics.Stopwatch]::StartNew()
+    $nextStopProgress = 5
     $stopResult = Stop-RunningClients
     $sessionId = (Get-Process -Id $PID).SessionId
     $deadline = [DateTime]::UtcNow.AddSeconds(10)
@@ -121,6 +124,10 @@ function Stop-CodexClients {
             Get-CimInstance Win32_Process |
                 Where-Object { $_.SessionId -eq $sessionId -and $_.Name -match '^(ChatGPT|Codex)(\.exe)?$' }
         )
+        if ($stopWatch.Elapsed.TotalSeconds -ge $nextStopProgress) {
+            Write-Host "正在确认 ChatGPT 已关闭，已等待 $([int]$stopWatch.Elapsed.TotalSeconds) 秒……"
+            $nextStopProgress += 5
+        }
         if ($remaining.Count -eq 0) {
             break
         }
