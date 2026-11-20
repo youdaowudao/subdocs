@@ -149,7 +149,7 @@ $processStopSkipped = $SkipProcessStop.IsPresent
 if (-not $processStopSkipped) {
     # UseGoodAI：改用复用的 Stop-RunningClients 关闭 ChatGPT/Codex。
     if (Stop-CodexClients) {
-        throw '未能自动关闭 ChatGPT/ChatGPT。请重启电脑后再运行本命令。'
+        throw '未能自动关闭 ChatGPT。请重启电脑后再运行本命令。'
     }
 }
 

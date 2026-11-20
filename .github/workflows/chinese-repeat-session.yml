@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/chinese-repeat-session.yml
       - tests/chinese-repeat-session.ps1
+      - docs/public/install/chinese.ps1
 permissions:
   contents: read
 jobs:
