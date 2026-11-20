@@ -215,39 +215,21 @@ $snapshotJs = @'
 })()
 '@
 
+# Reuse the shipped transport instead of keeping a second reader without navigation retries.
+$corePath = Join-Path $repo 'usegoodai-codex-installer/codex-zh/windows/Enable-CodexI18nCurrentCache.ps1'
+$parseTokens = $null; $parsingErrors = $null
+$coreTree = [Management.Automation.Language.Parser]::ParseInput([IO.File]::ReadAllText($corePath), [ref]$parseTokens, [ref]$parsingErrors)
+if ($parsingErrors.Count) { throw ($parsingErrors | Out-String) }
+$transportNames = @('Wait-CdpTarget', 'Get-WebSocketUrl', 'Wait-CdpTask', 'Invoke-CdpOnce', 'Invoke-CdpExpression')
+foreach ($statement in $coreTree.EndBlock.Statements) {
+    if ($statement -is [Management.Automation.Language.FunctionDefinitionAst] -and $statement.Name -in $transportNames) {
+        . ([scriptblock]::Create($statement.Extent.Text))
+    }
+}
 function Invoke-Cdp([int]$Port, [string]$Expression) {
-    $handler = [Net.Http.HttpClientHandler]::new(); $handler.UseProxy = $false
-    $http = [Net.Http.HttpClient]::new($handler); $http.Timeout = [TimeSpan]::FromSeconds(3)
-    try {
-        $socketUrl = Wait-Until {
-            try {
-                $targets = ConvertFrom-Json $http.GetStringAsync("http://127.0.0.1:$Port/json/list").GetAwaiter().GetResult()
-                foreach ($target in @($targets)) { if ($target.type -eq 'page' -and $target.url -eq 'app://-/index.html') { return $target.webSocketDebuggerUrl } }
-            } catch { }
-        } 90 500
-    } finally { $http.Dispose() }
-    if (-not $socketUrl) { throw "No Codex page on debug port $Port." }
-    $socket = [Net.WebSockets.ClientWebSocket]::new(); $socket.Options.Proxy = $null
-    $cancel = [Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds(90))
-    try {
-        $socket.ConnectAsync([Uri]$socketUrl, $cancel.Token).GetAwaiter().GetResult()
-        $body = @{ id = 1; method = 'Runtime.evaluate'; params = @{ expression = $Expression; awaitPromise = $true; returnByValue = $true } } | ConvertTo-Json -Depth 6 -Compress
-        $bytes = [Text.Encoding]::UTF8.GetBytes($body)
-        $socket.SendAsync([ArraySegment[byte]]::new($bytes), 'Text', $true, $cancel.Token).GetAwaiter().GetResult()
-        $buffer = [byte[]]::new(65536)
-        while ($true) {
-            $stream = [IO.MemoryStream]::new()
-            do {
-                $chunk = $socket.ReceiveAsync([ArraySegment[byte]]::new($buffer), $cancel.Token).GetAwaiter().GetResult()
-                $stream.Write($buffer, 0, $chunk.Count)
-            } while (-not $chunk.EndOfMessage)
-            $message = ConvertFrom-Json ([Text.Encoding]::UTF8.GetString($stream.ToArray()))
-            if ($message.PSObject.Properties['id'] -and $message.id -eq 1) { break }
-        }
-        if ($message.PSObject.Properties['error']) { throw ('CDP error: ' + $message.error.message) }
-        if ($message.result.PSObject.Properties['exceptionDetails']) { throw ('Page error: ' + ($message.result.exceptionDetails | ConvertTo-Json -Compress -Depth 5)) }
-        return ConvertFrom-Json $message.result.result.value
-    } finally { $socket.Dispose(); $cancel.Dispose() }
+    $target = Wait-CdpTarget -DebugPort $Port -WaitSeconds 90
+    $raw = Invoke-CdpExpression -WebSocketUrl (Get-WebSocketUrl $target) -Expression $Expression -WaitSeconds 90 -Stage '正在读取验收页面'
+    return ConvertFrom-Json $raw
 }
 function Get-I18nSnapshot([string]$Label, [string]$Extra = '') {
     Stop-Codex
@@ -555,7 +537,9 @@ for ($i = 1; $i -le $Stress; $i++) {
 }
 if ($Stress) {
     $stressFinal = Get-I18nSnapshot 'stress_final'
-    if ($stressFinal.liveEnableI18n -ne $true -or $stressFinal.cjkCount -lt 5) { Add-Failure 'After the stress runs Codex is not Chinese.' }
+    if ($stressFinal.PSObject.Properties['error']) { Add-Failure ('Final page state could not be collected: ' + $stressFinal.error) }
+    elseif ($stressFinal.liveEnableI18n -ne $true -or $stressFinal.cjkCount -lt 5) { Add-Failure 'After the stress runs Codex is not Chinese.' }
+    elseif ($Auth -eq 'apikey' -and $stressFinal.textSample -notmatch '新聊天|New chat') { Add-Failure 'API-key stress validation ended outside the main screen.' }
 }
 
 if ($Expect -eq 'pass') {
@@ -573,6 +557,7 @@ if ($Expect -eq 'pass') {
         if ($row.maxOutputGap -gt 12) { Add-Failure "$name had no progress for $($row.maxOutputGap) seconds." }
         if ($row.codexWasRunning -and ($null -eq $row.closeSeconds -or $null -eq $row.closeAfterOutputSeconds -or $row.closeAfterOutputSeconds -gt 6)) { Add-Failure "$name closed the running Codex slowly or not at all." }
     }
+    if ($Auth -eq 'apikey' -and -not $final.PSObject.Properties['error'] -and $final.textSample -notmatch '新聊天|New chat') { Add-Failure 'API-key validation ended outside the main screen.' }
     if ($final.PSObject.Properties['error'] -or $final.liveEnableI18n -ne $true) { Add-Failure 'After the repair Codex did not load enable_i18n=true.' }
     if (-not $final.PSObject.Properties['cjkCount'] -or $final.cjkCount -lt 5) { Add-Failure 'After the repair the Codex page text is not Chinese.' }
     if ($Network -ne 'online' -and $baseline.PSObject.Properties['caches'] -and @($baseline.caches | Where-Object { $_.source -eq 'Network' }).Count) {

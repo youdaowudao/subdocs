@@ -32,7 +32,7 @@ try {
     }
     if (-not @($report.steps | Where-Object { $_.done }).Count) { throw 'The app did not leave onboarding for the main screen.' }
     $report.mainConfirmed = $true
-    $report.unverified = @('Main screen shows a Windows setup check failure; actual task execution is not validated.')
+    $report.unverified = @('Actual task execution is not validated. Any Windows setup messages are retained in the captured page text.')
     $newChat = @'
 (() => {
     const buttons = Array.from(document.querySelectorAll('button'));
