@@ -33,7 +33,7 @@ function Save-Database([string]$Label) {
         $index++
         $destination = Join-Path $ReportDir "$Label-db$index"
         New-Item -ItemType Directory -Force $destination | Out-Null
-        Get-ChildItem $dir.FullName -File | Where-Object Extension -In @('.log', '.ldb') | Copy-Item -Destination $destination
+        Get-ChildItem $dir.FullName -File | Where-Object { $_.Name -ne 'LOCK' } | Copy-Item -Destination $destination
     }
 }
 Save-Database 'after-command'
