@@ -1,0 +1,37 @@
+name: Windows 中文化同一终端连续执行
+on:
+  workflow_dispatch:
+  push:
+    branches: [actions-test]
+    paths:
+      - .github/workflows/chinese-repeat-session.yml
+      - tests/chinese-repeat-session.ps1
+permissions:
+  contents: read
+jobs:
+  repeat:
+    name: ${{ matrix.network }}-${{ matrix.auth }}
+    runs-on: windows-11-arm
+    timeout-minutes: 28
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - network: online
+            auth: apikey
+          - network: blackhole
+            auth: login
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - shell: powershell
+        run: .\tests\chinese-repeat-session.ps1 -Network '${{ matrix.network }}' -Auth '${{ matrix.auth }}' -ReportDir "$env:RUNNER_TEMP\repeat-session"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: same-session-${{ matrix.network }}-${{ matrix.auth }}
+          path: ${{ runner.temp }}/repeat-session
+          if-no-files-found: error
+          retention-days: 21
