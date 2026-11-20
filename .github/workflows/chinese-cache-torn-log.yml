@@ -5,6 +5,7 @@ on:
     branches: [actions-test]
     paths:
       - .github/workflows/chinese-cache-torn-log.yml
+      - docs/public/install/chinese.ps1
 permissions:
   contents: read
 jobs:

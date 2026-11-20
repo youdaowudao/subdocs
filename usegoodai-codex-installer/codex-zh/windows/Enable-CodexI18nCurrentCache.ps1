@@ -486,6 +486,20 @@ function Invoke-CdpExpression {
     throw "$Stage 超过 $WaitSeconds 秒，已停止等待。"
 }
 
+function Assert-CodexStorageHealthy {
+    # UseGoodAI：只读检查当前数据库恢复日志；损坏时不能把内存中的回读成功当作落盘成功。
+    # 不删除、重建或修改数据库，不改变上游页面内缓存算法。
+    $family = (Get-CodexAumid).Split('!')[0]
+    $logPath = Join-Path $env:LOCALAPPDATA "Packages\$family\LocalCache\Roaming\Codex\web\Codex\Default\Local Storage\leveldb\LOG"
+    if (-not (Test-Path -LiteralPath $logPath)) { return }
+    $stream = [IO.File]::Open($logPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+    $reader = [IO.StreamReader]::new($stream)
+    try { $log = $reader.ReadToEnd() } finally { $reader.Dispose() }
+    if ($log -match 'Corruption:|IO error:') {
+        throw 'ChatGPT 的本地缓存数据库报告损坏，本次无法确认中文设置已保存。现有数据已保留。'
+    }
+}
+
 function Save-CodexStorage {
     # UseGoodAI：强制结束前先结束 Codex 的页面进程（renderer）。页面进程全部断开后，
     # Chromium 立即把本地存储写入磁盘；直接结束整个 Codex 会丢失尚未落盘的中文缓存（Windows 实测）。
@@ -1160,6 +1174,8 @@ if ($RestartAfterSuccess -or $DiagnoseAfterRestart) {
         Write-Host "第 $check/2 次复查通过，语言缓存已保留。" -ForegroundColor Cyan
     }
 
+    Assert-CodexStorageHealthy
+
     if ($DiagnoseAfterRestart) {
         if ($DiagnosticPort -gt 0) {
             if ($DiagnosticPort -eq $debugPort) {
@@ -1172,8 +1188,7 @@ if ($RestartAfterSuccess -or $DiagnoseAfterRestart) {
         }
 
         Write-Host (
-            "Stopping the initial debug instance and restarting Codex " +
-            "with diagnostic port $restartPort..."
+            "正在关闭初始调试实例，并使用诊断端口 $restartPort 重新打开 ChatGPT……"
         )
         Stop-CodexRuntimeProcesses
         Start-CodexWithDebugPort -DebugPort $restartPort

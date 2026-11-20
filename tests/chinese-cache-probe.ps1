@@ -90,7 +90,11 @@ try {
         $report.processesAfterOutcome = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'ChatGPT|Codex|chrome' } | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine)
     } finally { Stop-Codex }
     Save-Database 'after-introspection'
-    if (-not $row.success) { Add-Failure 'The original published command did not succeed' }
+    if (-not $row.success -and $WalFault -eq 'none') { Add-Failure 'The original published command did not succeed' }
+    if ($WalFault -ne 'none') {
+        $report.detectedCorruption = -not $row.success -and (($row.messages -join ' ') -match '本地缓存数据库报告损坏') -and -not $row.leftDebugProcesses -and -not $row.leftListeners -and -not $row.codexRunningAfter
+        if (-not $report.detectedCorruption) { Add-Failure 'Torn database must not report success or leave the debug application running' }
+    }
     if (-not $report.resultCollected) { Add-Failure 'The original page state could not be collected; cache loss is unconfirmed' }
     elseif ($report.cacheLost -and $WalFault -eq 'none') { Add-Failure 'The original published command lost its cache on the first ordinary reopen' }
     elseif (-not $report.cacheLost -and $WalFault -ne 'none') { Add-Failure 'The injected torn-log hypothesis did not reproduce cache loss' }
