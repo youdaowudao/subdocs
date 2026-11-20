@@ -10,6 +10,8 @@ using System;
 using System.Runtime.InteropServices;
 public static class ChineseUIInput {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern void keybd_event(byte key,byte scan,int flags,UIntPtr extra);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
     [DllImport("user32.dll")] public static extern void mouse_event(int flags,int x,int y,int data,UIntPtr extra);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd,int msg,IntPtr w,IntPtr l);
@@ -107,15 +109,19 @@ function Install-OfficialApp {
 }
 function Run-Case([string]$Name, [bool]$Success, [bool]$CloseEarly = $false) {
     $before = @((Get-ChildItem -LiteralPath $logDir -Filter '中文化_*.txt' -ErrorAction SilentlyContinue).FullName)
+    $script:stage = $Name + ': click'
+    Write-Host $script:stage
     $watch = [Diagnostics.Stopwatch]::StartNew()
     Click-Chinese
     $worker = Wait-Until { Worker } 20
-    $console = Wait-Until { Console-Window } 20
+    $script:stage = $Name + ': visible console'
+    $console = Wait-Until { Console-Window } 45
     $process = Get-Process -Id $worker.ProcessId
     $log = Wait-Until { Get-ChildItem -LiteralPath $logDir -Filter '中文化_*.txt' | Where-Object FullName -NotIn $before | Select-Object -First 1 } 15
     Require ((@(Worker)).Count -eq 1) 'Repeated clicking started more than one worker.'
     $running = Find-Text '正在中文化…'
     Require ($running -and -not $running.Current.IsEnabled) 'Chinese action must stay disabled while its console runs.'
+    $script:stage = $Name + ': result'
     $firstCountdown = $null
     $end = [DateTime]::UtcNow.AddSeconds(190)
     do {
@@ -141,8 +147,19 @@ function Run-Case([string]$Name, [bool]$Success, [bool]$CloseEarly = $false) {
         Start-Sleep -Seconds 7
         Require (-not $process.HasExited) 'Failure console closed automatically.'
         Require ((Read-Record $log.FullName) -notmatch '已完成，5 秒后') 'Failure was treated as success.'
-        [ChineseUIInput]::SetForegroundWindow([IntPtr]$console.Current.NativeWindowHandle) | Out-Null
-        [Windows.Forms.SendKeys]::SendWait('{ENTER}')
+        $script:stage = $Name + ': close retained console'
+        $consoleHandle = [IntPtr]$console.Current.NativeWindowHandle
+        [ChineseUIInput]::SetForegroundWindow($consoleHandle) | Out-Null
+        # Native title-bar click focuses the target before sending Enter.
+        # SendKeys immediately after SetForegroundWindow can hit the driver.
+        $bounds = $console.Current.BoundingRectangle
+        [ChineseUIInput]::SetCursorPos([int]($bounds.X+$bounds.Width/2),[int]($bounds.Y+12)) | Out-Null
+        [ChineseUIInput]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
+        [ChineseUIInput]::mouse_event(4,0,0,0,[UIntPtr]::Zero)
+        $null = Wait-Until { [ChineseUIInput]::GetForegroundWindow() -eq $consoleHandle } 5
+        Start-Sleep -Milliseconds 300
+        [ChineseUIInput]::keybd_event(13,0,0,[UIntPtr]::Zero)
+        [ChineseUIInput]::keybd_event(13,0,2,[UIntPtr]::Zero)
         Require ($process.WaitForExit(15000)) 'Failure console did not respond to Enter.'
     }
     $null = Wait-Until { $button = Chinese-Button; $button -and $button.Current.IsEnabled } 15
@@ -186,6 +203,7 @@ try {
     Require ((Get-FileHash $unpacked).Hash -eq (Get-FileHash (Join-Path $repo 'docs/public/install/chinese.ps1')).Hash) 'Bundled core bytes changed.'
     Save-Screen 'finished'
 } catch {
+    $report.failedStage = $script:stage
     $report.failures += $_.Exception.Message
     Save-Screen 'failure'
     Get-ChildItem -LiteralPath $logDir -Filter '中文化_*.txt' -ErrorAction SilentlyContinue | Copy-Item -Destination $ReportDir -Force

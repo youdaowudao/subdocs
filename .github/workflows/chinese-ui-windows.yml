@@ -6,12 +6,12 @@ on:
         description: 只补测尚未通过的系统
         type: choice
         default: both
-        options: [both, windows10, windows11, failed-regressions]
+        options: [both, windows10, windows11, windows11-arm, failed-regressions]
 permissions:
   contents: read
 jobs:
   windows11:
-    if: inputs.system == 'both' || inputs.system == 'windows11'
+    if: inputs.system == 'windows11-arm'
     name: Windows 11 ARM 实际点击中文化
     runs-on: windows-11-arm
     timeout-minutes: 25
@@ -80,3 +80,20 @@ jobs:
           name: chinese-ui-failed-regressions
           path: ${{ runner.temp }}/models-import-window/*.*
           if-no-files-found: ignore
+  windows11-x64:
+    name: Windows 11 x64 桌面实际点击中文化
+    if: inputs.system == 'both' || inputs.system == 'windows11'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: 官方Windows11系统交互式桌面验收
+        run: python3 usegoodai-codex-installer/quick-connect/tools/windows10_chinese_vm.py --version 11
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: chinese-ui-windows11-x64
+          path: ${{ runner.temp }}/chinese-win11/shared/report
+          if-no-files-found: error
