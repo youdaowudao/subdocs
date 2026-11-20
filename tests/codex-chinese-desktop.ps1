@@ -388,11 +388,12 @@ function Invoke-OneLine([string]$Label) {
     $lastLength = 0; $lastOutputSeconds = 0; $outputGaps = @(); $progressLines = @()
     do {
         if (Test-Path $stdout) {
-            $liveText = [IO.File]::ReadAllText($stdout, [Text.Encoding]::UTF8)
-            if ($liveText.Length -gt $lastLength) {
+            # Read metadata only: the child owns the redirected file while running.
+            $liveLength = (Get-Item -LiteralPath $stdout).Length
+            if ($liveLength -gt $lastLength) {
                 $outputGaps += ($watch.Elapsed.TotalSeconds - $lastOutputSeconds)
                 $lastOutputSeconds = $watch.Elapsed.TotalSeconds
-                $lastLength = $liveText.Length
+                $lastLength = $liveLength
             }
         }
         if (-not $outputAt -and (Test-Path $stdout) -and (Get-Item $stdout).Length -gt 0) { $outputAt = $watch.Elapsed.TotalSeconds }

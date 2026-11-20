@@ -4,6 +4,8 @@ $ErrorActionPreference = 'Stop'
 $harness = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'codex-chinese-desktop.ps1'))
 $prefix = $harness.Substring(0, $harness.IndexOf('# ---------- Scenario ----------'))
 . ([scriptblock]::Create($prefix)) -Script docs/public/install/chinese.ps1 -Network online -Expect record -Auth apikey -Locale override -ReportDir $ReportDir
+$report.environment = @{ os = (Get-CimInstance Win32_OperatingSystem).Caption; arch = $env:PROCESSOR_ARCHITECTURE; shell = $PSVersionTable.PSVersion.ToString(); sha = $env:GITHUB_SHA; scriptSha256 = (Get-FileHash $scriptPath).Hash }
+Save-Report
 Install-Codex
 New-Item -ItemType Directory -Force $configDir | Out-Null
 "# ci-failure-cleanup`n[desktop]`nlocaleOverride = `"zh-CN`"`n" | Set-Content $config -Encoding ASCII
