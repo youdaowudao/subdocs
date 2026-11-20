@@ -105,7 +105,7 @@ def open_app(debug=False):
     args = ['/usr/bin/open', '-a', app]
     if debug:
         args += ['--args', '--remote-debugging-port=9333', '--remote-allow-origins=http://127.0.0.1:9333']
-    execute(args)
+    execute(args, env=script_env)
     require(CORE['wait_until'](lambda: CORE['running'](str(executable)), 15), 'Application did not start')
 
 
