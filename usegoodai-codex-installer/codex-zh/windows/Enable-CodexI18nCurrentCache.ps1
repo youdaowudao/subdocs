@@ -22,6 +22,7 @@ param(
     [int]$DiagnosticPort = 0
 )
 
+# UseGoodAI：输出改为中文；缓存算法保持原版。
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -94,7 +95,7 @@ function Find-FreePort {
         }
     }
 
-    throw 'No free debugging port was found in the range 9230-9270.'
+    throw '找不到可用的本机调试端口。'
 }
 
 function Add-AppActivationInterop {
@@ -174,7 +175,7 @@ function Get-CodexAumid {
         Select-Object -First 1
 
     if ($null -eq $package) {
-        throw 'The OpenAI.Codex MSIX package is not installed for the current user.'
+        throw '当前用户尚未安装官方 ChatGPT 桌面版。'
     }
 
     $manifestPath = Join-Path $package.InstallLocation 'AppxManifest.xml'
@@ -185,7 +186,7 @@ function Get-CodexAumid {
         Select-Object -First 1
 
     if ($null -eq $application) {
-        throw 'The Codex desktop application entry could not be found.'
+        throw '找不到 ChatGPT 桌面版的启动入口。'
     }
 
     return "$($package.PackageFamilyName)!$($application.Id)"
@@ -195,9 +196,11 @@ function Start-CodexWithDebugPort {
     param([int]$DebugPort)
 
     if (@(Get-CodexMainProcesses).Count -gt 0) {
-        throw 'Codex is already running without the required debugging port.'
+        throw 'ChatGPT 仍在运行，请完全退出后重试。'
     }
 
+    # UseGoodAI：说明上游原有的临时启动用途，完成后不正常重开。
+    Write-Host '正在临时打开 ChatGPT 以写入语言缓存，完成后会自动关闭……'
     Add-AppActivationInterop
     [uint32]$processId = 0
     $arguments = "--remote-debugging-port=$DebugPort --remote-allow-origins=http://127.0.0.1:$DebugPort"
@@ -208,16 +211,16 @@ function Start-CodexWithDebugPort {
     )
 
     if ($hr -lt 0) {
-        throw ('ApplicationActivationManager failed with HRESULT 0x{0:X8}.' -f $hr)
+        throw ('启动 ChatGPT 失败，错误码 0x{0:X8}。' -f $hr)
     }
 
-    Write-Host "Started Codex with debugging port $DebugPort."
+    Write-Host "已启动 ChatGPT，正在连接本机端口 $DebugPort。"
 }
 
 function Stop-CodexRuntimeProcesses {
     # UseGoodAI：改用入口脚本中的 Stop-CodexClients（复用 install/codex.ps1 的 Stop-RunningClients）。
     if (Stop-CodexClients) {
-        throw '中文缓存已写入，但未能自动关闭 Codex。请重启电脑后再打开 Codex。'
+        throw '中文缓存已写入，但未能自动关闭 ChatGPT。请重启电脑后再打开 ChatGPT。'
     }
 }
 
@@ -231,7 +234,7 @@ function Start-CodexNormally {
     )
 
     if ($hr -lt 0) {
-        throw ('ApplicationActivationManager failed with HRESULT 0x{0:X8}.' -f $hr)
+        throw ('启动 ChatGPT 失败，错误码 0x{0:X8}。' -f $hr)
     }
 
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
@@ -242,7 +245,7 @@ function Start-CodexNormally {
     while ($running.Count -eq 0 -and [DateTime]::UtcNow -lt $deadline)
 
     if ($running.Count -eq 0) {
-        throw 'Codex did not start after activation.'
+        throw 'ChatGPT 未能启动。'
     }
 }
 
@@ -254,7 +257,7 @@ function Resolve-DebugPort {
                 Start-CodexWithDebugPort -DebugPort $Port
             }
             elseif ((Get-DebugPortFromProcess $running[0]) -ne $Port) {
-                throw 'Codex is already running without the requested debugging port.'
+                throw 'ChatGPT 仍在运行，请完全退出后重试。'
             }
         }
 
@@ -269,7 +272,7 @@ function Resolve-DebugPort {
     }
 
     if ($NoLaunch) {
-        throw 'No running Codex debugging endpoint was found.'
+        throw '未找到 ChatGPT 调试连接。'
     }
 
     $freePort = Find-FreePort
@@ -283,6 +286,9 @@ function Wait-CdpTarget {
         [int]$WaitSeconds
     )
 
+    # UseGoodAI：等待页面时每 5 秒显示进度。
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    $nextProgress = 5
     $deadline = [DateTime]::UtcNow.AddSeconds($WaitSeconds)
     while ([DateTime]::UtcNow -lt $deadline) {
         try {
@@ -312,10 +318,14 @@ function Wait-CdpTarget {
             # Codex may still be starting.
         }
 
+        if ($watch.Elapsed.TotalSeconds -ge $nextProgress) {
+            Write-Host "正在等待 ChatGPT 页面，已等待 $([int]$watch.Elapsed.TotalSeconds) 秒……"
+            $nextProgress += 5
+        }
         Start-Sleep -Milliseconds 500
     }
 
-    throw "Codex did not expose app://-/index.html within $WaitSeconds seconds."
+    throw "等待 ChatGPT 页面超过 $WaitSeconds 秒，请完全退出 ChatGPT 后重试。"
 }
 
 function Get-WebSocketUrl {
@@ -335,24 +345,46 @@ function Get-WebSocketUrl {
         }
     }
 
-    throw 'The selected Codex target does not contain a valid WebSocket URL.'
+    throw 'ChatGPT 页面未提供有效的本机调试地址。'
 }
 
-function Invoke-CdpExpression {
+# UseGoodAI：异步连接、发送、接收均有超时；每 5 秒输出当前阶段，不再无期限接收。
+function Wait-CdpTask {
+    param($Task, $State, [int]$WaitSeconds, [string]$Stage)
+    while (-not $Task.IsCompleted) {
+        if ($State.Watch.Elapsed.TotalSeconds -ge $WaitSeconds) {
+            throw "$Stage 超过 $WaitSeconds 秒，已停止等待。"
+        }
+        if ($State.Watch.Elapsed.TotalSeconds -ge $State.NextProgress) {
+            Write-Host "$Stage，已等待 $([int]$State.Watch.Elapsed.TotalSeconds) 秒……"
+            $State.NextProgress += 5
+        }
+        Start-Sleep -Milliseconds 200
+    }
+    if ($State.Watch.Elapsed.TotalSeconds -ge $WaitSeconds) {
+        throw "$Stage 超过 $WaitSeconds 秒，已停止等待。"
+    }
+    try { return $Task.GetAwaiter().GetResult() }
+    catch { throw "$Stage 未完成，调试连接已关闭或超时。" }
+}
+
+function Invoke-CdpOnce {
     param(
         [string]$WebSocketUrl,
         [string]$Expression,
-        [int]$WaitSeconds
+        [int]$WaitSeconds,
+        [string]$Stage = '正在等待 ChatGPT 加载'
     )
 
     $socket = [System.Net.WebSockets.ClientWebSocket]::new()
     $socket.Options.Proxy = $null
-    $timeout = [System.Threading.CancellationTokenSource]::new(
-        [TimeSpan]::FromSeconds([Math]::Min($WaitSeconds, 10))
-    )
+    $state = @{ Watch = [Diagnostics.Stopwatch]::StartNew(); NextProgress = 5 }
+    $timeout = [System.Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds($WaitSeconds))
+    $connectTimeout = [System.Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds([Math]::Min($WaitSeconds, 10)))
 
     try {
-        [void]$socket.ConnectAsync([Uri]$WebSocketUrl, $timeout.Token).GetAwaiter().GetResult()
+        $task = $socket.ConnectAsync([Uri]$WebSocketUrl, $connectTimeout.Token)
+        [void](Wait-CdpTask $task $state $WaitSeconds '正在连接 ChatGPT')
 
         $payload = @{
             id = 1
@@ -365,24 +397,26 @@ function Invoke-CdpExpression {
         } | ConvertTo-Json -Depth 12 -Compress
 
         $bytes = [Text.Encoding]::UTF8.GetBytes($payload)
-        [void]$socket.SendAsync(
+        $task = $socket.SendAsync(
             [ArraySegment[byte]]::new($bytes),
             [System.Net.WebSockets.WebSocketMessageType]::Text,
             $true,
-            [Threading.CancellationToken]::None
-        ).GetAwaiter().GetResult()
+            $timeout.Token
+        )
+        [void](Wait-CdpTask $task $state $WaitSeconds '正在发送中文设置')
 
         $buffer = [byte[]]::new(65536)
         $received = [Text.StringBuilder]::new()
 
         while ($true) {
-            $result = $socket.ReceiveAsync(
+            $task = $socket.ReceiveAsync(
                 [ArraySegment[byte]]::new($buffer),
-                [Threading.CancellationToken]::None
-            ).GetAwaiter().GetResult()
+                $timeout.Token
+            )
+            $result = Wait-CdpTask $task $state $WaitSeconds $Stage
 
             if ($result.MessageType -eq [System.Net.WebSockets.WebSocketMessageType]::Close) {
-                throw 'The Codex WebSocket closed before returning a result.'
+                throw 'ChatGPT 调试连接提前关闭。'
             }
 
             [void]$received.Append([Text.Encoding]::UTF8.GetString($buffer, 0, $result.Count))
@@ -401,7 +435,11 @@ function Invoke-CdpExpression {
             $errorProperty = $message.PSObject.Properties['error']
             if ($null -ne $errorProperty -and $null -ne $errorProperty.Value) {
                 $errorTextProperty = $errorProperty.Value.PSObject.Properties['message']
-                throw "CDP error: $([string]$errorTextProperty.Value)"
+                $pageFailure = [InvalidOperationException]::new('ChatGPT 调试调用未完成。')
+                if ([string]$errorTextProperty.Value -match 'Execution context was destroyed|Cannot find context with specified id|Inspected target navigated or closed') {
+                    $pageFailure.Data['CodexPageChanged'] = $true
+                }
+                throw $pageFailure
             }
 
             $resultProperty = $message.PSObject.Properties['result']
@@ -409,7 +447,7 @@ function Invoke-CdpExpression {
             $exceptionProperty = $resultObject.PSObject.Properties['exceptionDetails']
             if ($null -ne $exceptionProperty -and $null -ne $exceptionProperty.Value) {
                 $textProperty = $exceptionProperty.Value.PSObject.Properties['text']
-                throw "Page script failed: $([string]$textProperty.Value)"
+                throw 'ChatGPT 页面脚本未能执行。'
             }
 
             $container = $resultObject.PSObject.Properties['result'].Value
@@ -417,9 +455,35 @@ function Invoke-CdpExpression {
         }
     }
     finally {
-        $timeout.Dispose()
+        $socket.Abort()
         $socket.Dispose()
+        $connectTimeout.Dispose()
+        $timeout.Dispose()
     }
+}
+
+# UseGoodAI：启动时页面可能切换；只对明确的页面失效错误重新查找页面并重试，沿用同一等待上限。
+function Invoke-CdpExpression {
+    param([string]$WebSocketUrl, [string]$Expression, [int]$WaitSeconds,
+          [string]$Stage = '正在等待 ChatGPT 加载')
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    while ($watch.Elapsed.TotalSeconds -lt $WaitSeconds) {
+        $remaining = [Math]::Max(1, [int][Math]::Ceiling($WaitSeconds - $watch.Elapsed.TotalSeconds))
+        try {
+            return Invoke-CdpOnce -WebSocketUrl $WebSocketUrl -Expression $Expression -WaitSeconds $remaining -Stage $Stage
+        }
+        catch {
+            # 原版主动刷新后允许旧连接失效；这里不能反复执行刷新。
+            if (-not $_.Exception.Data.Contains('CodexPageChanged') -or $Expression -eq 'location.reload(); "reload-requested"') { throw }
+            Write-Host "ChatGPT 页面正在切换，正在重新连接（已等待 $([int]$watch.Elapsed.TotalSeconds) 秒）……"
+            $remaining = [int][Math]::Floor($WaitSeconds - $watch.Elapsed.TotalSeconds)
+            if ($remaining -le 0) { break }
+            Start-Sleep -Milliseconds 500
+            $target = Wait-CdpTarget -DebugPort ([Uri]$WebSocketUrl).Port -WaitSeconds $remaining
+            $WebSocketUrl = Get-WebSocketUrl -Target $target
+        }
+    }
+    throw "$Stage 超过 $WaitSeconds 秒，已停止等待。"
 }
 
 function Save-CodexStorage {
@@ -505,6 +569,8 @@ function Confirm-CurrentCacheAfterReload {
 "@
 
     $lastVerification = $null
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    $nextProgress = 5
     for ($attempt = 1; $attempt -le 10; $attempt++) {
         try {
             $target = Wait-CdpTarget -DebugPort $DebugPort -WaitSeconds 5
@@ -512,6 +578,7 @@ function Confirm-CurrentCacheAfterReload {
             $rawVerification = Invoke-CdpExpression `
                 -WebSocketUrl $webSocketUrl `
                 -Expression $verifyExpression `
+                -Stage '正在检查语言缓存' `
                 -WaitSeconds 10
             $verificationText = @($rawVerification) |
                 Where-Object { $_ -is [string] } |
@@ -528,23 +595,27 @@ function Confirm-CurrentCacheAfterReload {
             # The app may still be recreating the renderer after reload.
         }
 
+        if ($watch.Elapsed.TotalSeconds -ge $nextProgress) {
+            Write-Host "正在检查刷新后的语言缓存，已等待 $([int]$watch.Elapsed.TotalSeconds) 秒……"
+            $nextProgress = $watch.Elapsed.TotalSeconds + 5
+        }
         Start-Sleep -Milliseconds 500
     }
 
     if ($null -ne $lastVerification) {
         throw (
-            'Cache persistence verification failed. ' +
-            "Cached enable_i18n: $($lastVerification.cachedEnableI18n)"
+            '刷新后读取的语言缓存未启用中文。'
         )
     }
 
-    throw 'Cache persistence verification failed after page reload.'
+    throw '刷新后未能确认语言缓存已保留。'
 }
 
 function Get-CurrentCacheSnapshot {
     param(
         [int]$DebugPort,
-        [int]$TimeoutSeconds
+        [int]$TimeoutSeconds,
+        [string]$Stage = '正在等待 ChatGPT 刷新后加载'
     )
 
     $target = Wait-CdpTarget -DebugPort $DebugPort -WaitSeconds $TimeoutSeconds
@@ -577,7 +648,7 @@ function Get-CurrentCacheSnapshot {
     if (!client) {
         return JSON.stringify({
             ok: false,
-            error: "Statsig Client did not become available.",
+            error: "ChatGPT 配置服务未能启动。",
             currentCacheKey: null,
             currentCacheKeyExists: false,
             liveEnableI18n: null,
@@ -591,7 +662,7 @@ function Get-CurrentCacheSnapshot {
     if (statsigStatus !== "Ready") {
         return JSON.stringify({
             ok: false,
-            error: "Statsig Client did not reach Ready before the timeout.",
+            error: "等待 ChatGPT 配置服务超过 60 秒，尚未就绪。",
             currentCacheKey: null,
             currentCacheKeyExists: false,
             liveEnableI18n: null,
@@ -631,13 +702,14 @@ function Get-CurrentCacheSnapshot {
     $rawSnapshot = Invoke-CdpExpression `
         -WebSocketUrl $webSocketUrl `
         -Expression $snapshotExpression `
+        -Stage $Stage `
         -WaitSeconds $TimeoutSeconds
     $cleanSnapshot = @($rawSnapshot) |
         Where-Object { $_ -is [string] } |
         Select-Object -Last 1
 
     if ([string]::IsNullOrWhiteSpace($cleanSnapshot)) {
-        throw 'The restarted Codex page did not return a diagnostic snapshot.'
+        throw '未能读取 ChatGPT 重开后的状态。'
     }
 
     return $cleanSnapshot | ConvertFrom-Json
@@ -674,7 +746,7 @@ $pageExpression = @'
     if (!client) {
         return JSON.stringify({
             ok: false,
-            error: "Statsig Client did not become available.",
+            error: "ChatGPT 配置服务未能启动。",
             origin: location.origin,
             href: location.href,
             hasStatsigRoot: Boolean(getRoot())
@@ -684,7 +756,7 @@ $pageExpression = @'
     if (String(client.loadingStatus || "") !== "Ready") {
         return JSON.stringify({
             ok: false,
-            error: "Statsig Client did not reach Ready before the timeout.",
+            error: "等待 ChatGPT 配置服务超过 60 秒，尚未就绪。",
             origin: location.origin,
             href: location.href,
             htmlLang: document.documentElement.lang,
@@ -766,7 +838,7 @@ $pageExpression = @'
     if (!payload) {
         return JSON.stringify({
             ok: false,
-            error: "Current cache key is missing and bootstrap is disabled.",
+            error: "当前语言缓存不存在，且未启用补建缓存。",
             currentCacheKey,
             allCacheKeys,
             staleCacheKeys,
@@ -878,7 +950,7 @@ $pageExpression = @'
     if (!layerPatched) {
         return JSON.stringify({
             ok: false,
-            error: "The current cache payload has no target Layer and bootstrap is disabled.",
+            error: "当前缓存没有语言开关，且未启用补建缓存。",
             currentCacheKey,
             allCacheKeys,
             staleCacheKeys,
@@ -1010,12 +1082,14 @@ $effectiveExpression = $pageExpression.Replace(
 )
 
 $debugPort = Resolve-DebugPort
-Write-Host "Connecting to Codex main page on 127.0.0.1:$debugPort..."
+Write-Host "正在连接 ChatGPT 页面……"
 $target = Wait-CdpTarget -DebugPort $debugPort -WaitSeconds $TimeoutSeconds
+Write-Host '正在等待 ChatGPT 配置服务加载……'
 $webSocketUrl = Get-WebSocketUrl -Target $target
 $rawResult = Invoke-CdpExpression `
     -WebSocketUrl $webSocketUrl `
     -Expression $effectiveExpression `
+    -Stage '正在等待 ChatGPT 配置服务加载' `
     -WaitSeconds $TimeoutSeconds
 
 $cleanResult = @($rawResult) |
@@ -1023,69 +1097,73 @@ $cleanResult = @($rawResult) |
     Select-Object -Last 1
 
 if ([string]::IsNullOrWhiteSpace($cleanResult)) {
-    throw 'The Codex main page did not return a JSON result.'
+    throw 'ChatGPT 页面未返回有效结果。'
 }
 
 $result = $cleanResult | ConvertFrom-Json
-$result | Format-List
+# UseGoodAI：只显示简短中文，不向用户输出上游英文诊断表。
+if ($result.PSObject.Properties['seededFrom']) {
+    $sourceLabel = switch ($result.seededFrom) {
+        'current-cache' { '已有缓存' }
+        'context-values' { '当前配置' }
+        'minimal-bootstrap' { '补建缓存' }
+        default { '当前缓存' }
+    }
+    Write-Host "缓存来源：$sourceLabel"
+}
 
 if (-not $result.ok) {
     $errorProperty = $result.PSObject.Properties['error']
     if ($null -ne $errorProperty) {
         throw [string]$errorProperty.Value
     }
-    throw 'Current-cache operation failed.'
+    throw '语言缓存写入失败。'
 }
 
 if ($InspectOnly) {
-    Write-Host 'Inspection only: no cache values were modified.'
+    Write-Host '检查完成，未修改缓存。'
     return
 }
 
 Write-Host ''
-Write-Host "Current client cache key: $($result.currentCacheKey)"
-Write-Host "Cached enable_i18n: $($result.cachedEnableI18n)"
+Write-Host "语言缓存已写入。"
+
 if ($result.patchAllExisting) {
-    Write-Host "Existing cache keys patched: $($result.staleCacheModifiedCount)"
+    Write-Host "已同步 $($result.staleCacheModifiedCount) 项旧缓存。"
 }
 else {
-    Write-Host "Stale cache keys left untouched: $(@($result.staleCacheKeys).Count)"
+    Write-Host "已保留其他旧缓存。"
 }
 
 if ($RestartAfterSuccess -or $DiagnoseAfterRestart) {
-    Write-Host "Reloading the Codex page to verify cache key persistence..."
+    Write-Host "正在刷新页面，检查语言缓存……"
     $persistence = Confirm-CurrentCacheAfterReload `
         -DebugPort $debugPort `
         -CurrentCacheKey $result.currentCacheKey `
         -TimeoutSeconds $TimeoutSeconds
-    Write-Host "Cache persistence verified: $($persistence.cachedEnableI18n)"
+    Write-Host "刷新检查通过，语言缓存已保留。"
 
     for ($check = 1; $check -le 2; $check++) {
         Write-Host (
-            "Waiting 3 seconds before delayed cache read " +
-            "$check/2..."
+            "正在等待第 $check/2 次复查（3 秒）……"
         )
         Start-Sleep -Seconds 3
 
+        Write-Host "第 $check/2 次复查：正在读取语言缓存……"
         $beforeRestart = Get-CurrentCacheSnapshot `
             -DebugPort $debugPort `
-            -TimeoutSeconds $TimeoutSeconds
+            -TimeoutSeconds $TimeoutSeconds `
+            -Stage "第 $check/2 次复查：正在等待 ChatGPT 加载"
 
-        Write-Host "Delayed cache read $check/2:" -ForegroundColor Cyan
-        [pscustomobject][ordered]@{
-            currentCacheKey       = $beforeRestart.currentCacheKey
-            currentCacheKeyExists = $beforeRestart.currentCacheKeyExists
-            liveEnableI18n        = $beforeRestart.liveEnableI18n
-            allCacheKeys          = @($beforeRestart.allCacheKeys)
-            htmlLang              = $beforeRestart.htmlLang
-            statsigStatus         = $beforeRestart.statsigStatus
-        } | Format-List
+        if (-not $beforeRestart.ok) { throw "第 $check/2 次复查未完成，ChatGPT 配置服务尚未就绪。" }
+        if (-not $beforeRestart.currentCacheKeyExists) { throw "第 $check/2 次复查未找到语言缓存。" }
+        Write-Host "第 $check/2 次复查通过，语言缓存已保留。" -ForegroundColor Cyan
     }
 
     if ($DiagnoseAfterRestart) {
         if ($DiagnosticPort -gt 0) {
             if ($DiagnosticPort -eq $debugPort) {
-                throw 'The diagnostic port must differ from the initial debugging port.'
+                throw '诊断端口必须与初始调试端口不同。'
             }
             $restartPort = $DiagnosticPort
         }
@@ -1105,19 +1183,11 @@ if ($RestartAfterSuccess -or $DiagnoseAfterRestart) {
             -TimeoutSeconds $TimeoutSeconds
 
         Write-Host ''
-        Write-Host '========== Latest Codex startup snapshot ==========' -ForegroundColor Cyan
-        [pscustomobject][ordered]@{
-            currentCacheKey       = $latest.currentCacheKey
-            currentCacheKeyExists = $latest.currentCacheKeyExists
-            liveEnableI18n        = $latest.liveEnableI18n
-            allCacheKeys          = @($latest.allCacheKeys)
-            htmlLang              = $latest.htmlLang
-            statsigStatus         = $latest.statsigStatus
-        } | Format-List
-        Write-Host "Diagnostic port: $restartPort"
+        Write-Host '========== ChatGPT 重开状态 ==========' -ForegroundColor Cyan
+        Write-Host ('语言缓存：' + $(if ($latest.currentCacheKeyExists) { '已保留' } else { '未找到' }))
+        Write-Host "本机诊断端口：$restartPort"
         Write-Host (
-            'Cache key matches seeded key: ' +
-            ($latest.currentCacheKey -eq $result.currentCacheKey)
+            '缓存检查：' + $(if ($latest.currentCacheKey -eq $result.currentCacheKey) { '一致' } else { '已变化' })
         )
 
         if ($latest.ok -ne $true) {
@@ -1127,7 +1197,7 @@ if ($RestartAfterSuccess -or $DiagnoseAfterRestart) {
             )) {
                 throw [string]$errorProperty.Value
             }
-            throw 'The restarted Codex page did not return a ready diagnostic snapshot.'
+            throw 'ChatGPT 重开后尚未就绪。'
         }
 
         if (
@@ -1135,26 +1205,24 @@ if ($RestartAfterSuccess -or $DiagnoseAfterRestart) {
             $latest.liveEnableI18n -ne $true
         ) {
             Write-Host (
-                'The diagnostic Codex instance remains open for inspection.'
+                '诊断窗口保持打开，供查看界面。'
             ) -ForegroundColor Yellow
             throw (
-                'The restarted Codex instance did not load the seeded i18n cache. ' +
-                "currentCacheKeyExists=$($latest.currentCacheKeyExists); " +
-                "liveEnableI18n=$($latest.liveEnableI18n)"
+                'ChatGPT 重开后未能加载语言缓存。'
             )
         }
 
-        Write-Host 'The diagnostic Codex instance remains open for visual inspection.' `
+        Write-Host '诊断窗口保持打开，供查看界面。' `
             -ForegroundColor Yellow
     }
     else {
         # UseGoodAI：取消自动重启。先结束页面进程让缓存落盘，再关闭调试实例。
-        Write-Host 'Closing the Codex pages so the cache is written to disk...'
+        Write-Host '正在保存语言缓存……'
         Save-CodexStorage
-        Write-Host 'Stopping the debugging instance...'
+        Write-Host '正在关闭 ChatGPT……'
         Stop-CodexRuntimeProcesses
     }
 }
 else {
-    Write-Host 'Completely exit Codex, then start it normally to load the current-key cache.'
+    Write-Host '请完全退出 ChatGPT，再重新打开以加载语言缓存。'
 }
