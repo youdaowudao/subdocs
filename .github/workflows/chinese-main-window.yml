@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/chinese-main-window.yml
       - tests/chinese-main-window.ps1
+      - tests/chinese-onboarding.js
 permissions:
   contents: read
 jobs:
