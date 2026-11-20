@@ -1,0 +1,33 @@
+name: Windows 断网登录页缓存保留对照
+on:
+  workflow_dispatch:
+  push:
+    branches: [actions-test]
+    paths:
+      - .github/workflows/chinese-cache-persistence.yml
+      - tests/chinese-cache-persistence.ps1
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: windows-11-arm
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [candidate, old]
+    steps:
+      - name: 保留原始发布字节
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: 对照缓存写入和重开期间的变化
+        shell: powershell
+        run: .\tests\chinese-cache-persistence.ps1 -Variant '${{ matrix.variant }}' -ReportDir "$env:RUNNER_TEMP\cache-persistence"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: cache-persistence-${{ matrix.variant }}
+          path: ${{ runner.temp }}/cache-persistence
+          if-no-files-found: error
