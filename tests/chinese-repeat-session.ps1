@@ -24,10 +24,23 @@ try {
     }
     $configText += "[desktop]`nlocaleOverride = `"zh-CN`"`n"
     $configText | Set-Content $config -Encoding ASCII
-    $configHash = (Get-FileHash $config).Hash
+    $initialConfigText = [IO.File]::ReadAllText($config)
+    $initialConfigText | Set-Content (Join-Path $ReportDir 'config-fixture-before-app.txt') -Encoding UTF8
     Complete-PrivacyScreen
     if ($Auth -eq 'apikey') { Complete-AppOnboarding }
     $report.baseline = Get-I18nSnapshot 'session-baseline'
+    # Establish the application's own first-use changes before invoking any repair command.
+    $report.normalStartupConfigs = @()
+    for ($baselineRound = 1; $baselineRound -le 2; $baselineRound++) {
+        $null = Start-Codex
+        Start-Sleep -Seconds 50
+        Stop-Codex
+        $normalConfig = [IO.File]::ReadAllText($config)
+        $normalConfig | Set-Content (Join-Path $ReportDir "config-normal-startup-$baselineRound.txt") -Encoding UTF8
+        $report.normalStartupConfigs += @{ round = $baselineRound; sha256 = (Get-FileHash $config).Hash; changedFromFixture = $normalConfig -ne $initialConfigText }
+        Save-Report
+    }
+    $configHash = (Get-FileHash $config).Hash
     $null = Start-Codex
     Start-Sleep -Seconds 12
     $portFile = Join-Path $temp 'repeat-session-port'
@@ -63,13 +76,14 @@ for ($i = 1; $i -le 8; $i++) {
         if ($hr -lt 0) { throw 'Normal test reopen failed' }
         if ($i -eq 2) { Start-Sleep -Seconds 50 } else { Start-Sleep -Seconds 12 }
     }
+    $configBeforeRepair = (Get-FileHash '__CONFIG_PATH__').Hash
     $watch = [Diagnostics.Stopwatch]::StartNew()
     irm http://127.0.0.1:__PORT__/chinese.ps1 | iex
-    $state = @{ attempt = $i; shellPid = $PID; seconds = [Math]::Round($watch.Elapsed.TotalSeconds, 2); remaining = @(Get-Process -Name ChatGPT, Codex -ErrorAction SilentlyContinue).Count; port = @(Get-NetTCPConnection -State Listen -LocalPort 9240 -ErrorAction SilentlyContinue).Count }
+    $state = @{ attempt = $i; shellPid = $PID; seconds = [Math]::Round($watch.Elapsed.TotalSeconds, 2); configBefore = $configBeforeRepair; configAfter = (Get-FileHash '__CONFIG_PATH__').Hash; remaining = @(Get-Process -Name ChatGPT, Codex -ErrorAction SilentlyContinue).Count; port = @(Get-NetTCPConnection -State Listen -LocalPort 9240 -ErrorAction SilentlyContinue).Count }
     Write-Host ('__CI_STATE__' + ($state | ConvertTo-Json -Compress))
 }
 '@
-    $program = $program.Replace('__PORT__', [string]$port).Replace('__AUMID__', $script:codex.Aumid)
+    $program = $program.Replace('__PORT__', [string]$port).Replace('__AUMID__', $script:codex.Aumid).Replace('__CONFIG_PATH__', $config.Replace("'", "''"))
     [IO.File]::WriteAllText($entry, $program, [Text.UTF8Encoding]::new($false))
     $stdout = Join-Path $ReportDir 'same-session-stdout.txt'
     $stderr = Join-Path $ReportDir 'same-session-stderr.txt'
@@ -89,9 +103,12 @@ for ($i = 1; $i -le 8; $i++) {
         if ($attempt.remaining -or $attempt.port) { Add-Failure 'An attempt left application processes or its debug listener' }
         if ($attempt.seconds -gt 180) { Add-Failure 'An attempt exceeded three minutes' }
     }
+    [IO.File]::ReadAllText($config) | Set-Content (Join-Path $ReportDir 'config-after-repair.txt') -Encoding UTF8
     $report.final = Get-I18nSnapshot 'session-final'
     if ($report.final.liveEnableI18n -ne $true -or $report.final.cjkCount -lt 5) { Add-Failure 'The final session window was not Chinese' }
-    if ((Get-FileHash $config).Hash -ne $configHash) { Add-Failure 'The original configuration changed' }
+    $report.configBeforeRepairSha256 = $configHash
+    $report.configAfterRepairSha256 = (Get-FileHash $config).Hash
+    if ((Get-FileHash $config).Hash -ne $configHash) { Add-Failure 'The configuration changed after the normal-startup baseline' }
     Save-Report
     if ($report.failures.Count) { throw ($report.failures -join ' | ') }
 } finally {
