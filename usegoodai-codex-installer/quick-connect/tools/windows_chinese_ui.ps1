@@ -79,7 +79,7 @@ $coreTest = [IO.File]::ReadAllText((Join-Path $repo 'tests/codex-chinese-desktop
 $type = [regex]::Match($coreTest, "(?s)Add-Type -TypeDefinition @'\r?\n(.*?)\r?\n'@")
 Add-Type -TypeDefinition $type.Groups[1].Value
 $ast = [Management.Automation.Language.Parser]::ParseInput($coreTest, [ref]$null, [ref]$null)
-foreach ($name in @('Get-CodexProcesses','Get-CodexMain','Start-Codex')) {
+foreach ($name in @('Get-CodexProcesses','Get-CodexMain','Start-Codex','Complete-PrivacyScreen')) {
     $function = $ast.FindAll({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name }, $false) | Select-Object -First 1
     Invoke-Expression $function.Extent.Text
 }
@@ -165,6 +165,7 @@ $assistant = $null
 $launched = $null
 $logDir = Join-Path $env:LOCALAPPDATA 'UseGoodAI/QuickConnect/logs'
 try {
+    Complete-PrivacyScreen
     $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--force-renderer-accessibility'
     $launched = Start-Process -FilePath $copy -PassThru
     $assistant = Wait-Until { Get-Process | Where-Object { $_.Path -ieq $copy -and $_.MainWindowHandle -ne [IntPtr]::Zero } | Select-Object -First 1 } 90
@@ -187,6 +188,7 @@ try {
 } catch {
     $report.failures += $_.Exception.Message
     Save-Screen 'failure'
+    Get-ChildItem -LiteralPath $logDir -Filter '中文化_*.txt' -ErrorAction SilentlyContinue | Copy-Item -Destination $ReportDir -Force
     throw
 } finally {
     $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = $originalAccessibility

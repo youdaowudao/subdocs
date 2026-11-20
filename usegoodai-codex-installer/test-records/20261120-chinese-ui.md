@@ -20,3 +20,9 @@
 PowerShell 转录与编码依据：[Microsoft Start-Transcript](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-5.1)。独立控制台依据：[Microsoft Process Creation Flags](https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags)。Win10 环境依据：[Dockur Windows](https://github.com/dockur/windows)及[微软 Windows 10 Enterprise 评估系统](https://www.microsoft.com/en-us/evalcenter/download-windows-10-enterprise/)。
 
 真实账号、真实中转鉴权及计费不在本轮验证范围。新机迁移已取消，迁移核查私有资料仍保留；本轮不迁移、删除或重发其它项目资料。
+
+## 首轮环境问题与补测
+
+- 候选提交 `449a8bc` 的三项既有发布门禁均通过：[运行 44757275991](https://github.com/youdaowudao/subdocs/actions/runs/44757275991)。
+- Windows 11 按钮已调起 PowerShell，但运行机首次隐私设置页覆盖桌面，自动回车未送达；截图确认，首轮不计通过。仅在验收脚本复用现有 `Complete-PrivacyScreen` 完成运行机初始化，产品 EXE 与内嵌核心均未修改。
+- 按钮验收改为手动选择系统，避免已通过组随无关记录提交反复运行；不新增发布门禁。

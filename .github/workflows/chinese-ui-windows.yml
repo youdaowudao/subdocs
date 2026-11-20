@@ -1,20 +1,17 @@
 name: Windows 中文化按钮集成验收
 on:
   workflow_dispatch:
-  push:
-    branches: [actions-test]
-    paths:
-      - .github/workflows/chinese-ui-windows.yml
-      - usegoodai-codex-installer/quick-connect/chinesetool/**
-      - usegoodai-codex-installer/quick-connect/connect/chinese*
-      - usegoodai-codex-installer/quick-connect/tools/windows_chinese_ui.ps1
-      - usegoodai-codex-installer/quick-connect/tools/windows10_chinese_vm.py
-      - usegoodai-codex-installer/quick-connect/tools/win10-oem/**
-      - docs/public/download/usegoodai-quick-connect-windows-x64.exe
+    inputs:
+      system:
+        description: 只补测尚未通过的系统
+        type: choice
+        default: both
+        options: [both, windows10, windows11]
 permissions:
   contents: read
 jobs:
   windows11:
+    if: inputs.system == 'both' || inputs.system == 'windows11'
     name: Windows 11 ARM 实际点击中文化
     runs-on: windows-11-arm
     timeout-minutes: 25
@@ -33,6 +30,7 @@ jobs:
           path: ${{ runner.temp }}/chinese-ui
           if-no-files-found: error
   windows10:
+    if: inputs.system == 'both' || inputs.system == 'windows10'
     name: Windows 10 x64 桌面实际点击中文化
     runs-on: ubuntu-24.04
     timeout-minutes: 60
