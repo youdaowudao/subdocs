@@ -10,7 +10,7 @@ curl -fsSL https://docs.usegoodai.com/install/chinese.sh | /bin/bash
 
 命令先关闭应用，再临时打开 ChatGPT 写入缓存。窗口出现属于上游原有流程，终端会显示中文阶段提示，等待超过 5 秒时继续报告进度。完成后关闭临时窗口，请自己重新打开 ChatGPT；失败和中断也执行关闭收尾。
 
-1.1.1 候选保留上游 Mac 提供的 `--app`、`--port` 和 `--timeout` 参数；单文件封装通过 `bash -s -- 参数` 传入。正式发布状态以版本记录为准。
+1.1.2 候选保留上游 Mac 提供的 `--app`、`--port` 和 `--timeout` 参数；单文件封装通过 `bash -s -- 参数` 传入。正式发布状态以版本记录为准。
 
 ## 来源与本次修改
 
@@ -18,6 +18,6 @@ curl -fsSL https://docs.usegoodai.com/install/chinese.sh | /bin/bash
 
 对应 Windows 的四处接入以 `# UseGoodAI：` 标明：开头复用既有 SIGTERM 等 5 秒、SIGKILL 后复查的关闭逻辑；结束不重开；单文件内嵌核心；关闭前经 SIGTERM 正常退出落盘。另复用本次 Windows 已确认需要的中文阶段提示、每 5 秒进度、总等待超时和明确页面失效重连；主动刷新本身不重试。去掉旧版 app-server 写桌面语言和配置备份的步骤。缓存算法没有改写。
 
-1.1.1 仅补充已证实的 App 后台进程收尾，按真实路径、当前用户和父子关系限定范围，独立命令行进程保留。原版决定语言来源；缓存来源为 SYSTEM 时按系统语言工作，测试中不能将英文系统直接当成中文系统。
+1.1.2 在关闭主程序前照 Windows 先结束页面进程、等 2 秒保存，再复用既有关闭逻辑；同时补充已证实的 App 后台进程收尾，按真实路径、当前用户和父子关系限定范围，独立命令行进程保留。原版决定语言来源；缓存来源为 SYSTEM 时按系统语言工作，测试中不能将英文系统直接当成中文系统。
 
 源码为本目录 `chinese.py`；`build.py` 生成上层 `install/chinese.sh` 和站点 `docs/public/install/chinese.sh`，`--check` 核对两份字节。实机、重复运行、普通重开及缓存落盘结果见版本记录和 `test-records/20261120-codex-chinese.md`。

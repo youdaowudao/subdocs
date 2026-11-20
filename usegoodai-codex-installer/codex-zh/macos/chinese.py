@@ -192,7 +192,15 @@ def stop_desktop(executable, pids):
                 if pid in rows and rows[pid][1] == os.getuid()
                 and not rows[pid][2].startswith('Z') and rows[pid][3] == path}
 
-    remaining_owned()
+    active = remaining_owned()
+    # UseGoodAI：Mac 实测直接结束主程序会损坏缓存日志；照 Windows 先结束页面进程，
+    # 等 2 秒让 Chromium 保存本地存储，再复用原 TERM/KILL 关闭逻辑。
+    renderers = {pid: path for pid, path in active.items()
+                 if '--type=renderer' in run('/bin/ps', '-ww', '-p', str(pid), '-o', 'command=').stdout.split()}
+    for path in set(renderers.values()):
+        signal_matching(path, {pid for pid, owner in renderers.items() if owner == path}, signal.SIGKILL)
+    if renderers:
+        time.sleep(2)
     stop(executable, pids)
     if wait_until(lambda: not remaining_owned(), 2):
         return
@@ -305,7 +313,7 @@ def main():
             if not snapshot.get('currentCacheKeyExists'): raise RuntimeError(f'第 {check}/2 次复查未找到语言缓存。')
             print(f'第 {check}/2 次复查通过，语言缓存已保留。',flush=True)
     finally:
-        # UseGoodAI：沿用项目 SIGTERM 正常退出使缓存落盘；成功、失败或中断均收尾，不自动重开。
+        # UseGoodAI：页面进程先落盘，再沿用项目关闭逻辑；成功、失败或中断均收尾，不自动重开。
         prior_mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGINT,signal.SIGHUP,signal.SIGTERM})
         try:
             with progress('正在保存语言缓存并关闭 ChatGPT'):

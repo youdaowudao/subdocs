@@ -98,7 +98,13 @@ def set_network(mode):
 
 
 def stop():
-    CORE['stop_desktop'](str(executable), CORE['running'](str(executable)))
+    pids = CORE['running'](str(executable))
+    if pids:
+        # Prepare/read the fixture with an ordinary quit, independently of the
+        # forced-close path under test. Killing the main process damaged its WAL.
+        execute(['/usr/bin/osascript', '-e', 'tell application id "com.openai.codex" to quit'])
+        require(CORE['wait_until'](lambda: not CORE['running'](str(executable)), 15), 'Ordinary application quit did not finish')
+    CORE['stop_desktop'](str(executable), pids)
 
 
 def open_app(debug=False):
@@ -142,6 +148,14 @@ def save_databases(label='final'):
             destination = REPORT / f"{label}-db{index}"
             shutil.copytree(directory, destination, ignore=shutil.ignore_patterns('LOCK'))
             copies.append({'phase': label, 'source': str(directory), 'copy': destination.name})
+
+
+def storage_errors():
+    support = Path.home() / 'Library/Application Support/Codex'
+    return [{'path': str(log), 'lines': [line for line in log.read_text(errors='replace').splitlines()
+                                      if re.search(r'Corruption:|IO error:', line)]}
+            for log in support.rglob('Local Storage/leveldb/LOG')
+            if re.search(r'Corruption:|IO error:', log.read_text(errors='replace'))]
 
 
 def capture(label):
@@ -258,6 +272,9 @@ def run_tool(label, expect_success=True, previous=False, interrupt=False):
         open_app()
         time.sleep(50)
         row['normalReopen'] = capture(label + '-normal')
+        row['storageErrors'] = storage_errors()
+        save()
+        require(not row['storageErrors'], label + ' reopened with cache database errors')
         require(row['normalReopen']['cjk'] >= 5, label + ' normal window was not Chinese')
         if args.auth == 'apikey':
             require('新聊天' in row['normalReopen']['text'], label + ' did not show the Chinese new-chat control')
@@ -349,6 +366,9 @@ if __name__ == '__main__':
         if args.auth == 'apikey':
             onboarding()
         report['baseline'] = snapshot('baseline')
+        report['baselineStorageErrors'] = storage_errors()
+        save()
+        require(not report['baselineStorageErrors'], 'Fixture already has cache database errors before the product runs')
         if args.network != 'online':
             require(not any(x.get('source') == 'Network' for x in report['baseline']['caches']), 'Offline baseline leaked to network')
         open_app()
