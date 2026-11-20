@@ -1,0 +1,54 @@
+name: Windows 中文化等待与重复运行实测
+on:
+  workflow_dispatch:
+  push:
+    branches: [actions-test]
+    paths:
+      - .github/workflows/codex-chinese-windows.yml
+      - tests/codex-chinese-*.ps1
+      - tests/codex-chinese-network.py
+      - docs/public/install/chinese.ps1
+permissions:
+  contents: read
+jobs:
+  cdp:
+    name: PowerShell 5.1 超时与页面切换
+    runs-on: windows-11-arm
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - shell: powershell
+        run: .\tests\codex-chinese-cdp.ps1 -ReportDir "$env:RUNNER_TEMP\cdp"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: windows-cdp
+          path: ${{ runner.temp }}/cdp
+  windows-desktop:
+    name: ${{ matrix.network }}-${{ matrix.auth }}
+    runs-on: windows-11-arm
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        network: [block, blackhole, longhang, dns-fail, polluted, online]
+        auth: [apikey, login]
+    steps:
+      - name: 保留发布文件原始字节
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: 官方 ChatGPT 窗口与原生 PowerShell 实测
+        shell: powershell
+        run: .\tests\codex-chinese-desktop.ps1 -Script docs/public/install/chinese.ps1 -Network '${{ matrix.network }}' -Expect pass -Auth '${{ matrix.auth }}' -Locale override -Stress 5 -ReportDir "$env:RUNNER_TEMP\codex-chinese"
+      - name: 保存报告和窗口截图
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: windows-${{ matrix.network }}-${{ matrix.auth }}
+          path: ${{ runner.temp }}/codex-chinese
+          if-no-files-found: error
+          retention-days: 21

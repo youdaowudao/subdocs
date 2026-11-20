@@ -29,8 +29,10 @@ function Write-CommandFailure {
     Write-Host ''
     Write-Host '========================================' -ForegroundColor DarkGray
     Write-Host '[失败] 中文缓存修复未完成。' -ForegroundColor Red
-    Write-Host "原因：$($ErrorRecord.Exception.Message)" -ForegroundColor Red
-    Write-Host '建议：完全退出 CC Switch 和所有 Codex 进程后重试。' -ForegroundColor Yellow
+    # UseGoodAI：系统异常也使用中文说明，避免直接向用户输出英文异常。
+    $reason = $ErrorRecord.Exception.Message
+    if ($reason -notmatch '[一-鿿]') { $reason = '运行未完成，请完全退出 ChatGPT 后重试。' }
+    Write-Host "原因：$reason" -ForegroundColor Red
 }
 
 trap {
@@ -131,10 +133,8 @@ function Stop-CodexClients {
 
 $processPattern = '^(ChatGPT|Codex|codex-command-runner|codex-windows-sandbox-service|codex-code-mode-host)(\.exe)?$'
 
-Write-Warning (
-    'This command will force-close ChatGPT/Codex processes. ' +
-    'Save all work and run it from an external PowerShell window.'
-)
+# UseGoodAI：删除风险提醒，只显示操作进度。
+Write-Host '正在关闭 ChatGPT……'
 
 $remaining = @()
 $processStopSkipped = $SkipProcessStop.IsPresent
@@ -142,7 +142,7 @@ $processStopSkipped = $SkipProcessStop.IsPresent
 if (-not $processStopSkipped) {
     # UseGoodAI：改用复用的 Stop-RunningClients 关闭 ChatGPT/Codex。
     if (Stop-CodexClients) {
-        throw '未能自动关闭 ChatGPT/Codex。请重启电脑后再运行本命令。'
+        throw '未能自动关闭 ChatGPT/ChatGPT。请重启电脑后再运行本命令。'
     }
 }
 
@@ -155,9 +155,7 @@ $ccSwitchProcesses = @(
 )
 
 if ($ccSwitchProcesses.Count -gt 0) {
-    Write-Warning (
-        'CC Switch is still running. Exit it from the tray if it auto-restarts Codex.'
-    )
+    Write-Host 'CC Switch 正在运行；若它重新打开 ChatGPT，请先退出 CC Switch。'
 }
 
 if ($ValidateOnly) {
@@ -165,7 +163,7 @@ if ($ValidateOnly) {
         Get-CimInstance Win32_Process |
             Where-Object { $_.Name -match $processPattern }
     )
-    Write-Host "Validation passed. Codex process count: $($remaining.Count). Process stop skipped: $processStopSkipped"
+    Write-Host "检查完成，当前 ChatGPT 进程数：$($remaining.Count)。"
     return
 }
 
@@ -193,19 +191,23 @@ try {
     Write-Host ''
     Write-Host '========================================' -ForegroundColor DarkGray
     if ($DiagnoseAfterRestart) {
-        Write-Host '[成功] 中文缓存已写入，Codex 已用诊断端口重新启动。' -ForegroundColor Green
+        Write-Host '[成功] 中文缓存已写入，ChatGPT 已用诊断端口重新启动。' -ForegroundColor Green
         Write-Host '上方已输出最新启动状态，可用于判断缓存键是否变化及 enable_i18n 是否生效。' -ForegroundColor Green
     }
     elseif ($NoAutoRestart) {
         Write-Host '[成功] 当前缓存键的中文开关已经写入。' -ForegroundColor Green
-        Write-Host '已跳过自动重启，请手动完全退出并重新打开 Codex。' -ForegroundColor Yellow
+        Write-Host '已跳过自动重启，请手动完全退出并重新打开 ChatGPT。' -ForegroundColor Yellow
     }
     else {
-        Write-Host '[成功] 中文缓存已经写入，Codex 已关闭。' -ForegroundColor Green
-        Write-Host '请重新打开 Codex，检查界面是否显示中文。' -ForegroundColor Green
+        Write-Host '[成功] 中文缓存已经写入，ChatGPT 已关闭。' -ForegroundColor Green
+        Write-Host '请重新打开 ChatGPT，检查界面是否显示中文。' -ForegroundColor Green
     }
 }
 catch {
-    Write-CommandFailure $_
+    $failure = $_
+    # UseGoodAI：失败后也关闭调试实例，不自动重开。
+    Write-Host '正在关闭 ChatGPT……'
+    if (Stop-CodexClients) { Write-Host 'ChatGPT 尚未完全退出，请手动退出。' }
+    Write-CommandFailure $failure
     return
 }
