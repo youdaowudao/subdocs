@@ -22,16 +22,21 @@ try {
     if (@($report.baseline.caches | Where-Object source -EQ 'Network').Count) { throw 'Offline baseline leaked to the network' }
     $null = Start-Codex
     Start-Sleep -Seconds 50
+    $report.remoteBefore = @(Get-RemoteConnections)
     $report.before = Save-Screen 'before-repair'
+    Save-Report
     $row = Invoke-OneLine 'first-repair'
     # Match the full matrix's first ordinary reopen. No extra disk copy or SDK call before it.
     $null = Start-Codex
     Start-Sleep -Seconds 50
     $report.ordinaryReopen = Save-Screen 'ordinary-reopen'
     Stop-Codex
+    Get-StorageEvidence 'after-reopen1'
     $report.after = Get-I18nSnapshot 'after-first-normal-reopen'
     Save-Database 'original-outcome'
-    $report.cacheLost = -not @($report.after.caches).Count -or $report.after.liveEnableI18n -ne $true -or $report.after.cjkCount -lt 5
+    $report.resultCollected = $null -eq $report.after.PSObject.Properties['error']
+    $report.ordinaryChinese = @($report.ordinaryReopen.chineseLabels | Where-Object { $_ -match '^登录\s*ChatGPT$|^继续登录$' }).Count -gt 0
+    $report.cacheLost = if ($report.resultCollected) { -not @($report.after.caches).Count -or $report.after.liveEnableI18n -ne $true } else { $null }
     Save-Report
 
     # Introspection only after the original outcome and raw WAL have been preserved.
@@ -68,7 +73,10 @@ try {
     } finally { Stop-Codex }
     Save-Database 'after-introspection'
     if (-not $row.success) { Add-Failure 'The original published command did not succeed' }
-    if ($report.cacheLost) { Add-Failure 'The original published command lost its cache on the first ordinary reopen' }
+    if (-not $report.resultCollected) { Add-Failure 'The original page state could not be collected; cache loss is unconfirmed' }
+    elseif ($report.cacheLost) { Add-Failure 'The original published command lost its cache on the first ordinary reopen' }
+    if (-not $report.ordinaryReopen.labels) { Add-Failure 'The normal window controls could not be collected' }
+    elseif (-not $report.ordinaryChinese) { Add-Failure 'The first ordinary reopen did not show the Chinese sign-in controls' }
     Save-Report
     if ($report.failures.Count) { throw ($report.failures -join ' | ') }
 } finally {
