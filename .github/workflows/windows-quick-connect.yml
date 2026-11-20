@@ -12,6 +12,8 @@ on:
       - usegoodai-codex-installer/quick-connect/**
       - docs/public/download/**
       - .github/workflows/windows-quick-connect.yml
+      - '!**/*.md'
+      - '!**/*.txt'
 
 permissions:
   contents: read

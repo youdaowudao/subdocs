@@ -108,9 +108,14 @@ try {
       throw "导入后缺少或重复 $id"
     }
   }
-  # The manifest is committed before config.toml. Wait for the completed UI
-  # result rather than reading halfway through the existing transaction.
-  Wait-Text '已导入' | Out-Null
+  # The manifest is committed before config.toml. Check the complete file
+  # transaction before validating preserved settings.
+  $deadline = (Get-Date).AddSeconds(30)
+  do {
+    $committedConfig = [IO.File]::ReadAllText((Join-Path $homePath 'config.toml'))
+    if ($committedConfig.Contains('model_catalog_json')) { break }
+    Start-Sleep -Milliseconds 200
+  } until ((Get-Date) -gt $deadline)
   $afterConfig = [IO.File]::ReadAllText((Join-Path $homePath 'config.toml'))
   if (-not $afterConfig.Contains('model = "gpt-6.1-sol"') -or
       -not $afterConfig.Contains('approval_policy = "never"') -or -not $afterConfig.Contains('usegoodai-models.json')) {
