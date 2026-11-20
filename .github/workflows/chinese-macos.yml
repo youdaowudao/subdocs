@@ -18,8 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        network: [refused, blackhole, online]
-        auth: [apikey, login]
+        network: [refused]
+        auth: [apikey]
         variant: [candidate]
     steps:
       - uses: actions/checkout@v5

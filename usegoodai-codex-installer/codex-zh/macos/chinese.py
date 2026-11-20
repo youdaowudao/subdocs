@@ -192,9 +192,20 @@ def stop_desktop(executable, pids):
                 if pid in rows and rows[pid][1] == os.getuid()
                 and not rows[pid][2].startswith('Z') and rows[pid][3] == path}
 
+    remaining_owned()
+    # UseGoodAI：Mac 压力测试中停页面等 2 秒仍出现缓存校验错误；先请求 App 正常退出，
+    # 复用原 TERM/KILL 清理兜底。正常退出失败时只报错，不确认保存成功。
+    quit_failed = False
+    if running(executable).intersection(pids):
+        app_path = os.path.dirname(os.path.dirname(os.path.dirname(str(executable))))
+        try:
+            result = run('/usr/bin/osascript', '-e',
+                         'on run argv\ntell application (item 1 of argv) to quit\nend run', app_path)
+        except (OSError, subprocess.TimeoutExpired):
+            result = None
+        quit_failed = (result is None or result.returncode != 0 or
+                       not wait_until(lambda: not running(executable).intersection(pids), 5))
     active = remaining_owned()
-    # UseGoodAI：Mac 实测直接结束主程序会损坏缓存日志；照 Windows 先结束页面进程，
-    # 等 2 秒让 Chromium 保存本地存储，再复用原 TERM/KILL 关闭逻辑。
     renderers = {pid: path for pid, path in active.items()
                  if '--type=renderer' in run('/bin/ps', '-ww', '-p', str(pid), '-o', 'command=').stdout.split()}
     for path in set(renderers.values()):
@@ -202,13 +213,14 @@ def stop_desktop(executable, pids):
     if renderers:
         time.sleep(2)
     stop(executable, pids)
-    if wait_until(lambda: not remaining_owned(), 2):
-        return
-    leftovers = remaining_owned()
-    for path in sorted(set(leftovers.values())):
-        stop(path, {pid for pid, owner in leftovers.items() if owner == path})
+    if not wait_until(lambda: not remaining_owned(), 2):
+        leftovers = remaining_owned()
+        for path in sorted(set(leftovers.values())):
+            stop(path, {pid for pid, owner in leftovers.items() if owner == path})
     if remaining_owned():
         raise RuntimeError('ChatGPT 的后台进程尚未退出，请退出后重试。')
+    if quit_failed:
+        raise RuntimeError('ChatGPT 未能正常退出，本次无法确认语言缓存已保存。')
 
 def debug_pids(executable, port, pids=None):
     flag = f"--remote-debugging-port={port}"
