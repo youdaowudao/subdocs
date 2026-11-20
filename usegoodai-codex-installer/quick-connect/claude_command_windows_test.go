@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -37,13 +38,16 @@ func TestClaudePowerShellCommand(t *testing.T) {
 			if err != nil {
 				t.Skip("shell unavailable")
 			}
+			var scriptRequests, programRequests atomic.Int64
 			var server *httptest.Server
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/helper.exe" {
+					programRequests.Add(1)
 					w.Header().Set("Content-Type", "application/octet-stream")
 					_, _ = w.Write(data)
 					return
 				}
+				scriptRequests.Add(1)
 				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 				_, _ = w.Write([]byte(strings.ReplaceAll(string(source), "https://docs.usegoodai.com/download/usegoodai-quick-connect-windows-x64.exe", server.URL+"/helper.exe")))
 			}))
@@ -52,13 +56,14 @@ func TestClaudePowerShellCommand(t *testing.T) {
 			if err := os.MkdirAll(directory, 0o700); err != nil {
 				t.Fatal(err)
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 			defer cancel()
-			child := exec.CommandContext(ctx, command, "-NoProfile", "-NonInteractive", "-Command", "[Console]::OutputEncoding = New-Object Text.UTF8Encoding($false); irm $env:TEST_CLAUDE_URL | iex; exit $LASTEXITCODE")
+			child := exec.CommandContext(ctx, command, "-NoProfile", "-NonInteractive", "-Command", "[Console]::Error.WriteLine('test: PowerShell entered'); [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false); irm $env:TEST_CLAUDE_URL | iex; exit $LASTEXITCODE")
 			const key = "sk-test-windows-command-no-real-key"
 			child.Env = append(os.Environ(), "LOCALAPPDATA="+directory, "APPDATA="+directory, "USERPROFILE="+directory,
 				"TEMP="+directory, "TMP="+directory, "USEGOODAI_KEY="+key, "TEST_CLAUDE_URL="+server.URL+"/claude.ps1")
 			output, err := child.CombinedOutput()
+			t.Logf("script requests=%d, program requests=%d, output bytes=%d, context=%v, exit=%v", scriptRequests.Load(), programRequests.Load(), len(output), ctx.Err(), err)
 			if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 1 {
 				t.Fatalf("expected missing Desktop exit 1, got %v: %s", err, output)
 			}

@@ -6,7 +6,7 @@ on:
         description: 只补测尚未通过的系统
         type: choice
         default: both
-        options: [both, windows10, windows11, windows11-arm, failed-regressions, failed-models, baseline-command]
+        options: [both, windows10, windows11, windows11-arm, failed-regressions, failed-models, baseline-command, failed-command]
 permissions:
   contents: read
 jobs:
@@ -116,19 +116,20 @@ jobs:
           path: ${{ runner.temp }}/models-import-window/*.*
           if-no-files-found: ignore
   baseline-command:
-    name: 已发布1.2.0的旧命令对照
-    if: inputs.system == 'baseline-command'
+    name: PS5.1命令对照或失败补测
+    if: inputs.system == 'baseline-command' || inputs.system == 'failed-command'
     runs-on: windows-11-arm
     timeout-minutes: 10
     env:
       GOARCH: amd64
-      QUICK_CONNECT_EXE: ${{ github.workspace }}\.baseline\docs\public\download\usegoodai-quick-connect-windows-x64.exe
+      QUICK_CONNECT_EXE: ${{ github.workspace }}\${{ inputs.system == 'baseline-command' && '.baseline\' || '' }}docs\public\download\usegoodai-quick-connect-windows-x64.exe
     steps:
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - uses: actions/checkout@v5
+        if: inputs.system == 'baseline-command'
         with:
           persist-credentials: false
           ref: 207ef7f02473ce2e6ae10568c8225ca86957607f
@@ -137,6 +138,6 @@ jobs:
         with:
           go-version-file: usegoodai-codex-installer/quick-connect/go.mod
           cache: false
-      - name: 同一失败用例运行已发布程序
+      - name: 只运行PS5.1失败用例并记录阶段
         working-directory: usegoodai-codex-installer/quick-connect
         run: go test -count=1 -timeout=3m -v -run '^TestClaudePowerShellCommand$/^powershell.exe$' .
