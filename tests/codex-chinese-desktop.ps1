@@ -215,7 +215,7 @@ $snapshotJs = @'
 })()
 '@
 
-function Invoke-Cdp([int]$Port, [string]$Expression) {
+function Invoke-Cdp([int]$Port, [string]$Expression = '', [string]$Method = 'Runtime.evaluate', [object]$Parameters = $null) {
     $handler = [Net.Http.HttpClientHandler]::new(); $handler.UseProxy = $false
     $http = [Net.Http.HttpClient]::new($handler); $http.Timeout = [TimeSpan]::FromSeconds(3)
     try {
@@ -231,7 +231,8 @@ function Invoke-Cdp([int]$Port, [string]$Expression) {
     $cancel = [Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds(90))
     try {
         $socket.ConnectAsync([Uri]$socketUrl, $cancel.Token).GetAwaiter().GetResult()
-        $body = @{ id = 1; method = 'Runtime.evaluate'; params = @{ expression = $Expression; awaitPromise = $true; returnByValue = $true } } | ConvertTo-Json -Depth 6 -Compress
+        if ($null -eq $Parameters) { $Parameters = @{ expression = $Expression; awaitPromise = $true; returnByValue = $true } }
+        $body = @{ id = 1; method = $Method; params = $Parameters } | ConvertTo-Json -Depth 6 -Compress
         $bytes = [Text.Encoding]::UTF8.GetBytes($body)
         $socket.SendAsync([ArraySegment[byte]]::new($bytes), 'Text', $true, $cancel.Token).GetAwaiter().GetResult()
         $buffer = [byte[]]::new(65536)
@@ -246,6 +247,7 @@ function Invoke-Cdp([int]$Port, [string]$Expression) {
         }
         if ($message.PSObject.Properties['error']) { throw ('CDP error: ' + $message.error.message) }
         if ($message.result.PSObject.Properties['exceptionDetails']) { throw ('Page error: ' + ($message.result.exceptionDetails | ConvertTo-Json -Compress -Depth 5)) }
+        if ($Method -ne 'Runtime.evaluate') { return $message.result }
         return ConvertFrom-Json $message.result.result.value
     } finally { $socket.Dispose(); $cancel.Dispose() }
 }
@@ -440,6 +442,31 @@ function Invoke-OneLine([string]$Label) {
     return $row
 }
 
+function Complete-AppOnboarding {
+    $onboardingJs = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'chinese-onboarding.js'))
+    Stop-Codex
+    $null = Start-Codex '--remote-debugging-port=9333 --remote-allow-origins=http://127.0.0.1:9333'
+    $report.onboarding = @()
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    $mainReady = $false
+    try {
+        while ($watch.Elapsed.TotalSeconds -lt 150) {
+            $state = @(Invoke-Cdp 9333 $onboardingJs)[-1]
+            $report.onboarding += @{ seconds = [Math]::Round($watch.Elapsed.TotalSeconds, 1); action = $state.action; done = $state.done }
+            Save-Report
+            if ($state.done) {
+                $report.mainBeforeRepair = $state
+                $report.screen_main_before = Save-Screen 'main-before-repair'
+                $mainReady = $true
+                break
+            }
+            Start-Sleep -Seconds 1
+        }
+        if (-not $mainReady) { throw 'The API-key fixture did not reach the main conversation screen.' }
+    } finally { Stop-Codex }
+    Save-Report
+}
+
 # ---------- Scenario ----------
 $report.environment = @{ os = (Get-CimInstance Win32_OperatingSystem).Caption; arch = $env:PROCESSOR_ARCHITECTURE; shell = $PSVersionTable.PSVersion.ToString(); sha = $env:GITHUB_SHA; scriptSha256 = (Get-FileHash $scriptPath).Hash }
 $tokens = $null; $errors = $null
@@ -473,6 +500,7 @@ if ($Locale -eq 'override') {
 }
 $configText | Set-Content -LiteralPath $config -Encoding ASCII
 Complete-PrivacyScreen
+if ($Auth -eq 'apikey') { Complete-AppOnboarding }
 
 $baseline = Get-I18nSnapshot 'baseline'
 $report.baselineRemote = 'see snapshot'

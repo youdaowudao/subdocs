@@ -30,4 +30,17 @@ try {
         if ($i -in @(10, 20, 34)) { $report["screen_$i"] = Save-Screen "step-$i" }
         Start-Sleep -Seconds 1
     }
+    if (-not @($report.steps | Where-Object { $_.done }).Count) { throw 'The app did not leave onboarding for the main screen.' }
+    $report.mainConfirmed = $true
+    $report.unverified = @('Main screen shows a Windows setup check failure; actual task execution is not validated.')
+    $newChat = @'
+(() => {
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const b = buttons.find(x => /^(New chat|新聊天)$/.test(x.innerText.trim()) && x.getClientRects().length);
+    if (b) b.click();
+    return JSON.stringify({clicked: Boolean(b), editor: Boolean(document.querySelector('[contenteditable="true"]')), text: document.body.innerText.slice(0,1500)});
+})()
+'@
+    $report.newChat = @(Invoke-Cdp 9333 $newChat)[-1]
+    if (-not $report.newChat.clicked) { throw 'The main screen new-chat control was not found.' }
 } finally { Stop-Codex; Save-Report }

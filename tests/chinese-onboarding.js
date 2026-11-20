@@ -19,7 +19,7 @@
     else if (next) { action = next.innerText; next.click(); }
     const editors = Array.from(document.querySelectorAll('textarea,[contenteditable="true"]')).filter(x => x.getClientRects().length);
     const onboarding = /Welcome to ChatGPT desktop|欢迎使用 ChatGPT 桌面版|What kind of work|你从事什么工作|哪一项最能描述/.test(text);
-    return JSON.stringify({done: !onboarding && editors.length > 0, text: text.slice(0, 3500), action,
+    return JSON.stringify({done: !onboarding && editors.length > 0 && buttons.some(b => /^(New chat|新聊天)$/.test((b.innerText || b.getAttribute('aria-label') || '').trim())), text: text.slice(0, 3500), action,
         buttons: buttons.map(b => ({text: b.innerText, label: b.getAttribute('aria-label'), testid: b.getAttribute('data-testid')})),
         inputs: Array.from(document.querySelectorAll('input,textarea,[contenteditable="true"]')).map(x => ({tag: x.tagName, type: x.type, value: x.value, checked: x.checked, parent: x.parentElement?.innerText?.slice(0,250), role: x.getAttribute('role'), placeholder: x.getAttribute('placeholder'), label: x.getAttribute('aria-label'), testid: x.getAttribute('data-testid')}))});
 })()

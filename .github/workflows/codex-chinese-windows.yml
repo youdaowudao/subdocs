@@ -7,6 +7,7 @@ on:
       - .github/workflows/codex-chinese-windows.yml
       - tests/codex-chinese-*.ps1
       - tests/codex-chinese-network.py
+      - tests/chinese-onboarding.js
       - docs/public/install/chinese.ps1
 permissions:
   contents: read
