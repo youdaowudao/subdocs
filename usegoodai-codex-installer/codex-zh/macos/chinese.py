@@ -1,63 +1,110 @@
-"""UseGoodAI macOS Codex desktop language command."""
-import base64
-import hashlib
-import http.client
-import json
-import os
-from pathlib import Path
-import plistlib
-import re
-import select
-import signal
-import socket
-import struct
-import subprocess
-import sys
-import tempfile
-import time
+#!/usr/bin/env python3
+"""Seed the Codex Statsig i18n cache via a temporary local CDP connection."""
+import argparse, base64, hashlib, json, os, socket, struct, subprocess, sys, time, urllib.request
 from urllib.parse import urlsplit
+from contextlib import contextmanager
+import re, signal, threading
+
+# UseGoodAI：构建时嵌入 Windows current-key 原版页面脚本及原版刷新校验，运行时不下载核心。
+EXPRESSION = ""
+VERIFY_EXPRESSION = ""
+SNAPSHOT_EXPRESSION = ""
+
+# UseGoodAI：保留上游 WebSocket 协议；共享截止时间，所有等待每 5 秒显示中文进度。
+@contextmanager
+def progress(stage):
+    print(stage + '……', flush=True)
+    started = time.monotonic()
+    done = threading.Event()
+    def report():
+        while not done.wait(5):
+            print(f'{stage}，已等待 {int(time.monotonic() - started)} 秒……', flush=True)
+    worker = threading.Thread(target=report, daemon=True)
+    worker.start()
+    try:
+        yield
+    finally:
+        done.set()
+        worker.join()
 
 
-CACHE_EXPRESSION = ""
-BUNDLE_ID = "com.openai.codex"
-TEAM_ID = "2DC432GLL2"
-LOOPBACK = "127.0.0.1"
+def remaining(deadline):
+    seconds = deadline - time.monotonic()
+    if seconds <= 0:
+        raise TimeoutError('等待 ChatGPT 超时，已停止等待。')
+    return seconds
 
 
+def recv_exact(s, count, deadline):
+    data = b""
+    while len(data) < count:
+        s.settimeout(remaining(deadline))
+        chunk = s.recv(count - len(data))
+        if not chunk: raise RuntimeError("调试连接意外关闭")
+        data += chunk
+    return data
+
+
+class PageChanged(RuntimeError):
+    pass
+
+
+def evaluate(url, expression, timeout):
+    u = urlsplit(url)
+    if u.scheme != 'ws' or u.hostname not in ('127.0.0.1', 'localhost'):
+        raise RuntimeError('拒绝连接非本机调试地址')
+    deadline = time.monotonic() + timeout
+    with socket.create_connection(('127.0.0.1', u.port), timeout=min(10, remaining(deadline))) as s:
+        s.settimeout(remaining(deadline))
+        key = base64.b64encode(os.urandom(16)).decode()
+        path = u.path + (('?' + u.query) if u.query else '')
+        request = (f'GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{u.port}\r\n'
+                   f'Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\n'
+                   'Sec-WebSocket-Version: 13\r\n\r\n')
+        s.sendall(request.encode())
+        header = b''
+        while not header.endswith(b'\r\n\r\n'):
+            header += recv_exact(s, 1, deadline)
+            if len(header) > 16384: raise RuntimeError('WebSocket 响应过长')
+        expected = base64.b64encode(hashlib.sha1((key+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode()
+        if not header.startswith(b'HTTP/1.1 101') or expected.lower() not in header.decode('latin1').lower():
+            raise RuntimeError('WebSocket 握手失败')
+        def send(op, payload):
+            n=len(payload); mask=os.urandom(4)
+            length=bytes([0x80|n]) if n<126 else (bytes([0xfe])+struct.pack('!H',n) if n<65536 else bytes([0xff])+struct.pack('!Q',n))
+            frame = bytes([0x80|op])+length+mask+bytes(v^mask[i%4] for i,v in enumerate(payload))
+            s.settimeout(remaining(deadline))
+            s.sendall(frame)
+        msg=json.dumps({'id':1,'method':'Runtime.evaluate','params':{'expression':expression,'awaitPromise':True,'returnByValue':True}}).encode()
+        send(1,msg); fragments=b''
+        while True:
+            a,b=recv_exact(s,2,deadline); n=b&127
+            if n==126: n=struct.unpack('!H',recv_exact(s,2,deadline))[0]
+            elif n==127: n=struct.unpack('!Q',recv_exact(s,8,deadline))[0]
+            if n>16*1024*1024: raise RuntimeError('调试响应过大')
+            mask=recv_exact(s,4,deadline) if b&128 else None
+            data=recv_exact(s,n,deadline)
+            if mask: data=bytes(v^mask[i%4] for i,v in enumerate(data))
+            op=a&15
+            if op==8: raise RuntimeError('调试连接已关闭')
+            if op==9: send(10,data); continue
+            if op not in (0,1): continue
+            fragments+=data
+            if not a&128: continue
+            response=json.loads(fragments); fragments=b''
+            if response.get('id') != 1: continue
+            if 'error' in response:
+                message = str(response['error'].get('message', ''))
+                if re.search('Execution context was destroyed|Cannot find context with specified id|Inspected target navigated or closed', message):
+                    raise PageChanged('ChatGPT 页面正在切换。')
+                raise RuntimeError('ChatGPT 调试调用未完成。')
+            result=response['result']
+            if 'exceptionDetails' in result: raise RuntimeError('ChatGPT 页面脚本未能执行。')
+            return json.loads(result['result']['value'])
+
+# UseGoodAI：复用原 chinese.py 的关闭逻辑：SIGTERM 等 5 秒，再 SIGKILL 并复查。
 def run(*arguments, timeout=20):
     return subprocess.run(arguments, capture_output=True, text=True, timeout=timeout)
-
-
-def find_app():
-    for directory in (Path("/Applications"), Path.home() / "Applications"):
-        for name in ("ChatGPT.app", "Codex.app"):
-            app = (directory / name).resolve()
-            info_path = app / "Contents/Info.plist"
-            if not info_path.is_file():
-                continue
-            with info_path.open("rb") as plist:
-                info = plistlib.load(plist)
-            if info.get("CFBundleIdentifier") != BUNDLE_ID:
-                continue
-            name = info.get("CFBundleExecutable", "")
-            if name not in ("ChatGPT", "Codex"):
-                raise RuntimeError("官方应用的启动入口无法识别。")
-            requirement = f'anchor apple generic and identifier "{BUNDLE_ID}" and certificate leaf[subject.OU] = "{TEAM_ID}"'
-            verification = run("/usr/bin/codesign", "--verify", "--deep", "--strict",
-                               "-R=" + requirement, str(app), timeout=90)
-            if verification.returncode:
-                raise RuntimeError("无法验证已安装 Codex 的官方签名。" + verification.stderr.strip())
-            executable = app / "Contents/MacOS" / name
-            backends = (
-                app / "Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
-                app / "Contents/Resources/codex",
-            )
-            backend = next((p for p in backends if p.is_file() and os.access(p, os.X_OK)), None)
-            if not executable.is_file() or backend is None:
-                raise RuntimeError("无法找到官方 Codex 桌面程序或内置命令。")
-            return app, executable, backend
-    raise RuntimeError("未在应用程序文件夹找到官方 Codex 桌面应用。")
-
 
 def process_snapshot():
     result = run("/bin/ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,comm=")
@@ -69,17 +116,14 @@ def process_snapshot():
         for pid, parent, uid, state, name in [parts]
     }
 
-
 def matching(rows, executable):
     return {
         pid for pid, (_, uid, state, path) in rows.items()
         if uid == os.getuid() and not state.startswith("Z") and path == str(executable)
     }
 
-
 def running(executable):
     return matching(process_snapshot(), executable)
-
 
 def own_ancestors(rows):
     current = os.getpid()
@@ -89,14 +133,12 @@ def own_ancestors(rows):
         current = rows[current][0]
     return ancestors
 
-
 def signal_matching(executable, pids, kind):
     for pid in running(executable).intersection(pids):
         try:
             os.kill(pid, kind)
         except ProcessLookupError:
             pass
-
 
 def wait_until(action, timeout):
     end = time.monotonic() + timeout
@@ -108,7 +150,6 @@ def wait_until(action, timeout):
             return None
         time.sleep(0.25)
 
-
 def stop(executable, pids):
     if not pids:
         return
@@ -118,164 +159,7 @@ def stop(executable, pids):
         return
     signal_matching(executable, pids, signal.SIGKILL)
     if not wait_until(lambda: not (running(executable) & pids), 2):
-        raise RuntimeError("Codex 未能退出。请从应用菜单彻底退出后重试。")
-
-
-def open_app(app, *arguments):
-    args = ["/usr/bin/open", "-a", str(app)]
-    if arguments:
-        args.extend(("--args", *arguments))
-    if run(*args).returncode:
-        raise RuntimeError("macOS 未能打开 Codex。")
-
-
-def write_language(backend):
-    launch_home = run("/bin/launchctl", "getenv", "CODEX_HOME").stdout.rstrip("\n")
-    config_home = Path(launch_home).expanduser() if launch_home else Path.home() / ".codex"
-    configuration = config_home / "config.toml"
-    if not config_home.is_absolute() or configuration.is_symlink():
-        raise RuntimeError("无法安全确认 Codex 配置路径。")
-    config_home.mkdir(parents=True, exist_ok=True)
-    old = configuration.read_bytes() if configuration.is_file() else None
-    backup = None
-    if old is not None:
-        with tempfile.NamedTemporaryFile(prefix="config.toml.codex-zh.bak.", dir=config_home, delete=False) as file:
-            file.write(old)
-            backup = Path(file.name)
-    buffer = b""
-    with subprocess.Popen(
-        [str(backend), "app-server", "--listen", "stdio://"],
-        cwd=str(Path.home()), env=dict(os.environ, CODEX_HOME=str(config_home)),
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-    ) as child:
-        def send(message):
-            child.stdin.write(json.dumps(message).encode() + b"\n")
-            child.stdin.flush()
-
-        def response(request_id):
-            nonlocal buffer
-            end = time.monotonic() + 15
-            while time.monotonic() < end:
-                if b"\n" not in buffer:
-                    ready, _, _ = select.select([child.stdout], [], [], max(0, end - time.monotonic()))
-                    if not ready:
-                        break
-                    part = os.read(child.stdout.fileno(), 65536)
-                    if not part or len(buffer) + len(part) > 2 * 1024 * 1024:
-                        break
-                    buffer += part
-                    continue
-                line, buffer = buffer.split(b"\n", 1)
-                row = json.loads(line)
-                if row.get("id") == request_id:
-                    if "error" in row:
-                        raise RuntimeError("官方 Codex 未能写入或读取桌面语言配置。")
-                    return row.get("result", {})
-            raise RuntimeError("等待官方 Codex 配置程序超时。")
-
-        try:
-            send({"id": 1, "method": "initialize", "params": {"clientInfo": {"name": "usegoodai-codex-zh", "version": "1.0"}}})
-            response(1)
-            send({"method": "initialized"})
-            send({"id": 2, "method": "config/value/write", "params": {
-                "keyPath": "desktop.localeOverride", "value": "zh-CN", "mergeStrategy": "upsert",
-                "filePath": str(configuration),
-            }})
-            saved = response(2)
-            if saved.get("status") != "ok" or Path(saved.get("filePath", "")).resolve() != configuration.resolve():
-                raise RuntimeError("无法确认已写入当前 Codex 的语言偏好。")
-            send({"id": 3, "method": "config/read", "params": {"includeLayers": False}})
-            if response(3).get("config", {}).get("desktop", {}).get("localeOverride") != "zh-CN":
-                raise RuntimeError("Codex 未回读到简体中文偏好。")
-        finally:
-            child.stdin.close()
-            try:
-                child.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                child.kill()
-                child.wait(timeout=3)
-    if backup and configuration.read_bytes() == old:
-        backup.unlink()
-
-
-def read_exact(stream, size):
-    value = stream.read(size)
-    if len(value) != size:
-        raise RuntimeError("Codex 调试连接中途关闭。")
-    return value
-
-
-# Adapted from the upstream macOS standard-library WebSocket transport.
-def evaluate(url, port, method, params):
-    address = urlsplit(url)
-    if (address.scheme != "ws" or address.hostname not in (LOOPBACK, "localhost")
-            or address.port != port or address.query or address.fragment
-            or not re.fullmatch(r"/devtools/page/[A-Za-z0-9_-]+", address.path)):
-        raise RuntimeError("Codex 返回了无法验证的调试地址。")
-    key = base64.b64encode(os.urandom(16)).decode()
-    accept = base64.b64encode(hashlib.sha1((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest())
-    request = (f"GET {address.path} HTTP/1.1\r\nHost: {LOOPBACK}:{port}\r\n"
-               f"Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\n"
-               "Sec-WebSocket-Version: 13\r\n\r\n")
-
-    with socket.create_connection((LOOPBACK, port), timeout=12) as connection:
-        with connection.makefile("rb") as stream:
-            connection.sendall(request.encode("ascii"))
-            if not stream.readline(4096).startswith(b"HTTP/1.1 101 "):
-                raise RuntimeError("无法连上 Codex 调试窗口。")
-            headers = {}
-            for _ in range(40):
-                line = stream.readline(4096)
-                if line == b"\r\n":
-                    break
-                name, separator, value = line.partition(b":")
-                if not separator:
-                    raise RuntimeError("Codex 的调试握手响应无效。")
-                headers[name.lower()] = value.strip()
-            if headers.get(b"sec-websocket-accept") != accept:
-                raise RuntimeError("Codex 的调试握手校验失败。")
-
-            def send(opcode, data):
-                size = len(data)
-                mask = os.urandom(4)
-                length = bytes([128 | size]) if size < 126 else bytes([254]) + struct.pack("!H", size)
-                connection.sendall(bytes([128 | opcode]) + length + mask +
-                                   bytes(value ^ mask[index % 4] for index, value in enumerate(data)))
-
-            send(1, json.dumps({"id": 1, "method": method, "params": params}).encode())
-            fragments = bytearray()
-            end = time.monotonic() + 15
-            while time.monotonic() < end:
-                connection.settimeout(max(0.1, end - time.monotonic()))
-                flags, size_byte = read_exact(stream, 2)
-                size = size_byte & 127
-                if size == 126:
-                    size = struct.unpack("!H", read_exact(stream, 2))[0]
-                elif size == 127:
-                    size = struct.unpack("!Q", read_exact(stream, 8))[0]
-                if size_byte & 128 or len(fragments) + size > 1024 * 1024:
-                    raise RuntimeError("Codex 调试响应无效或过大。")
-                data = read_exact(stream, size)
-                opcode = flags & 15
-                if opcode == 8:
-                    raise RuntimeError("Codex 已关闭调试连接。")
-                if opcode == 9:
-                    send(10, data)
-                if opcode not in (0, 1):
-                    continue
-                fragments.extend(data)
-                if not flags & 128:
-                    continue
-                response = json.loads(fragments)
-                fragments.clear()
-                if response.get("id") != 1:
-                    continue
-                result = response.get("result", {})
-                if "error" in response or "exceptionDetails" in result:
-                    raise RuntimeError("Codex 界面未能读写语言缓存。")
-                return result
-    raise RuntimeError("等待 Codex 调试响应超时。")
-
+        raise RuntimeError("ChatGPT 未能退出，请从应用菜单彻底退出后重试。")
 
 def debug_pids(executable, port, pids=None):
     flag = f"--remote-debugging-port={port}"
@@ -286,134 +170,122 @@ def debug_pids(executable, port, pids=None):
         if flag in run("/bin/ps", "-ww", "-p", str(pid), "-o", "command=").stdout.split()
     }
 
-
-def debug_target(executable, port):
-    expected = debug_pids(executable, port)
-    if not expected:
-        return None
-    fields = run("/usr/sbin/lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-Fpn").stdout.splitlines()
-    if not fields:
-        return None
-    owner = None
-    for field in fields:
-        if field.startswith("p"):
-            owner = int(field[1:])
-        elif field.startswith("n") and (owner not in expected or field[1:] not in (f"{LOOPBACK}:{port}", f"[::1]:{port}")):
-            raise RuntimeError("调试端口的进程或监听地址不符合预期。")
-    connection = http.client.HTTPConnection(LOOPBACK, port, timeout=2)
-    try:
-        connection.request("GET", "/json/list")
-        reply = connection.getresponse()
-        targets = json.loads(reply.read(1024 * 1024)) if reply.status == 200 else []
-    except (OSError, http.client.HTTPException, ValueError):
-        return None
-    finally:
-        connection.close()
-    return next((page["webSocketDebuggerUrl"] for page in targets
-                 if page.get("url") == "app://-/index.html" and page.get("type") == "page"
-                 and page.get("webSocketDebuggerUrl")), None)
-
-
-def cache_call(target, port, write):
-    mode = "true" if write else "false"
-    expression = f"({CACHE_EXPRESSION}\n)({mode}, 8000)"
-    result = evaluate(target, port, "Runtime.evaluate",
-                      {"expression": expression, "awaitPromise": True, "returnByValue": True})
-    return result.get("result", {}).get("value", {})
-
-
-def restore_desktop(app, executable, port, pending_stop):
-    # Defer terminal interrupts until the temporary process is closed and the app is back.
-    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGHUP, signal.SIGTERM})
-    try:
-        if port is not None:
-            if not pending_stop:
-                pending_stop = wait_until(lambda: debug_pids(executable, port), 3) or set()
-            pending_stop = pending_stop | debug_pids(executable, port)
-        stop(executable, pending_stop)
-        if not running(executable):
-            open_app(app)
-
-        def normal_running():
-            pids = running(executable)
-            if not pids:
-                return False
-            late_debug = debug_pids(executable, port, pids) if port is not None else set()
-            if not late_debug:
-                return True
-            stop(executable, late_debug)
-            if not running(executable):
-                open_app(app)
-            return False
-
-        if not wait_until(normal_running, 20):
-            raise RuntimeError("未能确认 Codex 正常重新打开。")
-    finally:
-        signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
-
-
-def repair():
-    app, executable, backend = find_app()
-    rows = process_snapshot()
-    original = matching(rows, executable)
-    if original.intersection(own_ancestors(rows)):
-        raise RuntimeError("请在 Codex 外部的终端运行。")
-    if original:
-        print("正在关闭 Codex 桌面应用……", flush=True)
-
-    port = None
-    pending_stop = set()
-    try:
+def get_target(port, timeout):
+    deadline=time.monotonic()+timeout
+    # 本机连接不经过用户的 HTTP 代理。
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    while time.monotonic()<deadline:
         try:
-            stop(executable, original)
-        except KeyboardInterrupt:
-            pending_stop = original
-            raise
-        if running(executable):
-            raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
-        write_language(backend)
-        if running(executable):
-            raise RuntimeError("Codex 被其他程序重新打开，请退出后再运行。")
-        with socket.socket() as listener:
-            listener.bind((LOOPBACK, 0))
-            port = listener.getsockname()[1]
-        open_app(app, f"--remote-debugging-port={port}",
-                 f"--remote-allow-origins=http://{LOOPBACK}:{port}")
-        target = wait_until(lambda: debug_target(executable, port), 30)
-        pending_stop = debug_pids(executable, port)
-        if not target:
-            raise RuntimeError("等待官方 Codex 调试窗口超时。")
-        if not cache_call(target, port, True).get("enabled"):
-            raise RuntimeError("未写入 Codex 的语言缓存。")
-        evaluate(target, port, "Page.reload", {})
+            with opener.open(f'http://127.0.0.1:{port}/json/list',timeout=min(2, remaining(deadline))) as response: targets=json.load(response)
+            pages=[x for x in targets if x.get('type')=='page' and x.get('url','').startswith('app://') and x.get('webSocketDebuggerUrl')]
+            pages.sort(key=lambda x:not x['url'].startswith('app://-/index.html'))
+            if pages: return pages[0]
+        except (OSError,ValueError): pass
+        time.sleep(min(.5, remaining(deadline)))
+    raise RuntimeError('未发现 ChatGPT 调试页面。')
 
-        def verify():
-            try:
-                url = debug_target(executable, port)
-                result = cache_call(url, port, False) if url else {}
-                return result.get("enabled") and result.get("liveEnabled")
-            except (OSError, RuntimeError):
-                return False
 
-        if not wait_until(verify, 15):
-            raise RuntimeError("刷新后未能确认 Codex 读取了语言缓存。")
+# UseGoodAI：只对已确认的页面切换重查页面，不重复执行主动刷新；与 Windows 修复一致。
+def call(port, expression, timeout):
+    deadline = time.monotonic() + timeout
+    while True:
+        target = get_target(port, remaining(deadline))
+        try:
+            return evaluate(target['webSocketDebuggerUrl'], expression, remaining(deadline))
+        except PageChanged:
+            if expression == 'location.reload(); "reload-requested"':
+                raise
+            print('ChatGPT 页面正在切换，正在重新连接……', flush=True)
+            time.sleep(min(.5, remaining(deadline)))
+
+
+def confirm_cache(port, key):
+    try: call(port, 'location.reload(); "reload-requested"', 5)
+    except (OSError,RuntimeError,ValueError): pass
+    time.sleep(.75)
+    expression=VERIFY_EXPRESSION.replace("$escapedKey", key.replace('\\','\\\\').replace("'", "\\'"))
+    for attempt in range(10):
+        try:
+            result=call(port,expression,15)
+            if result.get('ok'): return
+        except (OSError,RuntimeError,ValueError): pass
+        time.sleep(.5)
+    raise RuntimeError('刷新后未能确认语言缓存已保留。')
+
+
+def main():
+    ap=argparse.ArgumentParser(description='为 macOS ChatGPT 写入中文功能开关缓存')
+    ap.add_argument('--app', default='/Applications/ChatGPT.app', help='ChatGPT 应用路径')
+    ap.add_argument('--port', type=int, default=0, help='本机调试端口（默认随机空闲端口）')
+    ap.add_argument('--timeout', type=int, default=60, help='等待应用启动的秒数（默认 60）')
+    args=ap.parse_args()
+    if sys.platform!='darwin': raise RuntimeError('此工具仅支持 macOS。')
+    if not 0<=args.port<=65535 or args.timeout<5: raise RuntimeError('端口或等待时间无效。')
+    app=os.path.realpath(os.path.expanduser(args.app))
+    exe=os.path.join(app,'Contents/MacOS/ChatGPT')
+    if not os.path.isfile(exe): raise RuntimeError('找不到 ChatGPT 应用：'+app)
+    info=run('/usr/libexec/PlistBuddy','-c','Print :CFBundleIdentifier',os.path.join(app,'Contents/Info.plist'))
+    if info.stdout.strip()!='com.openai.codex': raise RuntimeError('此应用不是支持的官方 ChatGPT 桌面版。')
+    rows=process_snapshot()
+    original=matching(rows,exe)
+    if original.intersection(own_ancestors(rows)):
+        raise RuntimeError('请在 ChatGPT 外部的终端运行。')
+    with progress('正在关闭 ChatGPT'):
+        stop(exe,original)
+    if running(exe): raise RuntimeError('ChatGPT 被其他程序重新打开，请退出后再运行。')
+    if args.port: port=args.port
+    else:
+        with socket.socket() as probe:
+            probe.bind(('127.0.0.1',0)); port=probe.getsockname()[1]
+    with socket.socket() as probe:
+        try: probe.bind(('127.0.0.1',port))
+        except OSError: raise RuntimeError('本机调试端口已被占用。')
+    print('正在临时打开 ChatGPT 以写入语言缓存，完成后会自动关闭……',flush=True)
+    try:
+        subprocess.Popen(['/usr/bin/open','-a',app,'--args',f'--remote-debugging-port={port}',f'--remote-allow-origins=http://127.0.0.1:{port}'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        with progress('正在等待 ChatGPT 页面'):
+            get_target(port,args.timeout)
+        expression=EXPRESSION.replace('__INSPECT_ONLY__','false').replace('__NO_BOOTSTRAP__','false').replace('__PATCH_ALL_EXISTING__','true').replace('__READY_TIMEOUT_MS__','60000')
+        with progress('正在等待 ChatGPT 配置服务加载'):
+            result=call(port,expression,90)
+        if not result.get('ok'): raise RuntimeError(result.get('error','语言缓存写入失败。'))
+        source={'current-cache':'已有缓存','context-values':'当前配置','minimal-bootstrap':'补建缓存'}.get(result.get('seededFrom'),'当前缓存')
+        print('缓存来源：'+source,flush=True)
+        print('语言缓存已写入。',flush=True)
+        with progress('正在刷新页面，检查语言缓存'):
+            confirm_cache(port,result['currentCacheKey'])
+        print('刷新检查通过，语言缓存已保留。',flush=True)
+        for check in range(1,3):
+            print(f'正在等待第 {check}/2 次复查（3 秒）……',flush=True)
+            time.sleep(3)
+            with progress(f'第 {check}/2 次复查：正在等待 ChatGPT 加载'):
+                snapshot=call(port,SNAPSHOT_EXPRESSION.replace('__READY_TIMEOUT_MS__','60000'),90)
+            if not snapshot.get('ok'): raise RuntimeError(f'第 {check}/2 次复查未完成，ChatGPT 配置服务尚未就绪。')
+            if not snapshot.get('currentCacheKeyExists'): raise RuntimeError(f'第 {check}/2 次复查未找到语言缓存。')
+            print(f'第 {check}/2 次复查通过，语言缓存已保留。',flush=True)
     finally:
-        restore_desktop(app, executable, port, pending_stop)
-    print("已启用语言开关并设置简体中文。请查看重新打开的 Codex 菜单。")
+        # UseGoodAI：沿用项目 SIGTERM 正常退出使缓存落盘；成功、失败或中断均收尾，不自动重开。
+        prior_mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGINT,signal.SIGHUP,signal.SIGTERM})
+        try:
+            with progress('正在保存语言缓存并关闭 ChatGPT'):
+                wait_until(lambda: debug_pids(exe,port),3)
+                stop(exe,running(exe))
+        finally: signal.pthread_sigmask(signal.SIG_SETMASK,prior_mask)
+    print('[成功] 中文缓存已写入，ChatGPT 已关闭。请自己重新打开 ChatGPT。',flush=True)
 
 
 def interrupted(_signum, _frame):
     raise KeyboardInterrupt()
 
 
-if __name__ == "__main__":
-    signal.signal(signal.SIGHUP, interrupted)
-    signal.signal(signal.SIGTERM, interrupted)
-    try:
-        repair()
-    except KeyboardInterrupt:
-        print("已中断。", file=sys.stderr)
-        sys.exit(130)
-    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
-        print(f"错误：{error}", file=sys.stderr)
+if __name__=='__main__':
+    signal.signal(signal.SIGHUP,interrupted)
+    signal.signal(signal.SIGTERM,interrupted)
+    try: main()
+    except (Exception, KeyboardInterrupt) as e:
+        reason = str(e)
+        if isinstance(e, KeyboardInterrupt): reason = '运行已中断。'
+        elif isinstance(e, TimeoutError): reason = '等待 ChatGPT 超时，已停止等待。'
+        elif not re.search('[一-鿿]', reason): reason = '运行未完成，请退出 ChatGPT 后重试。'
+        print('[失败] '+reason,file=sys.stderr,flush=True)
         sys.exit(1)

@@ -2,6 +2,7 @@
 
 from argparse import ArgumentParser
 from pathlib import Path
+import re
 
 SOURCE = Path(__file__).resolve().parent
 PROJECT = SOURCE.parent
@@ -16,12 +17,19 @@ def build():
     version = (SOURCE / "VERSION").read_text().strip()
     license_lines = (SOURCE / "LICENSE").read_text().splitlines()
     notice = "\n".join(f"# {line}" if line else "#" for line in license_lines)
-    cache = (PROJECT / "language-cache.js").read_text(encoding="utf-8").rstrip()
+    # UseGoodAI：从 Windows current-key 源码原样提取，单文件内嵌，不增加运行时下载。
+    windows = (PROJECT / "windows/Enable-CodexI18nCurrentCache.ps1").read_text(encoding="utf-8")
+    expressions = {
+        "EXPRESSION": re.search(r"\$pageExpression = @'\n(.*?)\n'@", windows, re.S)[1],
+        "VERIFY_EXPRESSION": re.search(r'\$verifyExpression = @"\n(.*?)\n"@', windows, re.S)[1],
+        "SNAPSHOT_EXPRESSION": re.search(r"\$snapshotExpression = @'\n(.*?)\n'@", windows, re.S)[1],
+    }
     program = (SOURCE / "chinese.py").read_text(encoding="utf-8").rstrip()
-    placeholder = 'CACHE_EXPRESSION = ""'
-    if program.count(placeholder) != 1 or MARKER in program or MARKER in cache:
-        raise SystemExit("找不到嵌入缓存脚本的位置。")
-    program = program.replace(placeholder, f"CACHE_EXPRESSION = {cache!r}", 1)
+    for name, expression in expressions.items():
+        placeholder = f'{name} = ""'
+        if program.splitlines().count(placeholder) != 1 or MARKER in program or MARKER in expression:
+            raise SystemExit("找不到嵌入缓存脚本的位置。")
+        program = re.sub(r"^" + placeholder + r"$", lambda _: f"{name} = {expression!r}", program, count=1, flags=re.M)
     first, body = header.split("\n", 1)
     return f"{first}\n# UseGoodAI Codex 中文化 Mac {version}\n{notice}\n{body} <<'{MARKER}'\n{program}\n{MARKER}\n".encode("utf-8")
 
