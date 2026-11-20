@@ -108,6 +108,9 @@ try {
       throw "导入后缺少或重复 $id"
     }
   }
+  # The manifest is committed before config.toml. Wait for the completed UI
+  # result rather than reading halfway through the existing transaction.
+  Wait-Text '已导入' | Out-Null
   $afterConfig = [IO.File]::ReadAllText((Join-Path $homePath 'config.toml'))
   if (-not $afterConfig.Contains('model = "gpt-6.1-sol"') -or
       -not $afterConfig.Contains('approval_policy = "never"') -or -not $afterConfig.Contains('usegoodai-models.json')) {
@@ -132,6 +135,7 @@ try {
     result = '原生窗口双击确认，执行内置脚本并写入 10 个国产模型和两个 GPT-6.2，原默认模型和 Key 保留'
   } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $work 'report.json') -Encoding UTF8
 } finally {
+  Copy-Item -LiteralPath (Join-Path $homePath 'config.toml') -Destination (Join-Path $work 'observed-config.toml') -Force -ErrorAction SilentlyContinue
   if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force }
   if ($launched -and -not $launched.HasExited) { Stop-Process -Id $launched.Id -Force }
   $env:CODEX_HOME = $originalHome

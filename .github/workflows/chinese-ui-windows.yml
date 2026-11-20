@@ -6,7 +6,7 @@ on:
         description: 只补测尚未通过的系统
         type: choice
         default: both
-        options: [both, windows10, windows11]
+        options: [both, windows10, windows11, failed-regressions]
 permissions:
   contents: read
 jobs:
@@ -46,3 +46,37 @@ jobs:
           name: chinese-ui-windows10
           path: ${{ runner.temp }}/chinese-win10/shared/report
           if-no-files-found: error
+  failed-regressions:
+    name: 仅补测未通过的既有回归
+    if: inputs.system == 'failed-regressions'
+    runs-on: windows-11-arm
+    timeout-minutes: 15
+    env:
+      GOARCH: amd64
+      QUICK_CONNECT_EXE: ${{ github.workspace }}\docs\public\download\usegoodai-quick-connect-windows-x64.exe
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: usegoodai-codex-installer/quick-connect/go.mod
+          cache: false
+      - name: 仅补测 Windows PowerShell 5.1 命令入口
+        working-directory: usegoodai-codex-installer/quick-connect
+        run: go test -count=1 -timeout=3m -v -run '^TestClaudePowerShellCommand$/^powershell.exe$' .
+      - name: 仅补测 Claude 双配置写入
+        if: ${{ !cancelled() }}
+        working-directory: usegoodai-codex-installer/quick-connect
+        run: go test -count=1 -timeout=3m -v -run '^TestClaudeReleaseWritesBothConfigurations$' .
+      - name: 仅补测国产模型按钮完成状态
+        if: ${{ !cancelled() }}
+        shell: powershell
+        run: ./usegoodai-codex-installer/quick-connect/tools/windows_models_import.ps1 -Exe docs/public/download/usegoodai-quick-connect-windows-x64.exe
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: chinese-ui-failed-regressions
+          path: ${{ runner.temp }}/models-import-window/*.*
+          if-no-files-found: ignore
