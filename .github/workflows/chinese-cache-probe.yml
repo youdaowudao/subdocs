@@ -1,0 +1,34 @@
+name: Windows 中文化首次重开缓存取证
+on:
+  workflow_dispatch:
+  push:
+    branches: [actions-test]
+    paths:
+      - .github/workflows/chinese-cache-probe.yml
+      - tests/chinese-cache-probe.ps1
+permissions:
+  contents: read
+jobs:
+  probe:
+    name: ${{ matrix.network }}-${{ matrix.rep }}
+    runs-on: windows-11-arm
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        network: [block, longhang]
+        rep: [1, 2, 3, 4]
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - shell: powershell
+        run: .\tests\chinese-cache-probe.ps1 -Network '${{ matrix.network }}' -ReportDir "$env:RUNNER_TEMP\cache-probe"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: cache-probe-${{ matrix.network }}-${{ matrix.rep }}
+          path: ${{ runner.temp }}/cache-probe
+          if-no-files-found: error
+          retention-days: 21

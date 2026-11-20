@@ -10,6 +10,24 @@
 - Mac 本次目标：启动和连接照上游 Mac，页面核心照 Windows current-key；复用原 `stop`，取消重开和 app-server 配置写入，核实缓存落盘。Mac 候选尚未完成验收。
 - `install/codex.ps1` 与 `codex-models.ps1` 的父进程编号复用隐患仅写入记忆，源码与发布副本不修改。
 
+## 当前 Windows 候选：1.1.5，仍未验收
+
+发布字节 SHA-256：`8cb8697f94a4464809bf9a9c63949b76dd544e82ad158a74d884ddb315e820fd`，内容提交 `c508628133c58a22c978542ce81994b217cd0cf9`。写入、状态读取、刷新校验三段页面 JS 仍与 1.1.3 完全相同；原缓存算法未改。
+
+1.1.4 试过将本项目“强杀 renderer 后等待”改为正常关闭临时页面，两台诊断副本当时通过。但[完整矩阵](https://github.com/youdaowudao/subdocs/actions/runs/44694715561)仍为 11 组通过、长连接挂起登录页一组失败：八次均输出成功、75–77 秒、最大输出间隔约 5.3 秒、无自身进程和端口，普通重开却没有缓存且界面英文。因此该收尾改动没有解决问题，1.1.5 已撤回，恢复原 renderer 退出和项目清理。1.1.4 不发布；不能据少量对照通过宣称失败根因已经查明。
+
+1.1.5 的[九项传输与完整矩阵](https://github.com/youdaowudao/subdocs/actions/runs/44697731354)、[断网和长连接挂起的独立完整场景](https://github.com/youdaowudao/subdocs/actions/runs/44697731265)仍待完成。实际矩阵已补上全部尝试结束后的数据库、配置、进程原始快照；此前真实失败只保留了缓存标记计数和截图，无法解析删除与恢复记录。末尾取证不在修复和普通重开之间增加文件复制，不调用会填充 SDK 缓存的 `getDataSync`。
+
+[成功与失败后的关闭观察](https://github.com/youdaowudao/subdocs/actions/runs/44697731291)已通过，核对 1.1.5 原始哈希。故意占用端口时约 128 秒中文超时并清理自己启动的应用；测试自己持有的监听者保持不变、由测试另行关闭。成功修复约 20 秒，随后十秒没有由测试主动打开应用，未出现延迟的应用进程或调试监听。
+
+### 同一 PowerShell 会话与配置归因
+
+此前每轮新开 PowerShell，不能计为用户同一窗口中的第二、第三次执行。新增同一原生 PowerShell 5.1 进程八次真实 `irm | iex`；首轮生成的互操作类型在后续调用复用。
+
+1.1.4 的[首轮同会话取证](https://github.com/youdaowudao/subdocs/actions/runs/44694715501)中，联网主界面八次同一 PID 全成功、缓存读取八次、无应用和端口残留，最终真实主界面中文。该组却因配置文件整体哈希不同而验收失败，不能直接当成脚本写配置，也不能忽略。
+
+随后[不运行任何中文化命令的普通启动对照](https://github.com/youdaowudao/subdocs/actions/runs/44696549919)证明：官方应用首次启动会增加自己的 `notify`、插件、市场、MCP、Windows 沙盒和桌面运行字段；普通启动第一、第二次之间，`mcp_servers.node_repl.env.SKY_CUA_NATIVE_PIPE_DIRECTORY` 的运行管道值也会改变。原模型、provider、接口和桌面语言值都保留。验收保留原始文件和逐次哈希，另用 TOML 递归严格比较所有原有配置值，记录应用新增字段；不改官方应用的既有运行配置维护。1.1.5 的[同终端复测](https://github.com/youdaowudao/subdocs/actions/runs/44698686682)仍待核实，不将测试程序的整体绿色或旧失败归因当作结论。
+
 ## Windows 1.1.3 冻结内容
 
 - 发布文件 SHA-256：`20e5960e11b98ed61d41148ef2ec3bf2fa7d5a1e18e4c17f980ab9b576ea317c`。
