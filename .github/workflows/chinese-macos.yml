@@ -18,8 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        network: [refused]
-        auth: [apikey]
+        network: [refused, blackhole, online]
+        auth: [apikey, login]
         variant: [candidate]
     steps:
       - uses: actions/checkout@v5
@@ -34,7 +34,7 @@ jobs:
         env:
           NETWORK: ${{ matrix.network }}
           AUTH: ${{ matrix.auth }}
-        run: python3 tests/chinese-macos-desktop.py --network "$NETWORK" --auth "$AUTH" --focused
+        run: python3 tests/chinese-macos-desktop.py --network "$NETWORK" --auth "$AUTH"
       - uses: actions/upload-artifact@v5
         if: always()
         with:

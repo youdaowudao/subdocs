@@ -154,7 +154,8 @@ def storage_errors():
     support = Path.home() / 'Library/Application Support/Codex'
     return [{'path': str(log), 'lines': [line for line in log.read_text(errors='replace').splitlines()
                                       if re.search(r'Corruption:|IO error:', line)]}
-            for log in support.rglob('Local Storage/leveldb/LOG')
+            for log in support.rglob('Local Storage/leveldb/LOG*')
+            if log.name in ('LOG', 'LOG.old')
             if re.search(r'Corruption:|IO error:', log.read_text(errors='replace'))]
 
 
