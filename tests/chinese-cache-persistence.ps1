@@ -46,38 +46,56 @@ $report.processesNormalReopen = @(Get-CimInstance Win32_Process | Where-Object {
 Stop-Codex
 Save-Database 'after-normal-reopen'
 Save-Report
-$diagnostic = @'
-(() => {
-    const root = window.__STATSIG__ || globalThis.__STATSIG__;
-    const client = root?.firstInstance || (typeof root?.instance === "function" ? root.instance() : null);
-    let context = null, currentKey = null, adapterData = null;
-    try {
-        context = client?.getContext();
-        currentKey = client ? String(client.dataAdapter._getCacheKey(context.user)) : null;
-        const d = client?.dataAdapter.getDataSync(context.user);
-        adapterData = d ? {source: d.source, stableID: d.stableID, fullUserHash: d.fullUserHash, hasData: Boolean(d.data)} : null;
-    } catch {}
-    const caches = Object.keys(localStorage).filter(k => k.startsWith('statsig.cached.evaluations.')).map(key => {
-        try { return {key, wrapper: JSON.parse(localStorage.getItem(key))}; }
-        catch { return {key, invalid: true}; }
-    });
-    return JSON.stringify({time: Date.now(), status: client?.loadingStatus, currentKey,
-        stableID: context?.stableID, user: context?.user, hasUpdates: context?.values?.has_updates,
-        adapterData, caches, text: (document.body?.innerText || '').slice(0, 300)});
-})()
-'@
+# Inspect the ordinary reopen first, without getDataSync or startup injection.
+$report.originalFinal = Get-I18nSnapshot 'original-final'
+$report.originalAllKeys = $null
 $null = Start-Codex '--remote-debugging-port=9333 --remote-allow-origins=http://127.0.0.1:9333'
-$report.processesReopen = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'ChatGPT|codex|msedge|webview|crashpad' } | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine)
-$samples = @()
 try {
-    for ($i = 0; $i -lt 120; $i++) {
-        try { $samples += @(Invoke-Cdp 9333 $diagnostic)[-1] }
-        catch { $samples += @{ error = $_.Exception.Message } }
-        $report.startupSamples = $samples
-        Save-Report
-        Start-Sleep -Milliseconds 500
-    }
-} finally { Start-Sleep -Seconds 6; Stop-Codex }
-Save-Database 'after-debug-reopen'
-$report.final = Get-I18nSnapshot 'final'
+    $report.originalAllKeys = @(Invoke-Cdp 9333 'JSON.stringify({keys:Object.keys(localStorage), origin:location.origin, href:location.href})')[-1]
+    $report.originalTargets = @(Invoke-RestMethod 'http://127.0.0.1:9333/json/list' -TimeoutSec 3)
+} finally { Stop-Codex }
+Save-Database 'after-original-inspection'
+Save-Report
+
+# Diagnostic control only. Keep the page algorithm identical; replace the final
+# renderer kill with the browser's documented graceful-close command in a temp file.
+# This modified file is not a candidate or a release acceptance result.
+$raw = [IO.File]::ReadAllText($scriptPath)
+$parseTokens = $null; $parseErrors = $null
+$tree = [Management.Automation.Language.Parser]::ParseInput($raw, [ref]$parseTokens, [ref]$parseErrors)
+$function = $tree.Find({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Save-CodexStorage' }, $true)
+if (-not $function) { throw 'Cannot locate the shutdown control point.' }
+$control = @'
+function Save-CodexStorage {
+    $version = Invoke-RestMethod 'http://127.0.0.1:9240/json/version' -TimeoutSec 3
+    $socket = [Net.WebSockets.ClientWebSocket]::new()
+    $socket.Options.Proxy = $null
+    $cancel = [Threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds(10))
+    try {
+        $task = $socket.ConnectAsync([Uri]$version.webSocketDebuggerUrl, $cancel.Token)
+        if (-not $task.Wait(10000)) { throw 'Browser-close connection timed out' }
+        [void]$task.GetAwaiter().GetResult()
+        $bytes = [Text.Encoding]::UTF8.GetBytes('{"id":1,"method":"Browser.close"}')
+        $task = $socket.SendAsync([ArraySegment[byte]]::new($bytes), [Net.WebSockets.WebSocketMessageType]::Text, $true, $cancel.Token)
+        if (-not $task.Wait(10000)) { throw 'Browser-close send timed out' }
+        [void]$task.GetAwaiter().GetResult()
+        $watch = [Diagnostics.Stopwatch]::StartNew()
+        while (@(Get-CodexMainProcesses).Count -and $watch.Elapsed.TotalSeconds -lt 10) { Start-Sleep -Milliseconds 200 }
+        if (@(Get-CodexMainProcesses).Count) { throw 'Browser.close did not exit the main application' }
+    } finally { $socket.Abort(); $socket.Dispose(); $cancel.Dispose() }
+}
+'@
+$raw = $raw.Remove($function.Extent.StartOffset, $function.Extent.EndOffset - $function.Extent.StartOffset).Insert($function.Extent.StartOffset, $control)
+$scriptPath = Join-Path $temp 'graceful-close-control.ps1'
+[IO.File]::WriteAllText($scriptPath, $raw, [Text.UTF8Encoding]::new($false))
+$report.controlSha256 = (Get-FileHash $scriptPath).Hash
+$report.controlPurpose = 'Diagnostic temporary script; only final shutdown differs. Not a candidate acceptance.'
+$null = Invoke-OneLine 'graceful-control'
+Save-Database 'after-graceful-command'
+$null = Start-Codex
+Start-Sleep -Seconds 50
+$report.gracefulNormalScreen = Save-Screen 'graceful-normal-reopen'
+Stop-Codex
+Save-Database 'after-graceful-normal-reopen'
+$report.gracefulFinal = Get-I18nSnapshot 'graceful-final'
 Save-Report
