@@ -6,7 +6,11 @@ $prefix = $harness.Substring(0, $harness.IndexOf('# ---------- Scenario --------
 . ([scriptblock]::Create($prefix)) -Script docs/public/install/chinese.ps1 -Network block -Expect record -Auth login -Locale override -ReportDir $ReportDir
 if ($Variant -eq 'old') {
     $scriptPath = Join-Path $temp 'old-1.1.0.ps1'
-    & python -c 'import subprocess,pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(subprocess.check_output(["git","show","5e228f0:docs/public/install/chinese.ps1"]))' $scriptPath
+    $readOld = @'
+import subprocess,pathlib,sys
+pathlib.Path(sys.argv[1]).write_bytes(subprocess.check_output(['git','show','5e228f0:docs/public/install/chinese.ps1']))
+'@
+    $readOld | & python - $scriptPath
     if ($LASTEXITCODE) { throw 'Could not read the exact released control script.' }
 }
 $report.environment = @{ os = (Get-CimInstance Win32_OperatingSystem).Caption; arch = $env:PROCESSOR_ARCHITECTURE; shell = $PSVersionTable.PSVersion.ToString(); sha = $env:GITHUB_SHA; variant = $Variant; scriptSha256 = (Get-FileHash $scriptPath).Hash }
@@ -19,6 +23,8 @@ $null = Get-I18nSnapshot 'baseline'
 $null = Start-Codex
 Start-Sleep -Seconds 50
 $report.screen_before = Save-Screen 'before'
+$report.processesBefore = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'ChatGPT|codex|msedge|webview|crashpad' } | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine)
+Save-Report
 $null = Invoke-OneLine 'first'
 function Save-Database([string]$Label) {
     $packageRoot = Join-Path $env:LOCALAPPDATA 'Packages/OpenAI.Codex_2p2nqsd0c76g0'
@@ -52,6 +58,7 @@ $diagnostic = @'
 })()
 '@
 $null = Start-Codex '--remote-debugging-port=9333 --remote-allow-origins=http://127.0.0.1:9333'
+$report.processesReopen = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'ChatGPT|codex|msedge|webview|crashpad' } | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine)
 $samples = @()
 try {
     for ($i = 0; $i -lt 20; $i++) {
