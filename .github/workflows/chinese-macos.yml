@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        network: [refused, blackhole]
+        network: [refused]
         auth: [apikey]
         variant: [candidate]
     steps:
@@ -42,20 +42,3 @@ jobs:
           path: ${{ runner.temp }}/chinese-macos/report
           if-no-files-found: error
           retention-days: 21
-  transport:
-    name: Mac 连接超时与页面切换
-    runs-on: macos-15
-    timeout-minutes: 8
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - run: /usr/bin/python3 tests/chinese-macos-cdp.py
-      - uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: mac-cdp
-          path: ${{ runner.temp }}/mac-cdp

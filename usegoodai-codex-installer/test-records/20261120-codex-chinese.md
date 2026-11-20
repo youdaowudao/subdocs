@@ -135,3 +135,9 @@
 用户要求独立子代理复核范围。Review 使用 gpt-6.2-sol / xhigh、fork_turns=none，只读源码及既有附件，结论：需求大多在原范围，取证顺序和整组复测耗时失控；冻结已通过的 Windows，只补 Mac 已证实缺口。Mac 1.1.1 新增 stop_desktop 包装，保留原 stop，按当前 UID、真实 bundle 内可执行文件、指定父子关系和已知脱离父进程的崩溃报告程序收尾。Review 核对源码 SHA `a104c89ae31a2ae2e9168b3065bd75ff0b911d329112a6d85e3a16d4cd5eeec3` 及生成 SH `b9d39400534175e331bc89e9dfa5da580a19640e4a965f644af7b21ab4bd78df`；页面 JS 和 Windows 字节均不变。本地合成进程样例保留独立同路径 CLI 及其他 UID，真实验证待执行。
 
 下一步只在拒绝和连接长期无响应的两组接入主界面场景各跑一次原命令及普通重开，并跑系统 Python 通信专项。定向通过后恢复原六组完整验收；不用新触发接口或新远端分支，继续固定 actions-test 的 push。正式 main 尚未推送。
+
+### 1.1.1 定向结果与下一项只读取证
+
+[定向测试](https://github.com/youdaowudao/subdocs/actions/runs/44715700584)：系统 Python 3.9 九项通信全部通过，当前提交三个门禁全部通过；两组实际主界面仍不中文，不能算验收通过。拒绝连接组已无相关进程/监听残留，源命令 18.97 秒；中文 AppleLanguages/AppleLocale 已设置且实际 navigator.language 为 zh-CN，原配置 localeOverride=zh-CN 保留，仍真实英文，系统设置假设未能解释该结果。
+
+产品源码和生成字节保持 1.1.1 不变，停止重复已通过的通信与收尾场景。下一轮只复现同一个拒绝连接主界面失败：先保存普通窗口、原始数据库和配置，再只读记录实际 SDK 的当前缓存键、当前层开关/语言来源、数据格式与页面可见性。严禁 getDataSync 和更改页面缓存；不根据未经验证猜测继续换关闭方式。

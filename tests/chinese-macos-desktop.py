@@ -19,6 +19,7 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 import zipfile
+import urllib.request
 
 sys.dont_write_bytecode = True
 REPO = Path(__file__).resolve().parents[1]
@@ -125,20 +126,22 @@ def app_processes():
     return [line for line in commands if line.split() and line.split()[0].isdigit() and int(line.split()[0]) in rows]
 
 
-def save_databases():
+def save_databases(label='final'):
     # Keep the real failed WAL if one occurs; no extra I/O between repair and
     # ordinary reopen. All reads/copies run only after the scenario has ended.
     support = Path.home() / 'Library/Application Support'
-    report['databaseCopies'] = []
+    copies = report.setdefault('databaseCopies', [])
+    index = 0
     for base in support.iterdir():
         if not base.is_dir() or not any(name in base.name.lower() for name in ('codex', 'chatgpt')):
             continue
         for directory in base.rglob('leveldb'):
             if 'Local Storage' not in directory.parts:
                 continue
-            destination = REPORT / f"final-db{len(report['databaseCopies'])+1}"
+            index += 1
+            destination = REPORT / f"{label}-db{index}"
             shutil.copytree(directory, destination, ignore=shutil.ignore_patterns('LOCK'))
-            report['databaseCopies'].append(str(directory))
+            copies.append({'phase': label, 'source': str(directory), 'copy': destination.name})
 
 
 def capture(label):
@@ -152,7 +155,7 @@ def capture(label):
     return {'window': window, 'cjk': len(re.findall('[一-鿿]', text)), 'text': text}
 
 
-def snapshot(label):
+def snapshot(label, diagnose=False):
     stop()
     open_app(True)
     try:
@@ -160,6 +163,31 @@ def snapshot(label):
         js = re.search(r"\$snapshotJs = @'\n(.*?)\n'@", windows, re.S)[1]
         result = CORE['call'](9333, js, 100)
         result['browserLocale'] = CORE['call'](9333, 'JSON.stringify({language:navigator.language,languages:navigator.languages})', 10)
+        if diagnose:
+            expression = r'''
+(() => {
+ const root=window.__STATSIG__||globalThis.__STATSIG__;
+ const clients=[root?.firstInstance,...Object.values(root?.instances||root?._instances||{})].filter((x,i,a)=>x&&typeof x.getContext==='function'&&a.indexOf(x)===i);
+ return JSON.stringify({visible:document.visibilityState,href:location.href,text:(document.body?.innerText||'').slice(0,250),clients:clients.map(client=>{
+  try {
+   const context=client.getContext(),key=client.dataAdapter._getCacheKey(context.user),raw=localStorage.getItem(key),wrapper=raw?JSON.parse(raw):null;
+   const payload=typeof wrapper?.data==='string'?JSON.parse(wrapper.data):wrapper?.data;
+   const layer=client.getLayer('72216192',{disableExposureLog:true});
+   return {first:client===root?.firstInstance,status:client.loadingStatus,key,cacheExists:!!raw,enableI18n:layer?.get('enable_i18n',null),localeSource:layer?.get('locale_source',null),stableMatches:wrapper?.stableID===context.stableID,cacheFormat:payload?.response_format,cacheHashUsed:payload?.hash_used,contextFormat:context.values?.response_format,contextHashUsed:context.values?.hash_used};
+  } catch { return {readFailed:true}; }
+ })});
+})()
+'''
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open('http://127.0.0.1:9333/json/list', timeout=3) as response:
+                targets = json.load(response)
+            result['pages'] = []
+            for target in targets:
+                if target.get('type') == 'page' and target.get('url', '').startswith('app://') and target.get('webSocketDebuggerUrl'):
+                    try:
+                        result['pages'].append(CORE['evaluate'](target['webSocketDebuggerUrl'], expression, 10))
+                    except Exception as error:
+                        result['pages'].append({'readFailed': str(error)})
         (REPORT / (label + '.json')).write_text(json.dumps(result, ensure_ascii=False, indent=2))
         return result
     finally:
@@ -322,6 +350,15 @@ if __name__ == '__main__':
         report['applicationUnchanged'] = True
     except Exception as error:
         report['failures'].append(str(error))
+        # Preserve the failed ordinary-window outcome before any extra SDK read.
+        # No getDataSync and no product mutation: only current layer/locale/key.
+        stop()
+        save_databases('failure-original')
+        (REPORT / 'config-at-failure.toml').write_bytes((config_home / 'config.toml').read_bytes())
+        try:
+            report['failureInspection'] = snapshot('failure-inspection', diagnose=True)
+        except Exception as inspection_error:
+            report['failureInspectionError'] = str(inspection_error)
         raise
     finally:
         stop()
