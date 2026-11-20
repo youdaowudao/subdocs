@@ -5,6 +5,7 @@ const keyInput = $('key');
 const connectButton = $('connect');
 const restoreButton = $('restore');
 const removeButton = $('remove-models');
+const chineseButton = $('run-chinese');
 const shell = $('shell');
 
 // One panel, four tools. Codex and Claude are the two main ones, picked by
@@ -167,6 +168,7 @@ function renderEntries() {
   // The image tool and the domestic models belong to Codex, so the Claude
   // page shows none of the entries.
   $('tools').hidden = tool === 'claude';
+  $('tools-group').hidden = tool === 'claude';
   $('go-codex').hidden = tool === 'codex' || tool === 'claude';
   for (const name of ['image', 'models']) {
     $(`go-${name}`).hidden = name === tool;
@@ -275,11 +277,11 @@ function showResult(result) {
 function setBusy(on, label) {
   busy = on;
   for (const button of [connectButton, restoreButton, removeButton, $('go-codex'), $('go-image'), $('go-models'),
-    $('tab-codex'), $('tab-claude'), $('get-official'), $('get-group'), $('assistant-update-button')]) {
+    $('tab-codex'), $('tab-claude'), $('get-official'), $('get-group'), $('assistant-update-button'), chineseButton]) {
     button.disabled = on;
   }
-  connectButton.classList.toggle('busy', on);
-  $('connect-label').textContent = on ? label : idleLabel();
+  connectButton.classList.toggle('busy', on && Boolean(label));
+  $('connect-label').textContent = on && label ? label : idleLabel();
 }
 
 function cancelConfirm() {
@@ -526,6 +528,23 @@ $('copy-qq').addEventListener('click', async (event) => {
 });
 
 $('notice-action').addEventListener('click', () => bridge().OpenSite());
+chineseButton.addEventListener('click', async () => {
+  if (busy) return;
+  cancelConfirm();
+  render();
+  setBusy(true);
+  chineseButton.textContent = '正在中文化…';
+  showNotice('info', '正在打开 PowerShell，请在该窗口查看完整过程。');
+  try {
+    showResult(await bridge().RunChinese());
+  } catch {
+    showNotice('error', '中文化未完成，请查看 PowerShell 窗口和运行记录。');
+  } finally {
+    chineseButton.textContent = '一键中文化（没有梯子才需要）';
+    setBusy(false);
+    nextLink();
+  }
+});
 $('join-qq').addEventListener('click', () => bridge().JoinGroup());
 $('open-site').addEventListener('click', () => bridge().OpenSite());
 $('open-api-keys').addEventListener('click', () => bridge().OpenAPIKeys());

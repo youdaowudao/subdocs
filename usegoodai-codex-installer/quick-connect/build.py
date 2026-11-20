@@ -32,6 +32,8 @@ IMAGE_TOOL_BUNDLE = ROOT / "imagetool"
 MODELS_SCRIPT = ROOT.parent / "install" / "codex-models.ps1"
 MODELS_PUBLISHED = ROOT.parent.parent / "docs" / "public" / "install" / "codex-models.ps1"
 MODELS_BUNDLE = ROOT / "modelstool"
+CHINESE_SCRIPT = ROOT.parent / "install" / "chinese.ps1"
+CHINESE_PUBLISHED = ROOT.parent.parent / "docs/public/install/chinese.ps1"
 
 
 def go_command() -> str:
@@ -104,6 +106,7 @@ def build_windows(output: Path) -> Path:
     go = go_command()
     bundle_image_tool("windows-amd64.exe")
     bundle_models_script()
+    bundle_chinese_script()
     subprocess.run([go, "run", "./tools/resources", "-icon", "frontend/logo.png", "-out", "rsrc_windows_amd64.syso"],
                    cwd=ROOT, env=environment(), check=True)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -116,6 +119,13 @@ def build_windows(output: Path) -> Path:
         raise SystemExit(f"{output.name} 有 {size} 字节，超过文档站 25 MiB 的单文件上限。")
     output.chmod(0o755)
     return output
+
+
+def bundle_chinese_script() -> None:
+    script = CHINESE_SCRIPT.read_bytes()
+    if script != CHINESE_PUBLISHED.read_bytes():
+        raise SystemExit("中文化源码发布副本不一致，停止打包。")
+    (ROOT / "chinesetool" / "chinese.ps1").write_bytes(script)
 
 
 def write_windows_release_manifest(program: Path, output: Path) -> None:

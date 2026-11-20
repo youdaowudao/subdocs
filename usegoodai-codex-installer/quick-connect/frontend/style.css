@@ -134,7 +134,10 @@ footer{margin-top:12px}
 .text[hidden],.tip-anchor[hidden]{display:none}
 
 /* 其他工具入口 */
-.tools{margin-top:auto;display:flex;gap:8px;padding-top:9px}
+.tools-group{margin-top:auto;padding-top:9px}
+.tools-group[hidden]{display:none}
+.tools{display:flex;gap:8px}
+.chinese-entry{display:block;margin-top:4px;height:26px;padding:0 4px;font-size:12px;text-decoration:none}
 .tool-entry{flex:1;min-width:0;padding:7px 10px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.72);display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;color:var(--fg);transition:border-color .2s,background .2s}
 .tool-entry[hidden]{display:none}
 .tool-entry:hover:not(:disabled){background:#fff}

@@ -72,6 +72,8 @@ type Service struct {
 	// ~/.codex, as the script decides); Models runs it.
 	ModelsHome string
 	Models     ModelsImporter
+	// Chinese runs the unchanged language script in its own visible console.
+	Chinese ChineseRunner
 	// Claude is Claude Desktop, ClaudeCLI the Claude Code CLI; StopClaude
 	// closes Claude Desktop (nil: never closed).
 	Claude     ClaudeDesktop

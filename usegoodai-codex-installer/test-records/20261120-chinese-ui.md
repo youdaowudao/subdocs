@@ -1,0 +1,22 @@
+# Windows 中文化按钮接入 1.2.1
+
+记录版本 1.0.0 · 2026-11-20，候选未发布。
+
+原有能力：Windows 助手 1.2.0 的 UI、运行互斥及日志目录；已上线的 Windows 中文化 1.1.6。新增仅为末尾按钮、独立可见 PowerShell、按次转录和成功五秒关闭。数据与配置沿用原脚本处理，未增加服务接口、密钥配置、缓存算法或数据库修复。
+
+按钮文案为「一键中文化（没有梯子才需要）」，位于生图和国产模型入口下方。失败时窗口保留；内层脚本输出失败后可能返回零，外层按明确结果判断，不把零退出码当成功。转录文件预置 UTF-8 BOM，避免 PowerShell 5.1 追加中文时落为 ASCII。新控制台不继承 GUI 已重定向的标准句柄，保证用户看见真实输出。
+
+## 候选与测试范围
+
+- 中文化原始字节 SHA-256：`33968270a2c26e6aa21946a5beb2a594982a930626492e7bbf125a5f82a3fabd`；上层、站点及内嵌副本一致，不重跑已通过核心网络矩阵。
+- 本地新增打包/日志/错误处理测试和相关既有 Go 测试已通过；资源测试首次读到旧 1.1.16 临时成品而失败，已改为明确核对本轮候选，不算产品缺陷或验收通过。
+- Windows 11 采用既有 Windows 11 ARM 运行器，发布 x64 EXE 经系统转译。Windows 10 使用 Actions Linux 主机承载的真实 x64 Windows 10 Enterprise 评估系统，测试在交互登录桌面执行，断言 ProductType=1、系统名及非 Session 0，不以 Linux 主机或 Server 代替。
+- 当前两个桌面验收尚未执行，不能宣称完成。范围：真实点击候选 EXE、入口位置、可见控制台、成功倒计时、失败保留、重复/开着/关闭时运行、日志与中文路径、手动关闭恢复及无残留。
+- Windows 10 虚拟机使用固定镜像摘要 `dockurr/windows@sha256:16fd7c39a3e48bb946d29c59dc6015942e5b900a1fa5d7e5552053bfc48ee2ea`，指定 10e，仅允许一次性 Actions Linux 运行器创建；环境启动失败与产品测试失败分别记录，不索要真实 Key。
+- 合集只替换 Windows EXE 与简短说明，所有 Mac 文件内容与权限保持逐项一致；不重新签名或重测未变 Mac 成品，保留既有必要三项发布门禁。
+
+## 依据及限制
+
+PowerShell 转录与编码依据：[Microsoft Start-Transcript](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.host/start-transcript?view=powershell-5.1)。独立控制台依据：[Microsoft Process Creation Flags](https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags)。Win10 环境依据：[Dockur Windows](https://github.com/dockur/windows)及[微软 Windows 10 Enterprise 评估系统](https://www.microsoft.com/en-us/evalcenter/download-windows-10-enterprise/)。
+
+真实账号、真实中转鉴权及计费不在本轮验证范围。新机迁移已取消，迁移核查私有资料仍保留；本轮不迁移、删除或重发其它项目资料。

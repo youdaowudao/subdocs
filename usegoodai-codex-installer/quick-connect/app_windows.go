@@ -103,6 +103,8 @@ func (a *App) ImportModels() connect.Result { return a.service.ImportModels(a.ct
 
 func (a *App) RemoveModels() connect.Result { return a.service.ImportModels(a.ctx, true) }
 
+func (a *App) RunChinese() connect.Result { return a.service.RunChinese() }
+
 // InstallImage is the button in image mode: a pasted key has no name.
 func (a *App) InstallImage(key string) connect.Result {
 	return a.service.InstallImage(a.ctx, key, "")

@@ -87,6 +87,7 @@ func runWindow(eventName string) {
 	if script := bundledModelsScript(filepath.Join(webviewDataPath(), "models-tool")); script != nil {
 		service.Models = script
 	}
+	service.Chinese = bundledChineseScript(filepath.Join(webviewDataPath(), "chinese-tool"), filepath.Join(webviewDataPath(), "logs"))
 	localAppData, _ := os.UserCacheDir()    // %LOCALAPPDATA%
 	roamingAppData, _ := os.UserConfigDir() // %APPDATA%
 	userHome, _ := os.UserHomeDir()
