@@ -22,6 +22,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+      - name: 读取已上线的固定对照提交
+        if: matrix.variant == 'old'
+        run: git fetch --no-tags --depth=1 origin 5e228f0224d5a515524055736abd7625ea628460
       - name: 对照缓存写入和重开期间的变化
         shell: powershell
         run: .\tests\chinese-cache-persistence.ps1 -Variant '${{ matrix.variant }}' -ReportDir "$env:RUNNER_TEMP\cache-persistence"
