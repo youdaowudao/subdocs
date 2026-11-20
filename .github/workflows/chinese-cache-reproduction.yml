@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rep: [1, 2, 3]
+        rep: [1, 2, 3, 4]
     steps:
       - name: 保留原始发布字节
         run: git config --global core.autocrlf false
