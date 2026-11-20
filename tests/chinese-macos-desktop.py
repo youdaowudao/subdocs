@@ -301,7 +301,9 @@ if __name__ == '__main__':
     originals = {p.name: p.read_bytes() for p in config_home.iterdir()}
     (REPORT / 'config-original.toml').write_bytes(originals['config.toml'])
     execute(['/bin/launchctl', 'setenv', 'CODEX_HOME', config_home])
-    script_env = dict(os.environ, CODEX_HOME=str(config_home), PATH='/usr/bin:/bin:/usr/sbin:/sbin', PYTHONUNBUFFERED='1')
+    script_env = dict(os.environ, CODEX_HOME=str(config_home), PYTHONUNBUFFERED='1')
+    selected_python = execute(['/bin/sh', '-c', 'command -v python3'], env=script_env).stdout.strip()
+    report['scriptPython'] = execute([selected_python, '--version'], env=script_env).stdout.strip()
     payload = (REPO / 'docs/public/install/chinese.sh').read_bytes()
     report['scriptSha256'] = hashlib.sha256(payload).hexdigest()
     class Handler(BaseHTTPRequestHandler):
