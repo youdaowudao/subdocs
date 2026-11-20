@@ -108,7 +108,12 @@ for ($i = 1; $i -le 8; $i++) {
     if ($report.final.liveEnableI18n -ne $true -or $report.final.cjkCount -lt 5) { Add-Failure 'The final session window was not Chinese' }
     $report.configBeforeRepairSha256 = $configHash
     $report.configAfterRepairSha256 = (Get-FileHash $config).Hash
-    if ((Get-FileHash $config).Hash -ne $configHash) { Add-Failure 'The configuration changed after the normal-startup baseline' }
+    # Plain App startup already changes its own CUA pipe and adds managed runtime fields.
+    # Assert every pre-existing user value, including nested provider and locale settings.
+    $preservation = & python (Join-Path $script:HarnessTestsRoot 'chinese-config-preservation.py') (Join-Path $ReportDir 'config-fixture-before-app.txt') $config
+    if ($LASTEXITCODE) { throw 'Cannot parse the real configuration for preservation checks' }
+    $report.originalSettings = $preservation | ConvertFrom-Json
+    if (-not $report.originalSettings.preserved) { Add-Failure ('Original user configuration changed: ' + ($report.originalSettings.changed -join ', ')) }
     Save-Report
     if ($report.failures.Count) { throw ($report.failures -join ' | ') }
 } finally {
