@@ -280,7 +280,6 @@ if __name__ == '__main__':
     report.update(network=args.network, auth=args.auth, focused=args.focused, sha=os.environ.get('GITHUB_SHA'), system=platform.platform(), machine=platform.machine(), python=sys.version)
     require(sys.platform == 'darwin' and platform.machine() == 'arm64', 'A real Apple Silicon Mac is required')
     hosts = Path('/etc/hosts').read_bytes()
-    prior_home = execute(['/bin/launchctl', 'getenv', 'CODEX_HOME'], check=False).stdout.strip()
     preferences = Path.home() / 'Library/Preferences/.GlobalPreferences.plist'
     original_preferences = plistlib.loads(preferences.read_bytes()) if preferences.exists() else {}
     execute(['/usr/bin/defaults', 'write', '-g', 'AppleLanguages', '-array', 'zh-Hans', 'en-US'])
@@ -290,31 +289,57 @@ if __name__ == '__main__':
     executable = app / 'Contents/MacOS/ChatGPT'
     files = [executable, app / 'Contents/Resources/app.asar']
     original_hashes = {str(p): digest(p) for p in files}
-    config_home = ROOT / '用户 中文 空格'
-    config_home.mkdir()
-    config = '# preserve existing configuration\n'
-    if args.auth == 'apikey':
-        config += 'model_provider = "OpenAI"\nmodel = "gpt-6.1-sol"\n[model_providers.OpenAI]\nname = "OpenAI"\nbase_url = "http://127.0.0.1:9/v1"\nwire_api = "responses"\nrequires_openai_auth = true\n'
-        (config_home / 'auth.json').write_text('{"OPENAI_API_KEY":"sk-ci-fake-key-not-real"}\n')
-    config += '[desktop]\nlocaleOverride = "zh-CN"\ntheme = "dark"\n'
-    (config_home / 'config.toml').write_text(config)
-    originals = {p.name: p.read_bytes() for p in config_home.iterdir()}
-    (REPORT / 'config-original.toml').write_bytes(originals['config.toml'])
-    execute(['/bin/launchctl', 'setenv', 'CODEX_HOME', config_home])
-    script_env = dict(os.environ, CODEX_HOME=str(config_home), PYTHONUNBUFFERED='1')
-    selected_python = execute(['/bin/sh', '-c', 'command -v python3'], env=script_env).stdout.strip()
-    report['scriptPython'] = execute([selected_python, '--version'], env=script_env).stdout.strip()
     payload = (REPO / 'docs/public/install/chinese.sh').read_bytes()
     report['scriptSha256'] = hashlib.sha256(payload).hexdigest()
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a): pass
         def do_GET(self):
+            if self.path.split('?', 1)[0] in ('/v1/models', '/models'):
+                body = json.dumps({'object':'list','data':[{'id':'gpt-6.1-sol','object':'model','owned_by':'ci','created':0}]}).encode()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            if self.path != '/chinese.sh':
+                self.send_error(404)
+                return
             self.send_response(200)
             self.send_header('Content-Length', str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
+    require(os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted', 'Default profile is allowed only in a disposable hosted VM')
+    config_home = Path.home() / '.codex'
+    require(not any((config_home / name).exists() for name in ('config.toml', 'auth.json', 'sessions')), 'Refusing a pre-existing configured/authenticated/session profile')
+    config_home.mkdir(exist_ok=True)
+    config = '# preserve existing configuration\n'
+    if args.auth == 'apikey':
+        config += f'model_provider = "OpenAI"\nmodel = "gpt-6.1-sol"\n[model_providers.OpenAI]\nname = "OpenAI"\nbase_url = "http://127.0.0.1:{server.server_port}/v1"\nwire_api = "responses"\nrequires_openai_auth = true\n'
+    config += '[desktop]\nlocaleOverride = "zh-CN"\ntheme = "dark"\n'
+    (config_home / 'config.toml').write_text(config)
+    script_env = dict(os.environ, CODEX_HOME=str(config_home), PYTHONUNBUFFERED='1')
+    selected_python = execute(['/bin/sh', '-c', 'command -v python3'], env=script_env).stdout.strip()
+    report['scriptPython'] = execute([selected_python, '--version'], env=script_env).stdout.strip()
+    native_cli = app / 'Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex'
+    require(native_cli.is_file(), 'Official bundled CLI is missing')
+    report['nativeCliVersion'] = execute([native_cli, '--version'], env=script_env).stdout.strip()
+    report['profileScope'] = 'default directory in a fresh disposable hosted VM'
+    save()
+    prior_login = subprocess.run([str(native_cli), 'login', 'status'], env=script_env, text=True, capture_output=True, timeout=30)
+    require(prior_login.returncode != 0, 'Refusing pre-existing credentials in the hosted VM')
+    if args.auth == 'apikey':
+        login = subprocess.run([str(native_cli), 'login', '--with-api-key'], input='sk-ci-fake-key-not-real\n', env=script_env, text=True, capture_output=True, timeout=30)
+        status = subprocess.run([str(native_cli), 'login', 'status'], env=script_env, text=True, capture_output=True, timeout=30)
+        status_text = (status.stdout + status.stderr).lower()
+        mode = 'api_key' if 'api' in status_text and ('key' in status_text or '密钥' in status_text) else 'unknown'
+        report['nativeLogin'] = {'exit': login.returncode, 'statusExit': status.returncode, 'mode': mode}
+        save()
+        require(login.returncode == 0 and status.returncode == 0 and mode == 'api_key', 'Official fake-key login fixture is not ready')
+    originals = {p.name: p.read_bytes() for p in config_home.iterdir() if p.is_file() and p.name in ('config.toml', 'auth.json')}
+    (REPORT / 'config-original.toml').write_bytes(originals['config.toml'])
     try:
         execute(['/usr/bin/swiftc', REPO / 'tests/chinese-macos-window.swift', '-o', ROOT / 'window-reader'], timeout=180)
         execute(['/bin/bash', '-n', REPO / 'docs/public/install/chinese.sh'])
@@ -372,10 +397,6 @@ if __name__ == '__main__':
             report['databaseCaptureError'] = str(error)
         execute(['sudo', '/usr/bin/tee', '/etc/hosts'], input=hosts.decode())
         flush_dns()
-        if prior_home:
-            execute(['/bin/launchctl', 'setenv', 'CODEX_HOME', prior_home])
-        else:
-            execute(['/bin/launchctl', 'unsetenv', 'CODEX_HOME'])
         for key in ('AppleLanguages', 'AppleLocale'):
             if key not in original_preferences:
                 execute(['/usr/bin/defaults', 'delete', '-g', key], check=False)
