@@ -1,4 +1,5 @@
-﻿param([Parameter(Mandatory)][string]$ReportDir, [Parameter(Mandatory)][ValidateSet('block', 'longhang')][string]$Network)
+﻿param([Parameter(Mandatory)][string]$ReportDir, [Parameter(Mandatory)][ValidateSet('block', 'longhang')][string]$Network,
+    [ValidateSet('none', 'torn-tail')][string]$WalFault = 'none')
 $ErrorActionPreference = 'Stop'
 $script:HarnessTestsRoot = $PSScriptRoot
 $harness = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'codex-chinese-desktop.ps1'))
@@ -20,6 +21,23 @@ try {
     Complete-PrivacyScreen
     $report.baseline = Get-I18nSnapshot 'probe-baseline'
     if (@($report.baseline.caches | Where-Object source -EQ 'Network').Count) { throw 'Offline baseline leaked to the network' }
+    if ($WalFault -eq 'torn-tail') {
+        # Deliberate fault in this fresh fake-account VM only. Never used by the
+        # product: reproduce LevelDB recovery after a writer died mid-record.
+        Save-Database 'before-injection'
+        $packageRoot = Join-Path $env:LOCALAPPDATA 'Packages/OpenAI.Codex_2p2nqsd0c76g0'
+        $files = @(Get-ChildItem $packageRoot -Recurse -File -Filter '*.log' | Where-Object FullName -Match 'Local Storage[/\\]leveldb[/\\][0-9]+\.log$')
+        if (-not $files.Count -or @(Get-CodexProcesses).Count) { throw 'Fault fixture needs a stopped disposable application profile' }
+        foreach ($file in $files) {
+            # A physical header declares a 100-byte payload; only one byte is
+            # present. First recovery ignores incomplete EOF, next appends expose
+            # a checksum error. Keep both original and injected bytes as evidence.
+            $stream = [IO.File]::Open($file.FullName, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::None)
+            try { $stream.Write([byte[]](1, 2, 3, 4, 100, 0, 1, 0), 0, 8) } finally { $stream.Dispose() }
+        }
+        $report.injectedWalFault = @{ kind = $WalFault; files = $files.FullName; disposableVmOnly = $true }
+        Save-Database 'after-injection'
+    }
     $null = Start-Codex
     Start-Sleep -Seconds 50
     $report.remoteBefore = @(Get-RemoteConnections)
@@ -74,9 +92,10 @@ try {
     Save-Database 'after-introspection'
     if (-not $row.success) { Add-Failure 'The original published command did not succeed' }
     if (-not $report.resultCollected) { Add-Failure 'The original page state could not be collected; cache loss is unconfirmed' }
-    elseif ($report.cacheLost) { Add-Failure 'The original published command lost its cache on the first ordinary reopen' }
+    elseif ($report.cacheLost -and $WalFault -eq 'none') { Add-Failure 'The original published command lost its cache on the first ordinary reopen' }
+    elseif (-not $report.cacheLost -and $WalFault -ne 'none') { Add-Failure 'The injected torn-log hypothesis did not reproduce cache loss' }
     if (-not $report.ordinaryReopen.labels) { Add-Failure 'The normal window controls could not be collected' }
-    elseif (-not $report.ordinaryChinese) { Add-Failure 'The first ordinary reopen did not show the Chinese sign-in controls' }
+    elseif (-not $report.ordinaryChinese -and $WalFault -eq 'none') { Add-Failure 'The first ordinary reopen did not show the Chinese sign-in controls' }
     Save-Report
     if ($report.failures.Count) { throw ($report.failures -join ' | ') }
 } finally {
