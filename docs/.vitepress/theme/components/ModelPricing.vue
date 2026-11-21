@@ -44,14 +44,17 @@ const activeGroup = computed(
 )
 
 const activeCurrency = computed(() => activeGroup.value.currency ?? 'usd')
+const isPerRequestGroup = computed(() => Boolean(activeGroup.value.perRequestModels))
 const isRmbTextCategory = computed(() => !isImageCategory.value && activeCurrency.value === 'cny')
 const isDeepSeekCategory = computed(() => activeCategoryConfig.value.id === 'deepseek')
 const isGptCategory = computed(() => activeCategoryConfig.value.id === 'gpt')
 
 const activeTextModels = computed(() => getTextModelsForGroup(activeGroupId.value))
 
-const textRows = computed(() =>
-  activeTextModels.value.flatMap((model) => {
+const textRows = computed(() => {
+  if (isPerRequestGroup.value) return activeTextModels.value
+
+  return activeTextModels.value.flatMap((model) => {
     const createRow = (officialPrice, priceLabel = '') => {
       const prices = calculateTextPrice(
         officialPrice,
@@ -87,8 +90,8 @@ const textRows = computed(() =>
     }
 
     return [createRow(model.officialCny ?? model.officialUsd)]
-  }),
-)
+  })
+})
 
 const pricingRuleExample = computed(() => {
   if (isImageCategory.value) {
@@ -180,15 +183,16 @@ const PRICE_FIELDS = [
     <section class="pricing-rule" aria-label="计价规则">
       <div>
         <strong>计价规则</strong>
-        <span v-if="isDeepSeekCategory">DeepSeek 采用峰谷计价，高峰时段为北京时间周一至周五 09:00-12:00、14:00-18:00，其余为空闲时段</span>
+        <span v-if="isPerRequestGroup">{{ activeGroup.description }}</span>
+        <span v-else-if="isDeepSeekCategory">DeepSeek 采用峰谷计价，高峰时段为北京时间周一至周五 09:00-12:00、14:00-18:00，其余为空闲时段</span>
         <span v-else-if="isRmbTextCategory">官方人民币价格直接显示</span>
         <span v-else-if="!isImageCategory">官方美元价格按 $1 = ¥{{ EXCHANGE_RATE }} 换算</span>
         <span v-if="isGptCategory">一般模型按官方价 × 分组倍率；GPT-6 Astra 缓存读取按实测 $2 计费</span>
         <span v-else-if="isRmbTextCategory">分组价格 = 官方人民币价格 × 分组倍率</span>
-        <span v-else-if="!isImageCategory">分组价格 = 官方美元价格 × 分组倍率</span>
-        <span v-else>生图分组价格按人民币固定价计费</span>
+        <span v-else-if="!isImageCategory && !isPerRequestGroup">分组价格 = 官方美元价格 × 分组倍率</span>
+        <span v-else-if="isImageCategory">生图分组价格按人民币固定价计费</span>
       </div>
-      <span class="pricing-rule-example">
+      <span v-if="!isPerRequestGroup" class="pricing-rule-example">
         {{ pricingRuleExample }}
       </span>
     </section>
@@ -196,10 +200,10 @@ const PRICE_FIELDS = [
     <section class="pricing-panel">
       <header class="pricing-panel-header">
         <div>
-          <span class="pricing-panel-icon" aria-hidden="true">¥</span>
+          <span class="pricing-panel-icon" aria-hidden="true">{{ isPerRequestGroup ? '$' : '¥' }}</span>
           <h2>价格列表</h2>
         </div>
-        <div class="price-mode-wrap">
+        <div v-if="!isPerRequestGroup" class="price-mode-wrap">
           <span v-if="!isImageCategory">{{ isRmbTextCategory
             ? (priceMode === 'group' ? (isDeepSeekCategory ? '分组峰谷价格按人民币计算' : '分组价按人民币计算') : (isDeepSeekCategory ? '官方峰谷价格按人民币显示' : '官方价按人民币显示'))
             : (priceMode === 'group' ? '分组价已按人民币计算' : '官方价按固定汇率换算') }}</span>
@@ -225,10 +229,7 @@ const PRICE_FIELDS = [
         <div
           v-if="priceMode === 'group'"
           class="pricing-groups"
-          :class="{
-            'pricing-groups--single': activeGroups.length === 1,
-            'pricing-groups--gemini': activeCategoryConfig.id === 'gemini',
-          }"
+          :class="{ 'pricing-groups--single': activeGroups.length === 1 }"
           aria-label="选择分组"
         >
           <button
@@ -242,7 +243,7 @@ const PRICE_FIELDS = [
           >
             <span class="pricing-group-title">
               <strong>{{ group.name }}</strong>
-              <em>{{ getEquivalentDiscount(group.multiplier, group.currency) }}</em>
+              <em>{{ group.perRequestModels ? '按次计费' : getEquivalentDiscount(group.multiplier, group.currency) }}</em>
             </span>
             <span>{{ group.multiplier }} 倍率</span>
           </button>
@@ -251,10 +252,7 @@ const PRICE_FIELDS = [
         <div
           v-else
           class="pricing-groups pricing-groups--placeholder"
-          :class="{
-            'pricing-groups--single': activeGroups.length === 1,
-            'pricing-groups--gemini': activeCategoryConfig.id === 'gemini',
-          }"
+          :class="{ 'pricing-groups--single': activeGroups.length === 1 }"
           aria-hidden="true"
         >
           <div
@@ -264,13 +262,13 @@ const PRICE_FIELDS = [
           >
             <span class="pricing-group-title">
               <strong>{{ group.name }}</strong>
-              <em>官方</em>
+              <em>{{ group.perRequestModels ? '按次计费' : '官方' }}</em>
             </span>
-            <span>官方价格模式</span>
+            <span>{{ group.perRequestModels ? '在分组价格中查看' : '官方价格模式' }}</span>
           </div>
         </div>
 
-        <div class="pricing-description">
+        <div v-if="!isPerRequestGroup" class="pricing-description">
           <template v-if="priceMode === 'group'">
             <strong>分组介绍：</strong>
             <span>{{ activeGroup.name }}，{{ activeGroup.description }}。</span>
@@ -286,14 +284,20 @@ const PRICE_FIELDS = [
         <div class="pricing-table-scroll">
           <table
             class="pricing-table"
-            :class="{ 'pricing-table--deepseek': isDeepSeekCategory }"
+            :class="{
+              'pricing-table--deepseek': isDeepSeekCategory,
+              'pricing-table--per-request': isPerRequestGroup,
+            }"
           >
             <thead>
               <tr>
                 <th scope="col">模型 ID</th>
-                <th v-if="isDeepSeekCategory" scope="col">计费时段</th>
-                <th v-for="field in PRICE_FIELDS" :key="field.key" scope="col">{{ field.label }}</th>
-                <th scope="col">节省幅度</th>
+                <th v-if="isPerRequestGroup" scope="col">每次请求价格</th>
+                <template v-else>
+                  <th v-if="isDeepSeekCategory" scope="col">计费时段</th>
+                  <th v-for="field in PRICE_FIELDS" :key="field.key" scope="col">{{ field.label }}</th>
+                  <th scope="col">节省幅度</th>
+                </template>
               </tr>
             </thead>
             <tbody>
@@ -312,7 +316,7 @@ const PRICE_FIELDS = [
                         </span>
                         <span v-if="model.billingOverridesUsd" class="billing-model-badge">缓存读取按实测</span>
                       </div>
-                      <span>{{ model.description }}</span>
+                      <span v-if="model.description">{{ model.description }}</span>
                       <span v-if="model.priceTiers" class="model-context-note">
                         按单次请求的输入 tokens 数分档；输入、输出和缓存读取均按对应档计费。
                       </span>
@@ -328,7 +332,11 @@ const PRICE_FIELDS = [
                     </button>
                   </div>
                 </td>
-                <template v-if="priceMode === 'group' && model.unavailableMessage">
+                <td v-if="isPerRequestGroup" class="pricing-cell-wide" data-label="每次请求价格">
+                  <strong class="group-price">${{ model.usdPerRequest.toFixed(2) }}</strong>
+                  <span class="price-unit">/ 次</span>
+                </td>
+                <template v-else-if="priceMode === 'group' && model.unavailableMessage">
                   <td :colspan="isDeepSeekCategory ? 6 : 5" class="model-unavailable-cell">
                     {{ model.unavailableMessage }}
                   </td>
@@ -787,10 +795,6 @@ const PRICE_FIELDS = [
   grid-template-columns: minmax(0, 1fr);
 }
 
-.pricing-groups--single.pricing-groups--gemini {
-  width: min(680px, 100%);
-}
-
 .pricing-group-card {
   display: flex;
   min-height: 82px;
@@ -1001,6 +1005,11 @@ const PRICE_FIELDS = [
 .model-pricing-page .pricing-table--deepseek th:nth-child(5) { width: 12%; }
 .model-pricing-page .pricing-table--deepseek th:nth-child(6) { width: 14%; }
 .model-pricing-page .pricing-table--deepseek th:nth-child(7) { width: 10%; }
+
+.model-pricing-page .pricing-table--per-request { min-width: 0; }
+.model-pricing-page .pricing-table--per-request th:first-child { width: 60%; }
+.model-pricing-page .pricing-table--per-request th:nth-child(2) { width: 40%; }
+.model-pricing-page .pricing-table--per-request td { height: 60px; }
 
 .model-pricing-page .pricing-table--image {
   min-width: 980px;

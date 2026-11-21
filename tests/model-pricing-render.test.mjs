@@ -79,7 +79,7 @@ test('renders the 0.35 GPT VIP group with all model prices and the Astra cache o
   }
 })
 
-test('renders all Gemini models in one 0.8 group with Neon first', async () => {
+test('renders both Gemini pricing groups with token prices at 1.1x and fixed per-request prices', async () => {
   const server = await createServer({
     configFile: false,
     plugins: [vue()],
@@ -91,11 +91,11 @@ test('renders all Gemini models in one 0.8 group with Neon first', async () => {
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
 
     const expected = [
-      ['gemini-4-neon', ['¥2.40', '¥12.00', '¥0.12', '¥14.40'], ['¥21.00', '¥105.00', '¥1.05', '¥126.00']],
-      ['gemini-4-hydrogen', ['¥1.20', '¥6.00', '¥0.06', '¥7.20'], ['¥10.50', '¥52.50', '¥0.53', '¥63.00']],
-      ['gemini-4-carbon', ['¥1.60', '¥8.00', '¥0.08', '¥9.60'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
-      ['gemini-4-argon', ['¥1.60', '¥8.00', '¥0.08', '¥9.60'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
-      ['gemini-4-barium', ['¥1.60', '¥8.00', '¥0.08', '¥9.60'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
+      ['gemini-4-neon', ['¥3.30', '¥16.50', '¥0.17', '¥19.80'], ['¥21.00', '¥105.00', '¥1.05', '¥126.00']],
+      ['gemini-4-hydrogen', ['¥1.65', '¥8.25', '¥0.0825', '¥9.90'], ['¥10.50', '¥52.50', '¥0.53', '¥63.00']],
+      ['gemini-4-carbon', ['¥2.20', '¥11.00', '¥0.11', '¥13.20'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
+      ['gemini-4-argon', ['¥2.20', '¥11.00', '¥0.11', '¥13.20'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
+      ['gemini-4-barium', ['¥2.20', '¥11.00', '¥0.11', '¥13.20'], ['¥14.00', '¥70.00', '¥0.70', '¥84.00']],
     ]
 
     for (const priceMode of ['group', 'official']) {
@@ -117,11 +117,10 @@ test('renders all Gemini models in one 0.8 group with Neon first', async () => {
       assert.equal(ids.length, 17)
       assert.equal(new Set(ids).size, 17)
       assert.deepEqual(ids.slice(0, expected.length), expected.map(([id]) => id))
-      assert.doesNotMatch(html, /价格待确认|NaN|Argon 专用分组|0\.35 倍率|0\.5 倍率|0\.55 倍率/)
+      assert.doesNotMatch(html, /价格待确认|NaN|Argon 专用分组|0\.8 倍率/)
       assert.match(rows[0], /待启用/)
       assert.match(rows[4], /渠道基准/)
       assert.doesNotMatch(rows[4], /官方/)
-      assert.match(html, /pricing-groups--single/)
 
       const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'
       for (const row of rows) {
@@ -138,10 +137,44 @@ test('renders all Gemini models in one 0.8 group with Neon first', async () => {
       }
       if (priceMode === 'group') {
         const cards = [...html.matchAll(/<button\b[^>]*class="[^"]*pricing-group-card[^"]*"[^>]*>[\s\S]*?<\/button>/g)]
-        assert.equal(cards.length, 1)
+        assert.equal(cards.length, 2)
         assert.match(cards[0][0], /aria-pressed="true"/)
-        assert.match(cards[0][0], /0\.8 倍率/)
+        assert.match(cards[0][0], /1\.1 倍率/)
+        assert.match(cards[1][0], /gemini按次[\s\S]*1 倍率/)
       }
+    }
+
+    const perRequest = {
+      ...pricing,
+      setup(props, context) {
+        const state = pricing.setup(props, context)
+        state.setCategory('gemini')
+        state.activeGroupId.value = 'gemini-per-request'
+        return state
+      },
+    }
+    const perRequestHtml = await renderToString(createSSRApp(perRequest))
+    const perRequestRows = [...perRequestHtml.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)]
+      .map(([row]) => row)
+      .filter((row) => row.includes('class="model-id-cell"'))
+    const perRequestPrices = [
+      ['[次]gemini-3.1-pro-preview', '$0.08'],
+      ['[次]gemini-4-argon', '$0.15'],
+      ['[次]gemini-4-hydrogen', '$0.12'],
+      ['[次]gemini-3.8-flash', '$0.05'],
+      ['[次]gemini-4-neon', '$0.25'],
+      ['[次]gemini-4-carbon', '$0.25'],
+    ]
+
+    assert.match(perRequestHtml, /每次请求按所选模型的固定美元价格计费/)
+    assert.doesNotMatch(perRequestHtml, /官方价格|输入价格|缓存读取|节省幅度|\/ 1M tokens|NaN|待启用/)
+    assert.equal(perRequestRows.length, perRequestPrices.length)
+    for (const [index, [id, price]] of perRequestPrices.entries()) {
+      const row = perRequestRows[index]
+      assert.ok(row.includes(`<strong>${id}</strong>`))
+      assert.ok(row.includes(`aria-label="复制 ${id}"`))
+      assert.ok(row.includes(`<strong class="group-price">${price}</strong>`))
+      assert.match(row, /data-label="每次请求价格"[\s\S]*\/ 次/)
     }
   } finally {
     await server.close()

@@ -165,9 +165,23 @@ export const TEXT_GROUPS = [
   {
     id: 'gemini-antigravity',
     name: 'Gemini 分组（反重力 Antigravity 反代）',
-    multiplier: 0.8,
+    multiplier: 1.1,
     description: '适合 Antigravity、代理式编程和 Gemini 模型测试',
     modelIds: GEMINI_MODEL_IDS,
+  },
+  {
+    id: 'gemini-per-request',
+    name: 'gemini按次',
+    multiplier: 1,
+    description: '每次请求按所选模型的固定美元价格计费',
+    perRequestModels: [
+      { id: '[次]gemini-3.1-pro-preview', usdPerRequest: 0.08 },
+      { id: '[次]gemini-4-argon', usdPerRequest: 0.15 },
+      { id: '[次]gemini-4-hydrogen', usdPerRequest: 0.12 },
+      { id: '[次]gemini-3.8-flash', usdPerRequest: 0.05 },
+      { id: '[次]gemini-4-neon', usdPerRequest: 0.25 },
+      { id: '[次]gemini-4-carbon', usdPerRequest: 0.25 },
+    ],
   },
   {
     id: 'deepseek',
@@ -255,7 +269,7 @@ export const MODEL_CATEGORIES = [
     name: 'Gemini',
     iconSvg: GEMINI_ICON,
     kind: 'text',
-    groupIds: ['gemini-antigravity'],
+    groupIds: ['gemini-antigravity', 'gemini-per-request'],
   },
   {
     id: 'deepseek',
@@ -870,6 +884,7 @@ export function calculateTextPrice(officialPrice, multiplier, currency = 'usd', 
 export function getTextModelsForGroup(groupId) {
   const group = TEXT_GROUPS.find((item) => item.id === groupId)
   if (!group) return []
+  if (group.perRequestModels) return group.perRequestModels
 
   const modelMap = new Map(TEXT_MODELS.flatMap((model) =>
     [model.id, ...(model.aliases ?? [])].map((modelId) => [modelId, model]),
