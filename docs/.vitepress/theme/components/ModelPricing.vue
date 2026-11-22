@@ -14,6 +14,12 @@ import {
   getEquivalentDiscount,
 } from './model-pricing-data.mjs'
 
+const perRequestPriceFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 3,
+})
+
 const activeCategory = ref(MODEL_CATEGORIES[0].id)
 const activeGroupId = ref(MODEL_CATEGORIES[0].defaultGroupId ?? MODEL_CATEGORIES[0].groupIds[0])
 const priceMode = ref('group')
@@ -333,7 +339,7 @@ const PRICE_FIELDS = [
                   </div>
                 </td>
                 <td v-if="isPerRequestGroup" class="pricing-cell-wide" data-label="每次请求价格">
-                  <strong class="group-price">${{ model.usdPerRequest.toFixed(2) }}</strong>
+                  <strong class="group-price">{{ perRequestPriceFormatter.format(model.usdPerRequest) }}</strong>
                   <span class="price-unit">/ 次</span>
                 </td>
                 <template v-else-if="priceMode === 'group' && model.unavailableMessage">

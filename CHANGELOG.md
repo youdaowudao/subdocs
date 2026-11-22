@@ -1,5 +1,11 @@
 # 文档版本记录
 
+## 0.1.34（2026-11-22）
+
+- 文档站「模型价格 → Gemini → gemini按次」更新六款模型的单次价格（美元）：`gemini-4-hydrogen`、`gemini-4-argon`、`gemini-4-neon` 为 $0.225，`gemini-3.8-flash`、`gemini-3.1-pro-preview` 为 $0.12，`gemini-4-carbon` 为 $0.255。按次价格最多显示三位小数。
+- 页面显示和复制的模型 ID 均去掉 `[次]` 前缀。沿用分组切换和复制方式，反重力分组继续按 1.1 倍率显示 Token 价格。文档站静态更新无需配置和迁移，后台实际扣费未核实。
+- 64 项价格计算和渲染测试、站点构建通过。Chromium 在 1440px 和 390px 下核对六项价格、复制结果及反重力分组切换。
+
 ## 0.1.33（2026-11-21）
 
 - 文档站「模型价格 → Gemini」新增「gemini按次」分组，倍率为 1。按后台截图展示六款模型的固定美元价格，并保留模型 ID 中的 `[次]` 前缀。每次请求的价格为 `gemini-3.1-pro-preview` $0.08、`gemini-4-argon` $0.15、`gemini-4-hydrogen` $0.12、`gemini-3.8-flash` $0.05、`gemini-4-neon` $0.25、`gemini-4-carbon` $0.25。

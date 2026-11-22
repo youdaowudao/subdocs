@@ -158,12 +158,12 @@ test('renders both Gemini pricing groups with token prices at 1.1x and fixed per
       .map(([row]) => row)
       .filter((row) => row.includes('class="model-id-cell"'))
     const perRequestPrices = [
-      ['[次]gemini-3.1-pro-preview', '$0.08'],
-      ['[次]gemini-4-argon', '$0.15'],
-      ['[次]gemini-4-hydrogen', '$0.12'],
-      ['[次]gemini-3.8-flash', '$0.05'],
-      ['[次]gemini-4-neon', '$0.25'],
-      ['[次]gemini-4-carbon', '$0.25'],
+      ['gemini-3.1-pro-preview', '$0.12'],
+      ['gemini-4-argon', '$0.225'],
+      ['gemini-4-hydrogen', '$0.225'],
+      ['gemini-3.8-flash', '$0.12'],
+      ['gemini-4-neon', '$0.225'],
+      ['gemini-4-carbon', '$0.255'],
     ]
 
     assert.match(perRequestHtml, /每次请求按所选模型的固定美元价格计费/)

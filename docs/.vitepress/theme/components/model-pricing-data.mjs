@@ -175,12 +175,12 @@ export const TEXT_GROUPS = [
     multiplier: 1,
     description: '每次请求按所选模型的固定美元价格计费',
     perRequestModels: [
-      { id: '[次]gemini-3.1-pro-preview', usdPerRequest: 0.08 },
-      { id: '[次]gemini-4-argon', usdPerRequest: 0.15 },
-      { id: '[次]gemini-4-hydrogen', usdPerRequest: 0.12 },
-      { id: '[次]gemini-3.8-flash', usdPerRequest: 0.05 },
-      { id: '[次]gemini-4-neon', usdPerRequest: 0.25 },
-      { id: '[次]gemini-4-carbon', usdPerRequest: 0.25 },
+      { id: 'gemini-3.1-pro-preview', usdPerRequest: 0.12 },
+      { id: 'gemini-4-argon', usdPerRequest: 0.225 },
+      { id: 'gemini-4-hydrogen', usdPerRequest: 0.225 },
+      { id: 'gemini-3.8-flash', usdPerRequest: 0.12 },
+      { id: 'gemini-4-neon', usdPerRequest: 0.225 },
+      { id: 'gemini-4-carbon', usdPerRequest: 0.255 },
     ],
   },
   {
