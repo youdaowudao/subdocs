@@ -61,6 +61,8 @@ const textRows = computed(() => {
   if (isPerRequestGroup.value) return activeTextModels.value
 
   return activeTextModels.value.flatMap((model) => {
+    if (model.priceNotice) return [model]
+
     const createRow = (officialPrice, priceLabel = '') => {
       const prices = calculateTextPrice(
         officialPrice,
@@ -342,9 +344,9 @@ const PRICE_FIELDS = [
                   <strong class="group-price">{{ perRequestPriceFormatter.format(model.usdPerRequest) }}</strong>
                   <span class="price-unit">/ 次</span>
                 </td>
-                <template v-else-if="priceMode === 'group' && model.unavailableMessage">
+                <template v-else-if="model.priceNotice || (priceMode === 'group' && model.unavailableMessage)">
                   <td :colspan="isDeepSeekCategory ? 6 : 5" class="model-unavailable-cell">
-                    {{ model.unavailableMessage }}
+                    {{ model.priceNotice || model.unavailableMessage }}
                   </td>
                 </template>
                 <template v-else>

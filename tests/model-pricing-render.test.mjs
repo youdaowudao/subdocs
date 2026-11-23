@@ -22,10 +22,10 @@ test('renders the 0.35 GPT VIP group with all model prices and the Astra cache o
       ['gpt-6.1-sol', ['¥0.70', '¥3.50', '¥0.035', '¥4.20']],
       ['gpt-6.1-terra', ['¥0.35', '¥1.75', '¥0.0175', '¥2.10']],
       ['gpt-6-sol', ['¥0.70', '¥3.50', '¥0.07', '¥4.20']],
-      ['gpt-6-luna', ['¥0.035', '¥0.18', '¥0.0035', '¥0.21']],
+      ['gpt-6-luna', null],
       ['gpt-5.6-sol', ['¥1.75', '¥10.50', '¥0.18', '¥12.25']],
       ['gpt-5.6-terra', ['¥0.70', '¥5.25', '¥0.0875', '¥5.95']],
-      ['gpt-5.6-luna', ['¥0.35', '¥2.10', '¥0.035', '¥2.45']],
+      ['gpt-5.6-luna', null],
     ]
     const officialPrices = new Map([
       ['gpt-6.2-astra', ['¥56.00', '¥280.00', '¥2.80', '¥336.00']],
@@ -53,6 +53,11 @@ test('renders the 0.35 GPT VIP group with all model prices and the Astra cache o
       for (const [index, [id, amounts]] of expected.entries()) {
         assert.ok(rows[index].includes(`<strong>${id}</strong>`))
         assert.ok(rows[index].includes(`aria-label="复制 ${id}"`))
+        if (amounts === null) {
+          assert.match(rows[index], /本站不提供 Luna，后台对接的是 gpt-6\.2-sol/)
+          assert.doesNotMatch(rows[index], /¥|\$|group-price|official-price|saving-badge/)
+          continue
+        }
         if (priceMode === 'group') {
           const actual = [...rows[index].matchAll(/<strong class="group-price">([^<]+)</g)]
             .map((match) => match[1])
@@ -71,6 +76,42 @@ test('renders the 0.35 GPT VIP group with all model prices and the Astra cache o
           const actual = [...row.matchAll(/<strong class="official-price">([^<]+)</g)]
             .map((match) => match[1])
           assert.deepEqual(actual, amounts, id)
+        }
+      }
+    }
+  } finally {
+    await server.close()
+  }
+})
+
+test('shows the Luna routing notice without prices in every GPT group and price mode', async () => {
+  const server = await createServer({
+    configFile: false,
+    plugins: [vue()],
+    server: { middlewareMode: true },
+    appType: 'custom',
+  })
+
+  try {
+    const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
+    for (const groupId of ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35']) {
+      for (const priceMode of ['group', 'official']) {
+        const component = {
+          ...pricing,
+          setup(props, context) {
+            const state = pricing.setup(props, context)
+            state.activeGroupId.value = groupId
+            state.priceMode.value = priceMode
+            return state
+          },
+        }
+        const html = await renderToString(createSSRApp(component))
+        const rows = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)].map(([row]) => row)
+        for (const id of ['gpt-6-luna', 'gpt-5.6-luna']) {
+          const row = rows.find((item) => item.includes(`<strong>${id}</strong>`))
+          assert.ok(row, `${groupId}/${priceMode}/${id}`)
+          assert.match(row, /本站不提供 Luna，后台对接的是 gpt-6\.2-sol/)
+          assert.doesNotMatch(row, /¥|\$|group-price|official-price|saving-badge/)
         }
       }
     }
@@ -549,6 +590,7 @@ test('labels every GPT price cell so phone cards show input, output, cache and t
 
         assert.equal(rows.length, 10, `${groupId}/${priceMode}`)
         for (const row of rows) {
+          if (row.includes('本站不提供 Luna')) continue
           const cells = [...row.matchAll(/<td class="pricing-cell-price" data-label="([^"]+)">([\s\S]*?)<\/td>/g)]
           assert.deepEqual(cells.map((match) => match[1]), labels, `${groupId}/${priceMode}`)
           const priceClass = priceMode === 'group' ? 'group-price' : 'official-price'

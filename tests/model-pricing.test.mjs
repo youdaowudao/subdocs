@@ -517,7 +517,7 @@ test('uses official Fable 5.2 and 5.1 pricing in the 0.49 and two 1.5x CC MAX gr
 test('replaces unavailable group prices with one row message', () => {
   assert.match(pricingComponentSource, /priceMode === 'group' && model\.unavailableMessage/)
   assert.match(pricingComponentSource, /class="model-unavailable-cell"/)
-  assert.match(pricingComponentSource, /\{\{ model\.unavailableMessage \}\}/)
+  assert.match(pricingComponentSource, /\{\{ model\.priceNotice \|\| model\.unavailableMessage \}\}/)
 })
 
 test('shows the free and heavy Grok pools with the same models and requested multipliers', () => {
@@ -851,12 +851,11 @@ test('explains the Astra billing exception and removes the generic pricing foote
 test('uses the displayed official price baselines for GPT-5.6', () => {
   assert.deepEqual(
     getTextModelsForGroup('gpt-0.18')
-      .filter((model) => model.id.startsWith('gpt-5.6-'))
+      .filter((model) => model.id.startsWith('gpt-5.6-') && !model.priceNotice)
       .map((model) => model.officialUsd),
     [
       { input: 5, output: 30, cachedInput: 0.5 },
       { input: 2, output: 15, cachedInput: 0.25 },
-      { input: 1, output: 6, cachedInput: 0.1 },
     ],
   )
 })

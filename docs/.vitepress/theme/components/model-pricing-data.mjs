@@ -369,8 +369,7 @@ export const TEXT_MODELS = [
   {
     id: 'gpt-6-luna',
     name: 'GPT-6 Luna',
-    description: '简单问答、小改动和批量处理',
-    officialUsd: { input: 0.1, output: 0.5, cachedInput: 0.01 },
+    priceNotice: '本站不提供 Luna，后台对接的是 gpt-6.2-sol',
   },
   {
     id: 'gpt-6-astra',
@@ -394,8 +393,7 @@ export const TEXT_MODELS = [
   {
     id: 'gpt-5.6-luna',
     name: 'GPT-5.6 Luna',
-    description: '轻量任务、批量处理和成本优先',
-    officialUsd: { input: 1, output: 6, cachedInput: 0.1 },
+    priceNotice: '本站不提供 Luna，后台对接的是 gpt-6.2-sol',
   },
   {
     id: 'claude-fable-5',
