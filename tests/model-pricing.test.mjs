@@ -39,7 +39,7 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.5 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
       { id: 'grok-4.5', name: 'heavy号池', multiplier: 0.3 },
-      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代）', multiplier: 1.1 },
+      { id: 'gemini-antigravity', name: 'Gemini 分组（反重力 Antigravity 反代，不稳定待维修）', multiplier: 1.1 },
       { id: 'gemini-per-request', name: 'gemini按次', multiplier: 1 },
       { id: 'deepseek', name: 'DeepSeek 分组', multiplier: 0.45 },
       { id: 'domestic', name: '国产之光', multiplier: 0.45 },

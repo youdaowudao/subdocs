@@ -139,6 +139,7 @@ test('renders both Gemini pricing groups with token prices at 1.1x and fixed per
         const cards = [...html.matchAll(/<button\b[^>]*class="[^"]*pricing-group-card[^"]*"[^>]*>[\s\S]*?<\/button>/g)]
         assert.equal(cards.length, 2)
         assert.match(cards[0][0], /aria-pressed="true"/)
+        assert.match(cards[0][0], /<strong>Gemini 分组（反重力 Antigravity 反代，不稳定待维修）<\/strong>/)
         assert.match(cards[0][0], /1\.1 倍率/)
         assert.match(cards[1][0], /gemini按次[\s\S]*1 倍率/)
       }
@@ -167,7 +168,7 @@ test('renders both Gemini pricing groups with token prices at 1.1x and fixed per
     ]
 
     assert.match(perRequestHtml, /每次请求按所选模型的固定美元价格计费/)
-    assert.doesNotMatch(perRequestHtml, /官方价格|输入价格|缓存读取|节省幅度|\/ 1M tokens|NaN|待启用/)
+    assert.doesNotMatch(perRequestHtml, /官方价格|输入价格|缓存读取|节省幅度|\/ 1M tokens|NaN|待启用|\[次\]gemini/)
     assert.equal(perRequestRows.length, perRequestPrices.length)
     for (const [index, [id, price]] of perRequestPrices.entries()) {
       const row = perRequestRows[index]
