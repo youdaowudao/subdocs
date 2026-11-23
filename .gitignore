@@ -48,3 +48,6 @@ local-scripts/
 
 # Local discussion content: upstream price notes, plans and discussion records; local only, never pushed.
 /讨论内容/
+
+# Local document version records; kept on this machine, never committed.
+/CHANGELOG.md
