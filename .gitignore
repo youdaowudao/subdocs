@@ -45,3 +45,6 @@ local-scripts/
 
 # Local executable delivery; source stays in the owning subprojects.
 /下载成品/
+
+# Local discussion content: upstream price notes, plans and discussion records; local only, never pushed.
+/讨论内容/

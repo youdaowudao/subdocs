@@ -21,6 +21,8 @@ title: 安装生图工具
 
 ## 2. 安装生图工具
 
+用接入助手的，按 [快速开始 → 一键导入](/quick-start#_3-一键导入) 点画图那把密钥的「一键导入」即可，不用运行下面的命令。
+
 Windows 按 `Win + X`，点击 **终端** 或 **Windows PowerShell**；Mac 和 Linux 打开 **终端**。粘贴对应命令运行：
 
 ::: code-group
