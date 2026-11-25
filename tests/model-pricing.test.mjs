@@ -34,7 +34,7 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
       { id: 'gpt-0.35', name: 'GPT VIP 分组', multiplier: 0.35 },
       { id: 'anthropic-main', name: 'Anthropic 低价分组1M上下文 缓存高', multiplier: 0.18 },
-      { id: 'anthropic-0.49', name: 'Claude 0.49 分组', multiplier: 0.49 },
+      { id: 'anthropic-0.49', name: '主力分组', multiplier: 0.55 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.5 },
       { id: 'anthropic-max-external', name: 'CC MAX 外接分组', multiplier: 1.5 },
       { id: 'grok-free', name: 'free号池', multiplier: 0.1 },
@@ -119,7 +119,7 @@ test('uses the requested Anthropic group recommendations', () => {
   assert.equal(lowPriceGroup.name, 'Anthropic 低价分组1M上下文 缓存高')
   assert.equal(lowPriceGroup.multiplier, 0.18)
   assert.equal(lowPriceGroup.description, '复杂架构设计推荐 Opus 5，日常任务推荐 Sonnet 5')
-  assert.equal(group.name, 'Claude 0.49 分组')
+  assert.equal(group.name, '主力分组')
   assert.equal(group.description, '适合 Claude Code 和 Claude Desktop 日常任务')
 })
 
@@ -260,7 +260,7 @@ test('prices GPT-6 Astra in the original GPT groups with the revised baseline', 
   assert.ok(isClose(price.group.total, 16.2))
 })
 
-test('keeps both CC MAX model lists unchanged after relisting the 0.49 group', () => {
+test('keeps both CC MAX model lists unchanged after renaming the main group', () => {
   const ccMaxModels = getTextModelsForGroup('anthropic-max')
   const ccMaxExternalModels = getTextModelsForGroup('anthropic-max-external')
   const ccMaxOrder = [
@@ -287,11 +287,11 @@ test('keeps both CC MAX model lists unchanged after relisting the 0.49 group', (
   assert.equal(ccMaxExternalModels.at(-1).unavailableMessage, '')
 })
 
-test('includes Claude Haiku 5.5 in the 0.49 and both CC MAX groups with both context prices', () => {
+test('includes Claude Haiku 5.5 in the 0.55 and both CC MAX groups with both context prices', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-0.49', [
-      { input: 0.049, output: 0.245, cachedInput: 0.0049, total: 0.294 },
-      { input: 0.245, output: 1.225, cachedInput: 0.0245, total: 1.47 },
+      { input: 0.055, output: 0.275, cachedInput: 0.0055, total: 0.33 },
+      { input: 0.275, output: 1.375, cachedInput: 0.0275, total: 1.65 },
     ]],
     ['anthropic-max', [
       { input: 0.15, output: 0.75, cachedInput: 0.015, total: 0.9 },
@@ -354,27 +354,27 @@ test('keeps the 0.18 low-price group while removing only the delisted CC TEST gr
   }
 })
 
-test('prices all 14 screenshot models in the relisted 0.49 group with their exact copy IDs', () => {
+test('prices all 14 models in the 0.55 main group with their exact copy IDs', () => {
   const group = TEXT_GROUPS.find((item) => item.id === 'anthropic-0.49')
   const models = getTextModelsForGroup(group.id)
   const expectedPrices = new Map([
-    ['claude-fable-5-2', [3.92, 19.6, 0.098, 23.52]],
-    ['claude-fable-5-1', [4.9, 24.5, 0.1225, 29.4]],
-    ['claude-opus-5-5', [1.96, 9.8, 0.098, 11.76]],
-    ['claude-opus-5', [2.45, 12.25, 0.245, 14.7]],
-    ['claude-opus-4-8', [2.45, 12.25, 0.245, 14.7]],
-    ['claude-opus-4-7', [2.45, 12.25, 0.245, 14.7]],
-    ['claude-opus-4-6', [2.45, 12.25, 0.245, 14.7]],
-    ['claude-opus-4-5', [2.45, 12.25, 0.245, 14.7]],
-    ['claude-sonnet-5-5', [0.98, 4.9, 0.049, 5.88]],
-    ['claude-sonnet-5', [0.98, 4.9, 0.098, 5.88]],
-    ['claude-sonnet-4-6', [1.47, 7.35, 0.147, 8.82]],
-    ['claude-haiku-5-5', [0.049, 0.245, 0.0049, 0.294]],
-    ['claude-haiku-4-5', [0.49, 2.45, 0.049, 2.94]],
-    ['claude-fable-5', [4.9, 24.5, 0.49, 29.4]],
+    ['claude-fable-5-2', [4.4, 22, 0.11, 26.4]],
+    ['claude-fable-5-1', [5.5, 27.5, 0.1375, 33]],
+    ['claude-opus-5-5', [2.2, 11, 0.11, 13.2]],
+    ['claude-opus-5', [2.75, 13.75, 0.275, 16.5]],
+    ['claude-opus-4-8', [2.75, 13.75, 0.275, 16.5]],
+    ['claude-opus-4-7', [2.75, 13.75, 0.275, 16.5]],
+    ['claude-opus-4-6', [2.75, 13.75, 0.275, 16.5]],
+    ['claude-opus-4-5', [2.75, 13.75, 0.275, 16.5]],
+    ['claude-sonnet-5-5', [1.1, 5.5, 0.055, 6.6]],
+    ['claude-sonnet-5', [1.1, 5.5, 0.11, 6.6]],
+    ['claude-sonnet-4-6', [1.65, 8.25, 0.165, 9.9]],
+    ['claude-haiku-5-5', [0.055, 0.275, 0.0055, 0.33]],
+    ['claude-haiku-4-5', [0.55, 2.75, 0.055, 3.3]],
+    ['claude-fable-5', [5.5, 27.5, 0.55, 33]],
   ])
 
-  assert.equal(group.multiplier, 0.49)
+  assert.equal(group.multiplier, 0.55)
   assert.deepEqual(models.map((model) => model.id), [...expectedPrices.keys()])
 
   for (const model of models) {
@@ -390,7 +390,7 @@ test('prices all 14 screenshot models in the relisted 0.49 group with their exac
 test('prices Claude Sonnet 5.5 in every Anthropic group', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-main', { input: 0.36, output: 1.8, cachedInput: 0.018 }],
-    ['anthropic-0.49', { input: 0.98, output: 4.9, cachedInput: 0.049 }],
+    ['anthropic-0.49', { input: 1.1, output: 5.5, cachedInput: 0.055 }],
     ['anthropic-max', { input: 3, output: 15, cachedInput: 0.15 }],
     ['anthropic-max-external', { input: 3, output: 15, cachedInput: 0.15 }],
   ])
@@ -416,7 +416,7 @@ test('prices Claude Sonnet 5.5 in every Anthropic group', () => {
 test('prices Claude Sonnet 5 at the reduced official baseline in all supported groups', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-main', { input: 0.36, output: 1.8, cachedInput: 0.036, total: 2.16 }],
-    ['anthropic-0.49', { input: 0.98, output: 4.9, cachedInput: 0.098, total: 5.88 }],
+    ['anthropic-0.49', { input: 1.1, output: 5.5, cachedInput: 0.11, total: 6.6 }],
     ['anthropic-max', { input: 3, output: 15, cachedInput: 0.3, total: 18 }],
     ['anthropic-max-external', { input: 3, output: 15, cachedInput: 0.3, total: 18 }],
   ])
@@ -442,7 +442,7 @@ test('prices Claude Sonnet 5 at the reduced official baseline in all supported g
 test('includes Claude Opus 5.5 once at official pricing in every Anthropic group', () => {
   const expectedGroupPrices = new Map([
     ['anthropic-main', { input: 0.72, output: 3.6, cachedInput: 0.036, total: 4.32 }],
-    ['anthropic-0.49', { input: 1.96, output: 9.8, cachedInput: 0.098, total: 11.76 }],
+    ['anthropic-0.49', { input: 2.2, output: 11, cachedInput: 0.11, total: 13.2 }],
     ['anthropic-max', { input: 6, output: 30, cachedInput: 0.3, total: 36 }],
     ['anthropic-max-external', { input: 6, output: 30, cachedInput: 0.3, total: 36 }],
   ])
@@ -470,7 +470,7 @@ test('includes Claude Opus 5.5 once at official pricing in every Anthropic group
   }
 })
 
-test('uses official Fable 5.2 and 5.1 pricing in the 0.49 and two 1.5x CC MAX groups', () => {
+test('uses official Fable 5.2 and 5.1 pricing in the 0.55 and two 1.5x CC MAX groups', () => {
   const ccMaxGroupIds = ['anthropic-max', 'anthropic-max-external']
   const cases = [
     {
@@ -478,14 +478,14 @@ test('uses official Fable 5.2 and 5.1 pricing in the 0.49 and two 1.5x CC MAX gr
       usd: { input: 8, output: 40, cachedInput: 0.2 },
       official: { input: 56, output: 280, cachedInput: 1.4, total: 336 },
       group: { input: 12, output: 60, cachedInput: 0.3, total: 72 },
-      standardGroup: { input: 3.92, output: 19.6, cachedInput: 0.098, total: 23.52 },
+      standardGroup: { input: 4.4, output: 22, cachedInput: 0.11, total: 26.4 },
     },
     {
       id: 'claude-fable-5-1',
       usd: { input: 10, output: 50, cachedInput: 0.25 },
       official: { input: 70, output: 350, cachedInput: 1.75, total: 420 },
       group: { input: 15, output: 75, cachedInput: 0.375, total: 90 },
-      standardGroup: { input: 4.9, output: 24.5, cachedInput: 0.1225, total: 29.4 },
+      standardGroup: { input: 5.5, output: 27.5, cachedInput: 0.1375, total: 33 },
     },
   ]
 
@@ -503,7 +503,7 @@ test('uses official Fable 5.2 and 5.1 pricing in the 0.49 and two 1.5x CC MAX gr
       const [model] = matches
       assert.deepEqual(model.officialUsd, expected.usd)
       assert.equal(model.unavailableMessage, '')
-      assert.equal(group.multiplier, isStandardGroup ? 0.49 : 1.5)
+      assert.equal(group.multiplier, isStandardGroup ? 0.55 : 1.5)
       const price = calculateTextPrice(model.officialUsd, group.multiplier)
       const expectedGroup = isStandardGroup ? expected.standardGroup : expected.group
       for (const field of ['input', 'output', 'cachedInput', 'total']) {
@@ -996,7 +996,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['full', 9.45],
     ['gpt-0.35', 12.25],
     ['anthropic-main', 6.3],
-    ['anthropic-0.49', 17.15],
+    ['anthropic-0.49', 19.25],
     ['anthropic-max', 52.5],
     ['anthropic-max-external', 52.5],
     ['grok-free', 3.5],

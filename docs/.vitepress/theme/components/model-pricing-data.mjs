@@ -129,8 +129,8 @@ export const TEXT_GROUPS = [
   },
   {
     id: 'anthropic-0.49',
-    name: 'Claude 0.49 分组',
-    multiplier: 0.49,
+    name: '主力分组',
+    multiplier: 0.55,
     description: '适合 Claude Code 和 Claude Desktop 日常任务',
     modelIds: ANTHROPIC_STANDARD_MODEL_IDS,
   },

@@ -290,7 +290,7 @@ test('renders verified Qwen and MiMo IDs with RMB prices in their 0.45 groups', 
   }
 })
 
-test('opens Anthropic on the restored 0.18 low-price group while keeping the 0.49 group available', async () => {
+test('opens Anthropic on the existing 0.18 low-price group while keeping the 0.55 main group available', async () => {
   const server = await createServer({
     configFile: false,
     plugins: [vue()],
@@ -318,7 +318,8 @@ test('opens Anthropic on the restored 0.18 low-price group while keeping the 0.4
     const prices = [...opusRow.matchAll(/<strong class="group-price">([^<]+)</g)].map((match) => match[1])
     assert.deepEqual(prices, ['¥0.72', '¥3.60', '¥0.036', '¥4.32'])
     assert.match(html, /0\.18 倍率/)
-    assert.match(html, /Claude 0\.49 分组/)
+    assert.match(html, /主力分组/)
+    assert.match(html, /0\.55 倍率/)
     assert.match(rows.at(-1), /此分组无 Fable 5/)
     assert.doesNotMatch(rows.at(-1), /class="group-price"/)
     assert.doesNotMatch(html, /CCTEST|xcctest/)
@@ -327,7 +328,7 @@ test('opens Anthropic on the restored 0.18 low-price group while keeping the 0.4
   }
 })
 
-test('renders the 14 screenshot models and exact copy IDs in the relisted 0.49 group', async () => {
+test('renders the 14 models and exact copy IDs in the 0.55 main group', async () => {
   const server = await createServer({
     configFile: false,
     plugins: [vue()],
@@ -345,10 +346,10 @@ test('renders the 14 screenshot models and exact copy IDs in the relisted 0.49 g
     ]
     const expectedPrices = {
       group: {
-        'claude-fable-5-2': ['¥3.92', '¥19.60', '¥0.098', '¥23.52'],
-        'claude-opus-5-5': ['¥1.96', '¥9.80', '¥0.098', '¥11.76'],
-        'claude-sonnet-5-5': ['¥0.98', '¥4.90', '¥0.049', '¥5.88'],
-        'claude-fable-5': ['¥4.90', '¥24.50', '¥0.49', '¥29.40'],
+        'claude-fable-5-2': ['¥4.40', '¥22.00', '¥0.11', '¥26.40'],
+        'claude-opus-5-5': ['¥2.20', '¥11.00', '¥0.11', '¥13.20'],
+        'claude-sonnet-5-5': ['¥1.10', '¥5.50', '¥0.055', '¥6.60'],
+        'claude-fable-5': ['¥5.50', '¥27.50', '¥0.55', '¥33.00'],
       },
       official: {
         'claude-fable-5-2': ['¥56.00', '¥280.00', '¥1.40', '¥336.00'],
@@ -390,8 +391,9 @@ test('renders the 14 screenshot models and exact copy IDs in the relisted 0.49 g
       }
       assert.doesNotMatch(html, /NaN|价格待确认|此分组无|claude-sonnet-4-5|CCTEST|xcctest/)
       if (priceMode === 'group') {
-        assert.match(html, /Claude 0\.49 分组/)
-        assert.match(html, /0\.49 倍率/)
+        assert.match(html, /主力分组/)
+        assert.match(html, /0\.55 倍率/)
+        assert.doesNotMatch(html, /Claude 0\.49 分组|0\.49 倍率/)
         assert.match(html, /低价分组1M上下文 缓存高/)
         assert.match(html, /0\.18 倍率/)
         assert.equal([...html.matchAll(/<button\b[^>]*class="[^"]*\bpricing-group-card\b[^"]*"[^>]*>/g)].length, 4)
@@ -511,7 +513,7 @@ test('renders Haiku 5.5 once with both context prices in the same row', async ()
   try {
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
     const expectedGroupPrices = new Map([
-      ['anthropic-0.49', ['¥0.049', '¥0.25', '¥0.25', '¥1.23', '¥0.0049', '¥0.0245', '¥0.29', '¥1.47']],
+      ['anthropic-0.49', ['¥0.055', '¥0.28', '¥0.28', '¥1.38', '¥0.0055', '¥0.0275', '¥0.33', '¥1.65']],
       ['anthropic-max', ['¥0.15', '¥0.75', '¥0.75', '¥3.75', '¥0.015', '¥0.075', '¥0.90', '¥4.50']],
       ['anthropic-max-external', ['¥0.15', '¥0.75', '¥0.75', '¥3.75', '¥0.015', '¥0.075', '¥0.90', '¥4.50']],
     ])
