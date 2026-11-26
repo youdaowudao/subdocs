@@ -7,7 +7,7 @@
 
 技术选型：Go 1.25 + Wails v2（WebView2）。不需要管理员权限；系统缺少 WebView2 时弹出中文提示并打开微软下载页。
 
-## Windows 1.2.3（2026-11-26，候选）
+## Windows 1.2.3（2026-11-26）
 
 - 修复 Microsoft Store 安装的 Claude 桌面版被误判为未安装：官网版和商店版使用不同的 MSIX 包身份；用 Windows 当前用户的应用注册信息定位配置，不再以残留目录为安装依据。
 - 同一操作复用检测结果；区分检测失败与未安装。关闭桌面版同时检查官方包身份和程序所在安装目录，保留独立 Claude Code CLI。
@@ -99,7 +99,7 @@
 
 ## Claude 桌面版（Windows）
 
-品牌行右侧的「Codex / Claude」两个标签切换主入口，Claude 页用陶土橙主题，复用同一张状态卡、输入框和主按钮。1.2.3 候选检测官网 MSIX `Claude_pzs8sxrjxfjjc` 和微软商店 MSIX `AnthropicPBC.Claude_fnn82j28hfe8t`，旧的 `%LOCALAPPDATA%\AnthropicClaude` 安装不处理。
+品牌行右侧的「Codex / Claude」两个标签切换主入口，Claude 页用陶土橙主题，复用同一张状态卡、输入框和主按钮。1.2.3 检测官网 MSIX `Claude_pzs8sxrjxfjjc` 和微软商店 MSIX `AnthropicPBC.Claude_fnn82j28hfe8t`，旧的 `%LOCALAPPDATA%\AnthropicClaude` 安装不处理。
 
 - **检测**：Windows 原生 API 查询当前用户已注册的两个官方包家族。未安装时显示下载入口；查询失败或同时检测到两个包且无法确定目标时显示检测失败，不写任何配置。未启动过的已注册应用也能定位；配置目录残留不代表已安装。
 - **连接流程**：`/v1/usage` 检查密钥（同 Codex）→ `GET /v1/models` → 只留官方格式的 Fable、Opus、Sonnet、Haiku 模型（`^claude-(fable|opus|sonnet|haiku)-主版本(-次版本)?(-8位日期)?$`，同一版本有不带日期的就去掉带日期的；`claude-opus-5.5`、大小写不对、`[1m]`、`-thinking`、带前缀的一律丢弃，不改写），顺序 Fable、Opus、Sonnet、Haiku，同系列新版本在前，第一条是 Claude 的默认模型。一个都没有就提示换分组，不写入。

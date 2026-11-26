@@ -32,7 +32,7 @@ irm https://docs.usegoodai.com/install/helper.ps1 | iex
 irm https://docs.usegoodai.com/install/claude.ps1 | iex
 ```
 
-粘贴 Key 后先接入桌面版；已安装 Claude Code CLI 时，用同一个 Key 自动一起接入，未安装时安静跳过。命令下载当前 Windows 助手，运行无需窗口的入口，与窗口共用密钥检查、模型筛选、备份及配置写入逻辑；不要求 WebView2。临时程序运行后清理。脚本入口自 1.1.16 起保持，Windows 1.2.3 候选兼容官网及微软商店版本，Mac 助手 1.1.15 不变；不提供 Mac 或 Linux 的 Claude 接入脚本。
+粘贴 Key 后先接入桌面版；已安装 Claude Code CLI 时，用同一个 Key 自动一起接入，未安装时安静跳过。命令下载当前 Windows 助手，运行无需窗口的入口，与窗口共用密钥检查、模型筛选、备份及配置写入逻辑；不要求 WebView2。临时程序运行后清理。脚本入口自 1.1.16 起保持，Windows 1.2.3 兼容官网及微软商店版本，Mac 助手 1.1.15 不变；不提供 Mac 或 Linux 的 Claude 接入脚本。
 
 ## Windows
 
