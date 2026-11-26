@@ -45,6 +45,9 @@ jobs:
           curl -fL --retry 3 -o "$RUNNER_TEMP/agy.tar.gz" https://storage.googleapis.com/antigravity-public/antigravity-hub/2.35.2-4585983447007232/linux-x64/Antigravity.tar.gz
           sha256sum "$RUNNER_TEMP/agy.tar.gz" | tee "$RUNNER_TEMP/agy-evidence/official-package.sha256"
           tar -xzf "$RUNNER_TEMP/agy.tar.gz" -C "$RUNNER_TEMP/agy"
+          # Ubuntu 24.04 requires the official Chromium setuid sandbox helper. Keep sandbox enabled.
+          sudo chown root:root "$RUNNER_TEMP/agy/Antigravity-x64/chrome-sandbox"
+          sudo chmod 4755 "$RUNNER_TEMP/agy/Antigravity-x64/chrome-sandbox"
           export AGY_TEST_APP="$RUNNER_TEMP/agy/Antigravity-x64/antigravity"
           export AGY_TEST_EVIDENCE="$RUNNER_TEMP/agy-evidence"
           export AGY_TEST_INTERACT="$PWD/tools/antigravity_ui_linux.sh"
@@ -81,9 +84,10 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/candidate","$env:RUNNER_TEMP/agy-evidence" | Out-Null
-          python build.py "$env:RUNNER_TEMP/candidate/1.UseGoodAI中转快速接入助手.exe"
+          python -X utf8 build.py "$env:RUNNER_TEMP/candidate/1.UseGoodAI中转快速接入助手.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go test -count=1 -timeout=5m ./connect
+          $env:QUICK_CONNECT_EXE="$env:RUNNER_TEMP/candidate/1.UseGoodAI中转快速接入助手.exe"
+          go test -count=1 -timeout=5m ./connect ./tools/resources
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item tools/antigravity-windows-readme.txt "$env:RUNNER_TEMP/candidate/使用说明.txt"
       - uses: actions/upload-artifact@v5

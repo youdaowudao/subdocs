@@ -8,7 +8,7 @@ for i in $(seq 1 90); do
 done
 [ -n "$wid" ] || { echo 'No visible Antigravity window'; exit 1; }
 xdotool windowactivate --sync "$wid" || xdotool windowfocus --sync "$wid"
-sleep 6
+sleep 15
 eval "$(xdotool getwindowgeometry --shell "$wid")"
 import -window root "$AGY_TEST_EVIDENCE/before.png" || true
 xdotool mousemove --window "$wid" "$((WIDTH * 55 / 100))" "$((HEIGHT - 90))" click 1

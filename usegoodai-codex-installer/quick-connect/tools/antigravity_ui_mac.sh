@@ -4,7 +4,7 @@ for i in $(seq 1 60); do
   if ps -p "$AGY_TEST_PID" >/dev/null && osascript -e 'tell application "System Events" to exists process "Antigravity"' 2>/dev/null | grep -qx true; then break; fi
   sleep 1
 done
-sleep 6
+sleep 20
 /usr/sbin/screencapture -x "$AGY_TEST_EVIDENCE/before.png" || true
 # No accessibility permission bypass: report the runner limitation if denied.
 osascript <<'APPLESCRIPT'
