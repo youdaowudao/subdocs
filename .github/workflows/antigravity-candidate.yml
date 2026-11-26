@@ -86,9 +86,6 @@ jobs:
           New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/candidate","$env:RUNNER_TEMP/agy-evidence" | Out-Null
           python -X utf8 build.py "$env:RUNNER_TEMP/candidate/1.UseGoodAI中转快速接入助手.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:QUICK_CONNECT_EXE="$env:RUNNER_TEMP/candidate/1.UseGoodAI中转快速接入助手.exe"
-          go test -count=1 -timeout=5m ./connect ./tools/resources
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item tools/antigravity-windows-readme.txt "$env:RUNNER_TEMP/candidate/使用说明.txt"
       - uses: actions/upload-artifact@v5
         with:
@@ -97,6 +94,16 @@ jobs:
             ${{ runner.temp }}/candidate/*.exe
             ${{ runner.temp }}/candidate/使用说明.txt
           retention-days: 30
+      - name: Windows 原生回归与候选资源检查
+        shell: pwsh
+        run: |
+          # Same native package reference as the existing Windows workflow,
+          # avoiding the x64-emulated PowerShell startup timeout.
+          $families = @(@('Claude','AnthropicPBC.Claude') | ForEach-Object { Get-AppxPackage -Name $_ } | Select-Object -ExpandProperty PackageFamilyName -Unique)
+          $env:CLAUDE_TEST_REGISTERED_FAMILIES = if ($families.Count) { $families -join ' ' } else { 'none' }
+          $env:QUICK_CONNECT_EXE="$env:RUNNER_TEMP/candidate/1.UseGoodAI中转快速接入助手.exe"
+          go test -count=1 -timeout=5m ./connect ./tools/resources
+          exit $LASTEXITCODE
       - name: Windows 11 桌面 x64 App 原生接入
         shell: pwsh
         run: |
