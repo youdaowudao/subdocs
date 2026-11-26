@@ -154,6 +154,8 @@ func planFallback(raw string) fallbackPlan {
 		return fallbackPlan{tutorial: "无法确认这条链接的导入目标。点「确定」打开教程网站，按对应工具的步骤操作。"}
 	case link.App == connect.LinkAppImage:
 		return fallbackPlan{tutorial: "点「确定」打开教程网站，按生图工具的步骤导入画图密钥。"}
+	case link.App == connect.LinkAppAntigravity:
+		return fallbackPlan{tutorial: "点「确定」打开教程网站，按教程接入 Antigravity App。"}
 	case link.App == connect.LinkAppClaude:
 		return fallbackPlan{tutorial: "点「确定」打开教程网站，按教程接入 Claude。"}
 	default:

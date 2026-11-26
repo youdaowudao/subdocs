@@ -192,9 +192,9 @@ footer{margin-top:12px}
 .shell[data-tool="image"] .status[data-state="other"] .status-icon,.shell[data-tool="models"] .status[data-state="other"] .status-icon{background:rgba(245,158,11,.15);color:#d97706}
 
 /* Codex / Claude 两个主入口：品牌行右侧的分段按钮 */
-.brand{justify-content:flex-start}
-.apps{margin-left:auto;display:flex;padding:3px;border-radius:11px;background:rgba(15,23,42,.06);border:1px solid var(--border)}
-.app-tab{height:28px;padding:0 12px;border:0;border-radius:8px;background:none;font-size:13px;font-weight:700;color:var(--muted);transition:background .2s,color .2s,box-shadow .2s}
+.brand{justify-content:flex-start;flex-wrap:wrap}
+.apps{width:100%;margin-left:0;display:flex;padding:3px;border-radius:11px;background:rgba(15,23,42,.06);border:1px solid var(--border)}
+.app-tab{flex:1;height:28px;padding:0 12px;border:0;border-radius:8px;background:none;font-size:13px;font-weight:700;color:var(--muted);transition:background .2s,color .2s,box-shadow .2s}
 .app-tab:hover:not(:disabled){color:var(--fg)}
 .app-tab:disabled{opacity:.6}
 .app-tab[aria-pressed="true"]{background:#fff;color:var(--primary-ink);box-shadow:0 2px 6px -2px rgba(15,23,42,.25)}
@@ -230,3 +230,5 @@ footer{margin-top:12px}
 .shell[data-tool="claude"] .status-name{color:#a34e2d}
 #go-claude:hover:not(:disabled){border-color:#d97757}
 .status-text code.hint{font:12px/1.4 "Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif}
+
+.shell[data-tool="antigravity"] .status[data-state="ok"] .status-icon .i-ok,.shell[data-tool="antigravity"] .status[data-state="none"] .status-icon .i-none,.shell[data-tool="antigravity"] .status[data-state="other"] .status-icon .i-other{display:block}

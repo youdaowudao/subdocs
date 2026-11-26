@@ -11,12 +11,14 @@ void stopApplication(void);
 import "C"
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
+	"usegoodai-quick-connect/connect"
 )
 
 const terminalScript = `on run argv
@@ -30,22 +32,32 @@ const alertScript = `on run argv
     display alert "UseGoodAI中转快速接入助手" message (item 1 of argv) as critical
 end run`
 
+const chooseAppScript = `display dialog "选择要接入的软件" with title "UseGoodAI中转快速接入助手" buttons {"取消", "Codex", "Antigravity"} default button "Codex" cancel button "取消"
+return button returned of result`
+
 const chooseTargetScript = `display dialog "从旧版网站收到的密钥需要先选择用途。" with title "选择要导入密钥的工具" buttons {"取消", "Codex", "生图工具"} default button "取消" cancel button "取消"
 return button returned of result`
 
 // Cocoa needs the main thread.
 func init() { runtime.LockOSThread() }
 
+var serviceBaseURL = connect.BaseURL
+
 var (
-	assistant *Assistant
-	events    sync.WaitGroup
-	clock     sync.Mutex
-	lastEvent time.Time
-	lastLink  time.Time
-	handled   bool
+	assistant   *Assistant
+	antigravity *connect.Antigravity
+	events      sync.WaitGroup
+	clock       sync.Mutex
+	lastEvent   time.Time
+	lastLink    time.Time
+	handled     bool
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--antigravity" {
+		os.Exit(connect.RunAntigravityCommand(os.Args[2:], os.Stdin, os.Stdout, connect.NewAntigravity(serviceBaseURL)))
+	}
+	antigravity = connect.NewAntigravity(serviceBaseURL)
 	executable, err := os.Executable()
 	home, homeErr := os.UserHomeDir()
 	if err != nil || homeErr != nil {
@@ -62,7 +74,15 @@ func main() {
 			app := filepath.Join(filepath.Dir(executable), "..", "..", "..", "2.UseGoodAI生图工具.app")
 			return exec.Command("/usr/bin/open", app).Run()
 		},
-		ChooseTarget:   chooseTarget,
+		ChooseTarget: chooseTarget,
+		ImportAntigravity: func(link connect.ImportLink) {
+			result := antigravity.Connect(context.Background(), link.Key, link.Name, "")
+			if result.Tone != connect.ToneError {
+				opened := antigravity.Open("")
+				result.Message += "\n" + opened.Message
+			}
+			showAlert(result.Message)
+		},
 		HandoffTimeout: 5 * time.Minute,
 	}
 	clock.Lock()
@@ -138,7 +158,23 @@ func goOpenApplication() {
 		linked := !lastLink.Before(at.Add(-time.Second))
 		clock.Unlock()
 		if !linked {
-			assistant.Open()
+			output, err := exec.Command("/usr/bin/osascript", "-e", chooseAppScript).Output()
+			if err != nil {
+				return
+			}
+			switch string(output) {
+			case "Codex\n":
+				assistant.Open()
+			case "Antigravity\n":
+				executable, err := os.Executable()
+				if err != nil {
+					showAlert(MessageOpenFailed)
+					return
+				}
+				if err = openTerminal(shellQuote(executable) + " --antigravity menu"); err != nil {
+					showAlert(MessageOpenFailed + err.Error())
+				}
+			}
 		}
 	}()
 }

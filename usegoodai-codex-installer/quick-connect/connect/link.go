@@ -28,9 +28,10 @@ type ImportLink struct {
 }
 
 const (
-	LinkAppCodex  = "codex"
-	LinkAppClaude = "claude"
-	LinkAppImage  = "image"
+	LinkAppCodex       = "codex"
+	LinkAppClaude      = "claude"
+	LinkAppImage       = "image"
+	LinkAppAntigravity = "antigravity"
 )
 
 const maxLinkLength = 4096
@@ -71,9 +72,9 @@ func ParseImportLink(raw string) (ImportLink, LinkProblem) {
 	switch {
 	case app == "":
 		return ImportLink{}, LinkIncomplete
-	case app == LinkAppImage && version == 1:
+	case (app == LinkAppImage || app == LinkAppAntigravity) && version == 1:
 		return ImportLink{}, LinkUnsupported
-	case app != LinkAppCodex && app != LinkAppClaude && app != LinkAppImage:
+	case app != LinkAppCodex && app != LinkAppClaude && app != LinkAppImage && app != LinkAppAntigravity:
 		return ImportLink{}, LinkUnsupported
 	}
 	for name := range values {

@@ -26,6 +26,9 @@ const singleInstanceID = "usegoodai-quick-connect-5c0f2a7e"
 var serviceBaseURL = connect.BaseURL
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--antigravity" {
+		os.Exit(connect.RunAntigravityCommand(os.Args[2:], os.Stdin, os.Stdout, connect.NewAntigravity(serviceBaseURL)))
+	}
 	if len(os.Args) == 2 && os.Args[1] == "--claude-connect" {
 		os.Exit(runClaudeCommand(os.Stdin, os.Stdout))
 	}

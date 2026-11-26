@@ -1,0 +1,168 @@
+name: Antigravity App 三平台候选实测
+on:
+  workflow_dispatch:
+  push:
+    branches: [actions-test]
+    paths:
+      - 'usegoodai-codex-installer/quick-connect/**'
+      - 'usegoodai-codex-installer/desktop/**'
+      - '.github/workflows/antigravity-candidate.yml'
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: usegoodai-codex-installer/quick-connect
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: usegoodai-codex-installer/quick-connect/go.mod
+          cache: false
+      - name: Linux 单元回归及候选命令
+        run: |
+          go test -count=1 ./connect ./macapp
+          mkdir -p "$RUNNER_TEMP/candidate" "$RUNNER_TEMP/agy-evidence"
+          CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '-s -w' -o "$RUNNER_TEMP/candidate/usegoodai-antigravity-linux-x64" .
+          "$RUNNER_TEMP/candidate/usegoodai-antigravity-linux-x64" version
+          cp tools/antigravity-linux-readme.txt "$RUNNER_TEMP/candidate/使用说明.txt"
+          tar -czf "$RUNNER_TEMP/usegoodai-antigravity-linux-x64.tar.gz" -C "$RUNNER_TEMP/candidate" .
+      - uses: actions/upload-artifact@v5
+        with:
+          name: Antigravity-Linux-x64-候选
+          path: ${{ runner.temp }}/usegoodai-antigravity-linux-x64.tar.gz
+          retention-days: 30
+      - name: 安装并打开官方 Linux App
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xdotool openbox imagemagick
+          mkdir "$RUNNER_TEMP/agy"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/agy.tar.gz" https://storage.googleapis.com/antigravity-public/antigravity-hub/2.35.2-4585983447007232/linux-x64/Antigravity.tar.gz
+          sha256sum "$RUNNER_TEMP/agy.tar.gz" | tee "$RUNNER_TEMP/agy-evidence/official-package.sha256"
+          tar -xzf "$RUNNER_TEMP/agy.tar.gz" -C "$RUNNER_TEMP/agy"
+          export AGY_TEST_APP="$RUNNER_TEMP/agy/Antigravity-x64/antigravity"
+          export AGY_TEST_EVIDENCE="$RUNNER_TEMP/agy-evidence"
+          export AGY_TEST_INTERACT="$PWD/tools/antigravity_ui_linux.sh"
+          xvfb-run -a -s '-screen 0 1440x960x24' bash -c 'openbox >/dev/null 2>&1 & wm=$!; trap "kill $wm 2>/dev/null || true" EXIT; go test -count=1 -timeout=5m -run "^TestAntigravityDesktop$" -v ./connect'
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: Antigravity-Linux-实测记录
+          path: ${{ runner.temp }}/agy-evidence
+          if-no-files-found: ignore
+  windows:
+    runs-on: windows-11-arm
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: usegoodai-codex-installer/quick-connect
+    env:
+      GOARCH: amd64
+    steps:
+      - run: git config --global core.autocrlf false
+        working-directory: .
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: usegoodai-codex-installer/quick-connect/go.mod
+          cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: 候选 EXE 与原生回归
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/candidate","$env:RUNNER_TEMP/agy-evidence" | Out-Null
+          python build.py "$env:RUNNER_TEMP/candidate/1.UseGoodAI中转快速接入助手.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go test -count=1 -timeout=5m ./connect
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item tools/antigravity-windows-readme.txt "$env:RUNNER_TEMP/candidate/使用说明.txt"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: Antigravity-Windows-x64-候选
+          path: |
+            ${{ runner.temp }}/candidate/*.exe
+            ${{ runner.temp }}/candidate/使用说明.txt
+          retention-days: 30
+      - name: Windows 11 桌面 x64 App 原生接入
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-CimInstance Win32_OperatingSystem | Format-List Caption,Version,OSArchitecture,ProductType
+          if ((Get-CimInstance Win32_OperatingSystem).ProductType -ne 1) { throw 'Windows Server is prohibited' }
+          $installer = Join-Path $env:RUNNER_TEMP 'Antigravity-x64.exe'
+          curl.exe -fL --retry 3 -o $installer 'https://storage.googleapis.com/antigravity-public/antigravity-hub/2.35.2-4585983447007232/windows-x64/Antigravity-x64.exe'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-FileHash $installer | Format-List | Out-File "$env:RUNNER_TEMP/agy-evidence/official-package.sha256"
+          $p=Start-Process $installer -ArgumentList '/S' -PassThru
+          if (-not $p.WaitForExit(240000)) { throw 'Official installer did not complete' }
+          if ($p.ExitCode -ne 0) { throw "Installer exit $($p.ExitCode)" }
+          $app=@("$env:LOCALAPPDATA/Programs/Antigravity/Antigravity.exe","$env:ProgramFiles/Antigravity/Antigravity.exe","${env:ProgramFiles(x86)}/Antigravity/Antigravity.exe") | Where-Object {Test-Path $_} | Select-Object -First 1
+          if (-not $app) { $app=Get-ChildItem "$env:LOCALAPPDATA/Programs" -Filter Antigravity.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1 }
+          if (-not $app) {throw 'Official App not found after installation'}
+          Get-Process Antigravity -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
+          $env:AGY_TEST_APP=$app
+          $env:AGY_TEST_EVIDENCE="$env:RUNNER_TEMP/agy-evidence"
+          $env:AGY_TEST_INTERACT=(Resolve-Path tools/antigravity_ui_windows.ps1).Path
+          go test -count=1 -timeout=5m -run '^TestAntigravityDesktop$' -v ./connect
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: Antigravity-Windows-实测记录
+          path: ${{ runner.temp }}/agy-evidence
+          if-no-files-found: ignore
+  mac:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: usegoodai-codex-installer/quick-connect
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: usegoodai-codex-installer/quick-connect/go.mod
+          cache: false
+      - name: Apple 芯片回归及签名候选
+        run: |
+          test "$(uname -m)" = arm64
+          go test -count=1 ./connect ./macapp
+          python3 ../desktop/build.py --mac-only
+          mkdir -p "$RUNNER_TEMP/candidate" "$RUNNER_TEMP/agy-evidence"
+          python3 ../desktop/sign_mac.py ../dist/desktop/download/usegoodai-quick-connect-mac-arm64.zip "$RUNNER_TEMP/candidate/usegoodai-quick-connect-mac-arm64.zip"
+          cp tools/antigravity-mac-readme.txt "$RUNNER_TEMP/candidate/使用说明.txt"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: Antigravity-Mac-arm64-候选
+          path: ${{ runner.temp }}/candidate/
+          retention-days: 30
+      - name: 打开官方 Apple 芯片 App 并发送测试
+        run: |
+          mkdir "$RUNNER_TEMP/agy-dmg"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/agy.dmg" https://storage.googleapis.com/antigravity-public/antigravity-hub/2.35.2-4585983447007232/darwin-arm/Antigravity.dmg
+          shasum -a 256 "$RUNNER_TEMP/agy.dmg" > "$RUNNER_TEMP/agy-evidence/official-package.sha256"
+          hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/agy-dmg" "$RUNNER_TEMP/agy.dmg"
+          trap 'hdiutil detach "$RUNNER_TEMP/agy-dmg" || true' EXIT
+          ditto "$RUNNER_TEMP/agy-dmg/Antigravity.app" "$RUNNER_TEMP/Antigravity.app"
+          export AGY_TEST_APP="$RUNNER_TEMP/Antigravity.app"
+          export AGY_TEST_EVIDENCE="$RUNNER_TEMP/agy-evidence"
+          export AGY_TEST_INTERACT="$PWD/tools/antigravity_ui_mac.sh"
+          go test -count=1 -timeout=5m -run '^TestAntigravityDesktop$' -v ./connect
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: Antigravity-Mac-实测记录
+          path: ${{ runner.temp }}/agy-evidence
+          if-no-files-found: ignore

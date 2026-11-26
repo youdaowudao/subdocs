@@ -35,6 +35,14 @@ const TOOLS = {
     placeholder: '也可以粘贴 Claude 分组的 API Key',
     restoreTip: '取消中转站连接：Claude 改回用 Anthropic 官方账号登录，并关闭正在运行的 Claude。',
   },
+  antigravity: {
+    label: 'Antigravity App',
+    title: '将 Antigravity App 接入 UseGoodAI',
+    steps: '选 Gemini 分组的密钥，点「一键导入 Antigravity」。',
+    button: '一键连接 Antigravity',
+    placeholder: '也可以粘贴 Gemini 分组的 API Key',
+    restoreTip: '撤销本助手写入的接入配置，完全退出 App 后重新打开即可。',
+  },
   models: {
     label: '国产模型',
     button: '导入国产模型',
@@ -58,7 +66,7 @@ const CONFIRM_MS = 6000;
 
 let busy = false;
 let tool = 'codex';
-let state = { status: null, image: null, models: null, claude: null };
+let state = { status: null, image: null, models: null, claude: null, antigravity: null };
 let confirming = null; // 'import' or 'remove' while waiting for a second click
 let confirmTimer = 0;
 const queuedLinks = [];
@@ -125,6 +133,13 @@ function cardFor() {
       key: connected ? (claude.key || '') + (claude.models ? ` · ${claude.models} 个模型` : '') : '',
     };
   }
+  if (tool === 'antigravity') {
+    const status = state.antigravity || { state: 'none' };
+    const connected = status.state === 'usegoodai';
+    return { state: connected ? 'ok' : status.state === 'none' ? 'none' : 'other',
+      title: connected ? '已保存 UseGoodAI 配置' : status.state === 'none' ? '还没连接' : '接入配置已变更',
+      name: connected ? status.name || '' : '', key: connected ? (status.key || '') + ' · ' + status.models + ' 个模型' : '安装官方 Antigravity App 2.15 或以上', download: !connected };
+  }
   const status = state.status || { state: 'none' };
   const connected = status.state === 'usegoodai';
   if (status.state === 'none' && state.status && !status.appInstalled) {
@@ -149,6 +164,7 @@ function renderCard() {
   name.title = card.name;
   name.hidden = card.name === '';
   $('get-app').hidden = !card.download;
+  $('get-group').hidden = tool === 'antigravity';
   $('status-key').classList.toggle('hint', Boolean(card.download));
 }
 
@@ -171,14 +187,14 @@ function renderEntries() {
 
   // The image tool and the domestic models belong to Codex, so the Claude
   // page shows none of the entries.
-  $('tools').hidden = tool === 'claude';
-  $('tools-group').hidden = tool === 'claude';
-  $('go-codex').hidden = tool === 'codex' || tool === 'claude';
+  $('tools').hidden = tool === 'claude' || tool === 'antigravity';
+  $('tools-group').hidden = tool === 'claude' || tool === 'antigravity';
+  $('go-codex').hidden = tool === 'codex' || tool === 'claude' || tool === 'antigravity';
   for (const name of ['image', 'models']) {
     $(`go-${name}`).hidden = name === tool;
   }
-  for (const name of ['codex', 'claude']) {
-    const pressed = name === 'claude' ? tool === 'claude' : tool !== 'claude';
+  for (const name of ['codex', 'claude', 'antigravity']) {
+    const pressed = name === 'codex' ? ['codex','image','models'].includes(tool) : name === tool;
     $(`tab-${name}`).setAttribute('aria-pressed', String(pressed));
   }
 }
@@ -246,7 +262,7 @@ function render() {
   connectButton.classList.toggle('confirm', confirming === 'import');
   removeButton.hidden = tool !== 'models' || !state.models || state.models.state === 'none';
   removeButton.textContent = confirming === 'remove' ? '确认移除（会关闭 Codex）' : '移除国产模型';
-  $('restore-anchor').hidden = tool !== 'codex' && tool !== 'claude';
+  $('restore-anchor').hidden = tool !== 'codex' && tool !== 'claude' && tool !== 'antigravity';
   if (TOOLS[tool].restoreTip) $('restore-tip').textContent = TOOLS[tool].restoreTip;
 }
 
@@ -255,6 +271,7 @@ function absorb(result) {
   if (result.image) state.image = result.image;
   if (result.models) state.models = result.models;
   if (result.claude) state.claude = result.claude;
+  if (result.antigravity) state.antigravity = result.antigravity;
 }
 
 function showNotice(tone, text, action, tag) {
@@ -281,7 +298,7 @@ function showResult(result) {
 function setBusy(on, label) {
   busy = on;
   for (const button of [connectButton, restoreButton, removeButton, $('go-codex'), $('go-image'), $('go-models'),
-    $('tab-codex'), $('tab-claude'), $('get-official'), $('get-group'), $('assistant-update-button'), chineseButton]) {
+    $('tab-codex'), $('tab-claude'), $('tab-antigravity'), $('get-official'), $('get-group'), $('assistant-update-button'), chineseButton]) {
     button.disabled = on;
   }
   connectButton.classList.toggle('busy', on && Boolean(label));
@@ -314,14 +331,14 @@ function setTool(next) {
   shell.classList.add('activating');
   setTimeout(() => shell.classList.remove('activating'), 950);
   render();
-  if (tool === 'codex' || tool === 'claude') {
+  if (tool === 'codex' || tool === 'claude' || tool === 'antigravity') {
     $('notice').hidden = true;
   } else {
     const openSite = tool === 'image' && !savedImageKey() ? 'open-site' : '';
     showNotice(tool, guideFor(tool), openSite, TOOLS[tool].tag);
   }
   if ((tool === 'image' && !savedImageKey()) || tool === 'claude') keyInput.focus();
-  if (tool === 'claude' || tool === 'codex') fillFromClipboard();
+  if (tool === 'claude' || tool === 'codex' || tool === 'antigravity') fillFromClipboard();
 }
 
 async function run(label, notice, action) {
@@ -358,6 +375,10 @@ function submit() {
   }
   if (tool === 'image') {
     run('正在安装…', '正在检查密钥能否画图…', () => bridge().InstallImage(key));
+    return;
+  }
+  if (tool === 'antigravity') {
+    run('正在连接…', '正在检查 Gemini 分组的可用模型…', () => bridge().ConnectAntigravity(key));
     return;
   }
   if (tool === 'claude') {
@@ -403,6 +424,11 @@ async function importLink({ raw, imageWasOpen }) {
       setTool('claude');
       const notice = name ? `正在把「${name}」接入 Claude…` : '正在把密钥接入 Claude…';
       await run('正在连接…', notice, () => bridge().ImportClaude(parsed.key, name));
+      break;
+    }
+    case 'antigravity': {
+      setTool('antigravity');
+      await run('正在连接…', '正在接入 Antigravity…', () => bridge().ImportAntigravity(parsed.key, name));
       break;
     }
     case 'codex': {
@@ -468,7 +494,7 @@ for (const name of ['codex', 'image', 'models']) {
   });
 }
 
-for (const name of ['codex', 'claude']) {
+for (const name of ['codex', 'claude', 'antigravity']) {
   $(`tab-${name}`).addEventListener('click', () => {
     tabsUsed = true;
     if (!busy) setTool(name);
@@ -490,7 +516,7 @@ function hintTab(name) {
   tab.addEventListener('animationend', () => tab.classList.remove('hint'), { once: true });
 }
 
-$('get-official').addEventListener('click', () => bridge().OpenDownload(tool === 'claude' ? 'claude' : 'codex'));
+$('get-official').addEventListener('click', () => bridge().OpenDownload(tool === 'antigravity' ? 'antigravity' : tool === 'claude' ? 'claude' : 'codex'));
 
 // The QQ group's files carry both installers, for anyone who cannot reach
 // the official sites.
@@ -499,7 +525,7 @@ $('get-group').addEventListener('click', () => {
   qq.classList.remove('flash');
   void qq.offsetWidth;
   qq.classList.add('flash');
-  const app = tool === 'claude' ? 'Claude' : 'ChatGPT';
+  const app = tool === 'antigravity' ? 'Antigravity' : tool === 'claude' ? 'Claude' : 'ChatGPT';
   showNotice('info', `打不开官网时，进 QQ 群在「群文件」里下载 ${app} 安装包：点下方「加入群聊」，或复制群号 ${$('version').dataset.qq || '1020015031'} 搜索加群。`);
 });
 
@@ -515,7 +541,8 @@ removeButton.addEventListener('click', () => {
 
 restoreButton.addEventListener('click', () => {
   if (busy) return;
-  if (tool === 'claude') run('正在恢复…', '正在恢复 Claude 官方登录…', () => bridge().RestoreClaude());
+  if (tool === 'antigravity') run('正在恢复…', '正在恢复 Antigravity 官方登录…', () => bridge().RestoreAntigravity());
+  else if (tool === 'claude') run('正在恢复…', '正在恢复 Claude 官方登录…', () => bridge().RestoreClaude());
   else run('正在恢复…', '正在恢复官方登录…', () => bridge().Restore());
 });
 
@@ -613,6 +640,7 @@ document.addEventListener('visibilitychange', () => {
   state.image = await app.ImageStatus();
   state.models = await app.ModelsStatus();
   state.claude = await app.ClaudeStatus();
+  state.antigravity = await app.AntigravityStatus();
   render();
   for (const [name, delay] of TAB_HINTS) setTimeout(() => hintTab(name), delay);
   let earlyEvents = [];

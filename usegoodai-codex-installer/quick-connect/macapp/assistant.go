@@ -70,9 +70,10 @@ type Assistant struct {
 	// Alert shows a message without waiting for it to be dismissed.
 	Alert func(message string)
 	// ShowTerminal brings Terminal to the front.
-	ShowTerminal  func()
-	OpenImageTool func() error
-	ChooseTarget  func() string
+	ShowTerminal      func()
+	OpenImageTool     func() error
+	ImportAntigravity func(connect.ImportLink)
+	ChooseTarget      func() string
 
 	// HandoffTimeout bounds how long the key waits for run.command, which
 	// includes the first-run "control Terminal" permission prompt.
@@ -137,6 +138,13 @@ func (a *Assistant) OpenLink(raw string) {
 		link.App = a.ChooseTarget()
 	}
 	switch link.App {
+	case connect.LinkAppAntigravity:
+		if a.ImportAntigravity != nil {
+			a.ImportAntigravity(link)
+		} else {
+			a.Alert(connect.MessageLinkUnsupported)
+		}
+		return
 	case connect.LinkAppImage:
 		a.importImage(link)
 		return

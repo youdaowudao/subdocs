@@ -13,8 +13,9 @@ import (
 // App is the bridge the page calls through window.go.main.App. The page
 // never passes an address: links it may open are fixed here.
 type App struct {
-	ctx     context.Context
-	service *connect.Service
+	ctx         context.Context
+	service     *connect.Service
+	antigravity *connect.Antigravity
 
 	mu              sync.Mutex
 	pendingLinks    []string
@@ -23,7 +24,7 @@ type App struct {
 }
 
 func newApp(service *connect.Service, launchLink string) *App {
-	app := &App{service: service}
+	app := &App{service: service, antigravity: connect.NewAntigravity(service.BaseURL)}
 	if launchLink != "" {
 		app.pendingLinks = append(app.pendingLinks, launchLink)
 	}
@@ -145,6 +146,15 @@ func (a *App) connectClaude(key, name string) connect.Result {
 
 func (a *App) RestoreClaude() connect.Result { return a.service.RestoreClaude() }
 
+func (a *App) AntigravityStatus() connect.AntigravityStatus { return a.antigravity.Status() }
+func (a *App) ConnectAntigravity(key string) connect.AntigravityResult {
+	return a.antigravity.Connect(a.ctx, key, "", "")
+}
+func (a *App) ImportAntigravity(key, name string) connect.AntigravityResult {
+	return a.antigravity.Connect(a.ctx, key, name, "")
+}
+func (a *App) RestoreAntigravity() connect.AntigravityResult { return a.antigravity.Restore() }
+
 // OpenDownload opens the official download page of "codex" (ChatGPT, which
 // carries Codex) or "claude". Addresses are fixed here.
 func (a *App) OpenDownload(app string) {
@@ -153,6 +163,8 @@ func (a *App) OpenDownload(app string) {
 		runtime.BrowserOpenURL(a.ctx, connect.ChatGPTDownloadURL)
 	case "claude":
 		runtime.BrowserOpenURL(a.ctx, connect.ClaudeDownloadURL)
+	case "antigravity":
+		runtime.BrowserOpenURL(a.ctx, connect.AntigravityDownloadURL)
 	}
 }
 
