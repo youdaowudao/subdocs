@@ -26,6 +26,8 @@ class Gateway(BaseHTTPRequestHandler):
             return
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
         print("received local /v1/messages", flush=True)
+        if "test-usg-desktop" in json.dumps(body.get("messages", [])):
+            print("received desktop test conversation", flush=True)
         message = {"id": "msg_local_test", "type": "message", "role": "assistant", "model": body.get("model", "claude-opus-5-5"), "content": [{"type": "text", "text": "Test OK"}], "stop_reason": "end_turn", "stop_sequence": None, "usage": {"input_tokens": 1, "output_tokens": 2}}
         if not body.get("stream"):
             self.send_json(message)

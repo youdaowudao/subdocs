@@ -6,10 +6,21 @@ $os = Get-CimInstance Win32_OperatingSystem
 if ($os.ProductType -ne 1 -or $os.Caption -notmatch 'Windows 11') { throw 'Windows 11 desktop required.' }
 $work = Join-Path $env:RUNNER_TEMP 'claude-desktop-test'
 New-Item -ItemType Directory -Force $work | Out-Null
-$report = [ordered]@{ channel = $Channel; os = $os.Caption; build = $os.BuildNumber; architecture = $env:PROCESSOR_ARCHITECTURE; assistantHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $env:QUICK_CONNECT_EXE).Hash; registered = $false; initialWindow = $false; releaseConfig = $false; processClosed = $false; reopened = $false; modelRequest = $false }
+$report = [ordered]@{ channel = $Channel; os = $os.Caption; build = $os.BuildNumber; architecture = $env:PROCESSOR_ARCHITECTURE; assistantHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $env:QUICK_CONNECT_EXE).Hash; registered = $false; initialWindow = $false; releaseConfig = $false; processClosed = $false; reopened = $false; startupGatewayRequest = $false; modelRequest = $false }
 $package = $null
 $gateway = $null
 $oldGateway = $env:CLAUDE_TEST_LOCAL_GATEWAY
+
+# Reuse the existing real Windows desktop harness's activation and initial
+# privacy screen handling. This is runner setup, not part of Claude's login.
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms, System.Drawing
+$repo = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
+$coreTest = [IO.File]::ReadAllText((Join-Path $repo 'tests/codex-chinese-desktop.ps1'), [Text.Encoding]::UTF8)
+$type = [regex]::Match($coreTest, "(?s)Add-Type -TypeDefinition @'\r?\n(.*?)\r?\n'@")
+Add-Type -TypeDefinition $type.Groups[1].Value
+$ast = [Management.Automation.Language.Parser]::ParseInput($coreTest, [ref]$null, [ref]$null)
+$privacy = $ast.FindAll({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Complete-PrivacyScreen' }, $false) | Select-Object -First 1
+Invoke-Expression $privacy.Extent.Text
 
 function Save-Report { $report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $work 'report.json') -Encoding UTF8 }
 function Desktop-Processes {
@@ -26,7 +37,9 @@ function Wait-Desktop {
   throw 'No actual Claude desktop window appeared.'
 }
 function Open-Desktop {
-  Start-Process explorer.exe -ArgumentList "shell:AppsFolder\$($package.PackageFamilyName)!$appId"
+  [uint32]$id = 0
+  $hr = [CiDesktop]::Launch("$($package.PackageFamilyName)!$appId", '', [ref]$id)
+  if ($hr -lt 0) { throw ('Activation failed 0x{0:X8}' -f $hr) }
   Wait-Desktop
 }
 function Record-Files([string]$Label) {
@@ -49,10 +62,7 @@ function Find-WinGet {
   }
 }
 function Save-Window($Window, [string]$Label) {
-  Add-Type -AssemblyName System.Windows.Forms
-  Add-Type -AssemblyName System.Drawing
-  Add-Type -AssemblyName UIAutomationClient
-  Add-Type -AssemblyName UIAutomationTypes
+  Complete-PrivacyScreen
   $shell = New-Object -ComObject WScript.Shell
   [void]$shell.AppActivate($Window.Id)
   Start-Sleep -Seconds 2
@@ -72,6 +82,8 @@ function Save-Window($Window, [string]$Label) {
 }
 
 try {
+  Complete-PrivacyScreen
+  Save-Report
   if ($Channel -eq 'store') {
     $family = 'AnthropicPBC.Claude_fnn82j28hfe8t'
     $name = 'AnthropicPBC.Claude'
@@ -95,7 +107,8 @@ try {
     $installer = Join-Path $work 'Claude.msix'
     # Official Claude Desktop enterprise deployment link, ARM64.
     Write-Host 'Downloading the official ARM64 Claude MSIX.'
-    Invoke-WebRequest -UseBasicParsing -Uri 'https://claude.ai/api/desktop/win32/arm64/msix/latest/redirect' -OutFile $installer -TimeoutSec 300
+    & curl.exe -fsSL --connect-timeout 20 --max-time 400 'https://claude.ai/api/desktop/win32/arm64/msix/latest/redirect' -o $installer
+    if ($LASTEXITCODE -ne 0) { throw "Official Claude MSIX download failed: $LASTEXITCODE" }
     Add-AppxPackage -Path $installer
     Remove-Item -LiteralPath $installer
   }
@@ -133,31 +146,30 @@ try {
   $report.reopened = $true
   Record-Files 'afterReconnect'
   Save-Window $window 'reopened'
+  if ((Test-Path -LiteralPath $gatewayLog) -and (Select-String -LiteralPath $gatewayLog -Pattern 'received local /v1/messages' -Quiet)) { $report.startupGatewayRequest = $true }
 
   # Attempt a real new chat using the focused Claude window, never typing into
   # another application. The local endpoint records whether it got a message.
-  Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public static class ClaudeForeground {
-  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
-}
-'@
-  $shell = New-Object -ComObject WScript.Shell
-  [void]$shell.AppActivate($window.Id)
+  Complete-PrivacyScreen
+  [void][CiDesktop]::ShowWindowAsync($window.MainWindowHandle, 3)
   [uint32]$foregroundPid = 0
-  [void][ClaudeForeground]::GetWindowThreadProcessId([ClaudeForeground]::GetForegroundWindow(), [ref]$foregroundPid)
+  $deadline = (Get-Date).AddSeconds(30)
+  do {
+    [void][CiDesktop]::SetForegroundWindow($window.MainWindowHandle)
+    [void][CiDesktop]::GetWindowThreadProcessId([CiDesktop]::GetForegroundWindow(), [ref]$foregroundPid)
+    if ($foregroundPid -eq $window.Id) { break }
+    Start-Sleep -Milliseconds 300
+  } while ((Get-Date) -lt $deadline)
   if ($foregroundPid -ne $window.Id) { throw 'Claude did not become the foreground window.' }
   [System.Windows.Forms.SendKeys]::SendWait('^n')
   Start-Sleep -Seconds 2
-  [void][ClaudeForeground]::GetWindowThreadProcessId([ClaudeForeground]::GetForegroundWindow(), [ref]$foregroundPid)
+  [void][CiDesktop]::GetWindowThreadProcessId([CiDesktop]::GetForegroundWindow(), [ref]$foregroundPid)
   if ($foregroundPid -ne $window.Id) { throw 'Claude lost foreground focus.' }
-  [System.Windows.Forms.SendKeys]::SendWait('test')
+  [System.Windows.Forms.SendKeys]::SendWait('test-usg-desktop')
   [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
   $deadline = (Get-Date).AddSeconds(45)
   do {
-    if ((Test-Path -LiteralPath $gatewayLog) -and (Select-String -LiteralPath $gatewayLog -Pattern 'received local /v1/messages' -Quiet)) { $report.modelRequest = $true; break }
+    if ((Test-Path -LiteralPath $gatewayLog) -and (Select-String -LiteralPath $gatewayLog -Pattern 'received desktop test conversation' -Quiet)) { $report.modelRequest = $true; break }
     Start-Sleep -Seconds 1
   } while ((Get-Date) -lt $deadline)
   Save-Window $window 'new-chat'
