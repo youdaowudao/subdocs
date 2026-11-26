@@ -104,7 +104,7 @@
 - **检测**：Windows 原生 API 查询当前用户已注册的两个官方包家族。未安装时显示下载入口；查询失败或同时检测到两个包且无法确定目标时显示检测失败，不写任何配置。未启动过的已注册应用也能定位；配置目录残留不代表已安装。
 - **连接流程**：`/v1/usage` 检查密钥（同 Codex）→ `GET /v1/models` → 只留官方格式的 Fable、Opus、Sonnet、Haiku 模型（`^claude-(fable|opus|sonnet|haiku)-主版本(-次版本)?(-8位日期)?$`，同一版本有不带日期的就去掉带日期的；`claude-opus-5.5`、大小写不对、`[1m]`、`-thinking`、带前缀的一律丢弃，不改写），顺序 Fable、Opus、Sonnet、Haiku，同系列新版本在前，第一条是 Claude 的默认模型。一个都没有就提示换分组，不写入。
 - **写入**（全部成功或全部不改，配置文件和 `_meta.json` 先做 `.bak.时间` 备份，其它字段和顺序保留）：
-  - `deploymentMode: "3p"` 写进三份 `claude_desktop_config.json`：`%LOCALAPPDATA%\Claude-3p\`、`%LOCALAPPDATA%\Claude\`、`Packages\<实际注册的包家族>\LocalCache\Roaming\Claude\`。商店版实际读取位置需经真实客户端验证。
+  - `deploymentMode: "3p"` 写进三份 `claude_desktop_config.json`：`%LOCALAPPDATA%\Claude-3p\`、`%LOCALAPPDATA%\Claude\`、`Packages\<实际注册的包家族>\LocalCache\Roaming\Claude\`。两种真实客户端均已在 Windows 11 ARM 重开并通过写入的配置向本地模拟网关发出启动请求；未单独确认三份模式配置的读取优先级。
   - `%LOCALAPPDATA%\Claude-3p\configLibrary\00000000-0000-4000-8000-00000000600d.json`：网关地址、Bearer、密钥、`modelDiscoveryEnabled: false`、`inferenceModels`。
   - `_meta.json`：登记 `UseGoodAI` 条目，`appliedId` 指向它；CC Switch 等其它条目保留不动。
 - **关闭 Claude**：只结束同一登录会话中既有官方桌面版包身份、又从对应 WindowsApps 安装目录运行的 `claude.exe`，不会把独立 CLI 当成桌面版。
