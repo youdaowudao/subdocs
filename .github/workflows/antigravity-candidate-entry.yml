@@ -1,0 +1,168 @@
+name: Antigravity 候选成品入口复核
+on:
+  push:
+    branches: [actions-test]
+    paths:
+      - '.github/workflows/antigravity-candidate-entry.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+env:
+  # Frozen artifacts from the successful three-platform desktop test.
+  CANDIDATE_RUN: '45849186242'
+jobs:
+  windows:
+    runs-on: windows-11-arm
+    timeout-minutes: 12
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: Antigravity-Windows-x64-候选
+          run-id: ${{ env.CANDIDATE_RUN }}
+          github-token: ${{ github.token }}
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 运行实际交付 EXE 并测试系统导入链接
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          if ((Get-CimInstance Win32_OperatingSystem).ProductType -ne 1) { throw 'Windows Server prohibited' }
+          $evidence=Join-Path $env:RUNNER_TEMP 'entry-evidence'
+          New-Item -ItemType Directory -Force $evidence | Out-Null
+          $exe=(Get-ChildItem -LiteralPath candidate -Filter '*.exe' | Select-Object -First 1).FullName
+          $version=(Get-Item -LiteralPath $exe).VersionInfo.FileVersion
+          if ($version -ne '1.2.4') { throw "Unexpected candidate version $version" }
+          $names=@('AGY_LLM_GATEWAY_URL','AGY_LLM_GATEWAY_API_KEY','AGY_LLM_GATEWAY_WIRE_PROTOCOL','AGY_LLM_GATEWAY_MODELS')
+          $before=@($names | ForEach-Object {[Environment]::GetEnvironmentVariable($_,'User')}) | ConvertTo-Json
+          # Official WebView2 local developer automation, only for this runner.
+          $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS='--remote-debugging-port=19987 --remote-debugging-address=127.0.0.1'
+          $env:AGY_ENTRY_EVIDENCE=$evidence
+          $p=Start-Process -FilePath $exe -PassThru
+          try {
+            $registered=$false
+            for ($i=0;$i -lt 90;$i++) {
+              if (Test-Path 'HKCU:\Software\Classes\usegoodai\shell\open\command') {$registered=$true;break}
+              Start-Sleep -Seconds 1
+            }
+            if (-not $registered) {throw 'Assistant did not register usegoodai protocol'}
+            Start-Process 'usegoodai://import?v=2&app=antigravity&key=sk-fake-candidate-entry-20261127-310e67&name=Actions'
+            @'
+          const fs=require('node:fs'),path=require('node:path');
+          const pause=ms=>new Promise(r=>setTimeout(r,ms));
+          async function main(){
+            let page;
+            for(let i=0;i<90;i++){
+              try{
+                const targets=await (await fetch('http://127.0.0.1:19987/json/list')).json();
+                page=targets.find(t=>t.type==='page'&&t.webSocketDebuggerUrl);
+                if(page)break;
+              }catch{}
+              await pause(1000);
+            }
+            if(!page)throw Error('WebView2 actual renderer unavailable');
+            const ws=new WebSocket(page.webSocketDebuggerUrl);
+            await new Promise((resolve,reject)=>{ws.addEventListener('open',resolve,{once:true});ws.addEventListener('error',reject,{once:true});});
+            let id=0;const pending=new Map();
+            ws.addEventListener('message',ev=>{const msg=JSON.parse(String(ev.data));const p=pending.get(msg.id);if(!p)return;pending.delete(msg.id);if(msg.error)p.reject(Error('CDP error'));else p.resolve(msg.result);});
+            const call=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;pending.set(n,{resolve,reject});ws.send(JSON.stringify({id:n,method,params}));setTimeout(()=>{if(pending.delete(n))reject(Error('CDP timeout'))},10000).unref();});
+            const evaluate=async expression=>(await call('Runtime.evaluate',{expression,returnByValue:true})).result.value;
+            try{
+              let result;
+              for(let i=0;i<60;i++){
+                result=await evaluate("({tool:document.querySelector('#shell')?.dataset.tool,version:document.querySelector('#version')?.textContent,notice:document.querySelector('#notice-text')?.textContent})");
+                if(result?.tool==='antigravity'&&result.version==='1.2.4'&&result.notice?.includes('HTTP 401'))break;
+                await pause(1000);
+              }
+              const shot=await call('Page.captureScreenshot',{format:'png'});
+              fs.writeFileSync(path.join(process.env.AGY_ENTRY_EVIDENCE,'assistant-link.png'),Buffer.from(shot.data,'base64'));
+              if(result?.tool!=='antigravity'||result.version!=='1.2.4'||!result.notice?.includes('HTTP 401'))throw Error('Antigravity link did not produce expected 401: '+JSON.stringify(result));
+              await evaluate("document.querySelector('#tab-codex').click()");
+              if(await evaluate("document.querySelector('#shell').dataset.tool")!=='codex')throw Error('Codex tab regression');
+              await evaluate("document.querySelector('#tab-claude').click()");
+              if(await evaluate("document.querySelector('#shell').dataset.tool")!=='claude')throw Error('Claude tab regression');
+              fs.writeFileSync(path.join(process.env.AGY_ENTRY_EVIDENCE,'result.json'),JSON.stringify(result));
+              console.log('Exact delivery EXE: protocol -> Antigravity tab -> native 401, old tabs preserved.');
+            }finally{ws.close()}
+          }
+          main().catch(e=>{console.error(e.message);process.exitCode=1});
+          '@ | Set-Content -Encoding utf8 "$evidence/verify.cjs"
+            node "$evidence/verify.cjs"
+            if ($LASTEXITCODE -ne 0) {exit $LASTEXITCODE}
+            $after=@($names | ForEach-Object {[Environment]::GetEnvironmentVariable($_,'User')}) | ConvertTo-Json
+            if ($before -ne $after) {throw 'Rejected fake key changed the current user environment'}
+          } finally {
+            Get-Process -ErrorAction SilentlyContinue | Where-Object {$_.Path -eq $exe} | Stop-Process -ErrorAction SilentlyContinue
+            $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=''
+          }
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: Antigravity-Windows-成品入口记录
+          path: ${{ runner.temp }}/entry-evidence/
+          if-no-files-found: ignore
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: Antigravity-Linux-x64-候选
+          run-id: ${{ env.CANDIDATE_RUN }}
+          github-token: ${{ github.token }}
+          path: candidate
+      - name: 实际命令、版本和失败保护
+        run: |
+          mkdir "$RUNNER_TEMP/candidate"
+          tar -xzf candidate/usegoodai-antigravity-linux-x64.tar.gz -C "$RUNNER_TEMP/candidate"
+          exe="$RUNNER_TEMP/candidate/usegoodai-antigravity-linux-x64"
+          test "$("$exe" version)" = 1.0.0
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/profile"
+          set +e
+          printf '%s\n' 'sk-fake-candidate-entry-20261127-310e67' | "$exe" connect > "$RUNNER_TEMP/result.txt"
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/result.txt"
+          test "$code" = 1
+          grep -q 'HTTP 401' "$RUNNER_TEMP/result.txt"
+          test ! -e "$XDG_CONFIG_HOME/UseGoodAI/Antigravity/connection.json"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: Antigravity-Linux-成品入口记录
+          path: ${{ runner.temp }}/result.txt
+  mac:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: Antigravity-Mac-arm64-候选
+          run-id: ${{ env.CANDIDATE_RUN }}
+          github-token: ${{ github.token }}
+          path: candidate
+      - name: 实际签名 App 系统导入链接及拒绝假 Key
+        run: |
+          mkdir "$RUNNER_TEMP/candidate" "$RUNNER_TEMP/entry-evidence"
+          ditto -x -k candidate/usegoodai-quick-connect-mac-arm64.zip "$RUNNER_TEMP/candidate"
+          app="$(find "$RUNNER_TEMP/candidate" -maxdepth 1 -name '*.app' -print -quit)"
+          test "$(uname -m)" = arm64
+          codesign --verify --deep --strict "$app"
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+          open 'usegoodai://import?v=2&app=antigravity&key=sk-fake-candidate-entry-20261127-310e67&name=Actions'
+          found=0
+          for i in $(seq 1 60); do
+            if ps -axww -o command= | grep -F 'display alert' | grep -Fq 'HTTP 401'; then found=1; break; fi
+            sleep 1
+          done
+          /usr/sbin/screencapture -x "$RUNNER_TEMP/entry-evidence/assistant-link.png" || true
+          test "$found" = 1
+          test ! -e "$HOME/Library/Application Support/UseGoodAI/Antigravity/connection.json"
+          printf 'Actual signed app recognized the v2 Antigravity link and rejected the fake key.\n' > "$RUNNER_TEMP/entry-evidence/result.txt"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: Antigravity-Mac-成品入口记录
+          path: ${{ runner.temp }}/entry-evidence/
+          if-no-files-found: ignore
