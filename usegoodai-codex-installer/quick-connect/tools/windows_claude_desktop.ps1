@@ -1,5 +1,6 @@
 param([Parameter(Mandatory=$true)][ValidateSet('website','store')][string]$Channel)
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Use a disposable Windows desktop runner only.' }
 $os = Get-CimInstance Win32_OperatingSystem
 if ($os.ProductType -ne 1 -or $os.Caption -notmatch 'Windows 11') { throw 'Windows 11 desktop required.' }
@@ -78,13 +79,14 @@ try {
     if (-not $winget) {
       # Microsoft documents this bootstrap for clean Windows desktop sandboxes.
       # This is test-runner setup, not a product dependency.
-      $ProgressPreference = 'SilentlyContinue'
+      Write-Host 'Bootstrapping WinGet on the test runner.'
       Install-PackageProvider -Name NuGet -Force | Out-Null
       Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery | Out-Null
       Repair-WinGetPackageManager -AllUsers | Out-Null
       $winget = Find-WinGet
       if (-not $winget) { throw 'WinGet is still unavailable after the official bootstrap.' }
     }
+    Write-Host 'Installing official Microsoft Store product 9P6K58THS811.'
     & $winget install --id 9P6K58THS811 --exact --source msstore --accept-package-agreements --accept-source-agreements --disable-interactivity
     if ($LASTEXITCODE -ne 0) { throw "Microsoft Store installation failed: $LASTEXITCODE" }
   } else {
@@ -92,13 +94,16 @@ try {
     $name = 'Claude'
     $installer = Join-Path $work 'Claude.msix'
     # Official Claude Desktop enterprise deployment link, ARM64.
+    Write-Host 'Downloading the official ARM64 Claude MSIX.'
     Invoke-WebRequest -UseBasicParsing -Uri 'https://claude.ai/api/desktop/win32/arm64/msix/latest/redirect' -OutFile $installer -TimeoutSec 300
     Add-AppxPackage -Path $installer
     Remove-Item -LiteralPath $installer
   }
   $package = Get-AppxPackage -Name $name | Where-Object { $_.PackageFamilyName -eq $family } | Sort-Object Version -Descending | Select-Object -First 1
   if (-not $package) { throw 'Official package was not registered for this user.' }
+  $env:CLAUDE_TEST_REGISTERED_FAMILIES = $package.PackageFamilyName
   $report.registered = $true
+  Write-Host "Registered package: $($package.PackageFamilyName) $($package.Version)"
   $report.package = $package | Select-Object Name, PackageFamilyName, PackageFullName, Version, InstallLocation, Publisher
   $manifest = Get-AppxPackageManifest -Package $package.PackageFullName
   $appId = @($manifest.Package.Applications.Application)[0].Id

@@ -45,6 +45,7 @@ jobs:
         shell: powershell
         run: |
           if (@(Get-AppxPackage -Name Claude).Count -or @(Get-AppxPackage -Name AnthropicPBC.Claude).Count) { throw 'Expected a clean runner' }
+          $env:CLAUDE_TEST_REGISTERED_FAMILIES = 'none'
           go test -count=1 -v -timeout=4m -run '^TestClaude(PowerShellCommand|ReleasePipeProtocol)$' .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go test -count=1 -v -run '^TestClaudeNative' ./connect

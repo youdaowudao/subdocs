@@ -4,6 +4,7 @@ package connect
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -13,15 +14,19 @@ import (
 )
 
 func TestClaudeNativeRegistration(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	output, err := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `$ErrorActionPreference='Stop'; @('Claude','AnthropicPBC.Claude') | ForEach-Object { Get-AppxPackage -Name $_ } | ForEach-Object { $_.PackageFamilyName }`).Output()
-	if err != nil {
-		t.Fatal(err)
+	output, provided := os.LookupEnv("CLAUDE_TEST_REGISTERED_FAMILIES")
+	if !provided {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		data, err := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `$ErrorActionPreference='Stop'; @('Claude','AnthropicPBC.Claude') | ForEach-Object { Get-AppxPackage -Name $_ } | ForEach-Object { $_.PackageFamilyName }`).CombinedOutput()
+		if err != nil {
+			t.Fatalf("registration reference query: %v (context: %v): %s", err, ctx.Err(), data)
+		}
+		output = string(data)
 	}
 	for _, family := range claudePackageFamilies {
 		want := false
-		for _, actual := range strings.Fields(string(output)) {
+		for _, actual := range strings.Fields(output) {
 			want = want || strings.EqualFold(family, actual)
 		}
 		start := time.Now()

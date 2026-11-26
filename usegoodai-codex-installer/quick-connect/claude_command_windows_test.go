@@ -22,16 +22,20 @@ import (
 // LOCALAPPDATA is no longer evidence that a desktop application is absent.
 func registeredClaudeFamilies(t *testing.T) []string {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	// Get-AppxPackage -Name accepts one name, so query each exact name.
-	command := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `$ErrorActionPreference='Stop'; @('Claude','AnthropicPBC.Claude') | ForEach-Object { Get-AppxPackage -Name $_ } | ForEach-Object { $_.PackageFamilyName } | Sort-Object -Unique`)
-	output, err := command.Output()
-	if err != nil {
-		t.Fatal(fmt.Errorf("read current-user Claude registrations: %w", err))
+	output, provided := os.LookupEnv("CLAUDE_TEST_REGISTERED_FAMILIES")
+	if !provided {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		// Get-AppxPackage -Name accepts one name, so query each exact name.
+		command := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `$ErrorActionPreference='Stop'; @('Claude','AnthropicPBC.Claude') | ForEach-Object { Get-AppxPackage -Name $_ } | ForEach-Object { $_.PackageFamilyName } | Sort-Object -Unique`)
+		data, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatal(fmt.Errorf("read current-user Claude registrations: %w (context: %v): %s", err, ctx.Err(), data))
+		}
+		output = string(data)
 	}
 	var families []string
-	for _, family := range strings.Fields(string(output)) {
+	for _, family := range strings.Fields(output) {
 		if strings.EqualFold(family, "Claude_pzs8sxrjxfjjc") || strings.EqualFold(family, "AnthropicPBC.Claude_fnn82j28hfe8t") {
 			families = append(families, family)
 		}
@@ -86,7 +90,8 @@ func TestClaudePowerShellCommand(t *testing.T) {
 			child := exec.CommandContext(ctx, command, "-NoProfile", "-NonInteractive", "-Command", "[Console]::Error.WriteLine('test: PowerShell entered'); [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false); irm $env:TEST_CLAUDE_URL | iex; exit $LASTEXITCODE")
 			const key = "sk-test-windows-command-no-real-key"
 			child.Env = append(os.Environ(), "LOCALAPPDATA="+directory, "APPDATA="+directory, "USERPROFILE="+directory,
-				"TEMP="+directory, "TMP="+directory, "USEGOODAI_KEY="+key, "TEST_CLAUDE_URL="+server.URL+"/claude.ps1")
+				"TEMP="+directory, "TMP="+directory, "USEGOODAI_KEY="+key, "TEST_CLAUDE_URL="+server.URL+"/claude.ps1",
+				"HTTPS_PROXY=http://127.0.0.1:1", "NO_PROXY=127.0.0.1,localhost")
 			output, err := child.CombinedOutput()
 			t.Logf("script requests=%d, program requests=%d, output bytes=%d, context=%v, exit=%v", scriptRequests.Load(), programRequests.Load(), len(output), ctx.Err(), err)
 			if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 1 {
@@ -117,7 +122,8 @@ func TestClaudeReleasePipeProtocol(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	child := exec.CommandContext(ctx, program, "--claude-connect")
-	child.Env = append(os.Environ(), "LOCALAPPDATA="+directory, "APPDATA="+directory, "USERPROFILE="+directory)
+	child.Env = append(os.Environ(), "LOCALAPPDATA="+directory, "APPDATA="+directory, "USERPROFILE="+directory,
+		"HTTPS_PROXY=http://127.0.0.1:1", "NO_PROXY=127.0.0.1,localhost")
 	child.Stdin = strings.NewReader(`{"key":"sk-fake-command-key"}`)
 	output, err := child.Output()
 	if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 1 {

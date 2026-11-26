@@ -21,3 +21,5 @@
 正式主线未推送；验收结果待补记。
 
 第一次 Windows 渠道验收 [45771501649](https://github.com/youdaowudao/subdocs/actions/runs/45771501649)：Store 分支的无安装测试通过；安装阶段发现 Windows 11 ARM 托管机没有 `winget`，无法进入真实客户端验收。按微软官方 WinGet 安装说明补齐一次性测试机环境再重试，不改产品 EXE 或成品。候选 `253646c` 的三项既有门禁 [45771501557](https://github.com/youdaowudao/subdocs/actions/runs/45771501557) 均通过。
+
+第一次 Windows 助手全量 [45771501566](https://github.com/youdaowudao/subdocs/actions/runs/45771501566)：四个新测试的 PowerShell 独立参考查询均在 30 秒超时，非产品原生查询失败；其它 Go 核心测试、PE 资源检查和后续窗口验收通过。改为独立 Windows PowerShell 测试步骤读取真实注册信息一次并提供测试期望，不将该数据注入生产程序；未安装测试还阻断假 Key 访问真实 API。此次仅改测试夹具和工作流，成品哈希保持不变。另 [45771501492](https://github.com/youdaowudao/subdocs/actions/runs/45771501492) 助手打开稳妥性和 [45771501601](https://github.com/youdaowudao/subdocs/actions/runs/45771501601) 原 Mac 签名成品打开成功。
