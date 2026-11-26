@@ -48,6 +48,18 @@ func TestClaudeDesktopModels(t *testing.T) {
 	}
 }
 
+// A registration fixture is independent of the physical configuration folders.
+func claudeAt(local string, families ...string) ClaudeDesktop {
+	return ClaudeDesktop{LocalAppData: local, packageRegistered: func(family string) (bool, error) {
+		for _, registered := range families {
+			if registered == family {
+				return true, nil
+			}
+		}
+		return false, nil
+	}}
+}
+
 // claudeFixture lays out a user's files as found on a real Windows machine
 // with the Store build and a CC Switch profile already applied.
 func claudeFixture(t *testing.T) ClaudeDesktop {
@@ -62,7 +74,7 @@ func claudeFixture(t *testing.T) ClaudeDesktop {
 		`{"appliedId":"00000000-0000-4000-8000-000000157210","entries":[{"id":"00000000-0000-4000-8000-000000157210","name":"CC Switch"}]}`)
 	writeFile(t, filepath.Join(local, "Claude-3p", "configLibrary", "00000000-0000-4000-8000-000000157210.json"),
 		`{"inferenceProvider":"gateway","inferenceGatewayBaseUrl":"https://other.example","inferenceGatewayApiKey":"sk-other"}`)
-	return ClaudeDesktop{LocalAppData: local}
+	return claudeAt(local, claudePackageFamily)
 }
 
 func readJSON(t *testing.T, path string) map[string]any {
@@ -164,11 +176,21 @@ func TestWriteClaudeDesktop(t *testing.T) {
 }
 
 func TestWriteClaudeDesktopFreshInstall(t *testing.T) {
-	local := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(local, "Packages", "Claude_pzs8sxrjxfjjc"), 0o700); err != nil {
-		t.Fatal(err)
+	for _, family := range claudePackageFamilies {
+		t.Run(family, func(t *testing.T) {
+			testWriteClaudeDesktopFreshInstall(t, family)
+		})
 	}
-	d := ClaudeDesktop{LocalAppData: local}
+}
+
+func testWriteClaudeDesktopFreshInstall(t *testing.T, family string) {
+	local := t.TempDir() // registered, but no data folders yet
+	d := claudeAt(local, family)
+	for _, other := range claudePackageFamilies {
+		if other != family {
+			writeFile(t, d.packageConfigPath(other), `{"deploymentMode":"1p","stale":true}`)
+		}
+	}
 	if got := ReadClaudeStatus(d); got.State != ClaudeNone {
 		t.Fatalf("fresh: %+v", got)
 	}
@@ -184,13 +206,95 @@ func TestWriteClaudeDesktopFreshInstall(t *testing.T) {
 			t.Fatalf("%s not 3p", path)
 		}
 	}
+	if readJSON(t, d.packageConfigPath(family))["deploymentMode"] != "3p" {
+		t.Fatal("did not configure the registered package")
+	}
+	for _, other := range claudePackageFamilies {
+		if other != family && readFile(t, d.packageConfigPath(other)) != `{"deploymentMode":"1p","stale":true}` {
+			t.Fatal("modified an unregistered package's residual configuration")
+		}
+	}
 	if got := ReadClaudeStatus(d); got.State != ClaudeUseGoodAI {
 		t.Fatalf("after: %+v", got)
 	}
 }
 
+func TestClaudeRegistrationFailures(t *testing.T) {
+	for _, scenario := range []string{"stale directories", "query failure", "both registered"} {
+		t.Run(scenario, func(t *testing.T) {
+			d := claudeAt(t.TempDir())
+			for _, family := range claudePackageFamilies {
+				writeFile(t, d.packageConfigPath(family), `{"deploymentMode":"3p"}`)
+			}
+			want := ClaudeNotInstalled
+			switch scenario {
+			case "query failure":
+				d.packageRegistered = func(string) (bool, error) { return false, errors.New("registration lookup failed") }
+				want = ClaudeDetectionFailed
+			case "both registered":
+				d = claudeAt(d.LocalAppData, claudePackageFamily, claudeStorePackageFamily)
+				want = ClaudeDetectionFailed
+			}
+			before := snapshot(t, d.LocalAppData)
+			if got := ReadClaudeStatus(d).State; got != want {
+				t.Fatalf("state %s, want %s", got, want)
+			}
+			service, stops := newClaudeService(t, `{"isValid":true}`, claudeModelsAnswer)
+			service.Claude = d
+			result := service.ConnectClaude(context.Background(), fixtureKey, "")
+			if result.Tone != ToneError || result.Claude.State != want || *stops != 0 {
+				t.Fatalf("unexpected result %+v, stops %d", result, *stops)
+			}
+			if want == ClaudeDetectionFailed && (strings.Contains(result.Message, "官网下载") || service.RestoreClaude().Tone != ToneError || *stops != 0) {
+				t.Fatal("detection failure reported as missing or attempted restore")
+			}
+			if !reflect.DeepEqual(before, snapshot(t, d.LocalAppData)) {
+				t.Fatal("changed files without a resolved installation")
+			}
+		})
+	}
+}
+
+func TestClaudeConnectionReusesRegistration(t *testing.T) {
+	service, _ := newClaudeService(t, `{"isValid":true,"remaining":3}`, claudeModelsAnswer)
+	service.StopClaude = nil
+	lookups := 0
+	service.Claude.packageRegistered = func(family string) (bool, error) {
+		lookups++
+		return family == claudeStorePackageFamily, nil
+	}
+	result := service.ConnectClaude(context.Background(), fixtureKey, "")
+	if result.Tone != ToneSuccess || result.Claude.State != ClaudeUseGoodAI || lookups != len(claudePackageFamilies) {
+		t.Fatalf("result %+v, queries %d", result, lookups)
+	}
+	if readJSON(t, service.Claude.packageConfigPath(claudeStorePackageFamily))["deploymentMode"] != "3p" {
+		t.Fatal("wrong package written")
+	}
+	result = service.RestoreClaude()
+	if result.Tone != ToneSuccess || result.Claude.State != ClaudeNone || lookups != 2*len(claudePackageFamilies) {
+		t.Fatalf("restore %+v, queries %d", result, lookups)
+	}
+}
+
+func TestRestoreUninstalledClaude(t *testing.T) {
+	d := claudeAt(t.TempDir(), claudeStorePackageFamily)
+	if err := WriteClaudeDesktop(d, fixtureKey, testClaudeModels, fixedTime); err != nil {
+		t.Fatal(err)
+	}
+	d = claudeAt(d.LocalAppData) // uninstall, but leave configuration files
+	if err := RestoreClaudeDesktop(d, fixedTime.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if got := readJSON(t, d.packageConfigPath(claudeStorePackageFamily))["deploymentMode"]; got != "1p" {
+		t.Fatalf("residual config not restored: %v", got)
+	}
+	if fileExists(d.profilePath()) || fileExists(d.packageConfigPath(claudePackageFamily)) {
+		t.Fatal("profile remained or absent package config created")
+	}
+}
+
 func TestWriteClaudeDesktopRefuses(t *testing.T) {
-	notInstalled := ClaudeDesktop{LocalAppData: t.TempDir()}
+	notInstalled := claudeAt(t.TempDir())
 	if ReadClaudeStatus(notInstalled).State != ClaudeNotInstalled {
 		t.Fatal("status of a computer without Claude")
 	}
@@ -316,7 +420,7 @@ func TestRestoreClaudeDesktop(t *testing.T) {
 	// Without another profile, appliedId goes away.
 	fresh := t.TempDir()
 	_ = os.MkdirAll(filepath.Join(fresh, "Packages", "Claude_pzs8sxrjxfjjc"), 0o700)
-	only := ClaudeDesktop{LocalAppData: fresh}
+	only := claudeAt(fresh, claudePackageFamily)
 	if err := WriteClaudeDesktop(only, fixtureKey, testClaudeModels, fixedTime); err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +432,7 @@ func TestRestoreClaudeDesktop(t *testing.T) {
 	}
 
 	// Nothing there: nothing created.
-	empty := ClaudeDesktop{LocalAppData: t.TempDir()}
+	empty := claudeAt(t.TempDir())
 	if err := RestoreClaudeDesktop(empty, fixedTime); err != nil {
 		t.Fatal(err)
 	}
@@ -430,17 +534,32 @@ func TestClaudeCode(t *testing.T) {
 	}
 }
 
-func TestIsClaudeDesktopProcess(t *testing.T) {
+func TestIsClaudeDesktopFamily(t *testing.T) {
 	cases := map[string]bool{
-		`C:\Program Files\WindowsApps\Claude_1.24012.9.0_x64__pzs8sxrjxfjjc\app\claude.exe`: true,
-		`C:\PROGRAM FILES\WINDOWSAPPS\CLAUDE_1.0_X64__PZS8SXRJXFJJC\APP\CLAUDE.EXE`:         true,
-		`C:\Users\a\.local\bin\claude.exe`:                                                  false,
-		`C:\Users\a\AppData\Roaming\npm\node_modules\@anthropic-ai\claude-code\claude.exe`:  false,
-		`C:\Program Files\WindowsApps\Claude_1.0_x64__pzs8sxrjxfjjc\app\resources\node.exe`: false,
-		``: false,
+		"Claude_pzs8sxrjxfjjc":              true,
+		"ANTHROPICPBC.CLAUDE_FNN82J28HFE8T": true,
+		"Claude_fakepublisher":              false,
+		"AnthropicPBC.Claude_fakepublisher": false,
+		"":                                  false, // unpackaged CLI
+	}
+	for family, want := range cases {
+		if got := isClaudeDesktopFamily(family); got != want {
+			t.Errorf("%q: got %v", family, got)
+		}
+	}
+}
+
+func TestIsClaudeDesktopBinary(t *testing.T) {
+	cases := map[string]bool{
+		`C:\Program Files\WindowsApps\Claude_1.24012.9.0_x64__pzs8sxrjxfjjc\app\claude.exe`:  true,
+		`D:\WindowsApps\AnthropicPBC.Claude_6.28899.6.0_arm64__fnn82j28hfe8t\app\Claude.exe`: true,
+		`C:\Users\a\.local\bin\claude.exe`:                                                   false,
+		`C:\Users\a\AppData\Roaming\npm\node_modules\@anthropic-ai\claude-code\claude.exe`:   false,
+		`C:\Program Files\WindowsApps\Claude_1.0_x64__otherpublisher\app\claude.exe`:         false,
+		`C:\Program Files\WindowsApps\Claude_1.0_x64__pzs8sxrjxfjjc\app\resources\node.exe`:  false,
 	}
 	for path, want := range cases {
-		if got := IsClaudeDesktopProcess(path); got != want {
+		if got := isClaudeDesktopBinary(path); got != want {
 			t.Errorf("%q: got %v", path, got)
 		}
 	}
@@ -477,7 +596,7 @@ func newClaudeService(t *testing.T, usage string, models string) (*Service, *int
 		BaseURL:   server.URL,
 		Client:    NewHTTPClient(),
 		Now:       func() time.Time { return fixedTime },
-		Claude:    ClaudeDesktop{LocalAppData: local},
+		Claude:    claudeAt(local, claudePackageFamily),
 		ClaudeCLI: ClaudeCode{Home: t.TempDir(), AppData: t.TempDir()},
 	}
 	service.StopClaude = func() ClaudeStopResult {
@@ -568,7 +687,7 @@ func TestConnectClaudeRefusals(t *testing.T) {
 	}
 
 	service, _ := newClaudeService(t, `{"isValid":true}`, claudeModelsAnswer)
-	service.Claude = ClaudeDesktop{LocalAppData: t.TempDir()}
+	service.Claude = claudeAt(t.TempDir())
 	if result := service.ConnectClaude(context.Background(), fixtureKey, ""); result.Message != MessageClaudeNotInstalled || result.Claude.State != ClaudeNotInstalled {
 		t.Fatalf("not installed: %+v", result)
 	}

@@ -1,0 +1,63 @@
+# Extra desktop acceptance, not a publishing gate. Each channel gets a fresh
+# Windows 11 desktop runner; the x64 assistant runs via ARM emulation.
+name: Windows Claude 桌面版渠道验收
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [actions-test]
+    paths:
+      - usegoodai-codex-installer/quick-connect/connect/claude*.go
+      - usegoodai-codex-installer/quick-connect/connect/processes*.go
+      - usegoodai-codex-installer/quick-connect/claude*windows_test.go
+      - usegoodai-codex-installer/quick-connect/tools/windows_claude_desktop.ps1
+      - usegoodai-codex-installer/quick-connect/tools/claude_gateway_fixture.py
+      - .github/workflows/claude-desktop-windows.yml
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [website, store]
+    env:
+      GOARCH: amd64
+      QUICK_CONNECT_EXE: ${{ github.workspace }}\docs\public\download\usegoodai-quick-connect-windows-x64.exe
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: usegoodai-codex-installer/quick-connect/go.mod
+          cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: 当前用户无 Claude 时的负面测试
+        working-directory: usegoodai-codex-installer/quick-connect
+        shell: powershell
+        run: |
+          if (@(Get-AppxPackage -Name Claude).Count -or @(Get-AppxPackage -Name AnthropicPBC.Claude).Count) { throw 'Expected a clean runner' }
+          go test -count=1 -v -timeout=4m -run '^TestClaude(PowerShellCommand|ReleasePipeProtocol)$' .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go test -count=1 -v -run '^TestClaudeNative' ./connect
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: 安装官方客户端、接入并重新打开
+        working-directory: usegoodai-codex-installer/quick-connect
+        shell: powershell
+        run: ./tools/windows_claude_desktop.ps1 -Channel '${{ matrix.channel }}'
+      - name: 保存本机验收证据
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: claude-desktop-${{ matrix.channel }}
+          path: ${{ runner.temp }}/claude-desktop-test
+          if-no-files-found: warn
+          retention-days: 14

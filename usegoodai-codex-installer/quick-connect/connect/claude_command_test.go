@@ -3,7 +3,6 @@ package connect
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -86,9 +85,8 @@ func TestClaudeCommandRefusals(t *testing.T) {
 		})
 	}
 	service, _ := newClaudeService(t, `{"isValid":true}`, claudeModelsAnswer)
-	if err := os.RemoveAll(filepath.Join(service.Claude.LocalAppData, "Packages")); err != nil {
-		t.Fatal(err)
-	}
+	// Leave the old directory in place, but simulate an unregistered app.
+	service.Claude = claudeAt(service.Claude.LocalAppData)
 	var output bytes.Buffer
 	if code := RunClaudeCommand(strings.NewReader(`{"key":"`+fixtureKey+`"}`), &output, service); code != 1 || !strings.Contains(output.String(), "没检测到 Claude 桌面版") {
 		t.Fatalf("missing Desktop %d: %s", code, output.String())

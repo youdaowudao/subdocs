@@ -7,6 +7,12 @@
 
 技术选型：Go 1.25 + Wails v2（WebView2）。不需要管理员权限；系统缺少 WebView2 时弹出中文提示并打开微软下载页。
 
+## Windows 1.2.3（2026-11-26，候选）
+
+- 修复 Microsoft Store 安装的 Claude 桌面版被误判为未安装：官网版和商店版使用不同的 MSIX 包身份；用 Windows 当前用户的应用注册信息定位配置，不再以残留目录为安装依据。
+- 同一操作复用检测结果；区分检测失败与未安装。关闭桌面版同时检查官方包身份和程序所在安装目录，保留独立 Claude Code CLI。
+- 密钥检查、模型筛选、配置合并、备份和恢复逻辑沿用原实现；Windows 窗口和命令共用本次修复。Mac 1.1.15、生图和国产模型成品保持不变。真实 Windows 验收及发布状态见 [测试记录](../test-records/20261126-claude-store.md)。
+
 ## Windows 1.2.2（2026-11-21）
 
 - 生图和国产模型入口下面新增「一键中文化（没有梯子才需要）」。点击后打开独立 PowerShell 显示完整过程并留存记录，成功五秒关闭本次窗口，失败保留。
@@ -93,15 +99,15 @@
 
 ## Claude 桌面版（Windows）
 
-品牌行右侧的「Codex / Claude」两个标签切换主入口，Claude 页用陶土橙主题，复用同一张状态卡、输入框和主按钮。只支持官网下载的新版（Microsoft Store 包 `Claude_pzs8sxrjxfjjc`），旧的 `%LOCALAPPDATA%\AnthropicClaude` 安装不处理。
+品牌行右侧的「Codex / Claude」两个标签切换主入口，Claude 页用陶土橙主题，复用同一张状态卡、输入框和主按钮。1.2.3 候选检测官网 MSIX `Claude_pzs8sxrjxfjjc` 和微软商店 MSIX `AnthropicPBC.Claude_fnn82j28hfe8t`，旧的 `%LOCALAPPDATA%\AnthropicClaude` 安装不处理。
 
-- **检测**：`%LOCALAPPDATA%\Packages\Claude_*` 存在算已安装。没装时状态卡显示「没检测到 Claude 桌面版」和「官网下载 / 群文件下载」两个按钮，不写任何文件。
+- **检测**：Windows 原生 API 查询当前用户已注册的两个官方包家族。未安装时显示下载入口；查询失败或同时检测到两个包且无法确定目标时显示检测失败，不写任何配置。未启动过的已注册应用也能定位；配置目录残留不代表已安装。
 - **连接流程**：`/v1/usage` 检查密钥（同 Codex）→ `GET /v1/models` → 只留官方格式的 Fable、Opus、Sonnet、Haiku 模型（`^claude-(fable|opus|sonnet|haiku)-主版本(-次版本)?(-8位日期)?$`，同一版本有不带日期的就去掉带日期的；`claude-opus-5.5`、大小写不对、`[1m]`、`-thinking`、带前缀的一律丢弃，不改写），顺序 Fable、Opus、Sonnet、Haiku，同系列新版本在前，第一条是 Claude 的默认模型。一个都没有就提示换分组，不写入。
 - **写入**（全部成功或全部不改，配置文件和 `_meta.json` 先做 `.bak.时间` 备份，其它字段和顺序保留）：
-  - `deploymentMode: "3p"` 写进三份 `claude_desktop_config.json`：`%LOCALAPPDATA%\Claude-3p\`、`%LOCALAPPDATA%\Claude\`、`Packages\Claude_*\LocalCache\Roaming\Claude\`。
+  - `deploymentMode: "3p"` 写进三份 `claude_desktop_config.json`：`%LOCALAPPDATA%\Claude-3p\`、`%LOCALAPPDATA%\Claude\`、`Packages\<实际注册的包家族>\LocalCache\Roaming\Claude\`。商店版实际读取位置需经真实客户端验证。
   - `%LOCALAPPDATA%\Claude-3p\configLibrary\00000000-0000-4000-8000-00000000600d.json`：网关地址、Bearer、密钥、`modelDiscoveryEnabled: false`、`inferenceModels`。
   - `_meta.json`：登记 `UseGoodAI` 条目，`appliedId` 指向它；CC Switch 等其它条目保留不动。
-- **关闭 Claude**：只结束从 `WindowsApps\Claude_*` 运行的 `claude.exe`，Claude Code CLI（同名 `claude.exe`）不受影响。
+- **关闭 Claude**：只结束同一登录会话中既有官方桌面版包身份、又从对应 WindowsApps 安装目录运行的 `claude.exe`，不会把独立 CLI 当成桌面版。
 - **Claude Code CLI**：只查 `%USERPROFILE%\.local\bin\claude.exe` 和 `%APPDATA%\npm\claude.cmd`。找到且还没用这个密钥时，桌面版连接成功后自动写 `~/.claude/settings.json` 的 `env`（`ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN`，并去掉 `ANTHROPIC_API_KEY` 和模型覆盖变量），其它设置保留；没找到不提示。
 - **恢复官方登录**：UseGoodAI 是当前生效的配置时，三份配置改回 `1p`；生效的是别家（如 CC Switch）时不动模式。然后从 `_meta.json` 去掉 UseGoodAI 条目（`appliedId` 交给下一条，没有就删除），删除含密钥的 UseGoodAI 配置文件，关闭 Claude。Claude Code CLI 指向 UseGoodAI 时，同时去掉 `env` 里的 `ANTHROPIC_BASE_URL` 和 `ANTHROPIC_AUTH_TOKEN`（先备份），指向别家的不动。
 

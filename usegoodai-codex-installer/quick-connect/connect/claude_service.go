@@ -36,7 +36,11 @@ const (
 
 // ClaudeStatus reads the Claude card.
 func (s *Service) ClaudeStatus() ClaudeStatus {
-	status, key := readClaudeStatus(s.Claude)
+	return s.claudeStatus(s.Claude)
+}
+
+func (s *Service) claudeStatus(d ClaudeDesktop) ClaudeStatus {
+	status, key := readClaudeStatus(d)
 	if key != "" {
 		status.Name = lookupName(s.NamesFile, key)
 	}
@@ -51,53 +55,60 @@ func (s *Service) ClaudeStatus() ClaudeStatus {
 func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	desktop := s.Claude.resolve()
+	response := func(tone, message string) Result {
+		return s.resultWithClaude(tone, message, s.claudeStatus(desktop))
+	}
 
 	key, ok := NormalizeKey(raw)
 	if !ok {
 		if key == "" {
-			result := s.result(ToneError, MessageClaudeEmpty)
+			result := response(ToneError, MessageClaudeEmpty)
 			result.Action = ActionOpenSite
 			return result
 		}
-		return s.result(ToneError, MessageBadFormat)
+		return response(ToneError, MessageBadFormat)
 	}
-	if !s.Claude.Installed() {
-		return s.result(ToneError, MessageClaudeNotInstalled)
+	if desktop.installation.err != nil {
+		return response(ToneError, "Claude 桌面版检测失败："+desktop.installation.err.Error()+"。配置没有改动，请重试。")
+	}
+	if desktop.installation.family == "" {
+		return response(ToneError, MessageClaudeNotInstalled)
 	}
 	check := CheckKey(ctx, s.Client, s.BaseURL, key)
 	switch check.State {
 	case KeyRejected:
-		return s.result(ToneError, MessageClaudeRejected)
+		return response(ToneError, MessageClaudeRejected)
 	case KeyDisabled:
-		return s.result(ToneError, MessageClaudeDisabled)
+		return response(ToneError, MessageClaudeDisabled)
 	case KeyTimeout:
-		return s.result(ToneError, MessageClaudeTimeout)
+		return response(ToneError, MessageClaudeTimeout)
 	case KeyOffline:
-		return s.result(ToneError, MessageClaudeOffline)
+		return response(ToneError, MessageClaudeOffline)
 	case KeyServerError:
-		return s.result(ToneError, fmt.Sprintf(MessageClaudeServerError, serverProblem(check.StatusCode)))
+		return response(ToneError, fmt.Sprintf(MessageClaudeServerError, serverProblem(check.StatusCode)))
 	case KeyClockWrong, KeyUntrusted:
-		return s.result(ToneError, certificateMessage(check.State, s.Now(), "Claude 配置没有改动。"))
+		return response(ToneError, certificateMessage(check.State, s.Now(), "Claude 配置没有改动。"))
 	}
 	ids, state, code := ListModels(ctx, s.Client, s.BaseURL, key)
 	switch state {
 	case ModelsNoBalance:
-		return s.result(ToneError, MessageClaudeNeedBalance)
+		return response(ToneError, MessageClaudeNeedBalance)
 	case ModelsRejected:
 		if check.State == KeyNoBalance {
-			return s.result(ToneError, MessageClaudeNeedBalance)
+			return response(ToneError, MessageClaudeNeedBalance)
 		}
-		return s.result(ToneError, MessageClaudeRejected)
+		return response(ToneError, MessageClaudeRejected)
 	case ModelsTimeout:
-		return s.result(ToneError, MessageClaudeTimeout)
+		return response(ToneError, MessageClaudeTimeout)
 	case ModelsOffline:
-		return s.result(ToneError, MessageClaudeOffline)
+		return response(ToneError, MessageClaudeOffline)
 	case ModelsServerError:
-		return s.result(ToneError, fmt.Sprintf(MessageClaudeServerError, serverProblem(code)))
+		return response(ToneError, fmt.Sprintf(MessageClaudeServerError, serverProblem(code)))
 	}
 	models := ClaudeDesktopModels(ids)
 	if len(models) == 0 {
-		return s.result(ToneError, MessageClaudeNoModel)
+		return response(ToneError, MessageClaudeNoModel)
 	}
 	// Claude is closed first, like Codex: the app saves its config files
 	// when it exits, which could undo what is written below.
@@ -105,8 +116,8 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 	if s.StopClaude != nil {
 		stopped = s.StopClaude()
 	}
-	if err := WriteClaudeDesktop(s.Claude, key, models, s.Now()); err != nil {
-		return s.result(ToneError, "写入 Claude 配置失败："+reason(err)+"。原配置没有改动，可以重试。")
+	if err := WriteClaudeDesktop(desktop, key, models, s.Now()); err != nil {
+		return response(ToneError, "写入 Claude 配置失败："+reason(err)+"。原配置没有改动，可以重试。")
 	}
 	if name != "" {
 		_ = rememberName(s.NamesFile, key, name)
@@ -130,7 +141,7 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 	default:
 		message += MessageClaudeOpen
 	}
-	result := s.result(tone, message)
+	result := response(tone, message)
 	if s.ClaudeCLI.Installed() && !s.ClaudeCLI.ConnectedWith(key) {
 		if err := WriteClaudeCode(s.ClaudeCLI, key, s.Now()); err != nil {
 			result.Tone = ToneWarning
@@ -147,9 +158,16 @@ func (s *Service) ConnectClaude(ctx context.Context, raw, name string) Result {
 func (s *Service) RestoreClaude() Result {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	desktop := s.Claude.resolve()
+	response := func(tone, message string) Result {
+		return s.resultWithClaude(tone, message, s.claudeStatus(desktop))
+	}
+	if desktop.installation.err != nil {
+		return response(ToneError, "Claude 桌面版检测失败："+desktop.installation.err.Error()+"。配置没有改动，请重试。")
+	}
 	left := s.StopClaude != nil && s.StopClaude().Left
-	if err := RestoreClaudeDesktop(s.Claude, s.Now()); err != nil {
-		return s.result(ToneError, "恢复官方登录失败："+reason(err)+"。原配置没有改动，可以重试。")
+	if err := RestoreClaudeDesktop(desktop, s.Now()); err != nil {
+		return response(ToneError, "恢复官方登录失败："+reason(err)+"。原配置没有改动，可以重试。")
 	}
 	tone, message := ToneSuccess, MessageClaudeRestored
 	if left {
@@ -163,5 +181,5 @@ func (s *Service) RestoreClaude() Result {
 	case cli:
 		message += "\n" + MessageClaudeCodeRestored
 	}
-	return s.result(tone, message)
+	return response(tone, message)
 }

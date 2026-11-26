@@ -104,7 +104,7 @@ func listProcesses() ([]Process, error) {
 }
 
 // StopClaudeDesktop closes Claude Desktop (every claude.exe of this login
-// session that runs from its Store package), waiting up to five seconds.
+// session that belongs to one of its official MSIX packages), waiting up to five seconds.
 // The Claude Code CLI, also claude.exe, is left alone.
 func StopClaudeDesktop() (result ClaudeStopResult) {
 	processes, err := listProcesses()
@@ -130,7 +130,15 @@ func StopClaudeDesktop() (result ClaudeStopResult) {
 			}
 			continue
 		}
-		if !IsClaudeDesktopProcess(imagePath(handle)) {
+		if !isClaudeDesktopBinary(imagePath(handle)) {
+			windows.CloseHandle(handle)
+			continue
+		}
+		desktop, err := claudeDesktopProcess(handle)
+		if err != nil {
+			result.Found, result.Left = true, true
+		}
+		if !desktop {
 			windows.CloseHandle(handle)
 			continue
 		}

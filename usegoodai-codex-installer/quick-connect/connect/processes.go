@@ -74,11 +74,24 @@ func clientName(name string) string {
 	return ""
 }
 
-// IsClaudeDesktopProcess tells Claude Desktop from the Claude Code CLI: both
-// run as claude.exe, but the desktop app runs from its Store package under
-// WindowsApps (C:\Program Files\WindowsApps\Claude_<version>_x64__<id>\...).
-// Only the desktop app is ever closed.
-func IsClaudeDesktopProcess(imagePath string) bool {
-	lower := strings.ToLower(strings.ReplaceAll(imagePath, "/", `\`))
-	return strings.HasSuffix(lower, `\claude.exe`) && strings.Contains(lower, `\windowsapps\claude_`)
+// A child launched by Claude Desktop can inherit its package identity even
+// when the executable is an independently installed Claude Code CLI. Require
+// the image to be inside an official package's installation folder as well.
+func isClaudeDesktopBinary(imagePath string) bool {
+	parts := strings.Split(strings.ToLower(strings.ReplaceAll(imagePath, "/", `\`)), `\`)
+	if len(parts) < 3 || parts[len(parts)-1] != "claude.exe" {
+		return false
+	}
+	for i := 0; i+2 < len(parts); i++ {
+		if parts[i] != "windowsapps" {
+			continue
+		}
+		for _, family := range claudePackageFamilies {
+			name, publisher, _ := strings.Cut(strings.ToLower(family), "_")
+			if strings.HasPrefix(parts[i+1], name+"_") && strings.HasSuffix(parts[i+1], "__"+publisher) {
+				return true
+			}
+		}
+	}
+	return false
 }

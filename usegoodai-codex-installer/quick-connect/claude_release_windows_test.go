@@ -133,12 +133,19 @@ func TestClaudeReleaseWritesBothConfigurations(t *testing.T) {
 	if program == "" {
 		t.Skip("set QUICK_CONNECT_EXE to test the release program")
 	}
+	families := registeredClaudeFamilies(t)
+	if len(families) == 0 {
+		t.Skip("requires a real registered Claude desktop app; run desktop installation test")
+	}
+	if len(families) != 1 {
+		t.Fatal("positive release test requires exactly one Claude installation channel")
+	}
+	family := families[0]
 	proxy := claudeReleaseProxy(t)
 	for _, cli := range []bool{false, true} {
 		t.Run(fmt.Sprintf("CLI=%t", cli), func(t *testing.T) {
 			directory := filepath.Join(t.TempDir(), "中文 用户 空格")
-			packageDir := filepath.Join(directory, "Packages", "Claude_pzs8sxrjxfjjc")
-			if err := os.MkdirAll(packageDir, 0o700); err != nil {
+			if err := os.MkdirAll(directory, 0o700); err != nil {
 				t.Fatal(err)
 			}
 			settings := filepath.Join(directory, ".claude", "settings.json")
@@ -176,6 +183,11 @@ func TestClaudeReleaseWritesBothConfigurations(t *testing.T) {
 			if err != nil || !bytes.Contains(profile, []byte(`"https://api.usegoodai.com"`)) || !bytes.Contains(profile, []byte("claude-opus-5-5")) {
 				t.Fatalf("Desktop configuration: %v: %s", err, profile)
 			}
+			packageConfig := filepath.Join(directory, "Packages", family, "LocalCache", "Roaming", "Claude", "claude_desktop_config.json")
+			config, err := os.ReadFile(packageConfig)
+			if err != nil || !bytes.Contains(config, []byte(`"deploymentMode": "3p"`)) {
+				t.Fatalf("registered Claude package configuration: %v: %s", err, config)
+			}
 			data, err := os.ReadFile(settings)
 			if cli {
 				if err != nil || !bytes.Contains(data, []byte("ANTHROPIC_AUTH_TOKEN")) || !bytes.Contains(data, []byte(`"KEEP": "yes"`)) || !bytes.Contains(data, []byte("permissions")) {
@@ -190,4 +202,55 @@ func TestClaudeReleaseWritesBothConfigurations(t *testing.T) {
 			}
 		})
 	}
+}
+
+// The dedicated disposable Windows desktop run also exercises the actual
+// current user's data directory. Never run this on a developer's machine.
+// Before the client is opened again, point the test profile at a local mock.
+func TestClaudeReleaseActualDesktopProfile(t *testing.T) {
+	mockURL := os.Getenv("CLAUDE_TEST_LOCAL_GATEWAY")
+	if os.Getenv("GITHUB_ACTIONS") != "true" || !strings.HasPrefix(mockURL, "http://127.0.0.1:") {
+		t.Skip("only run on the disposable desktop runner with a loopback gateway")
+	}
+	program := os.Getenv("QUICK_CONNECT_EXE")
+	if program == "" || len(registeredClaudeFamilies(t)) != 1 {
+		t.Fatal("actual desktop profile test needs a release EXE and one real registration")
+	}
+	local, err := os.UserCacheDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxy := claudeReleaseProxy(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+	defer cancel()
+	child := exec.CommandContext(ctx, program, "--claude-connect")
+	// Do not modify any CLI settings; use an isolated home for this test.
+	child.Env = append(os.Environ(), "USERPROFILE="+t.TempDir(), "APPDATA="+t.TempDir(), "HTTPS_PROXY="+proxy, "NO_PROXY=127.0.0.1,localhost")
+	child.Stdin = strings.NewReader(`{"key":"sk-native-claude-command-fixture"}`)
+	output, err := child.CombinedOutput()
+	if err != nil {
+		t.Fatalf("release command: %v: %s", err, output)
+	}
+	var reply struct{ Version, Tone, Message string }
+	if err := json.Unmarshal(output, &reply); err != nil || reply.Version != connect.Version || reply.Tone != "success" {
+		t.Fatalf("reply %v: %s", err, output)
+	}
+	profilePath := filepath.Join(local, "Claude-3p", "configLibrary", connect.ClaudeProfileID+".json")
+	data, err := os.ReadFile(profilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var profile map[string]any
+	if err := json.Unmarshal(data, &profile); err != nil || profile["inferenceGatewayBaseUrl"] != connect.BaseURL {
+		t.Fatalf("actual profile was not written to the current user directory: %v", err)
+	}
+	profile["inferenceGatewayBaseUrl"] = mockURL
+	data, err = json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Log("release EXE wrote the actual current-user profile; test gateway changed to loopback before reopening")
 }

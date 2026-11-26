@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -24,25 +23,26 @@ import (
 //   - Claude-3p\configLibrary\_meta.json: lists the profiles; appliedId is
 //     the one in use.
 //
-// Only the current Store build is supported: it is what claude.com/download
-// installs. Older installs under %LOCALAPPDATA%\AnthropicClaude are not.
+// The direct download and Microsoft Store have different MSIX identities.
+// Older installs under %LOCALAPPDATA%\AnthropicClaude are not supported.
 const (
 	ClaudeProfileID   = "00000000-0000-4000-8000-00000000600d"
 	ClaudeProfileName = "UseGoodAI"
 
-	claudePackagePrefix  = "Claude_"
-	claudePackageFamily  = "Claude_pzs8sxrjxfjjc"
-	claudeConfigName     = "claude_desktop_config.json"
-	claudeLibraryDirName = "configLibrary"
-	claudeMetaName       = "_meta.json"
+	claudePackageFamily      = "Claude_pzs8sxrjxfjjc"
+	claudeStorePackageFamily = "AnthropicPBC.Claude_fnn82j28hfe8t"
+	claudeConfigName         = "claude_desktop_config.json"
+	claudeLibraryDirName     = "configLibrary"
+	claudeMetaName           = "_meta.json"
 )
 
 // Claude card states.
 const (
-	ClaudeNotInstalled = "notinstalled"
-	ClaudeNone         = "none"
-	ClaudeUseGoodAI    = "usegoodai"
-	ClaudeOther        = "other"
+	ClaudeNotInstalled    = "notinstalled"
+	ClaudeDetectionFailed = "detectionfailed"
+	ClaudeNone            = "none"
+	ClaudeUseGoodAI       = "usegoodai"
+	ClaudeOther           = "other"
 )
 
 // ClaudeStatus is what the Claude card shows. Key is masked.
@@ -57,30 +57,63 @@ type ClaudeStatus struct {
 // LocalAppData is %LOCALAPPDATA%.
 type ClaudeDesktop struct {
 	LocalAppData string
+	// Tests can inject registration results without registering mock packages.
+	packageRegistered func(string) (bool, error)
+	installation      *claudeInstallation
 }
 
-// packageDir is the Store package's data folder, "" when Claude Desktop is
-// not installed.
-func (d ClaudeDesktop) packageDir() string {
-	if d.LocalAppData == "" {
-		return ""
-	}
-	packages := filepath.Join(d.LocalAppData, "Packages")
-	if isDir(filepath.Join(packages, claudePackageFamily)) {
-		return filepath.Join(packages, claudePackageFamily)
-	}
-	matches, _ := filepath.Glob(filepath.Join(packages, claudePackagePrefix+"*"))
-	sort.Strings(matches)
-	for _, match := range matches {
-		if isDir(match) {
-			return match
+type claudeInstallation struct {
+	family string
+	err    error
+}
+
+var claudePackageFamilies = [...]string{claudePackageFamily, claudeStorePackageFamily}
+
+func isClaudeDesktopFamily(family string) bool {
+	for _, official := range claudePackageFamilies {
+		if strings.EqualFold(family, official) {
+			return true
 		}
 	}
-	return ""
+	return false
 }
 
-// Installed reports whether the Store build of Claude Desktop is present.
-func (d ClaudeDesktop) Installed() bool { return d.packageDir() != "" }
+// resolve takes one registration snapshot for the entire Claude operation.
+// Never infer installation from a directory: MSIX may not yet have created
+// the user's data directory, and an uninstalled app can leave it behind.
+func (d ClaudeDesktop) resolve() ClaudeDesktop {
+	if d.installation != nil {
+		return d
+	}
+	d.installation = &claudeInstallation{}
+	if d.LocalAppData == "" {
+		d.installation.err = errors.New("找不到当前用户的文件夹")
+		return d
+	}
+	lookup := d.packageRegistered
+	if lookup == nil {
+		lookup = registeredClaudePackage
+	}
+	for _, family := range claudePackageFamilies {
+		installed, err := lookup(family)
+		if err != nil {
+			d.installation.err = err
+			return d
+		}
+		if installed {
+			if d.installation.family != "" {
+				d.installation.err = errors.New("同时检测到官网版和微软商店版 Claude，无法确认配置目标")
+				return d
+			}
+			d.installation.family = family
+		}
+	}
+	return d
+}
+
+func (d ClaudeDesktop) packageConfigPath(family string) string {
+	return filepath.Join(d.LocalAppData, "Packages", family, "LocalCache", "Roaming", "Claude", claudeConfigName)
+}
 
 func (d ClaudeDesktop) threePDir() string { return filepath.Join(d.LocalAppData, "Claude-3p") }
 
@@ -97,12 +130,13 @@ func (d ClaudeDesktop) metaPath() string { return filepath.Join(d.libraryDir(), 
 // configPaths lists every claude_desktop_config.json that carries the
 // deployment mode, the third-party one first.
 func (d ClaudeDesktop) configPaths() []string {
+	d = d.resolve()
 	paths := []string{
 		filepath.Join(d.threePDir(), claudeConfigName),
 		filepath.Join(d.LocalAppData, "Claude", claudeConfigName),
 	}
-	if pkg := d.packageDir(); pkg != "" {
-		paths = append(paths, filepath.Join(pkg, "LocalCache", "Roaming", "Claude", claudeConfigName))
+	if d.installation.err == nil && d.installation.family != "" {
+		paths = append(paths, d.packageConfigPath(d.installation.family))
 	}
 	return paths
 }
@@ -116,7 +150,11 @@ func ReadClaudeStatus(d ClaudeDesktop) ClaudeStatus {
 
 // readClaudeStatus also returns the full key, for looking up its name.
 func readClaudeStatus(d ClaudeDesktop) (ClaudeStatus, string) {
-	if !d.Installed() {
+	d = d.resolve()
+	if d.installation.err != nil {
+		return ClaudeStatus{State: ClaudeDetectionFailed}, ""
+	}
+	if d.installation.family == "" {
 		return ClaudeStatus{State: ClaudeNotInstalled}, ""
 	}
 	thirdParty := false
@@ -156,7 +194,11 @@ func readClaudeStatus(d ClaudeDesktop) (ClaudeStatus, string) {
 // settings in every file stay as they are; the config files and _meta.json
 // get a .bak copy first. All files are written or none.
 func WriteClaudeDesktop(d ClaudeDesktop, key string, models []string, now time.Time) error {
-	if !d.Installed() {
+	d = d.resolve()
+	if d.installation.err != nil {
+		return d.installation.err
+	}
+	if d.installation.family == "" {
 		return errors.New("没有安装 Claude 桌面版")
 	}
 	if len(models) == 0 {
@@ -234,13 +276,24 @@ func RestoreClaudeDesktop(d ClaudeDesktop, now time.Time) error {
 	if d.LocalAppData == "" {
 		return errors.New("找不到当前用户的文件夹")
 	}
+	d = d.resolve()
+	if d.installation.err != nil {
+		return d.installation.err
+	}
 	meta, metaExists, err := readJSONObject(d.metaPath())
 	if err != nil {
 		return err
 	}
 	ours := !metaExists || meta.getString("appliedId") == "" || meta.getString("appliedId") == ClaudeProfileID
 	var changes []fileChange
-	for _, path := range d.configPaths() {
+	paths := d.configPaths()
+	if d.installation.family == "" {
+		// Preserve restore after uninstall, without creating missing files.
+		for _, family := range claudePackageFamilies {
+			paths = append(paths, d.packageConfigPath(family))
+		}
+	}
+	for _, path := range paths {
 		if !ours {
 			break
 		}

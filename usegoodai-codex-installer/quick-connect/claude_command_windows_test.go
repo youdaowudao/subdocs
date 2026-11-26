@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,12 +18,36 @@ import (
 	"usegoodai-quick-connect/connect"
 )
 
+// Independently inspect real current-user registrations. A temporary
+// LOCALAPPDATA is no longer evidence that a desktop application is absent.
+func registeredClaudeFamilies(t *testing.T) []string {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	// Get-AppxPackage -Name accepts one name, so query each exact name.
+	command := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `$ErrorActionPreference='Stop'; @('Claude','AnthropicPBC.Claude') | ForEach-Object { Get-AppxPackage -Name $_ } | ForEach-Object { $_.PackageFamilyName } | Sort-Object -Unique`)
+	output, err := command.Output()
+	if err != nil {
+		t.Fatal(fmt.Errorf("read current-user Claude registrations: %w", err))
+	}
+	var families []string
+	for _, family := range strings.Fields(string(output)) {
+		if strings.EqualFold(family, "Claude_pzs8sxrjxfjjc") || strings.EqualFold(family, "AnthropicPBC.Claude_fnn82j28hfe8t") {
+			families = append(families, family)
+		}
+	}
+	return families
+}
+
 // Exercise the real GUI-subsystem release exe without opening its window.
 // Native PS 5.1 and PS 7 both download and invoke it through redirected pipes.
 func TestClaudePowerShellCommand(t *testing.T) {
 	program := os.Getenv("QUICK_CONNECT_EXE")
 	if program == "" {
 		t.Skip("set QUICK_CONNECT_EXE to test the release program")
+	}
+	if len(registeredClaudeFamilies(t)) != 0 {
+		t.Skip("requires a Windows user with no registered Claude desktop app")
 	}
 	data, err := os.ReadFile(program)
 	if err != nil {
@@ -84,6 +109,9 @@ func TestClaudeReleasePipeProtocol(t *testing.T) {
 	program := os.Getenv("QUICK_CONNECT_EXE")
 	if program == "" {
 		t.Skip("set QUICK_CONNECT_EXE to test the release program")
+	}
+	if len(registeredClaudeFamilies(t)) != 0 {
+		t.Skip("requires a Windows user with no registered Claude desktop app")
 	}
 	directory := t.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

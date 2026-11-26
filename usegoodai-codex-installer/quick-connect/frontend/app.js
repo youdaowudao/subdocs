@@ -49,6 +49,7 @@ const CODEX_TITLES = {
 };
 const CLAUDE_TITLES = {
   notinstalled: '没检测到 Claude 桌面版',
+  detectionfailed: 'Claude 安装状态检测失败',
   usegoodai: '已连接 UseGoodAI',
   none: '还没连接',
   other: '当前用的是其他第三方服务',
@@ -113,6 +114,9 @@ function cardFor() {
     const connected = claude.state === 'usegoodai';
     if (claude.state === 'notinstalled') {
       return { state: 'none', title: CLAUDE_TITLES.notinstalled, name: '', key: '先装好软件，再回来点一键连接', download: true };
+    }
+    if (claude.state === 'detectionfailed') {
+      return { state: 'other', title: CLAUDE_TITLES.detectionfailed, name: '', key: '点一键连接重试，查看具体提示' };
     }
     return {
       state: connected ? 'ok' : claude.state === 'none' ? 'none' : 'other',

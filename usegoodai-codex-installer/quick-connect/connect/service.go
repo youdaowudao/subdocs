@@ -203,7 +203,11 @@ func (s *Service) Restore() Result {
 }
 
 func (s *Service) result(tone, message string) Result {
-	return Result{Tone: tone, Message: message, Status: s.Status(), Image: s.ImageStatus(), Models: s.ModelsStatus(), Claude: s.ClaudeStatus()}
+	return s.resultWithClaude(tone, message, s.ClaudeStatus())
+}
+
+func (s *Service) resultWithClaude(tone, message string, claude ClaudeStatus) Result {
+	return Result{Tone: tone, Message: message, Status: s.Status(), Image: s.ImageStatus(), Models: s.ModelsStatus(), Claude: claude}
 }
 
 // serverProblem names what went wrong for MessageServerError.
