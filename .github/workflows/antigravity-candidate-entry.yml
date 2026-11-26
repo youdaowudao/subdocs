@@ -38,7 +38,14 @@ jobs:
           $names=@('AGY_LLM_GATEWAY_URL','AGY_LLM_GATEWAY_API_KEY','AGY_LLM_GATEWAY_WIRE_PROTOCOL','AGY_LLM_GATEWAY_MODELS')
           $before=@($names | ForEach-Object {[Environment]::GetEnvironmentVariable($_,'User')}) | ConvertTo-Json
           # Official WebView2 local developer automation, only for this runner.
-          $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS='--remote-debugging-port=19987 --remote-debugging-address=127.0.0.1'
+          # Wails' loader replaces the environment variable during initialization.
+          # Use Microsoft's documented per-app HKCU debugger setting instead;
+          # it exists only on this disposable test runner and is restored below.
+          $policy='HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+          $exeName=Split-Path -Leaf $exe
+          $prior=(Get-ItemProperty -LiteralPath $policy -Name $exeName -ErrorAction SilentlyContinue).$exeName
+          New-Item -Path $policy -Force | Out-Null
+          New-ItemProperty -LiteralPath $policy -Name $exeName -Value '--remote-debugging-port=19987 --remote-debugging-address=127.0.0.1' -PropertyType String -Force | Out-Null
           $env:AGY_ENTRY_EVIDENCE=$evidence
           $p=Start-Process -FilePath $exe -PassThru
           try {
@@ -95,7 +102,10 @@ jobs:
             if ($before -ne $after) {throw 'Rejected fake key changed the current user environment'}
           } finally {
             Get-Process -ErrorAction SilentlyContinue | Where-Object {$_.Path -eq $exe} | Stop-Process -ErrorAction SilentlyContinue
-            $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=''
+            if ($null -eq $prior) {Remove-ItemProperty -LiteralPath $policy -Name $exeName -ErrorAction SilentlyContinue}
+            else {Set-ItemProperty -LiteralPath $policy -Name $exeName -Value $prior}
+            $logs=Join-Path $env:LOCALAPPDATA 'UseGoodAI/QuickConnect/logs'
+            if (Test-Path $logs) {Copy-Item "$logs/*" $evidence -ErrorAction SilentlyContinue}
           }
       - uses: actions/upload-artifact@v5
         if: always()
