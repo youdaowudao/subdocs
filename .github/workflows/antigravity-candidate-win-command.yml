@@ -1,0 +1,49 @@
+name: Antigravity Windows 精确候选程序命令复核
+on:
+  push:
+    branches: [actions-test]
+    paths: ['.github/workflows/antigravity-candidate-win-command.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  command:
+    runs-on: windows-11-arm
+    timeout-minutes: 8
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: Antigravity-Windows-x64-候选
+          run-id: '45849186242'
+          github-token: ${{ github.token }}
+          path: candidate
+      - name: 同一 GUI EXE 的接入命令和失败保护
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          if ((Get-CimInstance Win32_OperatingSystem).ProductType -ne 1) {throw 'Windows Server prohibited'}
+          $exe=(Get-ChildItem -LiteralPath candidate -Filter '*.exe' | Select-Object -First 1).FullName
+          if ((Get-Item -LiteralPath $exe).VersionInfo.FileVersion -ne '1.2.4') {throw 'Wrong artifact version'}
+          $evidence=Join-Path $env:RUNNER_TEMP 'command-evidence'
+          New-Item -ItemType Directory -Force $evidence | Out-Null
+          $names=@('AGY_LLM_GATEWAY_URL','AGY_LLM_GATEWAY_API_KEY','AGY_LLM_GATEWAY_WIRE_PROTOCOL','AGY_LLM_GATEWAY_MODELS')
+          $before=@($names | ForEach-Object {[Environment]::GetEnvironmentVariable($_,'User')}) | ConvertTo-Json
+          $inputFile=Join-Path $env:RUNNER_TEMP 'fake-key.txt'
+          'sk-fake-candidate-command-20261127-753689' | Set-Content -Encoding ascii $inputFile
+          $p=Start-Process -FilePath $exe -ArgumentList '--antigravity','connect' -RedirectStandardInput $inputFile -RedirectStandardOutput "$evidence/stdout.txt" -RedirectStandardError "$evidence/stderr.txt" -PassThru
+          if (-not $p.WaitForExit(60000)) {Stop-Process -Id $p.Id;throw 'Candidate did not finish'}
+          if ($p.ExitCode -ne 1) {throw "Wrong candidate exit code $($p.ExitCode)"}
+          $out=[IO.File]::ReadAllText("$evidence/stdout.txt")
+          Write-Host $out
+          if (-not $out.Contains('HTTP 401')) {throw 'Actual candidate did not report 401'}
+          $after=@($names | ForEach-Object {[Environment]::GetEnvironmentVariable($_,'User')}) | ConvertTo-Json
+          if ($after -ne $before) {throw 'Rejected key changed user configuration'}
+          if (Test-Path "$env:APPDATA/UseGoodAI/Antigravity/connection.json") {throw 'Rejected key wrote configuration'}
+          'Exact candidate EXE command rejected the fake key without changing the user environment.' | Set-Content "$evidence/result.txt"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: Antigravity-Windows-精确成品命令记录
+          path: ${{ runner.temp }}/command-evidence/
+          if-no-files-found: ignore
