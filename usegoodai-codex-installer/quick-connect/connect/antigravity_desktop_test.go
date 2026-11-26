@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -86,8 +87,21 @@ func TestAntigravityDesktop(t *testing.T) {
 	a.Dir = t.TempDir()
 	a.Client = gateway.Client()
 	var child *exec.Cmd
+	cdpPort := ""
+	if runtime.GOOS == "windows" && os.Getenv("AGY_TEST_CDP_SCRIPT") != "" {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		cdpPort = fmt.Sprint(listener.Addr().(*net.TCPAddr).Port)
+		listener.Close()
+	}
 	a.launch = func(path string, env []string) error {
-		child = exec.Command(path)
+		args := []string{}
+		if cdpPort != "" {
+			args = append(args, "--remote-debugging-port="+cdpPort, "--remote-debugging-address=127.0.0.1")
+		}
+		child = exec.Command(path, args...)
 		child.Env = env
 		child.Dir = filepath.Dir(path)
 		log, err := os.Create(filepath.Join(evidence, "app-output.txt"))
@@ -133,6 +147,18 @@ func TestAntigravityDesktop(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(evidence, "interaction.txt"), output, 0600)
 	if err != nil {
 		t.Logf("GUI interaction did not complete: %v; %s", err, output)
+	}
+	if cdpPort != "" && err != nil {
+		t.Log("Native foreground is blocked; attempting interaction with the actual rendered Electron window via local CDP.")
+		debug := exec.Command("node", os.Getenv("AGY_TEST_CDP_SCRIPT"))
+		debug.Env = append(os.Environ(), "AGY_TEST_CDP_PORT="+cdpPort, "AGY_TEST_EVIDENCE="+evidence)
+		debugOut, debugErr := debug.CombinedOutput()
+		_ = os.WriteFile(filepath.Join(evidence, "interaction-cdp.txt"), debugOut, 0600)
+		if debugErr != nil {
+			t.Logf("Renderer interaction failed: %v; %s", debugErr, debugOut)
+		} else {
+			t.Log(string(debugOut))
+		}
 	}
 	select {
 	case <-conversation:

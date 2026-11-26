@@ -104,6 +104,9 @@ jobs:
           $env:QUICK_CONNECT_EXE="$env:RUNNER_TEMP/candidate/1.UseGoodAI中转快速接入助手.exe"
           go test -count=1 -timeout=5m ./connect ./tools/resources
           exit $LASTEXITCODE
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - name: Windows 11 桌面 x64 App 原生接入
         shell: pwsh
         run: |
@@ -124,7 +127,8 @@ jobs:
           $env:AGY_TEST_APP=$app
           $env:AGY_TEST_EVIDENCE="$env:RUNNER_TEMP/agy-evidence"
           $env:AGY_TEST_INTERACT=(Resolve-Path tools/antigravity_ui_windows.ps1).Path
-          go test -count=1 -timeout=5m -run '^TestAntigravityDesktop$' -v ./connect
+          $env:AGY_TEST_CDP_SCRIPT=(Resolve-Path tools/antigravity_ui_cdp.js).Path
+          go test -count=1 -timeout=8m -run '^TestAntigravityDesktop$' -v ./connect
           exit $LASTEXITCODE
       - uses: actions/upload-artifact@v5
         if: always()
@@ -170,10 +174,19 @@ jobs:
           export AGY_TEST_APP="$RUNNER_TEMP/Antigravity.app"
           export AGY_TEST_EVIDENCE="$RUNNER_TEMP/agy-evidence"
           export AGY_TEST_INTERACT="$PWD/tools/antigravity_ui_mac.sh"
-          go test -count=1 -timeout=5m -run '^TestAntigravityDesktop$' -v ./connect
+          go test -count=1 -timeout=8m -run '^TestAntigravityDesktop$' -v ./connect
       - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: Antigravity-Mac-实测记录
           path: ${{ runner.temp }}/agy-evidence
+          if-no-files-found: ignore
+      - name: 候选助手按浏览器下载方式实际打开
+        if: ${{ !cancelled() }}
+        run: python3 ../../tests/mac-app-open.py "$RUNNER_TEMP/candidate/usegoodai-quick-connect-mac-arm64.zip"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: Antigravity-Mac-候选隔离标记打开记录
+          path: ${{ runner.temp }}/mac-app-open/report
           if-no-files-found: ignore
