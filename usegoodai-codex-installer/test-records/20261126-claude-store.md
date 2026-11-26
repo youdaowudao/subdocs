@@ -19,3 +19,5 @@
 - Windows 11 ARM 附加验收按官网和 Store 两渠道分别尝试真实注册、首次打开、候选 EXE 配置写入、关闭/重开及本地模拟对话。原生 x64、真实客户配置、真实中转请求及计费未验证；不使用真实 Key。既有三项发布门禁不变。
 
 正式主线未推送；验收结果待补记。
+
+第一次 Windows 渠道验收 [45771501649](https://github.com/youdaowudao/subdocs/actions/runs/45771501649)：Store 分支的无安装测试通过；安装阶段发现 Windows 11 ARM 托管机没有 `winget`，无法进入真实客户端验收。按微软官方 WinGet 安装说明补齐一次性测试机环境再重试，不改产品 EXE 或成品。候选 `253646c` 的三项既有门禁 [45771501557](https://github.com/youdaowudao/subdocs/actions/runs/45771501557) 均通过。

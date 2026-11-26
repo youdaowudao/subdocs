@@ -38,6 +38,15 @@ function Run-Go([string[]]$testArgs) {
   & go @testArgs
   if ($LASTEXITCODE -ne 0) { throw "Go test failed: $LASTEXITCODE" }
 }
+function Find-WinGet {
+  $command = Get-Command winget.exe -ErrorAction SilentlyContinue
+  if ($command) { return $command.Source }
+  $appInstaller = Get-AppxPackage -Name Microsoft.DesktopAppInstaller | Sort-Object Version -Descending | Select-Object -First 1
+  if ($appInstaller) {
+    $path = Join-Path $appInstaller.InstallLocation 'winget.exe'
+    if (Test-Path -LiteralPath $path) { return $path }
+  }
+}
 function Save-Window($Window, [string]$Label) {
   Add-Type -AssemblyName System.Windows.Forms
   Add-Type -AssemblyName System.Drawing
@@ -65,7 +74,18 @@ try {
   if ($Channel -eq 'store') {
     $family = 'AnthropicPBC.Claude_fnn82j28hfe8t'
     $name = 'AnthropicPBC.Claude'
-    & winget install --id 9P6K58THS811 --source msstore --accept-package-agreements --accept-source-agreements --disable-interactivity
+    $winget = Find-WinGet
+    if (-not $winget) {
+      # Microsoft documents this bootstrap for clean Windows desktop sandboxes.
+      # This is test-runner setup, not a product dependency.
+      $ProgressPreference = 'SilentlyContinue'
+      Install-PackageProvider -Name NuGet -Force | Out-Null
+      Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery | Out-Null
+      Repair-WinGetPackageManager -AllUsers | Out-Null
+      $winget = Find-WinGet
+      if (-not $winget) { throw 'WinGet is still unavailable after the official bootstrap.' }
+    }
+    & $winget install --id 9P6K58THS811 --exact --source msstore --accept-package-agreements --accept-source-agreements --disable-interactivity
     if ($LASTEXITCODE -ne 0) { throw "Microsoft Store installation failed: $LASTEXITCODE" }
   } else {
     $family = 'Claude_pzs8sxrjxfjjc'
