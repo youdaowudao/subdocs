@@ -44,11 +44,13 @@
 
 用户明确 Linux 只用命令执行、不得交付独立可执行包。已删除错误的含 Linux 程序的本地合集和四个 GitHub Linux 二进制产物；当前源码不再构建或上传 Linux 可执行包。Windows 1.2.4 与 Mac 1.1.16 已测试的成品不重做，重新组合为仅 Windows 与 Mac 的 ZIP。
 
-直接终端命令（Mac / Linux 共用，测试分支固定提交 `066348497c204bca268d520378cebca2fb204f9d`）：
+直接终端命令（Mac / Linux 共用；使用文档站 Actions 测试分支预览地址，不使用 GitHub 原始文件域名）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/youdaowudao/subdocs/066348497c204bca268d520378cebca2fb204f9d/docs/public/install/antigravity.sh | bash
+curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash
 ```
+
+用户报告原 GitHub raw 地址下载时连接重置，改为上述既有 Cloudflare Pages 预览地址。2026-11-27 实际 HTTP 下载成功，脚本 SHA-256 `873175f9b13e52ca3daf0ab5d4582cba54245861544bd20d989a728d0ca7176c` 与测试分支逐字节一致，管道运行 `version` 返回 1.0.1。正式发布后使用 `https://docs.usegoodai.com/install/antigravity.sh`，本次未发布主线；用户侧预览域名的连通性仍待确认。
 
 重新打开时在 bash 后加 `-s -- open`，恢复官方登录加 `-s -- restore`。Linux 依赖本机已有 Python 3 读取 Gemini JSON；Mac 用系统 JXA，无需安装其他依赖。仅写当前用户配置，不修改 App 本体、不使用 sudo。
 
