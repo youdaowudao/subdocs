@@ -86,6 +86,14 @@ func TestAntigravityDesktop(t *testing.T) {
 	a := NewAntigravity(gateway.URL)
 	a.Dir = t.TempDir()
 	a.Client = gateway.Client()
+	if runtime.GOOS == "windows" {
+		actual, err := resolveAntigravityPath("")
+		expected, pathErr := filepath.EvalSymlinks(filepath.Clean(app))
+		if err != nil || pathErr != nil || !strings.EqualFold(actual, expected) || !a.Status().AppDetected {
+			t.Fatalf("official installer App not detected automatically: actual=%q expected=%q error=%v", actual, app, err)
+		}
+		t.Logf("official Windows App detected before any UseGoodAI connection: %s", actual)
+	}
 	var child *exec.Cmd
 	cdpPort := ""
 	if runtime.GOOS == "windows" && os.Getenv("AGY_TEST_CDP_SCRIPT") != "" {

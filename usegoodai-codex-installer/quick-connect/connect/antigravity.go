@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +18,6 @@ import (
 
 // Official Antigravity App Enterprise Gateway mode, using Gemini native REST.
 const AntigravityDownloadURL = "https://antigravity.google/download"
-const AntigravityLinuxVersion = "1.0.0"
 
 var antigravityVariables = []string{"AGY_LLM_GATEWAY_URL", "AGY_LLM_GATEWAY_API_KEY", "AGY_LLM_GATEWAY_WIRE_PROTOCOL", "AGY_LLM_GATEWAY_MODELS"}
 var antigravityModelID = regexp.MustCompile(`^gemini-[a-z0-9][a-z0-9.-]*$`)
@@ -137,10 +137,11 @@ type antigravityProfile struct {
 }
 
 type AntigravityStatus struct {
-	State  string `json:"state"`
-	Key    string `json:"key,omitempty"`
-	Name   string `json:"name,omitempty"`
-	Models int    `json:"models"`
+	State       string `json:"state"`
+	Key         string `json:"key,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Models      int    `json:"models"`
+	AppDetected bool   `json:"appDetected"`
 }
 type AntigravityResult struct {
 	Tone        string            `json:"tone"`
@@ -195,8 +196,18 @@ func (a *Antigravity) values(p antigravityProfile) map[string]antigravityEnvValu
 	}
 	return out
 }
-func (a *Antigravity) Status() AntigravityStatus {
+func (a *Antigravity) Status() (status AntigravityStatus) {
 	p, err := a.read()
+	defer func() {
+		if p.AppPath != "" {
+			if _, err := resolveAntigravityPath(p.AppPath); err == nil {
+				status.AppDetected = true
+				return
+			}
+		}
+		_, detectErr := resolveAntigravityPath("")
+		status.AppDetected = detectErr == nil
+	}()
 	if err != nil {
 		if os.IsNotExist(err) {
 			return AntigravityStatus{State: StateNone}
@@ -241,10 +252,12 @@ func (a *Antigravity) Connect(ctx context.Context, raw, name, appPath string) An
 	if err != nil {
 		return a.result(ToneError, err.Error()+"。Antigravity 配置没有改动。")
 	}
-	if appPath == "" {
-		appPath = old.AppPath
+	if appPath == "" && old.AppPath != "" {
+		// A previously selected location may have moved. Try the ordinary
+		// locations again rather than requiring the user to reset the profile.
+		appPath, _ = resolveAntigravityPath(old.AppPath)
 	}
-	if appPath != "" {
+	if appPath != "" || (runtime.GOOS == "darwin" && a.Store == nil) {
 		appPath, err = resolveAntigravityPath(appPath)
 		if err != nil {
 			return a.result(ToneError, err.Error()+"。配置没有改动。")
@@ -284,7 +297,8 @@ func (a *Antigravity) Connect(ctx context.Context, raw, name, appPath string) An
 		}
 		return a.result(ToneError, "无法保存 Antigravity 接入配置，请重试。")
 	}
-	text := fmt.Sprintf("已保存 UseGoodAI 接入配置，导入 %d 个 Gemini 模型。", len(models))
+	// A model directory is not a live verification of the upstream models.
+	text := "已保存 UseGoodAI 接入配置。"
 	if a.Store != nil {
 		text += "请彻底退出 Antigravity 后重新打开，新建对话发送“测试”。"
 	} else {
@@ -335,7 +349,7 @@ func (a *Antigravity) Open(appPath string) AntigravityResult {
 		return a.result(ToneError, "尚未保存接入配置，请先连接 Antigravity。")
 	}
 	if appPath == "" {
-		appPath = p.AppPath
+		appPath, _ = resolveAntigravityPath(p.AppPath)
 	}
 	appPath, err = resolveAntigravityPath(appPath)
 	if err != nil {

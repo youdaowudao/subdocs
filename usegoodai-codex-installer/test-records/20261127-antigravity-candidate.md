@@ -66,3 +66,10 @@ curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash
 - 测试预览命令保持不变，正式主线未发布。
 - 测试站实际返回 1.0.2，在线文件 SHA-256 `b30b85fe52d98f2d70512ed89799cf320fa5012e9e17604c3f5353d17b09fa21` 与源码及发布副本一致；本地 Go connect/macapp 回归通过。用户在 Linux 实际输入真实密钥并确认能够使用 App；未独立核实真实计费。
 - 用户确认仅做独立官方 Antigravity App，不开发 IDE、CLI 或编辑器扩展。Google 在 [2026-05-19 产品发布](https://antigravity.google/blog/introducing-google-antigravity-2-0) 和 [2026-08-20 IDE 扩展说明](https://antigravity.google/blog/antigravity-ide-extensions) 中明确独立 App 是产品发展重点，IDE 用于编辑、调试等专业场景。
+
+## 用户 Windows 实测后修正（未发布）
+
+- 用户确认原 Windows 1.2.4 和 Linux 实际 Gemini Key 接入可用，不再要求其重复实测。发现旧界面把连接状态误作安装状态，未真正检查 App；模型数字是 `/v1beta/models` 过滤后的目录条目数，不等于实际验证的上游模型数量。
+- 本地候选 Windows 1.2.5、Mac 1.1.17、Shell 1.0.3：Windows 读取常用安装位置及安装程序注册位置并核对实际 App 文件，不搜索硬盘；安装状态与连接状态独立，检测到 App 不显示下载，未检测到的提示不阻止已安装用户连接。切换标签及窗口回到前台复核本地状态。Mac 默认位置/已保存路径与 App 文件核对；Shell 保持有限位置、不递归搜索。
+- 取消所有助手的未实测模型数量展示，保留原生模型查询和配置写入，不对每个模型发额外推理请求。Mac 终端菜单的 Key 与 Linux 命令一样可见。主站代码、模型路由、计费及原有接入协议均未修改。
+- 本地 Go、10 项前端、4 项 Shell 终端交互测试已通过；Windows 交叉编译及真实官方安装程序自动识别的 Actions 回归待验证。先完成本修正，再分析 CLI，之后一起推送测试分支。

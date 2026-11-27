@@ -72,6 +72,7 @@ let confirmTimer = 0;
 const queuedLinks = [];
 let activeLink = null;
 let assistantUpdateDownloaded = false;
+let antigravityStatusRequest = 0;
 
 function bridge() {
   return window.go && window.go.main && window.go.main.App;
@@ -134,11 +135,14 @@ function cardFor() {
     };
   }
   if (tool === 'antigravity') {
-    const status = state.antigravity || { state: 'none' };
+    const status = state.antigravity;
+    if (!status) return { state: 'none', title: '正在检测 Antigravity App…', name: '', key: '' };
     const connected = status.state === 'usegoodai';
-    return { state: connected ? 'ok' : status.state === 'none' ? 'none' : 'other',
-      title: connected ? '已保存 UseGoodAI 配置' : status.state === 'none' ? '还没连接' : '接入配置已变更',
-      name: connected ? status.name || '' : '', key: connected ? (status.key || '') + ' · ' + status.models + ' 个模型' : '安装官方 Antigravity App 2.15 或以上', download: !connected };
+    if (connected) return { state: 'ok', title: '已保存 UseGoodAI 配置', name: status.name || '', key: status.key || '' };
+    if (!status.appDetected) return { state: 'none', title: '未检测到 Antigravity App', name: '',
+      key: '已安装可直接连接；尚未安装请先下载', download: true };
+    return { state: status.state === 'none' ? 'none' : 'other',
+      title: status.state === 'none' ? '还没连接' : '接入配置已变更', name: '', key: '已检测到 Antigravity App' };
   }
   const status = state.status || { state: 'none' };
   const connected = status.state === 'usegoodai';
@@ -296,6 +300,7 @@ function showResult(result) {
 }
 
 function setBusy(on, label) {
+  if (on) antigravityStatusRequest++;
   busy = on;
   for (const button of [connectButton, restoreButton, removeButton, $('go-codex'), $('go-image'), $('go-models'),
     $('tab-codex'), $('tab-claude'), $('tab-antigravity'), $('get-official'), $('get-group'), $('assistant-update-button'), chineseButton]) {
@@ -303,6 +308,20 @@ function setBusy(on, label) {
   }
   connectButton.classList.toggle('busy', on && Boolean(label));
   $('connect-label').textContent = on && label ? label : idleLabel();
+}
+
+async function refreshAntigravityStatus() {
+  const app = bridge();
+  if (tool !== 'antigravity' || busy || !app || !app.AntigravityStatus) return;
+  const request = ++antigravityStatusRequest;
+  try {
+    const status = await app.AntigravityStatus();
+    if (request !== antigravityStatusRequest || busy) return;
+    state.antigravity = status;
+    if (tool === 'antigravity') renderCard();
+  } catch (_) {
+    // Keep the last known state. A detection error is not an uninstall.
+  }
 }
 
 function cancelConfirm() {
@@ -339,6 +358,7 @@ function setTool(next) {
   }
   if ((tool === 'image' && !savedImageKey()) || tool === 'claude') keyInput.focus();
   if (tool === 'claude' || tool === 'codex' || tool === 'antigravity') fillFromClipboard();
+  if (tool === 'antigravity') void refreshAntigravityStatus();
 }
 
 async function run(label, notice, action) {
@@ -625,7 +645,10 @@ $('assistant-update-button').addEventListener('click', async () => {
   }
 });
 
-window.addEventListener('focus', fillFromClipboard);
+window.addEventListener('focus', () => {
+  fillFromClipboard();
+  void refreshAntigravityStatus();
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') fillFromClipboard();
 });

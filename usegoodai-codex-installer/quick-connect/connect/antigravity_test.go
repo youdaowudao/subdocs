@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -69,6 +71,8 @@ func TestAntigravityConnectAndRestore(t *testing.T) {
 	}
 	if r := a.Connect(ctx, "sk-ag-first", "测试", ""); r.Tone != ToneSuccess || r.Antigravity.Models != 2 || r.Antigravity.Name != "测试" || strings.Contains(r.Message, "sk-ag-first") {
 		t.Fatalf("bad result %+v", r)
+	} else if strings.Contains(r.Message, "个 Gemini 模型") || !strings.Contains(r.Message, "已保存 UseGoodAI 接入配置") {
+		t.Fatalf("model directory must not be presented as verified model count: %q", r.Message)
 	}
 	if store.values["AGY_LLM_GATEWAY_MODELS"].Value != "gemini-3.8-flash,gemini-4-hydrogen" || store.values["AGY_LLM_GATEWAY_WIRE_PROTOCOL"].Value != "genai" {
 		t.Fatal("wrong native config")
@@ -124,7 +128,8 @@ func TestAntigravityProfileWithoutStore(t *testing.T) {
 	}))
 	defer s.Close()
 	a := &Antigravity{Dir: t.TempDir(), BaseURL: s.URL, Client: s.Client(), Now: time.Now}
-	if r := a.Connect(context.Background(), "sk-local-test", "", ""); r.Tone != ToneSuccess {
+	app, _ := fixtureAntigravityApp(t, t.TempDir())
+	if r := a.Connect(context.Background(), "sk-local-test", "", app); r.Tone != ToneSuccess || !r.Antigravity.AppDetected {
 		t.Fatal(r.Message)
 	}
 	p, e := a.read()
@@ -133,5 +138,42 @@ func TestAntigravityProfileWithoutStore(t *testing.T) {
 	}
 	if r := a.Restore(); r.Tone != ToneSuccess || r.Antigravity.State != StateNone {
 		t.Fatal(r)
+	}
+}
+
+func fixtureAntigravityApp(t *testing.T, root string) (string, string) {
+	t.Helper()
+	bin := filepath.Join(root, "antigravity")
+	resources := filepath.Join(root, "resources")
+	if runtime.GOOS == "windows" {
+		bin = filepath.Join(root, "Antigravity.exe")
+	} else if runtime.GOOS == "darwin" {
+		bin = filepath.Join(root, "Antigravity.app", "Contents", "MacOS", "Antigravity")
+		resources = filepath.Join(root, "Antigravity.app", "Contents", "Resources")
+	}
+	for _, dir := range []string{filepath.Dir(bin), resources} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	marker := filepath.Join(resources, "app.asar")
+	for _, path := range []string{bin, marker} {
+		if err := os.WriteFile(path, []byte("fixture"), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return bin, marker
+}
+
+func TestAntigravityDetectionRequiresOfficialAppLayout(t *testing.T) {
+	bin, marker := fixtureAntigravityApp(t, t.TempDir())
+	if got, err := resolveAntigravityPath(bin); err != nil || got == "" {
+		t.Fatalf("valid layout: %q %v", got, err)
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolveAntigravityPath(bin); err == nil {
+		t.Fatal("same-named IDE or incomplete installation must not count as App")
 	}
 }

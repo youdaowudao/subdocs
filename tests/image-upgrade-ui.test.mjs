@@ -81,6 +81,30 @@ test('Codex and Claude show the website import guide above the manual fallback',
   assert.equal(panel.element('page-intro').hidden, true);
 })
 
+test('Antigravity download guidance reflects App detection, not connection status; no model count', async () => {
+  const panel = imagePanel({ state: 'none' });
+  const run = (code) => vm.runInContext(code, panel.context);
+  const app = panel.context.window.go.main.App;
+  run("tool = 'antigravity'; state.antigravity = null; render()");
+  assert.equal(panel.element('get-app').hidden, true);
+  assert.match(panel.element('status-title').textContent, /正在检测/);
+  app.AntigravityStatus = async () => ({ state: 'none', appDetected: true });
+  await run('refreshAntigravityStatus()');
+  assert.equal(panel.element('get-app').hidden, true);
+  assert.equal(panel.element('status-title').textContent, '还没连接');
+  assert.match(panel.element('status-key').textContent, /已检测到/);
+  app.AntigravityStatus = async () => ({ state: 'none', appDetected: false });
+  await run('refreshAntigravityStatus()');
+  assert.equal(panel.element('get-app').hidden, false);
+  assert.equal(panel.element('status-title').textContent, '未检测到 Antigravity App');
+  assert.match(panel.element('status-key').textContent, /已安装可直接连接/);
+  app.AntigravityStatus = async () => ({ state: 'usegoodai', appDetected: true, key: 'sk-masked', models: 20 });
+  await run('refreshAntigravityStatus()');
+  assert.equal(panel.element('get-app').hidden, true);
+  assert.equal(panel.element('status-key').textContent, 'sk-masked');
+  assert.equal(panel.element('status-title').textContent, '已保存 UseGoodAI 配置');
+});
+
 test('the assistant checks silently and asks before downloading a new Windows version', async () => {
   const panel = imagePanel({ state: 'none' })
   const run = (code) => vm.runInContext(code, panel.context)

@@ -4,11 +4,91 @@ package connect
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/windows/registry"
 )
+
+func antigravityWindowsDefaultPaths() []string {
+	var paths []string
+	if dir, err := os.UserCacheDir(); err == nil && dir != "" {
+		paths = append(paths, filepath.Join(dir, "Programs", "Antigravity", "Antigravity.exe"))
+	}
+	for _, name := range []string{"ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"} {
+		if dir := os.Getenv(name); dir != "" {
+			paths = append(paths, filepath.Join(dir, "Antigravity", "Antigravity.exe"))
+		}
+	}
+	return paths
+}
+
+func antigravityRegistryString(key registry.Key, name string) string {
+	value, kind, err := key.GetStringValue(name)
+	if err != nil {
+		return ""
+	}
+	if kind == registry.EXPAND_SZ {
+		if expanded, err := registry.ExpandString(value); err == nil {
+			value = expanded
+		}
+	}
+	return strings.TrimSpace(value)
+}
+
+func antigravityRegistryExe(value string) string {
+	// DisplayIcon may be quoted and end with a resource index (",0").
+	end := strings.LastIndex(strings.ToLower(value), ".exe")
+	if end < 0 {
+		return ""
+	}
+	path := strings.Trim(strings.TrimSpace(value[:end+4]), `"`)
+	if !filepath.IsAbs(path) || !strings.EqualFold(filepath.Base(path), "Antigravity.exe") {
+		return ""
+	}
+	return path
+}
+
+func antigravityWindowsRegisteredPaths() []string {
+	var paths []string
+	const uninstall = `Software\Microsoft\Windows\CurrentVersion\Uninstall`
+	const appPaths = `Software\Microsoft\Windows\CurrentVersion\App Paths\Antigravity.exe`
+	for _, root := range []registry.Key{registry.CURRENT_USER, registry.LOCAL_MACHINE} {
+		for _, view := range []uint32{registry.WOW64_64KEY, registry.WOW64_32KEY} {
+			if key, err := registry.OpenKey(root, appPaths, registry.QUERY_VALUE|view); err == nil {
+				paths = append(paths, antigravityRegistryExe(antigravityRegistryString(key, "")))
+				key.Close()
+			}
+			parent, err := registry.OpenKey(root, uninstall, registry.ENUMERATE_SUB_KEYS|view)
+			if err != nil {
+				continue
+			}
+			names, err := parent.ReadSubKeyNames(-1)
+			parent.Close()
+			if err != nil {
+				continue
+			}
+			for _, name := range names {
+				entry, err := registry.OpenKey(root, uninstall+`\`+name, registry.QUERY_VALUE|view)
+				if err != nil {
+					continue
+				}
+				display := strings.ToLower(antigravityRegistryString(entry, "DisplayName"))
+				if display == "antigravity" || display == "google antigravity" || display == "antigravity app" || display == "google antigravity app" {
+					if dir := strings.Trim(antigravityRegistryString(entry, "InstallLocation"), `"`); filepath.IsAbs(dir) {
+						paths = append(paths, filepath.Join(dir, "Antigravity.exe"))
+					}
+					paths = append(paths, antigravityRegistryExe(antigravityRegistryString(entry, "DisplayIcon")))
+				}
+				entry.Close()
+			}
+		}
+	}
+	return paths
+}
 
 type windowsAntigravityEnv struct{}
 

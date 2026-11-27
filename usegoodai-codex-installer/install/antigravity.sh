@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # UseGoodAI Antigravity App 接入命令，macOS / Linux；不安装二进制、不需要 sudo。
 set -euo pipefail
-VERSION="1.0.2"
+VERSION="1.0.3"
 BASE_URL="https://api.usegoodai.com"
 system="$(uname -s)"
 case "$system" in
@@ -124,6 +124,7 @@ resolve_app() {
   [[ -f "$p" && -x "$p" ]] || return 1
   local parent
   parent="$(cd "$(dirname "$p")" && pwd -P)" || return 1
+  if [[ "$system" = Darwin && ! -f "$parent/../Resources/app.asar" ]]; then return 1; fi
   printf '%s/%s\n' "$parent" "${p##*/}"
 }
 

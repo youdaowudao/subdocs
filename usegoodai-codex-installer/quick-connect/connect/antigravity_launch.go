@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const messageAntigravityNotInstalled = "没有找到 Antigravity App，请先从 https://antigravity.google/download 安装官方桌面版，或使用 --app 指定其程序路径"
+const messageAntigravityNotInstalled = "未在常用位置检测到官方 Antigravity App。已安装时可用 --app 指定程序路径；尚未安装时请到 https://antigravity.google/download 下载"
 
 func resolveAntigravityPath(explicit string) (string, error) {
 	var paths []string
@@ -17,12 +17,11 @@ func resolveAntigravityPath(explicit string) (string, error) {
 		paths = []string{explicit}
 	} else {
 		userDir, _ := os.UserHomeDir()
-		cache, _ := os.UserCacheDir()
 		switch runtime.GOOS {
 		case "darwin":
 			paths = []string{filepath.Join(userDir, "Applications", "Antigravity.app"), "/Applications/Antigravity.app"}
 		case "windows":
-			paths = []string{filepath.Join(cache, "Programs", "Antigravity", "Antigravity.exe"), filepath.Join(os.Getenv("ProgramFiles"), "Antigravity", "Antigravity.exe"), filepath.Join(os.Getenv("ProgramFiles(x86)"), "Antigravity", "Antigravity.exe")}
+			paths = antigravityWindowsDefaultPaths()
 		default:
 			paths = []string{filepath.Join(userDir, "Antigravity-x64", "antigravity"), filepath.Join(userDir, "Downloads", "Antigravity-x64", "antigravity"), filepath.Join(userDir, "Applications", "Antigravity-x64", "antigravity"), "/opt/Antigravity-x64/antigravity"}
 		}
@@ -30,6 +29,20 @@ func resolveAntigravityPath(explicit string) (string, error) {
 			paths = append(paths, p)
 		}
 	}
+	if path := firstAntigravityApp(paths); path != "" {
+		return path, nil
+	}
+	if explicit == "" && runtime.GOOS == "windows" {
+		// The official installer can register a custom install location. Do not
+		// search the filesystem recursively or trust a stale registry entry.
+		if path := firstAntigravityApp(antigravityWindowsRegisteredPaths()); path != "" {
+			return path, nil
+		}
+	}
+	return "", errors.New(messageAntigravityNotInstalled)
+}
+
+func firstAntigravityApp(paths []string) string {
 	for _, p := range paths {
 		if p == "" {
 			continue
@@ -47,14 +60,28 @@ func resolveAntigravityPath(explicit string) (string, error) {
 		if err != nil {
 			continue
 		}
+		abs, err = filepath.EvalSymlinks(abs)
+		if err != nil {
+			continue
+		}
 		if name := strings.ToLower(filepath.Base(abs)); name != "antigravity" && name != "antigravity.exe" {
 			continue
 		}
-		if info, err := os.Stat(abs); err == nil && !info.IsDir() && (runtime.GOOS == "windows" || info.Mode()&0111 != 0) {
-			return abs, nil
+		info, err := os.Stat(abs)
+		if err != nil || !info.Mode().IsRegular() || (runtime.GOOS != "windows" && info.Mode()&0111 == 0) {
+			continue
+		}
+		// The standalone App is Electron-packaged, whereas a same-named IDE
+		// or CLI is not sufficient evidence of an installed App.
+		resources := filepath.Join(filepath.Dir(abs), "resources")
+		if runtime.GOOS == "darwin" {
+			resources = filepath.Join(filepath.Dir(filepath.Dir(abs)), "Resources")
+		}
+		if marker, err := os.Stat(filepath.Join(resources, "app.asar")); err == nil && marker.Mode().IsRegular() {
+			return abs
 		}
 	}
-	return "", errors.New(messageAntigravityNotInstalled)
+	return ""
 }
 func launchAntigravity(path string, env []string) error {
 	cmd := exec.Command(path)

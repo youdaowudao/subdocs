@@ -6,8 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 )
@@ -44,20 +42,7 @@ func RunAntigravityCommand(args []string, in io.Reader, out io.Writer, a *Antigr
 	switch action {
 	case "connect":
 		fmt.Fprintln(out, "请输入 Gemini 分组 API Key：")
-		restore := func() {}
-		if runtime.GOOS != "windows" {
-			if f, ok := in.(*os.File); ok {
-				if info, err := f.Stat(); err == nil && info.Mode()&os.ModeCharDevice != 0 {
-					cmd := exec.Command("stty", "-echo")
-					cmd.Stdin = f
-					if cmd.Run() == nil {
-						restore = func() { cmd := exec.Command("stty", "echo"); cmd.Stdin = f; _ = cmd.Run(); fmt.Fprintln(out) }
-					}
-				}
-			}
-		}
 		line, _ := reader.ReadString('\n')
-		restore()
 		result = a.Connect(context.Background(), strings.TrimSpace(line), "", *app)
 		fmt.Fprintln(out, result.Message)
 		if result.Tone == ToneError {
@@ -77,10 +62,14 @@ func RunAntigravityCommand(args []string, in io.Reader, out io.Writer, a *Antigr
 		result = a.Restore()
 	case "status":
 		status := a.Status()
-		fmt.Fprintf(out, "Antigravity：%s %s，%d 个模型\n", status.State, status.Key, status.Models)
+		fmt.Fprintf(out, "Antigravity：%s %s\n", status.State, status.Key)
 		return 0
 	case "version":
-		fmt.Fprintln(out, AntigravityLinuxVersion)
+		if runtime.GOOS == "darwin" {
+			fmt.Fprintln(out, MacVersion)
+		} else {
+			fmt.Fprintln(out, Version)
+		}
 		return 0
 	default:
 		fmt.Fprintln(out, "用法：connect [--app 路径]、open [--app 路径]、restore、status、version")
