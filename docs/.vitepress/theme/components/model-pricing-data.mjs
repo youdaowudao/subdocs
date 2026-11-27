@@ -120,6 +120,13 @@ export const TEXT_GROUPS = [
     modelIds: GPT_MODEL_IDS,
   },
   {
+    id: 'gpt-ultrafast',
+    name: 'GPT UltraFast 分组',
+    multiplier: 0.55,
+    description: 'Pro 50X，UltraFast 模式默认开启',
+    modelIds: GPT_MODEL_IDS,
+  },
+  {
     id: 'anthropic-main',
     name: 'Anthropic 低价分组1M上下文 缓存高',
     multiplier: 0.18,
@@ -247,7 +254,7 @@ export const MODEL_CATEGORIES = [
     name: 'GPT',
     iconSvg: OPENAI_ICON,
     kind: 'text',
-    groupIds: ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35'],
+    groupIds: ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35', 'gpt-ultrafast'],
     defaultGroupId: 'gpt-0.18',
   },
   {

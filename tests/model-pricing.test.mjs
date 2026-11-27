@@ -33,6 +33,7 @@ test('includes the updated text pricing groups in order', () => {
       { id: 'gpt-0.18', name: 'GPT Pro / Plus 混池分组', multiplier: 0.15 },
       { id: 'full', name: 'GPT 正价 Pro 满血分组', multiplier: 0.27 },
       { id: 'gpt-0.35', name: 'GPT VIP 分组', multiplier: 0.35 },
+      { id: 'gpt-ultrafast', name: 'GPT UltraFast 分组', multiplier: 0.55 },
       { id: 'anthropic-main', name: 'Anthropic 低价分组1M上下文 缓存高', multiplier: 0.18 },
       { id: 'anthropic-0.49', name: '主力分组', multiplier: 0.55 },
       { id: 'anthropic-max', name: 'CC MAX 满血版本', multiplier: 1.5 },
@@ -56,7 +57,7 @@ test('keeps the model category tabs in the requested order', () => {
   assert.deepEqual(
     MODEL_CATEGORIES.map(({ id, name, kind, groupIds, defaultGroupId }) => ({ id, name, kind, groupIds, defaultGroupId })),
     [
-      { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35'], defaultGroupId: 'gpt-0.18' },
+      { id: 'gpt', name: 'GPT', kind: 'text', groupIds: ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35', 'gpt-ultrafast'], defaultGroupId: 'gpt-0.18' },
       { id: 'anthropic', name: 'Anthropic', kind: 'text', groupIds: ['anthropic-main', 'anthropic-0.49', 'anthropic-max', 'anthropic-max-external'], defaultGroupId: undefined },
       { id: 'grok', name: 'Grok', kind: 'text', groupIds: ['grok-free', 'grok-4.5'], defaultGroupId: undefined },
       { id: 'gemini', name: 'Gemini', kind: 'text', groupIds: ['gemini-antigravity', 'gemini-per-request'], defaultGroupId: undefined },
@@ -131,8 +132,21 @@ test('keeps the GPT Plus discount group at 0.1 with instability copy', () => {
   assert.match(group.description, /最近不稳定/)
 })
 
+test('adds GPT UltraFast at 0.55 with Pro 50X and default enabled mode', () => {
+  const group = TEXT_GROUPS.find((item) => item.id === 'gpt-ultrafast')
+  assert.equal(group.name, 'GPT UltraFast 分组')
+  assert.equal(group.multiplier, 0.55)
+  assert.equal(group.description, 'Pro 50X，UltraFast 模式默认开启')
+  const astra = getTextModelsForGroup(group.id).find((model) => model.id === 'gpt-6-astra')
+  const price = calculateTextPrice(astra.officialUsd, group.multiplier, 'usd', astra.billingOverridesUsd)
+  for (const [field, amount] of Object.entries({ input: 5.5, output: 27.5, cachedInput: 1.1, total: 33 })) {
+    assert.ok(isClose(price.group[field], amount), field)
+  }
+  assert.equal(getEquivalentDiscount(group.multiplier), '0.8折')
+})
+
 test('keeps the GPT family models in the expected order', () => {
-  for (const groupId of ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35']) {
+  for (const groupId of ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35', 'gpt-ultrafast']) {
     assert.deepEqual(
       getTextModelsForGroup(groupId).map((model) => model.id),
       [
@@ -158,6 +172,7 @@ test('prices GPT-5.6 Terra from the $2 official input baseline in all GPT groups
     ['gpt-0.18', 0.3],
     ['full', 0.54],
     ['gpt-0.35', 0.7],
+    ['gpt-ultrafast', 1.1],
   ])
 
   for (const [groupId, expectedInput] of expectedGroupInputs) {
@@ -180,6 +195,7 @@ test('prices GPT-6.1 Sol from the official Standard baseline in all GPT groups',
     ['gpt-0.18', { input: 0.3, output: 1.5, cachedInput: 0.015, total: 1.8 }],
     ['full', { input: 0.54, output: 2.7, cachedInput: 0.027, total: 3.24 }],
     ['gpt-0.35', { input: 0.7, output: 3.5, cachedInput: 0.035, total: 4.2 }],
+    ['gpt-ultrafast', { input: 1.1, output: 5.5, cachedInput: 0.055, total: 6.6 }],
   ])
 
   for (const [groupId, expectedGroup] of expectedGroupPrices) {
@@ -208,6 +224,7 @@ test('prices GPT-6 Sol from the official Standard baseline in all GPT groups', (
     ['gpt-0.18', { input: 0.3, output: 1.5, cachedInput: 0.03, total: 1.8 }],
     ['full', { input: 0.54, output: 2.7, cachedInput: 0.054, total: 3.24 }],
     ['gpt-0.35', { input: 0.7, output: 3.5, cachedInput: 0.07, total: 4.2 }],
+    ['gpt-ultrafast', { input: 1.1, output: 5.5, cachedInput: 0.11, total: 6.6 }],
   ])
 
   for (const [groupId, expectedGroup] of expectedGroupPrices) {
@@ -995,6 +1012,7 @@ test('calculates the revised group totals from the official USD baseline', () =>
     ['gpt-0.18', 5.25],
     ['full', 9.45],
     ['gpt-0.35', 12.25],
+    ['gpt-ultrafast', 19.25],
     ['anthropic-main', 6.3],
     ['anthropic-0.49', 19.25],
     ['anthropic-max', 52.5],

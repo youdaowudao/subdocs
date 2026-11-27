@@ -94,7 +94,7 @@ test('shows the Luna routing notice without prices in every GPT group and price 
 
   try {
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
-    for (const groupId of ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35']) {
+    for (const groupId of ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35', 'gpt-ultrafast']) {
       for (const priceMode of ['group', 'official']) {
         const component = {
           ...pricing,
@@ -114,6 +114,40 @@ test('shows the Luna routing notice without prices in every GPT group and price 
           assert.doesNotMatch(row, /¥|\$|group-price|official-price|saving-badge/)
         }
       }
+    }
+  } finally {
+    await server.close()
+  }
+})
+
+test('renders the fifth GPT UltraFast group, Pro 50X default mode and 0.55 prices', async () => {
+  const server = await createServer({ configFile: false, plugins: [vue()], server: { middlewareMode: true }, appType: 'custom' })
+  try {
+    const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
+    const component = {
+      ...pricing,
+      setup(props, context) {
+        const state = pricing.setup(props, context)
+        state.activeGroupId.value = 'gpt-ultrafast'
+        return state
+      },
+    }
+    const html = await renderToString(createSSRApp(component))
+    const cards = [...html.matchAll(/<button\b[^>]*class="[^"]*pricing-group-card[^"]*"[^>]*>[\s\S]*?<\/button>/g)].map(([card]) => card)
+    assert.equal(cards.length, 5)
+    const active = cards.find((card) => card.includes('aria-pressed="true"'))
+    assert.match(active, /GPT UltraFast 分组/)
+    assert.match(active, /0\.55 倍率/)
+    assert.match(html, /Pro 50X，UltraFast 模式默认开启/)
+    const rows = [...html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)].map(([row]) => row)
+    for (const [id, expected] of [
+      ['gpt-6.2-astra', ['¥4.40', '¥22.00', '¥0.22', '¥26.40']],
+      ['gpt-6.2-sol', ['¥1.10', '¥5.50', '¥0.055', '¥6.60']],
+      ['gpt-6-astra', ['¥5.50', '¥27.50', '¥1.10', '¥33.00']],
+    ]) {
+      const row = rows.find((item) => item.includes(`<strong>${id}</strong>`))
+      assert.ok(row, id)
+      assert.deepEqual([...row.matchAll(/<strong class="group-price">([^<]+)</g)].map((match) => match[1]), expected, id)
     }
   } finally {
     await server.close()
@@ -572,7 +606,7 @@ test('labels every GPT price cell so phone cards show input, output, cache and t
     const { default: pricing } = await server.ssrLoadModule('/docs/.vitepress/theme/components/ModelPricing.vue')
     const labels = ['输入价格', '输出价格', '缓存读取', '输入 + 输出合计']
 
-    for (const groupId of ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35']) {
+    for (const groupId of ['pro-plus', 'gpt-0.18', 'full', 'gpt-0.35', 'gpt-ultrafast']) {
       for (const priceMode of ['group', 'official']) {
         const component = {
           ...pricing,
