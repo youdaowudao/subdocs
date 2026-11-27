@@ -7,6 +7,7 @@ on:
       - 'usegoodai-codex-installer/quick-connect/**'
       - 'usegoodai-codex-installer/desktop/**'
       - 'usegoodai-codex-installer/install/antigravity.sh'
+      - 'usegoodai-codex-installer/tests/antigravity-shell-input.py'
       - 'docs/public/install/antigravity.sh'
       - '.github/workflows/antigravity-candidate.yml'
 permissions:
@@ -30,6 +31,7 @@ jobs:
         run: |
           go test -count=1 ./connect ./macapp
           bash -n ../install/antigravity.sh
+          python3 ../tests/antigravity-shell-input.py
           mkdir -p "$RUNNER_TEMP/agy-evidence"
       - name: 安装并打开官方 Linux App
         run: |

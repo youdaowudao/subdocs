@@ -57,3 +57,10 @@ curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash
 - 源码与测试分支将来发布副本逐字节一致：`usegoodai-codex-installer/install/antigravity.sh` 与 `docs/public/install/antigravity.sh`。
 - [Shell 实际 App 验收 45935555597](https://github.com/youdaowudao/subdocs/actions/runs/45935555597)：Linux [15170289497](https://github.com/youdaowudao/subdocs/actions/runs/45935555597/artifacts/15170289497)、Mac [15170421887](https://github.com/youdaowudao/subdocs/actions/runs/45935555597/artifacts/15170421887)。两者均经实际 Shell 命令查询原生模型，打开官方 App，发送 test 并显示本地模拟回复，恢复测试通过。正式 URL 假 Key 返回 401，无写入。
 - Windows 原候选保持不变。没有正式发布，实际真实 Key 和计费仍待用户验收。
+
+## Shell 1.0.2 用户验收修正（2026-11-27，未发布）
+
+- Google 官方 Linux App 是 tar.gz 解压版，无强制固定安装目录；官方 2.35.2 x64 包已核对 `Antigravity-x64/antigravity`、`resources/app.asar`、`resources/bin/language_server`。仅检查常用固定目录及系统下载目录，不作全盘或递归搜索。其他解压位置由用户填目录或程序完整路径，支持 `~`、中文和空格；保存后复用。Windows 和 Mac 已冻结成品未变。
+- 终端输入 API Key 明文显示，便于新手检查；仍不把 Key 作为 API 请求命令行参数、不输出额外日志。
+- 本地四项伪终端交互测试通过：标准下载目录、中文自定义下载目录 ARM64 布局、自定义文件夹含空格和 `~`、显式程序路径与同名非 App；每项均验证假 Key 可见、401 不写配置。官方真实 App 测试改为默认命令，不再通过 `--app` 绕过定位，待 Actions 执行。
+- 测试预览命令保持不变，正式主线未发布。

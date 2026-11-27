@@ -139,11 +139,23 @@ func TestAntigravityDesktop(t *testing.T) {
 			t.Fatal(err)
 		}
 		profile := t.TempDir()
-		env := append(os.Environ(), "USEGOODAI_KEY="+fake, "CURL_CA_BUNDLE="+ca, "XDG_CONFIG_HOME="+profile)
+		env := append(os.Environ(), "USEGOODAI_KEY="+fake, "CURL_CA_BUNDLE="+ca, "XDG_CONFIG_HOME="+profile, "HOME="+profile)
+		// Test the same default command the customer runs, not the explicit
+		// --app escape hatch. Expose the actual installed App at the normal
+		// location inside the isolated test home, without copying binaries.
+		appDirectory := filepath.Dir(app)
+		defaultPath := filepath.Join(profile, "Downloads", filepath.Base(appDirectory))
 		if runtime.GOOS == "darwin" {
-			env = append(env, "HOME="+profile)
+			appDirectory = app
+			defaultPath = filepath.Join(profile, "Applications", "Antigravity.app")
 		}
-		run := exec.Command("/bin/bash", testScript, "connect", "--app", app)
+		if err := os.MkdirAll(filepath.Dir(defaultPath), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(appDirectory, defaultPath); err != nil {
+			t.Fatal(err)
+		}
+		run := exec.Command("/bin/bash", testScript)
 		run.Env = env
 		output, err := run.CombinedOutput()
 		_ = os.WriteFile(filepath.Join(evidence, "shell.txt"), output, 0600)

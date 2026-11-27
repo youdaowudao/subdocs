@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # UseGoodAI Antigravity App 接入命令，macOS / Linux；不安装二进制、不需要 sudo。
 set -euo pipefail
-VERSION="1.0.1"
+VERSION="1.0.2"
 BASE_URL="https://api.usegoodai.com"
 system="$(uname -s)"
 case "$system" in
@@ -108,9 +108,17 @@ except (ValueError, TypeError, KeyError):
 resolve_app() {
   local p="$1"
   [[ -n "$p" && "$p" != *$'\n'* ]] || return 1
+  case "$p" in '~/'*) p="$HOME/${p:2}" ;; esac
+  p="${p%/}"
   if [[ "$system" = Darwin && "$p" = *.app ]]; then
     if [[ -x "$p/Contents/MacOS/Antigravity" ]]; then p="$p/Contents/MacOS/Antigravity"
     else p="$p/Contents/MacOS/antigravity"; fi
+  elif [[ "$system" = Linux ]]; then
+    # The official Linux App is an archive; accept its extracted folder or executable.
+    if [[ -d "$p" ]]; then p="$p/antigravity"; fi
+    p="$(readlink -f -- "$p" 2>/dev/null)" || return 1
+    # Do not confuse the standalone IDE / CLI with the official Electron App.
+    [[ -f "${p%/*}/resources/app.asar" && -f "${p%/*}/resources/bin/language_server" ]] || return 1
   fi
   case "${p##*/}" in antigravity|Antigravity) ;; *) return 1 ;; esac
   [[ -f "$p" && -x "$p" ]] || return 1
@@ -120,7 +128,7 @@ resolve_app() {
 }
 
 find_app() {
-  local p found
+  local p found root variant download_dir=""
   if [[ -n "$explicit" ]]; then resolve_app "$explicit"; return; fi
   if [[ -n "${app_path:-}" ]]; then resolve_app "$app_path" && return; fi
   if [[ "$system" = Darwin ]]; then
@@ -128,8 +136,15 @@ find_app() {
       found="$(resolve_app "$p")" && { printf '%s\n' "$found"; return; }
     done
   else
-    for p in "$HOME/Antigravity-x64/antigravity" "$HOME/Downloads/Antigravity-x64/antigravity" "$HOME/Applications/Antigravity-x64/antigravity" '/opt/Antigravity-x64/antigravity'; do
-      found="$(resolve_app "$p")" && { printf '%s\n' "$found"; return; }
+    if command -v xdg-user-dir >/dev/null 2>&1; then
+      download_dir="$(xdg-user-dir DOWNLOAD 2>/dev/null || true)"
+    fi
+    # Direct checks only: never recursively search the user's files.
+    for root in "$HOME" "$download_dir" "$HOME/Downloads" "$HOME/下载" "$HOME/Applications" /opt; do
+      [[ -n "$root" ]] || continue
+      for variant in Antigravity-x64 Antigravity-arm64; do
+        found="$(resolve_app "$root/$variant")" && { printf '%s\n' "$found"; return; }
+      done
     done
   fi
   p="$(command -v antigravity 2>/dev/null || true)"
@@ -163,9 +178,13 @@ if ! resolved="$(find_app)"; then
   if ! { exec 3</dev/tty; } 2>/dev/null; then
     echo '未找到 Antigravity App，请安装官方 App 后用 --app 指定其程序路径。' >&2; exit 1
   fi
-  printf '请输入官方 Antigravity App 的路径：' >&2
+  if [[ "$system" = Linux ]]; then
+    printf 'Linux 官方 Antigravity App 为解压版，没有固定安装地址。\n未在常用目录找到 App，请输入你解压后的文件夹路径（也可输入里面的 antigravity 程序路径）：' >&2
+  else
+    printf '未在「应用程序」中找到 Antigravity.app，请输入 App 的完整路径：' >&2
+  fi
   IFS= read -r -u 3 explicit || exit 1
-  resolved="$(find_app)" || { echo '未找到有效的官方 App，配置没有改动。' >&2; exit 1; }
+  resolved="$(find_app)" || { echo '该路径未找到官方 Antigravity App，请检查解压后的文件夹或程序路径，配置没有改动。' >&2; exit 1; }
 fi
 app_path="$resolved"
 
@@ -175,8 +194,7 @@ if [[ "$action" = connect ]]; then
   else
     if ! { exec 3</dev/tty; } 2>/dev/null; then echo '请在终端运行接入命令并输入 Key。' >&2; exit 1; fi
     printf '请输入 Gemini 分组 API Key：' >&2
-    IFS= read -r -s -u 3 key || exit 1
-    printf '\n' >&2
+    IFS= read -r -u 3 key || exit 1
   fi
   [[ "$key" =~ ^sk-[A-Za-z0-9_-]+$ ]] || { echo '请粘贴完整的 UseGoodAI 密钥，配置没有改动。' >&2; exit 1; }
   response="$(mktemp "${TMPDIR:-/tmp}/usegoodai-antigravity.XXXXXX")"
