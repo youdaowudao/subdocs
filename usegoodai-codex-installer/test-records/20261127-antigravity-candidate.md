@@ -84,3 +84,15 @@ curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash
 - 不添加主站路由、计费或数据库读写逻辑；每次用户主动配置 CLI 仍读已有 `/v1beta/models` 一次，普通对话无新增请求。
 
 - Shell 1.0.4：完整解析下载脚本后再执行命令，避免 `curl | bash` 在版本、恢复或缺少安装等提前退出时出现下载管道写入错误。1.0.3 未作为正式交付；候选复测以 1.0.4 为准。
+
+## 最终候选 App + CLI 验收（2026-11-27 JST，未发布）
+
+- 用户已确认旧候选 Windows 与 Linux 实际 App 接入成功；本次修正后无需再请求用户重做。主站同事只读确认 `/v1beta/models` 可能为分组账号模型映射并集、混合账号列表、实际上游目录或内置回退目录；线上该分组配置未核实，不能断定此次 20 vs 4–5 的具体分支。若需限制实际对外模型，主站已有分组模型白名单；本次不改主站，助手不再显示数量。
+- 最终源码提交 `cefd8093223533d65f01ce5d62743758edddf73e`，Windows 1.2.5、Mac 1.1.17、Mac/Linux Shell 1.0.4。[三平台完整实测 45952148628](https://github.com/youdaowudao/subdocs/actions/runs/45952148628) 全部成功。官方 App 2.35.2、CLI 1.5.18 均为真实程序，不是模拟客户端；仅服务端 Key 与回复为本地模拟。
+- Windows 11 ARM 上 x64 官方 App 的自动检测在接入前实际识别 `C:\Users\runneradmin\AppData\Local\Programs\antigravity\Antigravity.exe`；新安装与注册表自定义目录识别回归通过，CLI 接入、真实 CLI 检测及当前用户注册表恢复通过。App 前台激活仍受运行器限制，实际 Electron 渲染窗口用 CDP 发送真实请求；不宣称物理前台验收。相同候选 EXE 实际 `--antigravity connect` 假 Key 返回正式 URL HTTP 401、无写入。
+- Mac Apple 芯片、Ubuntu x64 的默认 App 入口实际发送对话；CLI 都通过真实 Shell 管道配置、重新打开 Zsh/Bash 并直接运行原 `agy -p`，无需 `--model`；Windows 真实 CLI 从助手写入的用户环境变量取得配置。三平台 CLI 请求均验证 Gemini `/v1beta/models/...:streamGenerateContent`、Bearer、原生工具声明及回复。Mac 签名候选网页 v2 链接假 Key 401 与签名校验通过；浏览器隔离标记实际打开显示系统「Apple could not verify」标准警告，非「已损坏」；运行器未完成「仍要打开」人工批准，未当作通过。
+- 证据：[Windows](https://github.com/youdaowudao/subdocs/actions/runs/45952148628/artifacts/15176664912)、[Mac](https://github.com/youdaowudao/subdocs/actions/runs/45952148628/artifacts/15177332810)、[Linux](https://github.com/youdaowudao/subdocs/actions/runs/45952148628/artifacts/15177456508)。测试站 Shell 1.0.4 SHA-256 `d10baf28a4c08898d9d4105bbee4de0e9625f89f1e8721234b053934fe8933bb` 与源码一致。真实 CLI Key/计费尚未验证，不以模拟服务代替。
+- 新候选：[Windows 1.2.5](https://github.com/youdaowudao/subdocs/actions/runs/45952148628/artifacts/15177057006)，EXE SHA-256 `cd307f35167269e71f8cf553745a837220c37796def037097aec0bdb6bd94407`；[Mac 1.1.17 签名包](https://github.com/youdaowudao/subdocs/actions/runs/45952148628/artifacts/15177028229)，SHA-256 `f6045dbcf8b8ea5613ef91ab39e0374c3dbabedd3cb57017645c564d37e41e9e`。本地组合 `下载成品/中转站快速导入工具_20261127-1534_Antigravity测试候选.zip`，10,598,452 字节，SHA-256 `caadd9fe933a02f35439888d84e3d48848ddc30af702dae1b9a0aab069d8a3f3`，仅 Windows 和 Mac，两者内容及 Mac 签名文件字节和权限与 Actions 产物一致；旧本地候选已被替换。
+- 主线未发布，正式成品未替换，[既有门禁 45952148539](https://github.com/youdaowudao/subdocs/actions/runs/45952148539) 另外两项成功、发布文件检查因待发布候选与旧正式 ZIP 不一致失败，未绕过。正式上线须另行同步成品、运行正式门禁。仅测试分支部署预览。
+- Bash（Linux）和 Zsh（Mac）新终端的真实 CLI 启动已验证；Fish 配置逻辑已实现，但当前没有 Fish 真机验证。Windows x64 硬件未测试，运行器为 Windows 11 ARM 转译。
+- 回收本次本地官方 CLI 下载/解压、测试用户目录、临时证书及重复候选文件，共 407,969,445 字节（约 389 MiB），另删除被替换的旧候选 10,584,740 字节。保留最终 ZIP、预览脚本、验收记录、截图和请求日志。

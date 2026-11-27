@@ -13,7 +13,7 @@
 - Mac 1.1.17：网站链接直达 Antigravity；双击助手选择 Codex 或 Antigravity，后者通过终端菜单连接、打开、恢复。密钥与模型保存在当前用户目录，启动时仅传给官方 App；原 Codex 安装脚本保持不变。
 - macOS / Linux 接入脚本 1.0.4：直接在终端运行 Shell 命令（connect/open/restore），不下载或交付单独的 Linux 可执行包；与 Mac 助手共用用户级配置。Linux 只检查预设目录，找不到时填写实际解压目录或程序路径，接入成功后复用；终端输入 Key 可见。新增 `cli` / `cli-restore`：CLI 用相同原生网关，写入当前终端的托管环境配置，重开终端直接运行 `agy`；CLI 与 App 在 Mac/Linux 可各自配置和恢复。无需 sudo。
 - 三平台只调用已有 Gemini 原生模型列表，按 Key 分组导入文本模型；未改主站后端、计费、现有 Codex、Claude、生图及国产模型业务。正式下载文件未替换。本次支持官方 Antigravity App 和 CLI，不接入独立 IDE 或 IDE 插件。
-- 测试：本地 Linux Go 定向回归已通过；三平台真实 App 验收由 `.github/workflows/antigravity-candidate.yml` 执行，最终结果与候选下载留在 Actions 及测试记录。
+- 测试：本地 Go、前端、终端交互回归及 [Windows、Mac、Linux 官方 App / CLI 实测](https://github.com/youdaowudao/subdocs/actions/runs/45952148628) 全部通过；真实 CLI Key 鉴权和计费未验。详见测试记录。
 
 ## Windows 1.2.3（2026-11-26）
 
