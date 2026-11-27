@@ -37,7 +37,7 @@ const config = defineConfig({
 
 })
 
-export default withSidebar(config, {
+const siteConfig = withSidebar(config, {
   documentRootPath: 'docs',
   useTitleFromFileHeading: true,
   useTitleFromFrontmatter: true,
@@ -97,3 +97,18 @@ export default withSidebar(config, {
     'contact.md'
   ]
 })
+
+// Keep the existing tutorial URL, but give Antigravity its own visible
+// sidebar entry rather than nesting it inside the collapsed client group.
+const sidebar = siteConfig.themeConfig?.sidebar
+if (Array.isArray(sidebar)) {
+  const clients = sidebar.find(item => item.items?.some(child => child.link === '/clients/antigravity'))
+  const entryIndex = clients?.items?.findIndex(item => item.link === '/clients/antigravity') ?? -1
+  const codexIndex = sidebar.findIndex(item => item.text === 'Codex')
+  if (clients?.items && entryIndex >= 0 && codexIndex >= 0) {
+    const [antigravity] = clients.items.splice(entryIndex, 1)
+    sidebar.splice(codexIndex, 0, antigravity)
+  }
+}
+
+export default siteConfig
