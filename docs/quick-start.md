@@ -125,6 +125,7 @@ irm https://docs.usegoodai.com/install/codex-restore.ps1 | iex
 - [安装生图工具](/image-video-group-image)：生图的常用说法、支持的模型和 GIF 动图。
 - [CC Switch 接入](/codex-cc-switch)：在官方账号和中转站之间来回切。
 - [Claude Desktop 接入](/claude/desktop)：用助手一键连接 Claude 桌面版。
+- [Antigravity 接入](/clients/antigravity)：用 Gemini 分组的密钥接入反重力 App 和 CLI。
 - [手动配置](/codex/manual-config)：自己改配置文件。
 - [模型价格](/models)
 

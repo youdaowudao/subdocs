@@ -10,6 +10,7 @@ const config = defineConfig({
         { text: '快速开始', link: '/quick-start' },
         { text: 'Codex', link: '/codex/' },
         { text: 'Claude', link: '/claude/' },
+        { text: 'Antigravity', link: '/clients/antigravity' },
         { text: '国产工具', link: '/domestic/' },
         { text: '其他工具', link: '/clients/' },
         { text: '生图', link: '/images/' },

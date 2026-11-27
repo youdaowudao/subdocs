@@ -95,6 +95,31 @@ body {
   font-weight: 600;
 }
 
+/* Keep every navigation item reachable when the desktop menu no longer fits. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .VPNav .VPNavBarMenu,
+  .VPNav .VPNavBarExtra {
+    display: none !important;
+  }
+
+  .VPNav .VPNavBarHamburger {
+    display: flex !important;
+  }
+
+  .VPNav .VPNavScreen {
+    display: block !important;
+  }
+}
+
+@media (max-width: 1199px) {
+  .VPNav .VPNavScreen {
+    /* The blurred header creates a containing block for fixed children. */
+    bottom: auto;
+    height: calc(100vh - var(--vp-nav-height) - var(--vp-layout-top-height, 0px));
+    height: calc(100dvh - var(--vp-nav-height) - var(--vp-layout-top-height, 0px));
+  }
+}
+
 .VPSidebar {
   border-right: 1px solid var(--site-line-strong);
   background: rgba(255, 246, 232, 0.94) !important;

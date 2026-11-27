@@ -38,6 +38,7 @@ UseGoodAI 中转站让 Codex 使用 AI 模型，并支持在对话中生成、�
   <a href="/images/">生图</a>
   <a href="/codex/">Codex</a>
   <a href="/claude/">Claude</a>
+  <a href="/clients/antigravity">Antigravity（反重力）</a>
   <a href="/domestic/">国产工具</a>
   <a href="/clients/">其他工具</a>
   <a href="/codex/manual-config">Codex 手动配置</a>

@@ -116,3 +116,7 @@ curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash
   - [Shell 1.0.4](https://docs.usegoodai.com/install/antigravity.sh)：15,375 字节，SHA-256 `d10baf28a4c08898d9d4105bbee4de0e9625f89f1e8721234b053934fe8933bb`，UTF-8 文本与源码相同，正式域名实际运行 `version` 为 1.0.4。[正式教程](https://docs.usegoodai.com/clients/antigravity) HTTP 200。
 - 35 项本地发布文件测试通过，隔离文档构建通过。真实 CLI Key/计费未核实，未要求用户重复测试；Mac 人工首次放行及 Windows 原生 x64 硬件限制如上。主站后端不变；模型数量历史差异实际来源仍未取得证据。
 - 回收本次隔离构建输出 138,648,881 字节、重复 Mac 候选与合集 17,632,588 字节，以及正式发布替代的测试合集 10,598,452 字节。保留正式下载文件、在线校验 JSON、签名截图和 Actions 记录。
+
+## 文档入口补充（0.1.41，2026-11-27）
+
+保留已发布 `/clients/antigravity` 的 App/CLI 独立教程，顶部导航与 Codex、Claude 并列，首页及快速开始增加直达；压缩正文操作步骤，恢复官方登录折叠。窄屏使用既有折叠菜单，修正模糊头部导致浮层高度为零。隔离文档构建及 6 个屏幕宽度、首页/快速开始真实浏览器入口均通过。仅调整文档与导航样式，Windows 1.2.5 / Mac 1.1.17 / Shell 1.0.4 及下载文件逐字节保持不变，沿用既有工具门禁，不重新构建工具。
