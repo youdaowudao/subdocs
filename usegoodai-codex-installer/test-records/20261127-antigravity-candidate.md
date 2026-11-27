@@ -105,3 +105,14 @@ curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash
 
 - 正式成品准备提交 `07dfba17daa0d60d87e348fb96e0e9993d6fd094`：[三项发布门禁](https://github.com/youdaowudao/subdocs/actions/runs/45954110703) 全部通过，App/CLI [复测](https://github.com/youdaowudao/subdocs/actions/runs/45954110787) 成功。Mac [整体签名与下载隔离测试](https://github.com/youdaowudao/subdocs/actions/runs/45954110659) 成功，合集中三 App、单独助手均通过严格签名校验；重新签名的两份 ZIP 与仓库逐字节一致，SHA-256 分别为 `0da02da28d510aa176bc4dd121a52bfe0dad6da635cbbaeb8acef35bda2ef117`、`f6045dbcf8b8ea5613ef91ab39e0374c3dbabedd3cb57017645c564d37e41e9e`。四份首次打开截图均为系统无法验证的标准拦截而非已损坏；运行器没有完成系统人工放行。
 - 额外 Windows 全量回归发现原链接队列测试传入 nil service，而新增 Antigravity 初始化使用正式服务地址；修改测试 fixture 为与生产启动相同的非空服务，并覆盖 Antigravity 链接排队，未改生产源码或成品。重新运行当前提交的检查，不能用上一提交的门禁冒充本次结果。
+
+## 正式发布完成（0.1.40，2026-11-27）
+
+- 正式工具提交 `3a46b5f5a144116dd598f345bdac1a27676e93c2`：测试分支 [三项门禁](https://github.com/youdaowudao/subdocs/actions/runs/45954983136)、[Windows 全量及更新回归](https://github.com/youdaowudao/subdocs/actions/runs/45954983053)、[三平台 App/CLI 复测](https://github.com/youdaowudao/subdocs/actions/runs/45954983086) 全部成功；本地快进合并 main 后 [正式门禁](https://github.com/youdaowudao/subdocs/actions/runs/45955635662) 三项均成功、Cloudflare Pages 正式部署成功，未跳过门禁。成品与已签名的 07dfba1 逐字节一致。
+- 正式域名重新下载并逐字节比对全部 HTTP 200：
+  - [合集](https://docs.usegoodai.com/download/usegoodai-tools.zip)：15,117,680 字节，SHA-256 `0da02da28d510aa176bc4dd121a52bfe0dad6da635cbbaeb8acef35bda2ef117`，附件名 `中转站快速导入工具_20261127-1544.zip`，Windows 1 个 EXE、Mac 3 App（助手 1.1.17、生图 0.9.7、国产模型 1.0.3），无 Linux 包。
+  - [Windows 1.2.5](https://docs.usegoodai.com/download/usegoodai-quick-connect-windows-x64.exe)：20,136,960 字节，SHA-256 `cd307f35167269e71f8cf553745a837220c37796def037097aec0bdb6bd94407`，更新 JSON 同版。
+  - [Mac 1.1.17](https://docs.usegoodai.com/download/usegoodai-quick-connect-mac-arm64.zip)：2,514,261 字节，SHA-256 `f6045dbcf8b8ea5613ef91ab39e0374c3dbabedd3cb57017645c564d37e41e9e`。
+  - [Shell 1.0.4](https://docs.usegoodai.com/install/antigravity.sh)：15,375 字节，SHA-256 `d10baf28a4c08898d9d4105bbee4de0e9625f89f1e8721234b053934fe8933bb`，UTF-8 文本与源码相同，正式域名实际运行 `version` 为 1.0.4。[正式教程](https://docs.usegoodai.com/clients/antigravity) HTTP 200。
+- 35 项本地发布文件测试通过，隔离文档构建通过。真实 CLI Key/计费未核实，未要求用户重复测试；Mac 人工首次放行及 Windows 原生 x64 硬件限制如上。主站后端不变；模型数量历史差异实际来源仍未取得证据。
+- 回收本次隔离构建输出 138,648,881 字节、重复 Mac 候选与合集 17,632,588 字节，以及正式发布替代的测试合集 10,598,452 字节。保留正式下载文件、在线校验 JSON、签名截图和 Actions 记录。
