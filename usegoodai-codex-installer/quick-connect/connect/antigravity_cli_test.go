@@ -135,10 +135,7 @@ func TestAntigravityCLI(t *testing.T) {
 		if strings.Count(string(source), old) != 1 {
 			t.Fatal("missing fixed endpoint")
 		}
-		script := filepath.Join(root, "antigravity.sh")
-		if err := os.WriteFile(script, []byte(strings.Replace(string(source), old, `BASE_URL="`+server.URL+`"`, 1)), 0700); err != nil {
-			t.Fatal(err)
-		}
+		script := strings.Replace(string(source), old, `BASE_URL="`+server.URL+`"`, 1)
 		bin := filepath.Join(home, ".local", "bin")
 		if err := os.MkdirAll(bin, 0700); err != nil {
 			t.Fatal(err)
@@ -151,7 +148,8 @@ func TestAntigravityCLI(t *testing.T) {
 			shell = "/bin/zsh"
 		}
 		env = append(env, "SHELL="+shell, "ZDOTDIR="+home, "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-		setup := exec.CommandContext(ctx, "/bin/bash", script, "cli")
+		setup := exec.CommandContext(ctx, "/bin/bash", "-s", "--", "cli")
+		setup.Stdin = strings.NewReader(script)
 		setup.Env = append(append([]string{}, env...), "USEGOODAI_KEY="+key)
 		output, err := setup.CombinedOutput()
 		_ = os.WriteFile(filepath.Join(evidence, "cli-setup.txt"), output, 0600)
@@ -159,7 +157,8 @@ func TestAntigravityCLI(t *testing.T) {
 			t.Fatalf("actual command: %v %s", err, output)
 		}
 		defer func() {
-			restore := exec.Command("/bin/bash", script, "cli-restore")
+			restore := exec.Command("/bin/bash", "-s", "--", "cli-restore")
+			restore.Stdin = strings.NewReader(script)
 			restore.Env = env
 			if out, err := restore.CombinedOutput(); err != nil {
 				t.Errorf("restore: %v %s", err, out)

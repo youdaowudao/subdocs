@@ -82,3 +82,5 @@ curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash
 - CLI 命令 `curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash -s -- cli`，恢复将最后参数改为 `cli-restore`。不影响原 App 命令。正式上线后域名替换为 `docs.usegoodai.com`。
 - 本地官方 CLI 经准确候选 Shell 配置、重新打开 Bash、直接运行 `agy -p`（未强制模型）成功：原生 GET 模型列表与 POST 流式请求均正确。Shell 6 项与前端 10 项回归通过，CLI 配置可重复、坏 Key 不写入、恢复保留 App 与用户 Shell 设置。远端三平台同一候选实际 App/CLI 测试待执行，未宣称真实 CLI Key/计费已经验证。
 - 不添加主站路由、计费或数据库读写逻辑；每次用户主动配置 CLI 仍读已有 `/v1beta/models` 一次，普通对话无新增请求。
+
+- Shell 1.0.4：完整解析下载脚本后再执行命令，避免 `curl | bash` 在版本、恢复或缺少安装等提前退出时出现下载管道写入错误。1.0.3 未作为正式交付；候选复测以 1.0.4 为准。

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # UseGoodAI Antigravity App / CLI 接入命令，macOS / Linux；不安装二进制、不需要 sudo。
+# Parse the complete downloaded script before executing any early-return action.
+main() {
 set -euo pipefail
-VERSION="1.0.3"
+VERSION="1.0.4"
 BASE_URL="https://api.usegoodai.com"
 system="$(uname -s)"
 case "$system" in
@@ -330,3 +332,5 @@ fi
   exec nohup "$app_path" </dev/null >/dev/null 2>&1
 ) &
 echo '已请求打开官方 Antigravity App，新建对话，发送“测试”。'
+}
+main "$@"

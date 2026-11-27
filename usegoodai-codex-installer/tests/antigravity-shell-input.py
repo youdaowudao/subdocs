@@ -140,7 +140,8 @@ test "$AGY_LLM_GATEWAY_MODELS" = gemini-3.8-flash && printf 'native-cli-configur
         self.config = self.home / ".config/UseGoodAI/Antigravity"
 
     def invoke(self, action, expect=0):
-        p = subprocess.run(["bash", str(SCRIPT), action], env=self.env, capture_output=True, text=True, timeout=10)
+        p = subprocess.run(["bash", "-s", "--", action], input=SCRIPT.read_text(), env=self.env,
+                           capture_output=True, text=True, timeout=10)
         self.assertEqual(p.returncode, expect, p.stdout + p.stderr)
         return p.stdout + p.stderr
 
