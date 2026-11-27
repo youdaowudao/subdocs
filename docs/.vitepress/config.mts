@@ -74,6 +74,7 @@ export default withSidebar(config, {
     'trae.md',
     'cherry-studio.md',
     'clients',
+    'antigravity.md',
     'vscode.md',
     'jetbrains.md',
     'gemini-cli.md',

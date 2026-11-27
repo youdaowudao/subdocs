@@ -35,6 +35,14 @@ test('serves the shell installer as UTF-8 text', async () => {
   )
 })
 
+test('serves the Antigravity command as fresh UTF-8 text and matches its source', async () => {
+  const headers = await readHeaders()
+  assert.match(headers, /\/install\/antigravity\.sh\s+Content-Type:\s*text\/plain;\s*charset=utf-8\s+Cache-Control:\s*public, max-age=0, must-revalidate/i)
+  const published = await readFile(new URL('../docs/public/install/antigravity.sh', import.meta.url))
+  const source = await readFile(new URL('../usegoodai-codex-installer/install/antigravity.sh', import.meta.url))
+  assert.deepEqual(published, source)
+})
+
 test('serves both restore scripts as UTF-8 text', async () => {
   const headers = await readHeaders()
 

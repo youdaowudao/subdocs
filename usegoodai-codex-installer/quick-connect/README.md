@@ -7,12 +7,12 @@
 
 技术选型：Go 1.25 + Wails v2（WebView2）。不需要管理员权限；系统缺少 WebView2 时弹出中文提示并打开微软下载页。
 
-## 测试候选（2026-11-27，未发布）
+## Windows 1.2.5 / Mac 1.1.17 / Shell 1.0.4（2026-11-27）
 
 - Windows 1.2.5：增加 Antigravity App / CLI 接入页，接收网站 v2 的 `app=antigravity` 导入链接；通过当前用户的四项 `AGY_LLM_GATEWAY_*` 环境变量接入 Gemini 原生网关，识别已安装的 App 或 CLI；退出 App 或重开终端运行 `agy` 生效。恢复只撤销助手写入且未被外部修改的值。无需管理员权限，不修改 App。
 - Mac 1.1.17：网站链接直达 Antigravity；双击助手选择 Codex 或 Antigravity，后者通过终端菜单连接、打开、恢复。密钥与模型保存在当前用户目录，启动时仅传给官方 App；原 Codex 安装脚本保持不变。
 - macOS / Linux 接入脚本 1.0.4：直接在终端运行 Shell 命令（connect/open/restore），不下载或交付单独的 Linux 可执行包；与 Mac 助手共用用户级配置。Linux 只检查预设目录，找不到时填写实际解压目录或程序路径，接入成功后复用；终端输入 Key 可见。新增 `cli` / `cli-restore`：CLI 用相同原生网关，写入当前终端的托管环境配置，重开终端直接运行 `agy`；CLI 与 App 在 Mac/Linux 可各自配置和恢复。无需 sudo。
-- 三平台只调用已有 Gemini 原生模型列表，按 Key 分组导入文本模型；未改主站后端、计费、现有 Codex、Claude、生图及国产模型业务。正式下载文件未替换。本次支持官方 Antigravity App 和 CLI，不接入独立 IDE 或 IDE 插件。
+- 三平台只调用已有 Gemini 原生模型列表，按 Key 分组导入文本模型；未改主站后端、计费、现有 Codex、Claude、生图及国产模型业务。正式下载使用本次已核验的 Windows EXE、Mac 签名 App，合集保留既有 Mac 生图及国产模型工具。本次支持官方 Antigravity App 和 CLI，不接入独立 IDE 或 IDE 插件。
 - 测试：本地 Go、前端、终端交互回归及 [Windows、Mac、Linux 官方 App / CLI 实测](https://github.com/youdaowudao/subdocs/actions/runs/45952148628) 全部通过；真实 CLI Key 鉴权和计费未验。详见测试记录。
 
 ## Windows 1.2.3（2026-11-26）
