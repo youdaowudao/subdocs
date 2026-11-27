@@ -62,5 +62,7 @@ curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash
 
 - Google 官方 Linux App 是 tar.gz 解压版，无强制固定安装目录；官方 2.35.2 x64 包已核对 `Antigravity-x64/antigravity`、`resources/app.asar`、`resources/bin/language_server`。仅检查常用固定目录及系统下载目录，不作全盘或递归搜索。其他解压位置由用户填目录或程序完整路径，支持 `~`、中文和空格；保存后复用。Windows 和 Mac 已冻结成品未变。
 - 终端输入 API Key 明文显示，便于新手检查；仍不把 Key 作为 API 请求命令行参数、不输出额外日志。
-- 本地四项伪终端交互测试通过：标准下载目录、中文自定义下载目录 ARM64 布局、自定义文件夹含空格和 `~`、显式程序路径与同名非 App；每项均验证假 Key 可见、401 不写配置。官方真实 App 测试改为默认命令，不再通过 `--app` 绕过定位，待 Actions 执行。
+- 本地四项伪终端交互测试通过：标准下载目录、中文自定义下载目录 ARM64 布局、自定义文件夹含空格和 `~`、显式程序路径与同名非 App；每项均验证假 Key 可见、401 不写配置。官方真实 App 测试改为默认命令，不再通过 `--app` 绕过定位。[45936946147](https://github.com/youdaowudao/subdocs/actions/runs/45936946147) 的 Windows、Mac、Linux 三项全部成功，包括 Linux/Mac 默认目录识别、真实 App 调用模拟 Gemini 原生接口并收到回复。Windows 成品代码未改变。Linux [15170922929](https://github.com/youdaowudao/subdocs/actions/runs/45936946147/artifacts/15170922929)，Mac [15170549194](https://github.com/youdaowudao/subdocs/actions/runs/45936946147/artifacts/15170549194)。
 - 测试预览命令保持不变，正式主线未发布。
+- 测试站实际返回 1.0.2，在线文件 SHA-256 `b30b85fe52d98f2d70512ed89799cf320fa5012e9e17604c3f5353d17b09fa21` 与源码及发布副本一致；本地 Go connect/macapp 回归通过。用户在 Linux 实际输入真实密钥并确认能够使用 App；未独立核实真实计费。
+- 用户确认仅做独立官方 Antigravity App，不开发 IDE、CLI 或编辑器扩展。Google 在 [2026-05-19 产品发布](https://antigravity.google/blog/introducing-google-antigravity-2-0) 和 [2026-08-20 IDE 扩展说明](https://antigravity.google/blog/antigravity-ide-extensions) 中明确独立 App 是产品发展重点，IDE 用于编辑、调试等专业场景。
