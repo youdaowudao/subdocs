@@ -11,7 +11,7 @@
 
 - Windows 1.2.4：增加 Antigravity App 接入页，接收网站 v2 的 `app=antigravity` 导入链接；通过当前用户的四项 `AGY_LLM_GATEWAY_*` 环境变量接入 Gemini 原生网关，退出并重新打开官方 App 生效。恢复只撤销助手写入且未被外部修改的值。无需管理员权限，不修改 App。
 - Mac 1.1.16：网站链接直达 Antigravity；双击助手选择 Codex 或 Antigravity，后者通过终端菜单连接、打开、恢复。密钥与模型保存在当前用户目录，启动时仅传给官方 App；原 Codex 安装脚本保持不变。
-- Linux 1.0.0：新增独立命令，`connect --app 路径`、`open`、`restore`，无需 sudo；使用官方 Antigravity App。
+- macOS / Linux 接入脚本 1.0.1：直接在终端运行 Shell 命令（connect/open/restore），不下载或交付单独的 Linux 可执行包；与 Mac 助手共用用户级配置。无需 sudo。
 - 三平台只调用已有 Gemini 原生模型列表，按 Key 分组导入文本模型；未改主站后端、计费、现有 Codex、Claude、生图及国产模型业务。正式下载文件未替换。
 - 测试：本地 Linux Go 定向回归已通过；三平台真实 App 验收由 `.github/workflows/antigravity-candidate.yml` 执行，最终结果与候选下载留在 Actions 及测试记录。
 

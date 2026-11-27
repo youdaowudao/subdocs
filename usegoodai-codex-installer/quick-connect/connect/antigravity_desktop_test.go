@@ -122,14 +122,68 @@ func TestAntigravityDesktop(t *testing.T) {
 			t.Error(restored.Message)
 		}
 	}()
-	result := a.Connect(context.Background(), fake, "Actions fixture", app)
-	if result.Tone != ToneSuccess || result.Antigravity.Models != 2 {
-		t.Fatal(result.Message)
+	if shell := os.Getenv("AGY_TEST_SCRIPT"); shell != "" {
+		// Exercise the actual Shell entry point, with just its fixed URL
+		// substituted in a disposable test copy. Never let production keys
+		// or a user-supplied endpoint enter the shipped script.
+		source, err := os.ReadFile(shell)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Count(string(source), "BASE_URL=\"https://api.usegoodai.com\"") != 1 {
+			t.Fatal("missing fixed endpoint")
+		}
+		testScript := filepath.Join(t.TempDir(), "antigravity.sh")
+		testContents := strings.Replace(string(source), "BASE_URL=\"https://api.usegoodai.com\"", "BASE_URL=\""+gateway.URL+"\"", 1)
+		if err = os.WriteFile(testScript, []byte(testContents), 0700); err != nil {
+			t.Fatal(err)
+		}
+		profile := t.TempDir()
+		env := append(os.Environ(), "USEGOODAI_KEY="+fake, "CURL_CA_BUNDLE="+ca, "XDG_CONFIG_HOME="+profile)
+		if runtime.GOOS == "darwin" {
+			env = append(env, "HOME="+profile)
+		}
+		run := exec.Command("/bin/bash", testScript, "connect", "--app", app)
+		run.Env = env
+		output, err := run.CombinedOutput()
+		_ = os.WriteFile(filepath.Join(evidence, "shell.txt"), output, 0600)
+		if err != nil {
+			t.Fatalf("actual Shell entry failed: %v; %s", err, output)
+		}
+		configPath := filepath.Join(profile, "UseGoodAI", "Antigravity", "connection.json")
+		if runtime.GOOS == "darwin" {
+			configPath = filepath.Join(profile, "Library", "Application Support", "UseGoodAI", "Antigravity", "connection.json")
+		}
+		data, err := os.ReadFile(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var profileData antigravityProfile
+		if json.Unmarshal(data, &profileData) != nil || profileData.Key != fake || len(profileData.Models) != 2 {
+			t.Fatal("Shell profile wrong")
+		}
+		defer func() {
+			restore := exec.Command("/bin/bash", testScript, "restore")
+			restore.Env = env
+			if out, err := restore.CombinedOutput(); err != nil {
+				t.Errorf("shell restore: %v %s", err, out)
+			}
+			if _, err := os.Stat(configPath); !os.IsNotExist(err) {
+				t.Error("shell restore retained profile")
+			}
+		}()
+		t.Log("actual Shell command queried native model list, saved user profile, and launched official App")
+	} else {
+		result := a.Connect(context.Background(), fake, "Actions fixture", app)
+		if result.Tone != ToneSuccess || result.Antigravity.Models != 2 {
+			t.Fatal(result.Message)
+		}
+		if result = a.Open(app); result.Tone != ToneSuccess {
+			t.Fatal(result.Message)
+		}
+		t.Log("native official desktop process started, with fake-key Gemini gateway")
 	}
-	if result = a.Open(app); result.Tone != ToneSuccess {
-		t.Fatal(result.Message)
-	}
-	t.Log("native official desktop process started, with fake-key Gemini gateway")
+
 	// The UI command operates the actual window and sends one test message.
 	// Never treat a process-only launch as a successful desktop conversation.
 	script := os.Getenv("AGY_TEST_INTERACT")
@@ -142,7 +196,11 @@ func TestAntigravityDesktop(t *testing.T) {
 	} else {
 		cmd = exec.Command("/bin/bash", script)
 	}
-	cmd.Env = append(os.Environ(), "AGY_TEST_EVIDENCE="+evidence, "AGY_TEST_PID="+fmt.Sprint(child.Process.Pid))
+	pid := ""
+	if child != nil && child.Process != nil {
+		pid = fmt.Sprint(child.Process.Pid)
+	}
+	cmd.Env = append(os.Environ(), "AGY_TEST_EVIDENCE="+evidence, "AGY_TEST_PID="+pid)
 	output, err := cmd.CombinedOutput()
 	_ = os.WriteFile(filepath.Join(evidence, "interaction.txt"), output, 0600)
 	if err != nil {

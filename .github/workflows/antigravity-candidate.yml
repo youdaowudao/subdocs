@@ -6,6 +6,8 @@ on:
     paths:
       - 'usegoodai-codex-installer/quick-connect/**'
       - 'usegoodai-codex-installer/desktop/**'
+      - 'usegoodai-codex-installer/install/antigravity.sh'
+      - 'docs/public/install/antigravity.sh'
       - '.github/workflows/antigravity-candidate.yml'
 permissions:
   contents: read
@@ -24,19 +26,11 @@ jobs:
         with:
           go-version-file: usegoodai-codex-installer/quick-connect/go.mod
           cache: false
-      - name: Linux 单元回归及候选命令
+      - name: Linux 原生回归与 Shell 命令语法
         run: |
           go test -count=1 ./connect ./macapp
-          mkdir -p "$RUNNER_TEMP/candidate" "$RUNNER_TEMP/agy-evidence"
-          CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags '-s -w' -o "$RUNNER_TEMP/candidate/usegoodai-antigravity-linux-x64" .
-          "$RUNNER_TEMP/candidate/usegoodai-antigravity-linux-x64" version
-          cp tools/antigravity-linux-readme.txt "$RUNNER_TEMP/candidate/使用说明.txt"
-          tar -czf "$RUNNER_TEMP/usegoodai-antigravity-linux-x64.tar.gz" -C "$RUNNER_TEMP/candidate" .
-      - uses: actions/upload-artifact@v5
-        with:
-          name: Antigravity-Linux-x64-候选
-          path: ${{ runner.temp }}/usegoodai-antigravity-linux-x64.tar.gz
-          retention-days: 30
+          bash -n ../install/antigravity.sh
+          mkdir -p "$RUNNER_TEMP/agy-evidence"
       - name: 安装并打开官方 Linux App
         run: |
           sudo apt-get update -qq
@@ -51,6 +45,7 @@ jobs:
           export AGY_TEST_APP="$RUNNER_TEMP/agy/Antigravity-x64/antigravity"
           export AGY_TEST_EVIDENCE="$RUNNER_TEMP/agy-evidence"
           export AGY_TEST_INTERACT="$PWD/tools/antigravity_ui_linux.sh"
+          export AGY_TEST_SCRIPT="$PWD/../install/antigravity.sh"
           xvfb-run -a -s '-screen 0 1440x960x24' bash -c 'openbox >/dev/null 2>&1 & wm=$!; trap "kill $wm 2>/dev/null || true" EXIT; go test -count=1 -timeout=5m -run "^TestAntigravityDesktop$" -v ./connect'
       - uses: actions/upload-artifact@v5
         if: always()
@@ -174,6 +169,7 @@ jobs:
           export AGY_TEST_APP="$RUNNER_TEMP/Antigravity.app"
           export AGY_TEST_EVIDENCE="$RUNNER_TEMP/agy-evidence"
           export AGY_TEST_INTERACT="$PWD/tools/antigravity_ui_mac.sh"
+          export AGY_TEST_SCRIPT="$PWD/../install/antigravity.sh"
           go test -count=1 -timeout=8m -run '^TestAntigravityDesktop$' -v ./connect
       - uses: actions/upload-artifact@v5
         if: always()

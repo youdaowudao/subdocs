@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 for i in $(seq 1 60); do
-  if ps -p "$AGY_TEST_PID" >/dev/null && osascript -e 'tell application "System Events" to exists process "Antigravity"' 2>/dev/null | grep -qx true; then break; fi
+  if { [ -z "$AGY_TEST_PID" ] || ps -p "$AGY_TEST_PID" >/dev/null; } && osascript -e 'tell application "System Events" to exists process "Antigravity"' 2>/dev/null | grep -qx true; then break; fi
   sleep 1
 done
 sleep 20

@@ -117,31 +117,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@v5
         with:
-          name: Antigravity-Linux-x64-候选
-          run-id: ${{ env.CANDIDATE_RUN }}
-          github-token: ${{ github.token }}
-          path: candidate
-      - name: 实际命令、版本和失败保护
+          persist-credentials: false
+      - name: 直接 Shell 命令版本及源码一致
         run: |
-          mkdir "$RUNNER_TEMP/candidate"
-          tar -xzf candidate/usegoodai-antigravity-linux-x64.tar.gz -C "$RUNNER_TEMP/candidate"
-          exe="$RUNNER_TEMP/candidate/usegoodai-antigravity-linux-x64"
-          test "$("$exe" version)" = 1.0.0
-          export XDG_CONFIG_HOME="$RUNNER_TEMP/profile"
-          set +e
-          printf '%s\n' 'sk-fake-candidate-entry-20261127-310e67' | "$exe" connect > "$RUNNER_TEMP/result.txt"
-          code=$?
-          set -e
-          cat "$RUNNER_TEMP/result.txt"
-          test "$code" = 1
-          grep -q 'HTTP 401' "$RUNNER_TEMP/result.txt"
-          test ! -e "$XDG_CONFIG_HOME/UseGoodAI/Antigravity/connection.json"
-      - uses: actions/upload-artifact@v5
-        with:
-          name: Antigravity-Linux-成品入口记录
-          path: ${{ runner.temp }}/result.txt
+          cmp usegoodai-codex-installer/install/antigravity.sh docs/public/install/antigravity.sh
+          bash -n docs/public/install/antigravity.sh
+          test "$(bash docs/public/install/antigravity.sh version)" = 1.0.1
   mac:
     runs-on: macos-15
     timeout-minutes: 10
