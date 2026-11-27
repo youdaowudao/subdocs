@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# UseGoodAI Antigravity App 接入命令，macOS / Linux；不安装二进制、不需要 sudo。
+# UseGoodAI Antigravity App / CLI 接入命令，macOS / Linux；不安装二进制、不需要 sudo。
 set -euo pipefail
 VERSION="1.0.3"
 BASE_URL="https://api.usegoodai.com"
@@ -10,13 +10,104 @@ case "$system" in
   *) printf '此命令只用于 Linux 和 Mac。\n' >&2; exit 1 ;;
 esac
 profile="$profile_dir/connection.json"
+cli_env="$profile_dir/cli.env"
+cli_fish="${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d/usegoodai-antigravity-cli.fish"
+cli_marker='# UseGoodAI Antigravity CLI'
+cli_hook="$(printf '[ ! -r %q ] || . %q %s' "$cli_env" "$cli_env" "$cli_marker")"
+
+managed_cli_file() {
+  [[ -f "$1" ]] && [[ "$(head -n 1 "$1")" = "$cli_marker" ]]
+}
+
+remove_cli_hook() {
+  local rc="$1" temp
+  [[ -f "$rc" ]] && grep -Fxq -- "$cli_hook" "$rc" || return 0
+  temp="$(mktemp "${TMPDIR:-/tmp}/usegoodai-agy-rc.XXXXXX")" || return 1
+  # Keep every user line, removing only the exact source line we added.
+  grep -Fxv -- "$cli_hook" "$rc" > "$temp" || [[ $? -eq 1 ]] || { rm -- "$temp"; return 1; }
+  if ! cat "$temp" > "$rc"; then rm -- "$temp"; return 1; fi
+  rm -- "$temp"
+}
+
+restore_cli() {
+  local rc file
+  for file in "$cli_env" "$cli_fish"; do
+    if managed_cli_file "$file"; then rm -- "$file"; fi
+  done
+  for rc in "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile" "${ZDOTDIR:-$HOME}/.zshrc"; do
+    remove_cli_hook "$rc" || { echo 'CLI 环境配置已撤销，但无法清理终端启动文件中的本助手引用。' >&2; return 1; }
+  done
+  echo '已撤销 Antigravity CLI 接入配置。关闭并重新打开终端后，运行 agy 使用原登录方式。'
+}
+
+find_cli() {
+  local p
+  p="$(command -v agy 2>/dev/null || true)"
+  if [[ -n "$p" && -f "$p" && -x "$p" ]]; then printf '%s\n' "$p"; return; fi
+  if [[ -f "$HOME/.local/bin/agy" && -x "$HOME/.local/bin/agy" ]]; then printf '%s\n' "$HOME/.local/bin/agy"; return; fi
+  return 1
+}
+
+add_cli_hook() {
+  local rc="$1"
+  mkdir -p "$(dirname "$rc")"
+  if [[ ! -f "$rc" ]] || ! grep -Fxq -- "$cli_hook" "$rc"; then
+    printf '\n%s\n' "$cli_hook" >> "$rc"
+  fi
+}
+
+save_cli_env() {
+  local login_shell="${SHELL:-/bin/bash}" login_rc rc file need_path=0
+  login_shell="${login_shell##*/}"
+  case "$login_shell" in bash|zsh|fish) ;; *) echo '当前终端不是 Bash、Zsh 或 Fish。未修改 CLI 配置。' >&2; return 1 ;; esac
+  for file in "$cli_env" "$cli_fish"; do
+    if [[ -e "$file" ]] && ! managed_cli_file "$file"; then
+      echo "已有同名配置文件，未覆盖：$file" >&2; return 1
+    fi
+  done
+  if ! command -v agy >/dev/null 2>&1; then need_path=1; fi
+  umask 077
+  mkdir -p "$profile_dir"
+  if [[ "$login_shell" != fish || -f "$cli_env" ]]; then
+    staged="$(mktemp "$profile_dir/.cli.env.XXXXXX")"
+    {
+      printf '%s\n' "$cli_marker"
+      printf 'export AGY_LLM_GATEWAY_URL=%q\nexport AGY_LLM_GATEWAY_API_KEY=%q\n' "$BASE_URL" "$key"
+      printf 'export AGY_LLM_GATEWAY_WIRE_PROTOCOL=genai\nexport AGY_LLM_GATEWAY_MODELS=%q\n' "$models"
+      if [[ "$need_path" = 1 ]]; then printf '%s\n' 'export PATH="$HOME/.local/bin:$PATH"'; fi
+    } > "$staged"
+    if [[ "$login_shell" = bash ]]; then
+      login_rc="$HOME/.profile"
+      for rc in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do
+        if [[ -f "$rc" ]]; then login_rc="$rc"; break; fi
+      done
+      add_cli_hook "$HOME/.bashrc"
+      add_cli_hook "$login_rc"
+    elif [[ "$login_shell" = zsh ]]; then
+      add_cli_hook "${ZDOTDIR:-$HOME}/.zshrc"
+    fi
+    chmod 600 "$staged"; mv -f -- "$staged" "$cli_env"; staged=""
+  fi
+  if [[ "$login_shell" = fish || -f "$cli_fish" ]]; then
+    mkdir -p "$(dirname "$cli_fish")"
+    staged="$(mktemp "$(dirname "$cli_fish")/.usegoodai-agy.XXXXXX")"
+    {
+      printf '%s\n' "$cli_marker"
+      printf 'set -gx AGY_LLM_GATEWAY_URL %s\nset -gx AGY_LLM_GATEWAY_API_KEY %s\n' "$BASE_URL" "$key"
+      printf 'set -gx AGY_LLM_GATEWAY_WIRE_PROTOCOL genai\nset -gx AGY_LLM_GATEWAY_MODELS %s\n' "$models"
+      if [[ "$need_path" = 1 ]]; then printf '%s\n' 'fish_add_path --path "$HOME/.local/bin"'; fi
+    } > "$staged"
+    chmod 600 "$staged"; mv -f -- "$staged" "$cli_fish"; staged=""
+  fi
+  echo '已保存 Antigravity CLI 接入配置。关闭并重新打开终端，运行 agy，新建对话发送“测试”。'
+}
 action=connect
 if [[ ${1:-} != --* && -n ${1:-} ]]; then action="$1"; shift; fi
 explicit=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --app) [[ $# -ge 2 ]] || { echo '--app 后面需要软件路径'; exit 2; }; explicit="$2"; shift 2 ;;
-    *) echo '用法：connect [--app 路径]、open [--app 路径]、restore、status、version'; exit 2 ;;
+    *) echo '用法：connect [--app 路径]、open [--app 路径]、restore、status、cli、cli-restore、version'; exit 2 ;;
   esac
 done
 case "$action" in
@@ -24,8 +115,9 @@ case "$action" in
   restore)
     if [[ -f "$profile" ]]; then rm -- "$profile"; fi
     echo '已撤销本助手的接入配置。完全退出 Antigravity 后，从官方入口重新打开。'; exit ;;
-  connect|open|status) ;;
-  *) echo '用法：connect [--app 路径]、open [--app 路径]、restore、status、version'; exit 2 ;;
+  cli-restore) restore_cli; exit ;;
+  connect|open|status|cli) ;;
+  *) echo '用法：connect [--app 路径]、open [--app 路径]、restore、status、cli、cli-restore、version'; exit 2 ;;
 esac
 
 # JSON: Linux uses existing Python 3; Mac uses built-in JXA, no new tool installation.
@@ -166,13 +258,18 @@ if [[ "$action" = status ]]; then
   exit
 fi
 key=""; models=""; app_path=""
-if [[ -f "$profile" ]]; then
+if [[ "$action" = cli ]]; then
+  if ! find_cli >/dev/null; then
+    echo '未检测到 Antigravity CLI（agy）。若尚未安装，请先到 https://antigravity.google/download 安装 CLI；已安装请打开能运行 agy 的终端后重试。' >&2
+    exit 1
+  fi
+elif [[ -f "$profile" ]]; then
   if ! load_profile; then echo '现有 Antigravity 接入配置无法读取，未改动。' >&2; exit 1; fi
 elif [[ "$action" = open ]]; then
   echo '还没有接入配置，请先运行接入命令。' >&2; exit 1
 fi
 
-if ! resolved="$(find_app)"; then
+if [[ "$action" != cli ]] && ! resolved="$(find_app)"; then
   if [[ -n "$explicit" ]]; then
     echo '未找到指定的官方 Antigravity App，请检查 --app 路径。' >&2; exit 1
   fi
@@ -187,9 +284,9 @@ if ! resolved="$(find_app)"; then
   IFS= read -r -u 3 explicit || exit 1
   resolved="$(find_app)" || { echo '该路径未找到官方 Antigravity App，请检查解压后的文件夹或程序路径，配置没有改动。' >&2; exit 1; }
 fi
-app_path="$resolved"
+if [[ "$action" != cli ]]; then app_path="$resolved"; fi
 
-if [[ "$action" = connect ]]; then
+if [[ "$action" = connect || "$action" = cli ]]; then
   if [[ -n "${USEGOODAI_KEY:-}" ]]; then
     key="$USEGOODAI_KEY"; unset USEGOODAI_KEY
   else
@@ -210,6 +307,7 @@ if [[ "$action" = connect ]]; then
     echo "Gemini 分组密钥或模型查询未通过（HTTP $http_code），配置没有改动。" >&2; exit 1
   fi
   models="$(json_tool models < "$response")" || { echo '当前密钥没有可用的 Gemini 编程模型，或模型列表返回异常。配置没有改动。' >&2; exit 1; }
+  if [[ "$action" = cli ]]; then save_cli_env; exit; fi
   umask 077
   mkdir -p "$profile_dir"
   staged="$(mktemp "$profile_dir/.connection.json.XXXXXX")"

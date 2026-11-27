@@ -142,6 +142,7 @@ type AntigravityStatus struct {
 	Name        string `json:"name,omitempty"`
 	Models      int    `json:"models"`
 	AppDetected bool   `json:"appDetected"`
+	CLIDetected bool   `json:"cliDetected"`
 }
 type AntigravityResult struct {
 	Tone        string            `json:"tone"`
@@ -199,6 +200,7 @@ func (a *Antigravity) values(p antigravityProfile) map[string]antigravityEnvValu
 func (a *Antigravity) Status() (status AntigravityStatus) {
 	p, err := a.read()
 	defer func() {
+		status.CLIDetected = detectAntigravityCLI()
 		if p.AppPath != "" {
 			if _, err := resolveAntigravityPath(p.AppPath); err == nil {
 				status.AppDetected = true
@@ -298,13 +300,18 @@ func (a *Antigravity) Connect(ctx context.Context, raw, name, appPath string) An
 		return a.result(ToneError, "无法保存 Antigravity 接入配置，请重试。")
 	}
 	// A model directory is not a live verification of the upstream models.
-	text := "已保存 UseGoodAI 接入配置。"
+	result := a.result(ToneSuccess, "已保存 UseGoodAI 接入配置。")
 	if a.Store != nil {
-		text += "请彻底退出 Antigravity 后重新打开，新建对话发送“测试”。"
+		if result.Antigravity.AppDetected || !result.Antigravity.CLIDetected {
+			result.Message += "App 请彻底退出后重新打开，新建对话发送“测试”。"
+		}
+		if result.Antigravity.CLIDetected {
+			result.Message += "CLI 请关闭并重新打开终端，运行 agy。"
+		}
 	} else {
-		text += "请先彻底退出 Antigravity，再通过助手的打开入口启动。"
+		result.Message += "请先彻底退出 Antigravity，再通过助手的打开入口启动。"
 	}
-	return a.result(ToneSuccess, text)
+	return result
 }
 func (a *Antigravity) Restore() AntigravityResult {
 	a.mu.Lock()
@@ -338,6 +345,9 @@ func (a *Antigravity) Restore() AntigravityResult {
 			_ = a.Store.Write(current)
 		}
 		return a.result(ToneError, "恢复配置失败，请重试。")
+	}
+	if a.Store != nil {
+		return a.result(ToneSuccess, "已撤销本助手写入的接入配置。彻底退出 App 或关闭终端后重新打开即可。")
 	}
 	return a.result(ToneSuccess, "已撤销本助手写入的接入配置。彻底退出 Antigravity 后，用原来的软件入口打开即可。")
 }

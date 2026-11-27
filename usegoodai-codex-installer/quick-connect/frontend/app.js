@@ -36,12 +36,12 @@ const TOOLS = {
     restoreTip: '取消中转站连接：Claude 改回用 Anthropic 官方账号登录，并关闭正在运行的 Claude。',
   },
   antigravity: {
-    label: 'Antigravity App',
-    title: '将 Antigravity App 接入 UseGoodAI',
+    label: 'Antigravity App / CLI',
+    title: '将 Antigravity 接入 UseGoodAI',
     steps: '选 Gemini 分组的密钥，点「一键导入 Antigravity」。',
     button: '一键连接 Antigravity',
     placeholder: '也可以粘贴 Gemini 分组的 API Key',
-    restoreTip: '撤销本助手写入的接入配置，完全退出 App 后重新打开即可。',
+    restoreTip: '撤销本助手写入的接入配置；重新打开 App 或终端即可。',
   },
   models: {
     label: '国产模型',
@@ -136,13 +136,14 @@ function cardFor() {
   }
   if (tool === 'antigravity') {
     const status = state.antigravity;
-    if (!status) return { state: 'none', title: '正在检测 Antigravity App…', name: '', key: '' };
+    if (!status) return { state: 'none', title: '正在检测 Antigravity…', name: '', key: '' };
     const connected = status.state === 'usegoodai';
     if (connected) return { state: 'ok', title: '已保存 UseGoodAI 配置', name: status.name || '', key: status.key || '' };
-    if (!status.appDetected) return { state: 'none', title: '未检测到 Antigravity App', name: '',
+    if (!status.appDetected && !status.cliDetected) return { state: 'none', title: '未检测到 Antigravity App 或 CLI', name: '',
       key: '已安装可直接连接；尚未安装请先下载', download: true };
+    const detected = status.appDetected && status.cliDetected ? 'Antigravity App 和 CLI' : status.appDetected ? 'Antigravity App' : 'Antigravity CLI';
     return { state: status.state === 'none' ? 'none' : 'other',
-      title: status.state === 'none' ? '还没连接' : '接入配置已变更', name: '', key: '已检测到 Antigravity App' };
+      title: status.state === 'none' ? '还没连接' : '接入配置已变更', name: '', key: `已检测到 ${detected}` };
   }
   const status = state.status || { state: 'none' };
   const connected = status.state === 'usegoodai';

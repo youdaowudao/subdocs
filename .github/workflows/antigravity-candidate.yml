@@ -32,6 +32,7 @@ jobs:
           go test -count=1 ./connect ./macapp
           bash -n ../install/antigravity.sh
           python3 ../tests/antigravity-shell-input.py
+          node --test ../../tests/image-upgrade-ui.test.mjs
           mkdir -p "$RUNNER_TEMP/agy-evidence"
       - name: 安装并打开官方 Linux App
         run: |
@@ -49,6 +50,16 @@ jobs:
           export AGY_TEST_INTERACT="$PWD/tools/antigravity_ui_linux.sh"
           export AGY_TEST_SCRIPT="$PWD/../install/antigravity.sh"
           xvfb-run -a -s '-screen 0 1440x960x24' bash -c 'openbox >/dev/null 2>&1 & wm=$!; trap "kill $wm 2>/dev/null || true" EXIT; go test -count=1 -timeout=5m -run "^TestAntigravityDesktop$" -v ./connect'
+      - name: 官方 Linux CLI 1.5.18 配置与原生对话
+        run: |
+          mkdir "$RUNNER_TEMP/agy-cli"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/agy-cli/official.tar.gz" https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.18-6386224290725888/linux-x64/cli_linux_x64.tar.gz
+          printf '%s  %s\n' ef379ec869719112f696e8c7cfddf776618712e58fc38e53df80801d6528abb4677782c7c8778f9c09c9123fa44c2c32675d228c06f2a8f7a8f4214e75f5bb26 "$RUNNER_TEMP/agy-cli/official.tar.gz" | sha512sum -c - | tee "$RUNNER_TEMP/agy-evidence/official-cli.sha512"
+          tar -xzf "$RUNNER_TEMP/agy-cli/official.tar.gz" -C "$RUNNER_TEMP/agy-cli" antigravity
+          chmod +x "$RUNNER_TEMP/agy-cli/antigravity"
+          export AGY_TEST_CLI="$RUNNER_TEMP/agy-cli/antigravity" AGY_TEST_EVIDENCE="$RUNNER_TEMP/agy-evidence" AGY_TEST_SCRIPT="$PWD/../install/antigravity.sh"
+          "$AGY_TEST_CLI" --version | tee "$AGY_TEST_EVIDENCE/cli-version.txt"
+          go test -count=1 -timeout=3m -run '^TestAntigravityCLI$' -v ./connect
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -104,6 +115,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: 官方 Windows x64 CLI 1.5.18 配置与原生对话
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((Get-CimInstance Win32_OperatingSystem).ProductType -ne 1) { throw 'Windows Server is prohibited' }
+          $cli = Join-Path $env:LOCALAPPDATA 'agy\bin\agy.exe'
+          New-Item -ItemType Directory -Force (Split-Path $cli) | Out-Null
+          curl.exe -fL --retry 3 -o $cli 'https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.18-6386224290725888/windows-x64/cli_windows_x64.exe'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sha = (Get-FileHash $cli -Algorithm SHA512).Hash.ToLowerInvariant()
+          if ($sha -ne '53605db7013dfed51e8c416d51e0c17a3b5ad0750c13da5669954ba4a281318746be0cf8cde2b256cfdb4bfbdade4badad1a0503931f8458416184549afa06b6') { throw 'Official CLI checksum mismatch' }
+          $sha | Out-File "$env:RUNNER_TEMP/agy-evidence/official-cli.sha512"
+          Unblock-File $cli
+          $env:AGY_TEST_CLI=$cli; $env:AGY_TEST_EVIDENCE="$env:RUNNER_TEMP/agy-evidence"
+          & $cli --version | Tee-Object "$env:AGY_TEST_EVIDENCE/cli-version.txt"
+          go test -count=1 -timeout=3m -run '^TestAntigravityCLI$' -v ./connect
+          exit $LASTEXITCODE
       - name: Windows 11 桌面 x64 App 原生接入
         shell: pwsh
         run: |
@@ -127,6 +155,22 @@ jobs:
           $env:AGY_TEST_CDP_SCRIPT=(Resolve-Path tools/antigravity_ui_cdp.js).Path
           go test -count=1 -timeout=8m -run '^TestAntigravityDesktop$' -v ./connect
           exit $LASTEXITCODE
+      - name: 精确交付 EXE 命令与假 Key 失败保护
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=(Get-ChildItem "$env:RUNNER_TEMP/candidate" -Filter '*.exe' | Select-Object -First 1).FullName
+          if ((Get-Item $exe).VersionInfo.FileVersion -ne '1.2.5') {throw 'Wrong candidate version'}
+          $names=@('AGY_LLM_GATEWAY_URL','AGY_LLM_GATEWAY_API_KEY','AGY_LLM_GATEWAY_WIRE_PROTOCOL','AGY_LLM_GATEWAY_MODELS')
+          $before=@($names | ForEach-Object {[Environment]::GetEnvironmentVariable($_,'User')}) | ConvertTo-Json
+          $inputFile=Join-Path $env:RUNNER_TEMP 'fake-key.txt'
+          'sk-fake-candidate-command-20261127-753689' | Set-Content -Encoding ascii $inputFile
+          $evidence="$env:RUNNER_TEMP/agy-evidence"
+          $p=Start-Process -FilePath $exe -ArgumentList '--antigravity','connect' -RedirectStandardInput $inputFile -RedirectStandardOutput "$evidence/exact-command.txt" -RedirectStandardError "$evidence/exact-command-error.txt" -PassThru
+          if (-not $p.WaitForExit(60000)) {Stop-Process -Id $p.Id;throw 'Candidate did not finish'}
+          if ($p.ExitCode -ne 1 -or -not ([IO.File]::ReadAllText("$evidence/exact-command.txt")).Contains('HTTP 401')) {throw 'Candidate did not reject fake key'}
+          $after=@($names | ForEach-Object {[Environment]::GetEnvironmentVariable($_,'User')}) | ConvertTo-Json
+          if ($after -ne $before -or (Test-Path "$env:APPDATA/UseGoodAI/Antigravity/connection.json")) {throw 'Rejected key changed user configuration'}
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -173,6 +217,32 @@ jobs:
           export AGY_TEST_INTERACT="$PWD/tools/antigravity_ui_mac.sh"
           export AGY_TEST_SCRIPT="$PWD/../install/antigravity.sh"
           go test -count=1 -timeout=8m -run '^TestAntigravityDesktop$' -v ./connect
+      - name: 官方 Apple 芯片 CLI 1.5.18 配置与原生对话
+        run: |
+          mkdir "$RUNNER_TEMP/agy-cli"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/agy-cli/official.tar.gz" https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.18-6386224290725888/darwin-arm/cli_mac_arm64.tar.gz
+          printf '%s  %s\n' d10e124f5eb4da94ebb6c494cd2e7b38744f9f66e8e87145d2cbad1cbd3c4160fd88a79cd4220dfce7c9da0ddead652346bcc839914575f6447438ae8d1d5dcc "$RUNNER_TEMP/agy-cli/official.tar.gz" | shasum -a 512 -c - | tee "$RUNNER_TEMP/agy-evidence/official-cli.sha512"
+          tar -xzf "$RUNNER_TEMP/agy-cli/official.tar.gz" -C "$RUNNER_TEMP/agy-cli" antigravity
+          chmod +x "$RUNNER_TEMP/agy-cli/antigravity"
+          export AGY_TEST_CLI="$RUNNER_TEMP/agy-cli/antigravity" AGY_TEST_EVIDENCE="$RUNNER_TEMP/agy-evidence" AGY_TEST_SCRIPT="$PWD/../install/antigravity.sh"
+          "$AGY_TEST_CLI" --version | tee "$AGY_TEST_EVIDENCE/cli-version.txt"
+          go test -count=1 -timeout=3m -run '^TestAntigravityCLI$' -v ./connect
+      - name: 精确签名 App 接收网页 v2 链接与假 Key 失败保护
+        run: |
+          mkdir "$RUNNER_TEMP/signed-candidate"
+          ditto -x -k "$RUNNER_TEMP/candidate/usegoodai-quick-connect-mac-arm64.zip" "$RUNNER_TEMP/signed-candidate"
+          app="$(find "$RUNNER_TEMP/signed-candidate" -maxdepth 1 -name '*.app' -print -quit)"
+          codesign --verify --deep --strict "$app"
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+          open 'usegoodai://import?v=2&app=antigravity&key=sk-fake-candidate-entry-20261127-310e67&name=Actions'
+          found=0
+          for i in $(seq 1 60); do
+            if ps -axww -o command= | grep -F 'display alert' | grep -Fq 'HTTP 401'; then found=1; break; fi
+            sleep 1
+          done
+          /usr/sbin/screencapture -x "$RUNNER_TEMP/agy-evidence/signed-link.png" || true
+          test "$found" = 1
+          test ! -e "$HOME/Library/Application Support/UseGoodAI/Antigravity/connection.json"
       - uses: actions/upload-artifact@v5
         if: always()
         with:

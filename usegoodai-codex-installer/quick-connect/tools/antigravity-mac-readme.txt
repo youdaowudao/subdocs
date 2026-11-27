@@ -5,4 +5,6 @@ Antigravity App Mac Apple 芯片测试候选
 3. 双击助手选 Antigravity，再选 1 接入；也可在网站点击「一键导入 Antigravity」。
 4. 以后双击助手选 Antigravity，再选 2 打开。恢复官方登录选 3，再从原官方 App 打开。
 
+CLI 使用单独的终端接入命令，完成后重开终端运行 agy；不需要安装 App。
+
 此为测试候选，不是正式发布版。无需管理员权限。

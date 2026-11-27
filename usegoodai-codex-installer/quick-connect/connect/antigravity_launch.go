@@ -83,6 +83,29 @@ func firstAntigravityApp(paths []string) string {
 	}
 	return ""
 }
+
+// The official CLI installer uses agy (not the App executable name).
+// Only check its standard installation location and the current PATH.
+func detectAntigravityCLI() bool {
+	var paths []string
+	if runtime.GOOS == "windows" {
+		if dir, err := os.UserCacheDir(); err == nil && dir != "" {
+			paths = append(paths, filepath.Join(dir, "agy", "bin", "agy.exe"))
+		}
+	} else if home, err := os.UserHomeDir(); err == nil && home != "" {
+		paths = append(paths, filepath.Join(home, ".local", "bin", "agy"))
+	}
+	if path, err := exec.LookPath("agy"); err == nil {
+		paths = append(paths, path)
+	}
+	for _, path := range paths {
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() && (runtime.GOOS == "windows" || info.Mode()&0111 != 0) {
+			return true
+		}
+	}
+	return false
+}
+
 func launchAntigravity(path string, env []string) error {
 	cmd := exec.Command(path)
 	cmd.Env = env

@@ -96,8 +96,12 @@ test('Antigravity download guidance reflects App detection, not connection statu
   app.AntigravityStatus = async () => ({ state: 'none', appDetected: false });
   await run('refreshAntigravityStatus()');
   assert.equal(panel.element('get-app').hidden, false);
-  assert.equal(panel.element('status-title').textContent, '未检测到 Antigravity App');
+  assert.equal(panel.element('status-title').textContent, '未检测到 Antigravity App 或 CLI');
   assert.match(panel.element('status-key').textContent, /已安装可直接连接/);
+  app.AntigravityStatus = async () => ({ state: 'none', appDetected: false, cliDetected: true });
+  await run('refreshAntigravityStatus()');
+  assert.equal(panel.element('get-app').hidden, true);
+  assert.match(panel.element('status-key').textContent, /已检测到 Antigravity CLI/);
   app.AntigravityStatus = async () => ({ state: 'usegoodai', appDetected: true, key: 'sk-masked', models: 20 });
   await run('refreshAntigravityStatus()');
   assert.equal(panel.element('get-app').hidden, true);

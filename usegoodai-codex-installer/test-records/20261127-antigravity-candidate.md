@@ -73,3 +73,12 @@ curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash
 - 本地候选 Windows 1.2.5、Mac 1.1.17、Shell 1.0.3：Windows 读取常用安装位置及安装程序注册位置并核对实际 App 文件，不搜索硬盘；安装状态与连接状态独立，检测到 App 不显示下载，未检测到的提示不阻止已安装用户连接。切换标签及窗口回到前台复核本地状态。Mac 默认位置/已保存路径与 App 文件核对；Shell 保持有限位置、不递归搜索。
 - 取消所有助手的未实测模型数量展示，保留原生模型查询和配置写入，不对每个模型发额外推理请求。Mac 终端菜单的 Key 与 Linux 命令一样可见。主站代码、模型路由、计费及原有接入协议均未修改。
 - 本地 Go、10 项前端、4 项 Shell 终端交互测试已通过；Windows 交叉编译及真实官方安装程序自动识别的 Actions 回归待验证。先完成本修正，再分析 CLI，之后一起推送测试分支。
+
+## Antigravity CLI 原生支持（同一候选，未发布）
+
+- 用户在 App 实际接入成功后明确扩大目标为 App 与 CLI，仍排除独立 IDE 和编辑器扩展。Google 官方 [CLI 更新记录](https://antigravity.google/docs/changelog) 说明支持 `AGY_LLM_GATEWAY_*` 自定义企业模型网关；官方当前 CLI 1.5.18 安装清单已核对。
+- 本机实际下载、SHA-512 核验并运行官方 Linux x64 CLI 1.5.18：相同 `AGY_LLM_GATEWAY_URL`、`API_KEY`、`WIRE_PROTOCOL=genai`、`MODELS` 成功，无登录要求；真实 `agy -p` 请求 `/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse`，Bearer 鉴权正确，含 Gemini 原生工具声明，收到模拟回复。
+- Windows 1.2.5 复用用户注册表的相同四项环境变量，检测官方 App 和官方 `agy.exe`（标准安装目录及 PATH），一键配置同时生效；恢复同时撤销。Mac/Linux Shell 1.0.3 新增 `cli` 与 `cli-restore`，只配置当前用户终端启动环境，重新打开终端直接运行原官方 `agy`；无需 App、无需 sudo、不安装新的二进制。Mac/Linux App 与 CLI 设置及恢复独立；Mac GUI 网页导入仍为 App 入口。
+- CLI 命令 `curl -fsSL https://actions-test.subdocs.pages.dev/install/antigravity.sh | bash -s -- cli`，恢复将最后参数改为 `cli-restore`。不影响原 App 命令。正式上线后域名替换为 `docs.usegoodai.com`。
+- 本地官方 CLI 经准确候选 Shell 配置、重新打开 Bash、直接运行 `agy -p`（未强制模型）成功：原生 GET 模型列表与 POST 流式请求均正确。Shell 6 项与前端 10 项回归通过，CLI 配置可重复、坏 Key 不写入、恢复保留 App 与用户 Shell 设置。远端三平台同一候选实际 App/CLI 测试待执行，未宣称真实 CLI Key/计费已经验证。
+- 不添加主站路由、计费或数据库读写逻辑；每次用户主动配置 CLI 仍读已有 `/v1beta/models` 一次，普通对话无新增请求。
